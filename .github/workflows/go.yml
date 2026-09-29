@@ -5,7 +5,7 @@ name: Go
 #
 #   jobs:
 #     go:
-#       uses: qoryai/integrations/.github/workflows/go.yml@v0.1.0
+#       uses: qoryai/integrations/.github/workflows/go.yml@v0.2.0
 #
 # It checks out the calling repository and runs its formatting, vet, tests and build, and
 # its doc comments against the revive.toml at its root. The template's CI calls it this way.

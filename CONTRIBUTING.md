@@ -74,4 +74,8 @@ the tag lands; a fix that goes to `main` outside a release branch goes under
 `[Unreleased]` until the next one. This repository publishes no program: its release is
 the Go module's version, which every integration's `go.mod` pins.
 
+A tag is never moved or deleted. The Go module proxy and the checksum database keep the
+first tree they read for a version, for good. A mistake in a release is fixed by the next
+version, and `go.mod` retracts the one that is wrong.
+
 Commit messages state what changed and why it was needed, in the imperative.

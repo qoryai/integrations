@@ -9,3 +9,6 @@ require (
 )
 
 require golang.org/x/text v0.14.0 // indirect
+
+// The module proxy holds an earlier tree under v0.1.0, without the conformance package.
+retract v0.1.0

@@ -7,6 +7,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-30
+
+### Upgrading
+
+- Require `github.com/qoryai/integrations` v0.2.0, and call the workflows at `@v0.2.0`.
+  The Go module proxy and the checksum database hold v0.1.0 as an earlier tree of this
+  repository: `qory-github` under `github/`, and no `conformance` package. They keep that
+  tree for good. So `go.mod` retracts v0.1.0, and v0.2.0 publishes the tree that the tag
+  v0.1.0 on GitHub points at, the one described under 0.1.0 below. Nothing else changes.
+
 ## [0.1.0] - 2026-09-29
 
 ### Added
@@ -45,5 +55,6 @@ change what an existing reader or program relies on, and notes it under Upgradin
   This repository keeps the contract, the module every integration imports, and the
   catalog.
 
-[Unreleased]: https://github.com/qoryai/integrations/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/qoryai/integrations/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/qoryai/integrations/releases/tag/v0.2.0
 [0.1.0]: https://github.com/qoryai/integrations/releases/tag/v0.1.0
