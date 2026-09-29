@@ -1,0 +1,119 @@
+name: Release an integration
+
+# Publishes a release of a Go integration's program, the same way for every integration,
+# so a reader installs any of them by one rule (README §Release rule). An integration calls
+# it from a workflow that runs on its tags:
+#
+#   on:
+#     push:
+#       tags: ["v*"]
+#   jobs:
+#     release:
+#       if: ${{ github.server_url == 'https://github.com' }}
+#       permissions:
+#         contents: write
+#       uses: qoryai/integrations/.github/workflows/release.yml@main
+#       with:
+#         program: acme-tracker
+#
+# It builds the program from ./cmd/<program> for Linux and macOS, amd64 and arm64, with
+# its version set to the tag's, and publishes <program>_<version>_<os>_<arch>.tar.gz with
+# the program at the archive's root, and checksums.txt, the SHA-256 of each archive. The
+# release's body is the version's section of CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD": a
+# tag without one publishes nothing.
+
+on:
+  workflow_call:
+    inputs:
+      program:
+        description: The program's name, such as qory-github or acme-tracker.
+        required: true
+        type: string
+      main:
+        description: The Go package of the program's command; empty is ./cmd/<program>.
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  release:
+    name: Build and publish the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Take the release body from the changelog
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\] " { found = 1; next }
+            found && /^## / { exit }
+            found && /^\[/ && /\]: / { exit }
+            found { print }
+          ' CHANGELOG.md | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' >"$RUNNER_TEMP/release-notes.md"
+          if [ ! -s "$RUNNER_TEMP/release-notes.md" ]; then
+            echo "CHANGELOG.md has no section [$version]; add one before tagging $TAG" >&2
+            exit 1
+          fi
+
+      - name: Write the build's configuration
+        env:
+          PROGRAM: ${{ inputs.program }}
+          MAIN: ${{ inputs.main }}
+        run: |
+          case "$PROGRAM" in
+            "" | *[!a-z0-9_-]*) echo "program must be a program's name, a-z, 0-9, _ and -: \"$PROGRAM\"" >&2; exit 1 ;;
+          esac
+          main="${MAIN:-./cmd/$PROGRAM}"
+          files=""
+          for f in README.md LICENSE NOTICE TRADEMARKS.md CHANGELOG.md; do
+            if [ -f "$f" ]; then files="${files:+$files, }$f"; fi
+          done
+          cat >"$RUNNER_TEMP/goreleaser.yaml" <<EOF
+          version: 2
+          project_name: $PROGRAM
+          before:
+            hooks:
+              - go mod download
+              - go test ./...
+          builds:
+            - id: $PROGRAM
+              main: $main
+              binary: $PROGRAM
+              env: [CGO_ENABLED=0]
+              goos: [darwin, linux]
+              goarch: [amd64, arm64]
+              flags: [-trimpath]
+              ldflags:
+                - -s -w -X main.version={{ .Version }}
+          archives:
+            - id: $PROGRAM
+              formats: [tar.gz]
+              name_template: "${PROGRAM}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+              files: [$files]
+          checksum:
+            name_template: checksums.txt
+          changelog:
+            use: github
+            sort: asc
+          release:
+            prerelease: auto
+          EOF
+
+      - name: Release
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: release --clean --config ${{ runner.temp }}/goreleaser.yaml --release-header=${{ runner.temp }}/release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
