@@ -132,7 +132,7 @@ on:
   pull_request:
 jobs:
   go:
-    uses: qoryai/integrations/.github/workflows/go.yml@v0.1.0
+    uses: qoryai/integrations/.github/workflows/go.yml@v0.2.0
 ```
 
 `.github/workflows/release.yml`:
@@ -145,7 +145,7 @@ jobs:
   release:
     permissions:
       contents: write
-    uses: qoryai/integrations/.github/workflows/release.yml@v0.1.0
+    uses: qoryai/integrations/.github/workflows/release.yml@v0.2.0
     with:
       program: acme-tracker     # built from ./cmd/acme-tracker
 ```

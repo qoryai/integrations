@@ -12,7 +12,7 @@ name: Release an integration
 #       if: ${{ github.server_url == 'https://github.com' }}
 #       permissions:
 #         contents: write
-#       uses: qoryai/integrations/.github/workflows/release.yml@v0.1.0
+#       uses: qoryai/integrations/.github/workflows/release.yml@v0.2.0
 #       with:
 #         program: acme-tracker
 #
