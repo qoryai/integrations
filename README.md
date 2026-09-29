@@ -42,8 +42,30 @@ To list your integration, open a pull request that adds a row.
      - {name: github, argument: acme/shop}
    ```
 
-`qory` runs the program's `describe`, validates the settings, and turns each role into
-the runner's definition.
+## How qory uses an integration
+
+Today the only role is `credential`. For it:
+
+1. You declare the integration in `runner.yaml`.
+2. `qory run` runs `<program> describe` and checks your settings against it.
+3. `qory` turns the declaration into a credential for the
+   [runner](https://github.com/qoryai/runner).
+4. Before the agent starts, the runner runs `<program> credential` outside the agent's
+   container. The program prints an access token.
+5. The agent starts. It gets a placeholder, never the access token.
+6. Five minutes before the access token expires, the runner runs the program again.
+
+In the agent's container:
+
+- The variables the integration lists hold a placeholder,
+  `qory-sets-the-credential-outside-the-enclosure`. Tools that read them start and send
+  the placeholder.
+- The runner's proxy replaces it with the access token on each request to the
+  integration's hosts and paths.
+- Under `enforce`, a request to another path on those hosts fails.
+
+This holds when the agent runs in a container, behind the runner's wall. Without one, a
+program that ignores the proxy is bound by nothing.
 
 ## Write an integration
 
@@ -52,6 +74,16 @@ the runner's definition.
    (*Use this template*).
 2. Follow its README: rename, implement, test, release.
 3. Add a row to the table above.
+
+Every integration is started in two ways:
+
+```sh
+<program> describe                                  # its settings and roles, as JSON
+<program> <role> --settings <json> -- [arguments]   # play a role, with those settings
+```
+
+The rules: the [contract](contracts/integration/v1/README.md). The guide:
+[docs/writing-an-integration.md](docs/writing-an-integration.md).
 
 Name your program without `qory` in it, for example `acme-tracker`. The `qory-` prefix
 is reserved for programs Qory publishes ([TRADEMARKS.md](TRADEMARKS.md)).
