@@ -57,8 +57,12 @@ the others as they are.
   ```sh
   # <json>: the settings, one word of the command line
   <program> <role> --settings <json> -- [the role's own arguments]
+  # -: the settings, one JSON document on standard input
+  <program> <role> --settings - -- [the role's own arguments]
   ```
 
+- A program accepts both forms. It reads its settings from there alone: no setting and
+  no secret from its environment.
 - For the credential role, that command line is exactly the adapter of a runner
   definition.
 - Every integration speaks the contract, Qory's and yours alike.
@@ -69,15 +73,42 @@ The roles the runner calls follow the
 
 ### Secrets
 
-- The settings go on a command line. The machine's other processes can see it. So a
-  secret is refused there.
 - The description marks a secret `writeOnly`. The mark is on a property of the settings
   themselves, never on one nested in another.
-- A secret reaches the program as a file whose path the settings define: `<name>_file`.
-  For example, `private_key_file` for the secret `private_key`. Only the program's user
-  may read that file.
-- A program refuses a `writeOnly` value on its command line. It reports which setting,
-  never the value.
+- A secret has a `title`, its label in a form. It may have an `x-secret-name`, such as
+  `GITHUB_APP_PRIVATE_KEY`: the name a control plane suggests for storing it. No two
+  secrets have the same one.
+
+  ```json
+  "private_key": {"title": "Private key", "type": "string", "writeOnly": true,
+                  "x-secret-name": "GITHUB_APP_PRIVATE_KEY"}
+  ```
+
+- A secret reaches the program in one of two ways:
+  - as a file whose path the settings define: `<name>_file`. For example,
+    `private_key_file` for the secret `private_key`. Only the program's user may read
+    that file.
+  - in the settings on standard input, `--settings -`, as any other value.
+- A command line is visible to the machine's other processes. So a program refuses a
+  `writeOnly` value in `--settings <json>`. It reports which setting, never the value.
+- A program refuses settings that contain both `<name>` and `<name>_file`, in either
+  form.
+
+On standard input, the program:
+
+1. reads standard input to its end, before it acts and before any network call;
+2. refuses empty input, a second document or anything but white space after the first,
+   and input larger than 64 KiB (65536 bytes);
+3. reads the document as it is: nothing in it is replaced or escaped, and a `$` is a
+   `$`.
+
+The writer, whatever starts the program, refuses a document larger than 65536 bytes
+before it starts the program, writes the document whole, and closes standard input. A
+runner that supports standard input starts the program with
+`[<program>, credential, --settings, -, --, "${argument}"]` and writes the settings
+document to its standard input. How a definition gives the runner that document is the
+runner's contract,
+[§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials).
 
 The contract has the rest, in [§Describe](../contracts/integration/v1/README.md#describe)
 and [§Settings](../contracts/integration/v1/README.md#settings).
@@ -108,7 +139,8 @@ layout.
 The Go package `github.com/qoryai/integrations/conformance` checks what a program prints:
 
 - `conformance.Description`: what `describe` printed, against the contract's schema and
-  the secret rule.
+  the secret rules: where a secret is, its `title`, its `<name>_file` and its
+  `x-secret-name`.
 - `conformance.Credential`: a credential role's answer, against the runner's schema.
 - `conformance.Failure`: how a failed command ended.
 
@@ -117,6 +149,12 @@ The Go package `github.com/qoryai/integrations/conformance` checks what a progra
 Follow the [release rule](../README.md#release-rule), so `qory` installs your integration
 the way it installs any other. A Go integration calls
 [`release.yml`](../.github/workflows/release.yml) on its tags.
+
+- The release attaches `description.json`, what `<program> describe` prints. A control
+  plane reads it to learn the integration without running it.
+- `release.yml` builds the program with `-X main.version=X.Y.Z`, the tag without its
+  `v`, and fails when `describe` reports another `program_version`. Have `describe`
+  report `main.version` as `program_version`.
 
 ## Declaring it
 

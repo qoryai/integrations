@@ -11,7 +11,7 @@ workflows.
 | `contracts/` | Go package: embeds the contract and compiles its schema |
 | `conformance/` | Go package: checks a program's output against the contracts, for use in tests |
 | [`.github/workflows/go.yml`](.github/workflows/go.yml) | Reusable CI: gofmt, vet, test, build, doc comments |
-| [`.github/workflows/release.yml`](.github/workflows/release.yml) | Reusable release: builds and publishes the program |
+| [`.github/workflows/release.yml`](.github/workflows/release.yml) | Reusable release: builds and publishes the program and its description |
 
 ## Integrations
 
@@ -75,11 +75,12 @@ program that ignores the proxy is bound by nothing.
 2. Follow its README: rename, implement, test, release.
 3. Add a row to the table above.
 
-Every integration is started in two ways:
+Every integration is started in these ways:
 
 ```sh
 <program> describe                                  # its settings and roles, as JSON
 <program> <role> --settings <json> -- [arguments]   # play a role, with those settings
+<program> <role> --settings - -- [arguments]        # the same, settings on standard input
 ```
 
 The rules: the [contract](contracts/integration/v1/README.md). The guide:
@@ -116,10 +117,19 @@ Every integration publishes releases the same way, so `qory` can install any of 
 - Tag `vX.Y.Z` and publish a GitHub release for it.
 - Attach `<program>_X.Y.Z_<os>_<arch>.tar.gz` for `linux` and `darwin`, `amd64` and
   `arm64`, with the program at the archive's root.
-- Attach `checksums.txt` with the SHA-256 of each archive.
+- Attach `description.json`, what `<program> describe` prints, as it prints it.
+- Attach `checksums.txt` with the SHA-256 of each archive and of `description.json`.
 - `<program> describe` reports `"program_version": "X.Y.Z"`.
 
-`release.yml` does all of this for a Go integration.
+`release.yml` does all of this for a Go integration, and fails the release when
+`describe` reports another version than the tag's.
+
+An integration's source is the repository that holds its releases, written
+`github.com/<owner>/<repo>`. Its version is `X.Y.Z`, the release's tag `vX.Y.Z` without
+the `v`, which `describe` reports as `program_version`; a reader that requires a version
+compares that string exactly. A control plane fetches
+`https://github.com/<owner>/<repo>/releases/download/vX.Y.Z/description.json` to learn
+an integration without running it.
 
 ## Use the workflows
 

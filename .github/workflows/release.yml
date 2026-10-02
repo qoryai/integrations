@@ -18,9 +18,13 @@ name: Release an integration
 #
 # It builds the program from ./cmd/<program> for Linux and macOS, amd64 and arm64, with
 # its version set to the tag's, and publishes <program>_<version>_<os>_<arch>.tar.gz with
-# the program at the archive's root, and checksums.txt, the SHA-256 of each archive. The
-# release's body is the version's section of CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD": a
-# tag without one publishes nothing.
+# the program at the archive's root, description.json, what `<program> describe` prints,
+# and checksums.txt, the SHA-256 of each archive and of description.json. A control plane
+# fetches description.json from the release to learn the integration without running it.
+# The release's body is the version's section of CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD":
+# a tag without one publishes nothing. Neither does a program whose describe fails or
+# prints anything but one JSON object with version 1 and the tag's version, without its
+# v, as program_version.
 
 on:
   workflow_call:
@@ -103,12 +107,41 @@ jobs:
               files: [$files]
           checksum:
             name_template: checksums.txt
+            extra_files:
+              - glob: "$RUNNER_TEMP/description.json"
           changelog:
             use: github
             sort: asc
           release:
             prerelease: auto
+            extra_files:
+              - glob: "$RUNNER_TEMP/description.json"
           EOF
+
+      - name: Describe the program
+        # The same build as the release's, for the runner's own platform, so describe
+        # reports the version the archives' programs report.
+        env:
+          PROGRAM: ${{ inputs.program }}
+          MAIN: ${{ inputs.main }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          main="${MAIN:-./cmd/$PROGRAM}"
+          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$RUNNER_TEMP/bin/$PROGRAM" "$main"
+          "$RUNNER_TEMP/bin/$PROGRAM" describe >"$RUNNER_TEMP/description.json"
+          if ! jq -se 'length == 1 and (.[0] | type == "object")' "$RUNNER_TEMP/description.json" >/dev/null; then
+            echo "$PROGRAM describe prints no single JSON object" >&2
+            exit 1
+          fi
+          if ! jq -e '.version == 1' "$RUNNER_TEMP/description.json" >/dev/null; then
+            echo "describe reports version $(jq -c .version "$RUNNER_TEMP/description.json"), the contract's is 1" >&2
+            exit 1
+          fi
+          if ! jq -e --arg v "$version" '.program_version == $v' "$RUNNER_TEMP/description.json" >/dev/null; then
+            echo "describe reports program_version $(jq -c .program_version "$RUNNER_TEMP/description.json"), the tag is $TAG" >&2
+            exit 1
+          fi
 
       - name: Release
         uses: goreleaser/goreleaser-action@v7

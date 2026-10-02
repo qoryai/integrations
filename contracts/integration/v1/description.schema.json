@@ -24,7 +24,7 @@
     },
     "program_version": {"description": "The program's own version, as it was built.", "type": "string", "minLength": 1},
     "settings": {
-      "description": "A JSON Schema, draft 2020-12, of the settings document: an object. A property marked writeOnly is a secret: a form shows it as one, written and never read back, a log leaves it out, and it stays off every command line. A secret is a property of the settings object itself, never a nested one, and a secret <name> has a setting <name>_file, a file that contains it, which is passed on a command line in its place.",
+      "description": "A JSON Schema, draft 2020-12, of the settings document: an object. A property marked writeOnly is a secret: a form shows it as one, written and never read back, a log leaves it out, and it stays off every command line. A secret is a property of the settings object itself, never a nested one, its title, a string that is not only white space, is its label, and a secret <name> has a setting <name>_file, a file that contains it, which is passed on a command line in its place. A secret may carry x-secret-name, ^[A-Z][A-Z0-9_]{0,127}$, the conventional name of the secret, such as GITHUB_APP_PRIVATE_KEY, which a control plane fills in as the name to store the secret under; no other setting carries one, and no two secrets carry the same. The settings are checked against JSON Schema's own meta-schema, which cannot express these rules: the conformance package checks them.",
       "allOf": [
         {"$ref": "https://json-schema.org/draft/2020-12/schema"},
         {"type": "object", "required": ["type"], "properties": {"type": {"const": "object"}}}
@@ -37,7 +37,7 @@
       "propertyNames": {"pattern": "^[a-z][a-z_]{0,63}$"},
       "properties": {
         "credential": {
-          "description": "The runner's credential adapter. The program is started as <program> credential --settings <json> -- <argument> and prints the runner's credential document.",
+          "description": "The runner's credential adapter. The program is started as <program> credential --settings <json> -- <argument>, or with --settings - and the settings on standard input, and prints the runner's credential document.",
           "type": "object",
           "additionalProperties": false,
           "required": ["argument", "hosts"],
