@@ -11,7 +11,7 @@
     "properties": {
       "url": {"type": "string"},
       "token_file": {"type": "string"},
-      "token": {"type": "string", "writeOnly": true}
+      "token": {"title": "Access token", "type": "string", "writeOnly": true}
     }
   },
   "roles": {

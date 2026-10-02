@@ -53,9 +53,30 @@ its domains: they decide what is offered, not what runs.
 shows it as one, written and never read back, a log leaves it out, and it stays off
 every command line. A secret is a property of the settings document itself, never one
 nested in another, so a reader finds every secret among the settings' `properties`.
-Every secret `<name>` has a setting passed on a command line in its place,
+Every secret has a `title`, a string that is not only white space: its label, which a
+form shows. Every secret `<name>` has a setting passed on a command line in its place,
 `<name>_file`, a file that contains it: for example the secret `private_key` and the
 setting `private_key_file`.
+
+A secret may carry `x-secret-name`, the conventional name of the secret,
+`^[A-Z][A-Z0-9_]{0,127}$`. A control plane that stores secrets by name fills it in as
+the name to store the secret under. It is a suggestion, not an identity: the control
+plane may store the secret under another name, and the program never sees the name. A
+setting that is not a secret carries no `x-secret-name`, and no two secrets of a
+description carry the same one. Like `title`, it sits on the property it describes, and
+JSON Schema reads it as an annotation:
+
+```json
+"private_key": {"title": "Private key", "type": "string", "writeOnly": true,
+                "x-secret-name": "GITHUB_APP_PRIVATE_KEY"},
+"private_key_file": {"title": "Private key file", "type": "string"}
+```
+
+The schema checks a description's `settings` against JSON Schema's own meta-schema,
+which cannot express the rules of the two paragraphs above: that a secret is a property
+of the settings themselves, has a `title` and a `<name>_file`, and where `x-secret-name`
+may be and what it may contain. The Go package
+`github.com/qoryai/integrations/conformance` checks them.
 
 ## Settings
 
@@ -63,24 +84,46 @@ Every role is started the same way, so a reader needs no template language:
 
 ```sh
 <program> <role> --settings <json> -- [the role's own arguments]
+<program> <role> --settings - -- [the role's own arguments]
 ```
 
 `<json>` is one word of the command line containing the settings document, valid against
-the description's `settings`. A program reads its settings from there and from nowhere
-else, and keeps none of them. `--` ends the flags, as it does for Go's `flag` package and
-POSIX `getopt`, and a program takes it so: an argument a policy defines is never read as
-a flag, whatever it starts with.
+the description's `settings`. `-` in its place means the program reads the settings
+document from standard input. A program reads its settings from the one or the other and
+from nowhere else, and keeps none of them: it reads no setting and no secret from its
+environment. Every program accepts both forms. `--` ends the flags, as it does for Go's
+`flag` package and POSIX `getopt`, and a program takes it so: an argument a policy
+defines is never read as a flag, whatever it starts with.
 
-A command line is visible to the machine's other processes, so the settings passed on a
-command line contain no `writeOnly` value. A secret reaches a program as a file whose
-path the settings define, such as `private_key_file`, readable by the program's user
-alone. A program refuses a `writeOnly` value it receives on its command line, and reports
-which setting, never the value.
+A secret has one source. Settings that contain both `<name>` and `<name>_file` for one
+secret are refused, on the command line and on standard input alike. `<name>_file` may
+be passed in either form.
+
+**On the command line.** A command line is visible to the machine's other processes, so
+the settings passed on a command line contain no `writeOnly` value. A secret reaches a
+program there as a file whose path the settings define, such as `private_key_file`,
+readable by the program's user alone. A program refuses a `writeOnly` value it receives
+on its command line, and reports which setting, never the value.
 
 The runner replaces `${argument}` wherever it appears in an adapter's argument, so a
-reader writes every `$` of the settings as `\u0024`, JSON's escape for the same
-character: `${argument}` in a setting reaches the program as written, and never as the
-policy's argument.
+reader writes every `$` of the settings on a command line as `\u0024`, JSON's escape for
+the same character: `${argument}` in a setting reaches the program as written, and never
+as the policy's argument.
+
+**On standard input.** Standard input is the program's alone, so the settings there may
+contain a `writeOnly` value, written in the document as any other. Standard input
+carries exactly one JSON document, the whole settings object, valid against the
+description's `settings`:
+
+```json
+{"app_id": 123456, "private_key": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"}
+```
+
+The program reads standard input to its end before it acts and before any network call.
+It refuses empty input, a second document or anything but white space after the first,
+and input larger than 64 KiB, 65536 bytes. The writer refuses a larger document before it
+starts the program, writes the document whole, and closes standard input. Nothing in the
+document is replaced and nothing is escaped: it is data, and a `$` in it is a `$`.
 
 ## Exit status
 
@@ -98,7 +141,7 @@ description serves readers that know different roles.
 
 | Role | Defined | Started as |
 |---|---|---|
-| `credential` | here | `<program> credential --settings <json> -- ${argument}`: exactly the adapter of a runner definition |
+| `credential` | here | `<program> credential --settings <json> -- ${argument}`, or `--settings -` in place of `--settings <json>`: exactly the adapter of a runner definition |
 | `tool` | reserved, for a contract of its own | |
 | `work_source` | reserved, for a contract of its own | |
 | `output` | reserved, for a contract of its own | |
@@ -107,8 +150,8 @@ description serves readers that know different roles.
 
 The runner's credential adapter
 ([§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials)):
-the program mints or fetches a token for the argument a run's policy defines and prints
-the runner's credential document.
+the program mints or fetches an access token for the argument a run's policy defines and
+prints the runner's credential document.
 
 | Field | |
 |---|---|
@@ -176,11 +219,19 @@ The tracker's `$X` is written `\u0024X`, which JSON reads as `$X`, and the quote
 A run's policy selects them by the key, as it selects any credential:
 `{name: github, argument: acme/shop}`.
 
+**Settings on standard input.** `qory` expands a declaration as above, with the settings
+on the command line. A program reads standard input by the rules of §Settings, whatever
+starts it. A runner that supports standard input starts the program with
+`[<program>, credential, --settings, -, --, "${argument}"]` and writes the settings
+document, a secret's value in it, to the program's standard input. How a definition
+gives the runner that document is the runner's contract,
+[§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials).
+
 ## Fixtures
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version, with the `x-secret-name` of its secret added; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.

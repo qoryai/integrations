@@ -7,6 +7,60 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ## [Unreleased]
 
+### Added
+
+- Settings on standard input: `<program> <role> --settings - -- [arguments]` reads the
+  settings from standard input, exactly one JSON document, the whole settings object, a
+  secret's value in it as any other. The program reads standard input to its end before
+  it acts and before any network call, and refuses empty input, anything after the first
+  document but white space, and input larger than 64 KiB, 65536 bytes; the writer refuses
+  a larger document before it starts the program, writes the document whole, and closes
+  standard input. Nothing in the document is replaced or escaped. `--settings <json>` on
+  the command line stays as it is, and refuses a `writeOnly` value as before. A runner
+  that supports standard input starts the program with
+  `[<program>, credential, --settings, -, --, "${argument}"]` and writes the settings
+  document to its standard input; how a definition gives it that document is the
+  runner's contract,
+  [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials).
+- `x-secret-name` on a secret, `^[A-Z][A-Z0-9_]{0,127}$`, such as
+  `GITHUB_APP_PRIVATE_KEY`: the conventional name of the secret, which a control plane
+  fills in as the name to store the secret under. It is a suggestion, not an identity.
+  `fixtures/github.json`'s `private_key` carries it.
+- Every release attaches `description.json`, what `<program> describe` prints, and
+  `checksums.txt` includes its SHA-256. A control plane fetches it from
+  `https://github.com/<owner>/<repo>/releases/download/vX.Y.Z/description.json` to learn
+  an integration without running it.
+- README §Release rule defines an integration's source, the repository that holds its
+  releases, written `github.com/<owner>/<repo>`, and its version, `X.Y.Z`, the tag
+  without its `v`, which `describe` reports as `program_version` and a reader compares
+  exactly.
+
+### Changed
+
+- Every secret has a `title`, a string that is not only white space: its label in a form.
+- A program reads no setting and no secret from its environment, and refuses settings
+  that contain both `<name>` and `<name>_file` for one secret, on the command line and on
+  standard input.
+- `conformance.Description` refuses a secret without a `title`, an `x-secret-name` on a
+  setting that is not a secret or outside the settings' own properties, one that does not
+  match its pattern, and two secrets with the same one.
+- `release.yml` builds the program for the runner's own platform with the release's
+  flags before it publishes, runs `<program> describe`, and fails unless that prints one
+  JSON object with `version` 1 and the tag's version as `program_version`.
+
+### Upgrading
+
+- A program accepts `--settings -` and reads its settings from standard input by the
+  rules above.
+- A program reads no setting and no secret from its environment, and refuses settings
+  that contain both `<name>` and `<name>_file` for one secret, in either form.
+- A description gives every secret a `title`, and may give it an `x-secret-name`:
+  `conformance.Description` now refuses a secret without a title, so an integration's
+  tests fail until each secret has one.
+- A program released with `release.yml` reports the version the build sets with
+  `-X main.version=X.Y.Z` as `program_version`. One that reports another version, or
+  whose `describe` fails, publishes no release.
+
 ## [0.2.0] - 2026-09-30
 
 ### Upgrading
