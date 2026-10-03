@@ -6,6 +6,11 @@
 // An integration's tests run the program and hand this package what it printed, so the
 // program and the contracts cannot drift apart. The integration template's tests show
 // how (https://github.com/qoryai/integration-template).
+//
+// Every role is started as <program> <role> -- [arguments], with the settings on
+// standard input, and a program refuses --settings as it refuses any flag it does not
+// know. An integration's tests run <program> credential --settings '{}' -- a/b and hand
+// its exit status, standard output and standard error to Failure.
 package conformance
 
 import (
@@ -119,9 +124,8 @@ var secretName = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,127}$`)
 // secrets are the ways a description breaks the rules the schema cannot express: a secret
 // is a property of the settings themselves, never one nested in another or outside the
 // properties, it has a title, a string that is not only white space, and a secret
-// <name> has a setting <name>_file passed on a command line in its place; an
-// x-secret-name is on a secret alone, matches secretName, and no two secrets have the
-// same one.
+// <name> has a setting <name>_file for a secret kept on disk; an x-secret-name is on a
+// secret alone, matches secretName, and no two secrets have the same one.
 func secrets(doc any) []string {
 	d, _ := doc.(map[string]any)
 	settings, _ := d["settings"].(map[string]any)
