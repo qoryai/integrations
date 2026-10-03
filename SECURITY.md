@@ -18,8 +18,9 @@ earlier one.
 
 ## What is a vulnerability here
 
-- The contract's schema accepts a description that puts a secret on a command line: a
-  `writeOnly` property a reader cannot find among the settings' `properties`.
+- The contract's schema accepts a description that hides a secret from a reader: a
+  `writeOnly` property a reader cannot find among the settings' `properties`, so a form
+  shows it and a log keeps it as any other setting.
 - `conformance` passes a program's output that breaks a rule it checks, such as a
   failure that prints on standard output.
 - `release.yml` publishes an archive other than the one it built, or a `checksums.txt`

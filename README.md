@@ -78,9 +78,8 @@ program that ignores the proxy is bound by nothing.
 Every integration is started in these ways:
 
 ```sh
-<program> describe                                  # its settings and roles, as JSON
-<program> <role> --settings <json> -- [arguments]   # play a role, with those settings
-<program> <role> --settings - -- [arguments]        # the same, settings on standard input
+<program> describe                  # its settings and roles, as JSON
+<program> <role> -- [arguments]     # play a role, the settings on standard input
 ```
 
 The rules: the [contract](contracts/integration/v1/README.md). The guide:
