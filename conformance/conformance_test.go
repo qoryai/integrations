@@ -1,8 +1,10 @@
 package conformance_test
 
 import (
+	"encoding/json"
 	"io/fs"
 	"path"
+	"slices"
 	"strings"
 	"testing"
 
@@ -56,11 +58,157 @@ func TestEveryRefusedFixtureDoesNot(t *testing.T) {
 
 const tracker = `{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
  "settings": %s,
- "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}}}
+ "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": %l}}}
 `
 
+// describe is a description with the settings given and a credential role that lists
+// each of their top-level properties but a secret's <name>_file.
 func describe(settings string) []byte {
-	return []byte(strings.Replace(tracker, "%s", settings, 1))
+	var s struct {
+		Properties map[string]struct {
+			WriteOnly any `json:"writeOnly"`
+		} `json:"properties"`
+	}
+	_ = json.Unmarshal([]byte(settings), &s)
+	list := []string{}
+	for name := range s.Properties {
+		if secret, ok := strings.CutSuffix(name, "_file"); ok && s.Properties[secret].WriteOnly == true {
+			continue
+		}
+		list = append(list, name)
+	}
+	slices.Sort(list)
+	l, _ := json.Marshal(list)
+	return []byte(strings.NewReplacer("%s", settings, "%l", string(l)).Replace(tracker))
+}
+
+// roles is a description with the settings and the roles given.
+func roles(settings, roles string) []byte {
+	return []byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
+ "settings": ` + settings + `, "roles": {` + roles + `}}`)
+}
+
+// TestARoleListsTheSettingsItNeeds pins the rules on the settings a credential or a tool
+// role lists and requires that the schema cannot express: a role lists settings the
+// settings define, a secret by its name and never by its <name>_file, it requires only
+// settings it lists, some role lists every secret, and the settings have no top-level
+// required.
+func TestARoleListsTheSettingsItNeeds(t *testing.T) {
+	const settings = `{"type": "object", "properties": {
+	 "url": {"type": "string"}, "project": {"type": "string"},
+	 "api_key": {"title": "API key", "type": "string", "writeOnly": true}, "api_key_file": {"type": "string"},
+	 "mcp_key": {"title": "MCP key", "type": "string", "writeOnly": true}, "mcp_key_file": {"type": "string"}}}`
+	credential := func(list, required string) string {
+		return `"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ` + list + `, "required": ` + required + `}`
+	}
+	tool := func(list, required string) string {
+		return `"tool": {"serves": ["mcp.tracker.acme.example"], "settings": ` + list + `, "required": ` + required + `}`
+	}
+	for _, tc := range []struct {
+		name   string
+		stdout []byte
+		want   string
+	}{
+		{"a setting the settings do not define", roles(settings, credential(`["url", "api_key", "team"]`, `[]`)+", "+tool(`["mcp_key"]`, `[]`)), "the role credential lists the setting team, which the settings do not define"},
+		{"a secret's file", roles(settings, credential(`["url", "api_key"]`, `[]`)+", "+tool(`["mcp_key_file"]`, `[]`)), "the role tool lists mcp_key_file, the file of the secret mcp_key; it lists the secret as mcp_key"},
+		{"a secret no role lists", roles(settings, credential(`["url", "api_key"]`, `[]`)+", "+tool(`["url"]`, `[]`)), "the secret mcp_key is listed by no role"},
+		{"a secret a reserved role alone lists", roles(settings, credential(`["url", "api_key"]`, `[]`)+`, "work_source": {"settings": ["mcp_key"]}`), "the secret mcp_key is listed by no role"},
+		{"a required setting the role does not list", roles(settings, credential(`["url", "api_key"]`, `["url", "api_key"]`)+", "+tool(`["mcp_key"]`, `["url", "mcp_key"]`)), "the role tool requires url, which its settings do not list"},
+		{"a required secret's file", roles(settings, credential(`["url", "api_key"]`, `["api_key_file"]`)+", "+tool(`["mcp_key"]`, `[]`)), "the role credential requires api_key_file, which its settings do not list"},
+		{"a top-level required", roles(strings.Replace(settings, `"properties"`, `"required": ["url"], "properties"`, 1), credential(`["url", "api_key"]`, `["url"]`)+", "+tool(`["url", "mcp_key"]`, `["url"]`)), "the settings have a top-level required; what a role needs is in its own required"},
+		{"an empty top-level required", roles(`{"type": "object", "required": []}`, credential(`[]`, `[]`)), "the settings have a top-level required"},
+	} {
+		err := conformance.Description(tc.stdout)
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: %v, want %q", tc.name, err, tc.want)
+		}
+	}
+	for _, tc := range []struct {
+		name   string
+		stdout []byte
+	}{
+		{"a secret per role and a shared setting", roles(settings, credential(`["url", "api_key"]`, `["url", "api_key"]`)+", "+tool(`["url", "mcp_key", "project"]`, `["url", "mcp_key"]`))},
+		{"both secrets in one role", roles(settings, credential(`["url", "api_key", "mcp_key"]`, `["api_key"]`)+", "+tool(`[]`, `[]`))},
+		{"a tool alone", roles(settings, tool(`["url", "api_key", "mcp_key"]`, `["url"]`))},
+		{"no required", roles(settings, `"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ["url", "api_key", "mcp_key"]}`)},
+		{"a required in a setting", roles(`{"type": "object", "properties": {"auth": {"type": "object", "required": ["user"]}}}`, credential(`["auth"]`, `["auth"]`))},
+		{"no settings", roles(`{"type": "object"}`, credential(`[]`, `[]`))},
+	} {
+		if err := conformance.Description(tc.stdout); err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+		}
+	}
+}
+
+// TestACredentialAndAToolShareNoHost pins that the credential role's hosts and the tool
+// role's serves do not overlap, as the runner's egress grammar reads them: the same
+// host, or a *. pattern over the other at any depth. A pattern does not cover the name
+// it is below.
+func TestACredentialAndAToolShareNoHost(t *testing.T) {
+	both := func(hosts, serves string) []byte {
+		return roles(`{"type": "object"}`, `"credential": {"argument": "[A-Z]+", "hosts": `+hosts+`, "settings": []},
+		 "tool": {"serves": `+serves+`, "settings": []}`)
+	}
+	for _, tc := range []struct {
+		name          string
+		hosts, serves string
+		want          string
+	}{
+		{"the same host", `["tracker.acme.example"]`, `["tracker.acme.example"]`, "the host tracker.acme.example of the role credential and the host tracker.acme.example the role tool serves overlap"},
+		{"a pattern over a served host", `["*.acme.example"]`, `["mcp.tracker.acme.example"]`, "the host *.acme.example of the role credential and the host mcp.tracker.acme.example the role tool serves overlap"},
+		{"a served pattern over a host", `["tracker.acme.example"]`, `["*.acme.example"]`, "the host tracker.acme.example of the role credential and the host *.acme.example the role tool serves overlap"},
+		{"a pattern over a pattern", `["*.acme.example"]`, `["*.tracker.acme.example"]`, "the host *.acme.example of the role credential and the host *.tracker.acme.example the role tool serves overlap"},
+	} {
+		err := conformance.Description(both(tc.hosts, tc.serves))
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: %v, want %q", tc.name, err, tc.want)
+		}
+	}
+	for _, tc := range []struct{ name, hosts, serves string }{
+		{"two hosts", `["tracker.acme.example"]`, `["mcp.acme.example"]`},
+		{"a pattern and the name it is below", `["*.acme.example"]`, `["acme.example"]`},
+		{"a name and a pattern below it", `["acme.example"]`, `["*.acme.example"]`},
+		{"a suffix that is not a label", `["*.acme.example"]`, `["notacme.example"]`},
+	} {
+		if err := conformance.Description(both(tc.hosts, tc.serves)); err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+		}
+	}
+}
+
+// TestAToolsMCPIsOnAHostItServes pins the rules on the tool role's mcp that the schema
+// cannot express: an https URL with no userinfo, port or fragment, on a host the tool
+// serves, the same or below a *. pattern.
+func TestAToolsMCPIsOnAHostItServes(t *testing.T) {
+	tool := func(serves, mcp string) []byte {
+		return roles(`{"type": "object"}`, `"tool": {"serves": `+serves+`, "mcp": "`+mcp+`", "settings": []}`)
+	}
+	for _, tc := range []struct{ name, serves, mcp, want string }{
+		{"another host", `["mcp.acme.example"]`, "https://tracker.acme.example/mcp", `the role tool's mcp "https://tracker.acme.example/mcp" is on the host "tracker.acme.example", which the role tool does not serve`},
+		{"the name a pattern is below", `["*.acme.example"]`, "https://acme.example/mcp", `is on the host "acme.example", which the role tool does not serve`},
+		{"no host", `["mcp.acme.example"]`, "https:///mcp", `is on the host "", which the role tool does not serve`},
+		{"userinfo", `["mcp.acme.example"]`, "https://dev@mcp.acme.example/mcp", `the role tool's mcp "https://dev@mcp.acme.example/mcp" has userinfo`},
+		{"a port", `["mcp.acme.example"]`, "https://mcp.acme.example:8443/mcp", `the role tool's mcp "https://mcp.acme.example:8443/mcp" has a port`},
+		{"an empty port", `["mcp.acme.example"]`, "https://mcp.acme.example:/mcp", `has a port`},
+		{"a fragment", `["mcp.acme.example"]`, "https://mcp.acme.example/mcp#tools", `the role tool's mcp "https://mcp.acme.example/mcp#tools" has a fragment`},
+		{"an empty fragment", `["mcp.acme.example"]`, "https://mcp.acme.example/mcp#", `has a fragment`},
+		{"not a URL", `["mcp.acme.example"]`, "https://mcp.acme.example/%zz", `the role tool's mcp "https://mcp.acme.example/%zz" is not an https URL`},
+	} {
+		err := conformance.Description(tool(tc.serves, tc.mcp))
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: %v, want %q", tc.name, err, tc.want)
+		}
+	}
+	for _, tc := range []struct{ name, serves, mcp string }{
+		{"a host it serves", `["mcp.acme.example"]`, "https://mcp.acme.example/mcp"},
+		{"a host below a pattern", `["*.acme.example"]`, "https://mcp.tracker.acme.example/mcp"},
+		{"no path", `["mcp.acme.example"]`, "https://mcp.acme.example"},
+		{"a query", `["mcp.acme.example"]`, "https://mcp.acme.example/mcp?project=WEB"},
+	} {
+		if err := conformance.Description(tool(tc.serves, tc.mcp)); err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+		}
+	}
 }
 
 // TestADescriptionIsOneDocumentWithItsSecretsOnTop pins what Description refuses beyond

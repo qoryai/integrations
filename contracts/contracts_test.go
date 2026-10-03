@@ -57,15 +57,21 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"fixtures/invalid/description-bad-name.json":            "/name pattern",
-		"fixtures/invalid/description-name-with-dot.json":       "/name pattern",
-		"fixtures/invalid/description-credential-no-hosts.json": "/roles/credential required hosts",
-		"fixtures/invalid/description-domains-bad-name.json":    "/domains/0 pattern",
-		"fixtures/invalid/description-domains-duplicate.json":   "/domains uniqueItems",
-		"fixtures/invalid/description-domains-empty.json":       "/domains minItems",
-		"fixtures/invalid/description-no-settings.json":         "/ required settings",
-		"fixtures/invalid/description-settings-not-object.json": "/settings/type const",
-		"fixtures/invalid/description-version-2.json":           "/version const",
+		"fixtures/invalid/description-bad-name.json":                  "/name pattern",
+		"fixtures/invalid/description-name-with-dot.json":             "/name pattern",
+		"fixtures/invalid/description-credential-no-hosts.json":       "/roles/credential required hosts",
+		"fixtures/invalid/description-credential-no-settings.json":    "/roles/credential required settings",
+		"fixtures/invalid/description-role-required-not-strings.json": "/roles/credential/required/0 type",
+		"fixtures/invalid/description-tool-bad-placeholder.json":      "/roles/tool/placeholders/0 pattern",
+		"fixtures/invalid/description-tool-extra-member.json":         "/roles/tool additionalProperties",
+		"fixtures/invalid/description-tool-mcp-not-https.json":        "/roles/tool/mcp pattern",
+		"fixtures/invalid/description-tool-no-serves.json":            "/roles/tool required serves",
+		"fixtures/invalid/description-domains-bad-name.json":          "/domains/0 pattern",
+		"fixtures/invalid/description-domains-duplicate.json":         "/domains uniqueItems",
+		"fixtures/invalid/description-domains-empty.json":             "/domains minItems",
+		"fixtures/invalid/description-no-settings.json":               "/ required settings",
+		"fixtures/invalid/description-settings-not-object.json":       "/settings/type const",
+		"fixtures/invalid/description-version-2.json":                 "/version const",
 	}
 	for _, f := range files(t, "fixtures/invalid") {
 		doc, err := contracts.Document(f)

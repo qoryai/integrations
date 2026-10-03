@@ -1,8 +1,9 @@
 name: Release an integration
 
-# Publishes a release of a Go integration's program, the same way for every integration,
-# so a reader installs any of them by one rule (README §Release rule). An integration calls
-# it from a workflow that runs on its tags:
+# Publishes a GitHub release of a Go integration's program, by the rule every integration
+# follows, so a reader installs any of them the same way (README §Release rule). An
+# integration on another forge publishes the same files with that forge's own CI. An
+# integration on GitHub calls it from a workflow that runs on its tags:
 #
 #   on:
 #     push:

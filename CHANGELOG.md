@@ -12,9 +12,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - Settings on standard input, the only way a program receives them. Every role is
   started as `<program> <role> -- [arguments]`, `--` always there, even when the role
   has no arguments; the credential role as `<program> credential -- <argument>`, exactly
-  one argument, the run's, empty when the run gives none. Standard input carries exactly
-  one JSON document, the whole settings object, a secret's value in it as any other;
-  `{}` when the settings are empty. The program reads standard input to its end before
+  one argument, the run's, empty when the run gives none, and the tool role as
+  `<program> tool -- <argument>` the same way. Standard input carries exactly one JSON
+  document, the settings the role lists and nothing else, a secret's value in it as any
+  other; `{}` when it holds none. The program reads standard input to its end before
   it acts and before any network call, and refuses empty input, anything after the first
   document but white space, and input larger than 64 KiB, 65536 bytes; the writer refuses
   a larger document before it starts the program, writes the document whole, closes
@@ -25,13 +26,33 @@ change what an existing reader or program relies on, and notes it under Upgradin
   fills in as the name to store the secret under. It is a suggestion, not an identity.
   `fixtures/github.json`'s `private_key` carries it.
 - Every release attaches `description.json`, what `<program> describe` prints, and
-  `checksums.txt` includes its SHA-256. A control plane fetches it from
-  `https://github.com/<owner>/<repo>/releases/download/vX.Y.Z/description.json` to learn
-  an integration without running it.
-- README §Release rule defines an integration's source, the repository that holds its
-  releases, written `github.com/<owner>/<repo>`, and its version, `X.Y.Z`, the tag
-  without its `v`, which `describe` reports as `program_version` and a reader compares
-  exactly.
+  `checksums.txt` includes its SHA-256. A control plane fetches the release's
+  `description.json` to learn an integration without running it.
+- README §Release rule defines an integration's source, where its releases are: a
+  repository on a forge, `<host>/<path>`, such as `github.com/<owner>/<repo>`,
+  `gitlab.com/<group>/<project>` or a Forgejo or Gitea `<host>/<owner>/<repo>`, or an
+  HTTPS URL of a `description.json` with the release's other files beside it. The forge
+  is `github` on github.com, `gitlab` on gitlab.com and `forgejo` on codeberg.org; on
+  any other host it is named beside the source. It defines where each forge's release
+  files download from, the files of a release, and the version, `X.Y.Z`, the
+  description's `program_version`, which a reader compares exactly; on a forge the tag
+  is `vX.Y.Z`.
+- Ways. An integration offers one or more ways, each a role of its description: the
+  credential role for an API, the tool role for an MCP server. A run's connection names
+  in its `ways` the roles it uses, and the runner starts those alone. An API that needs
+  only a static key needs no program and no role.
+- `settings` on every credential and tool role, required: the top-level settings the
+  role may receive, plain and secret alike, a secret by its `<name>`. `required`, which
+  a role may have: the settings of its `settings` it needs, a secret satisfied by
+  `<name>` or `<name>_file`.
+- The `tool` role, defined: `argument`, which may be absent, `serves`, the hosts whose
+  requests the runner sends to the tool, `mcp`, the `https://` URL of the MCP server the
+  tool serves, which `qory` registers with the agent's MCP client, `placeholders`, and
+  `settings` and `required`. It is started as `<program> tool -- <argument>`, reads its
+  settings on standard input, and listens on the Unix socket `QORY_TOOL_LISTEN` names,
+  where the runner sends it the requests it allows for `serves` as HTTP/1.1.
+- `fixtures/acme-tracker-mcp.json`, a description with both ways, and invalid fixtures
+  for the roles' new members.
 
 ### Changed
 
@@ -52,6 +73,20 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `release.yml` builds the program for the runner's own platform with the release's
   flags before it publishes, runs `<program> describe`, and fails unless that prints one
   JSON object with `version` 1 and the tag's version as `program_version`.
+- `release.yml` and the README say it publishes a GitHub release. An integration on
+  another forge publishes the same files with that forge's own CI.
+- Each role's standard input holds the settings that role lists and nothing else; the
+  runner leaves out every other setting. The settings schema has no top-level
+  `required`: what a role needs is in its own `required`.
+- `tool` is defined here, no longer reserved. `work_source` and `output` stay reserved.
+- Hosts are per role: no host is in both the credential role's `hosts` and the tool
+  role's `serves`.
+- `conformance.Description` refuses a role's `settings` that names a setting the
+  settings do not define or a secret's `<name>_file`, a role's `required` that names a
+  setting its `settings` does not list, a secret no role lists, a top-level `required`
+  in the settings, a credential host and a tool host that overlap, the same or under a
+  `*.` pattern, and a tool's `mcp` that is not an `https` URL, has userinfo, a port or a
+  fragment, or is on a host the tool does not serve.
 
 ### Removed
 
@@ -70,6 +105,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - A program released with `release.yml` reports the version the build sets with
   `-X main.version=X.Y.Z` as `program_version`. One that reports another version, or
   whose `describe` fails, publishes no release.
+- A description adds `settings` to every credential role, and moves the settings
+  schema's top-level `required` into each role's `required`, a secret by its `<name>`.
+  `qory-github`'s credential role becomes `"settings": ["app_id", "installation_id",
+  "api_url", "permissions", "private_key"], "required": ["app_id", "private_key"]`.
+- A description lists each secret in some role's `settings`.
 
 ## [0.2.0] - 2026-09-30
 

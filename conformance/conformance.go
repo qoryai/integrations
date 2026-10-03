@@ -3,6 +3,12 @@
 // contracts/integration/v1, a credential role's answer against the runner's credential
 // document, and a failure against the exit status every command of the contract shares.
 //
+// Beyond the description's schema, it checks the rules the schema cannot express: where
+// a secret is, its title, its <name>_file and its x-secret-name; the settings each role
+// lists and requires, credential and tool, and that the settings have no top-level
+// required; that the credential role's hosts and the tool role's serves do not overlap;
+// and the tool role's mcp URL.
+//
 // An integration's tests run the program and hand this package what it printed, so the
 // program and the contracts cannot drift apart. The integration template's tests show
 // how (https://github.com/qoryai/integration-template).
@@ -20,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
@@ -45,7 +52,15 @@ var (
 // and whose every secret, a property marked writeOnly, is a property of the settings
 // themselves with a title and a setting <name>_file beside it (contracts/integration/v1
 // §Describe). An x-secret-name is on a secret alone, matches ^[A-Z][A-Z0-9_]{0,127}$,
-// and names one secret of the description. It reports the first rule the output breaks.
+// and names one secret of the description.
+//
+// The credential and tool roles list settings the settings define, a secret as <name>,
+// never <name>_file, a role requires only settings it lists, and a role lists every
+// secret. The settings have no top-level required: what a role needs is its own. No
+// host is both one the credential role answers for and one the tool role serves, the
+// same or covered by a *. pattern. The tool role's mcp is an https URL with no userinfo,
+// port or fragment, on a host the tool serves. It reports the schema's refusal, or else
+// every rule beyond the schema the output breaks.
 func Description(stdout []byte) error {
 	doc, err := one(stdout)
 	if err != nil {
@@ -58,7 +73,7 @@ func Description(stdout []byte) error {
 	if err := schema.Validate(doc); err != nil {
 		return fmt.Errorf("describe: the contract's schema refuses the description: %w", err)
 	}
-	if problems := secrets(doc); len(problems) > 0 {
+	if problems := append(secrets(doc), roles(doc)...); len(problems) > 0 {
 		return fmt.Errorf("describe: %s", strings.Join(problems, "; "))
 	}
 	return nil
@@ -172,6 +187,126 @@ func secrets(doc any) []string {
 	}
 	for _, at := range marked(rest, isNamed, "/settings", false) {
 		out = append(out, fmt.Sprintf("%s has an x-secret-name outside the settings' properties", at))
+	}
+	return out
+}
+
+// defined are the roles the contract defines, each with the settings it lists: the
+// credential role, the API way, and the tool role, the MCP way.
+var defined = []string{"credential", "tool"}
+
+// roles are the ways a description's roles break the rules the schema cannot express
+// (contracts/integration/v1 §Settings and §Roles). A role lists settings the settings
+// define, and a secret as <name>, never as <name>_file. A role requires only settings
+// it lists. A role lists every secret. The settings have no top-level required. No host
+// is both one the credential role answers for and one the tool role serves, the same or
+// covered by a *. pattern. The tool's mcp is an https URL with no userinfo, port or
+// fragment, on a host the tool serves.
+func roles(doc any) []string {
+	d, _ := doc.(map[string]any)
+	settings, _ := d["settings"].(map[string]any)
+	props, _ := settings["properties"].(map[string]any)
+	all, _ := d["roles"].(map[string]any)
+	secret := func(name string) bool {
+		p, _ := props[name].(map[string]any)
+		return p["writeOnly"] == true
+	}
+	// fileOf is the secret whose <name>_file name is, when it is one.
+	fileOf := func(name string) (string, bool) {
+		s, ok := strings.CutSuffix(name, "_file")
+		return s, ok && secret(s)
+	}
+	var out, present []string
+	lists := map[string]map[string]bool{}
+	for _, role := range defined {
+		r, ok := all[role].(map[string]any)
+		if !ok {
+			continue
+		}
+		present = append(present, role)
+		lists[role] = map[string]bool{}
+		for _, name := range stringsOf(r["settings"]) {
+			lists[role][name] = true
+			if s, ok := fileOf(name); ok {
+				out = append(out, fmt.Sprintf("the role %s lists %s, the file of the secret %s; it lists the secret as %s", role, name, s, s))
+			} else if _, ok := props[name]; !ok {
+				out = append(out, fmt.Sprintf("the role %s lists the setting %s, which the settings do not define", role, name))
+			}
+		}
+		for _, name := range stringsOf(r["required"]) {
+			if !lists[role][name] {
+				out = append(out, fmt.Sprintf("the role %s requires %s, which its settings do not list", role, name))
+			}
+		}
+	}
+	for _, name := range sortedKeys(props) {
+		if secret(name) && !slices.ContainsFunc(present, func(role string) bool { return lists[role][name] }) {
+			out = append(out, fmt.Sprintf("the secret %s is listed by no role", name))
+		}
+	}
+	if _, ok := settings["required"]; ok {
+		out = append(out, "the settings have a top-level required; what a role needs is in its own required")
+	}
+	credential, _ := all["credential"].(map[string]any)
+	tool, _ := all["tool"].(map[string]any)
+	serves := stringsOf(tool["serves"])
+	for _, host := range stringsOf(credential["hosts"]) {
+		for _, served := range serves {
+			if covers(host, served) || covers(served, host) {
+				out = append(out, fmt.Sprintf("the host %s of the role credential and the host %s the role tool serves overlap", host, served))
+			}
+		}
+	}
+	if m, ok := tool["mcp"].(string); ok {
+		out = append(out, mcp(m, serves)...)
+	}
+	return out
+}
+
+// mcp are the ways the tool role's mcp, m, breaks the rules the schema cannot express:
+// it is an https URL with no userinfo, port or fragment, whose host the tool serves.
+func mcp(m string, serves []string) []string {
+	u, err := url.Parse(m)
+	if err != nil || u.Scheme != "https" || u.Opaque != "" {
+		return []string{fmt.Sprintf("the role tool's mcp %q is not an https URL", m)}
+	}
+	var out []string
+	if u.User != nil {
+		out = append(out, fmt.Sprintf("the role tool's mcp %q has userinfo", m))
+	}
+	if u.Port() != "" || strings.HasSuffix(u.Host, ":") {
+		out = append(out, fmt.Sprintf("the role tool's mcp %q has a port", m))
+	}
+	if strings.Contains(m, "#") {
+		out = append(out, fmt.Sprintf("the role tool's mcp %q has a fragment", m))
+	}
+	host := strings.ToLower(u.Hostname())
+	if !slices.ContainsFunc(serves, func(served string) bool { return covers(served, host) }) {
+		out = append(out, fmt.Sprintf("the role tool's mcp %q is on the host %q, which the role tool does not serve", m, host))
+	}
+	return out
+}
+
+// covers reports whether the host entry covers other, as the runner's egress grammar
+// reads them: a name covers the same name, and *.x covers every host below x, at any
+// depth, and every pattern *.y below it, never x itself. Two hosts overlap when either
+// covers the other.
+func covers(entry, other string) bool {
+	if entry == other {
+		return true
+	}
+	suffix, ok := strings.CutPrefix(entry, "*.")
+	return ok && strings.HasSuffix(strings.TrimPrefix(other, "*."), "."+suffix)
+}
+
+// stringsOf are the strings of a JSON array, in their order.
+func stringsOf(v any) []string {
+	a, _ := v.([]any)
+	var out []string
+	for _, e := range a {
+		if s, ok := e.(string); ok {
+			out = append(out, s)
+		}
 	}
 	return out
 }

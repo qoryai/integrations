@@ -4,6 +4,6 @@
   "title": "Acme tracker",
   "program_version": "0.1.0",
   "roles": {
-    "credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}
+    "credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": []}
   }
 }
