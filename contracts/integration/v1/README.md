@@ -78,10 +78,10 @@ which cannot express the rules of the two paragraphs above: that a secret is a p
 of the settings themselves, has a `title` and a `<name>_file`, is in a role's
 `settings`, and where `x-secret-name` may be and what it may contain. Nor can it express
 the rules of §Settings and §Roles that join one part of the description to another: what
-a role's `settings` and `required` name, that the settings have no top-level
-`required`, that the credential role's `hosts` and the tool role's `serves` do not
-overlap, and where the tool role's `mcp` is.
-The Go package `github.com/qoryai/integrations/conformance` checks them.
+a role's `settings` and `required` name, that the credential role's `hosts` and the tool
+role's `serves` do not overlap, and where the tool role's `mcp` is.
+The Go package `github.com/qoryai/integrations/conformance` checks them. The schema
+itself refuses the top-level keywords of §Settings, and the package names each one.
 
 ## Settings
 
@@ -92,11 +92,12 @@ Every role is started the same way, so a reader needs no template language:
 ```
 
 `--` is always there, even when the role has no arguments, and an argument after it is
-never read as a flag. The credential role is `<program> credential -- <argument>`:
-exactly one argument, the run's, which is empty when the run gives none. The tool role
-is `<program> tool -- <argument>` the same way; a tool role without `argument` is
-started with an empty one. A program takes no flags for a role, and refuses
-`--settings` as it refuses any flag it does not know, by the rules of §Exit status.
+never read as a flag. The credential role is `<program> credential -- <argument>`, and
+the tool role is `<program> tool -- <argument>`: exactly one argument each. A role with
+an `argument` pattern gets the run's argument, which is empty when the run gives none.
+A role without `argument` ignores the run's argument and is started with an empty one
+(§Roles). A program takes no flags for a role, and refuses `--settings` as it refuses any
+flag it does not know, by the rules of §Exit status.
 
 Standard input carries exactly one JSON document, the settings object of the role,
 valid against the description's `settings`, a secret's value in it as any other value.
@@ -108,16 +109,24 @@ role of `fixtures/github.json`:
 {"app_id": 123456, "private_key": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"}
 ```
 
-What a role needs is its `required`, a subset of its `settings` (§Roles). The settings
-schema has no top-level `required`: every role's document is valid against the one
-`settings`, and roles need different settings. A `required` inside a setting of type
-`object` is JSON Schema's as usual.
+What a role needs is its `required`, a subset of its `settings` (§Roles). Each role's
+document holds a subset of the settings and is valid against the one `settings`. So the
+top level of the settings schema carries no keyword a subset can break: `required`,
+`allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`, `dependentRequired`,
+`dependentSchemas`, `minProperties`, `maxProperties`, `$ref` or `$dynamicRef`. The
+schema refuses each of them. A rule across settings belongs in a role's `required` or in
+the program. The top level keeps `properties`, `patternProperties`,
+`additionalProperties`, `propertyNames`, `type`, `title`, `description`, `$schema`,
+`$id` and `$defs`, and a property may carry any keyword: a `required` inside a setting
+of type `object` is JSON Schema's as usual.
 
-The runner checks each started role's document: it holds only the names the role lists
-in `settings`, a secret as `<name>` or `<name>_file`, and nothing in the connection
-falls outside every chosen role's list; every name in the role's `required` is present,
-a secret in either form; the document is valid against the description's `settings`;
-and it does not hold both `<name>` and `<name>_file`.
+The runner checks each started role's document, in this order:
+
+1. It holds only the names the role lists in `settings`, a secret as `<name>` or
+   `<name>_file`, and nothing in the connection falls outside every chosen role's list.
+2. Every name in the role's `required` is present, a secret in either form.
+3. It is valid against the description's `settings`.
+4. It does not hold both `<name>` and `<name>_file`.
 
 When the document holds no setting it is `{}`. The program reads standard input to
 its end before it acts and before any network call. It refuses empty input, a second
@@ -171,6 +180,11 @@ settings the role may receive, plain and secret alike, none twice, possibly none
 roles may list the same setting. A secret is listed by its `<name>`, never by
 `<name>_file`. The role's standard input holds those settings alone (§Settings).
 
+The run's argument is matched, whole, only against the roles that have an `argument`
+pattern. A role without `argument` ignores the run's argument and is started with an
+empty one. So a credential role with a pattern and a tool role with none both run in one
+connection.
+
 A role may have `required`: the names of its `settings` it needs, none twice. A secret
 is listed by its `<name>`, and either `<name>` or `<name>_file` in the document
 satisfies it. A setting the role lists and does not require is optional: the program
@@ -210,7 +224,7 @@ outside this contract.
 
 | Field | |
 |---|---|
-| `argument` | a regular expression, RE2, the run's argument must match whole; absent means the run passes none, and the program is started with an empty argument |
+| `argument` | a regular expression, RE2, the run's argument must match whole; may be absent. A tool role without it ignores the run's argument and is started with an empty one (§Roles) |
 | `serves` | the hosts whose requests the runner sends to the tool, at least one, none twice, in the grammar of the credential role's `hosts` |
 | `mcp` | the `https://` URL of the MCP server the tool serves, with no userinfo, port or fragment, its host one of `serves`; may be absent. `qory` registers it with the agent's MCP client |
 | `placeholders` | variables the enclosure gets with the placeholder value, as a credential's ([§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials)), each `^[A-Z_][A-Z0-9_]{0,127}$`, none twice; may be absent. A credential role has no `placeholders`: its answer lists them |
@@ -222,9 +236,9 @@ outside this contract.
          "settings": ["url", "mcp_key"], "required": ["url", "mcp_key"]}
 ```
 
-The runner starts the program as `<program> tool -- <argument>`. The program reads its
-settings document on standard input to its end, by the rules of §Settings. Then it
-listens on the Unix socket whose path is the variable `QORY_TOOL_LISTEN`, within a
+The runner starts the program as `<program> tool -- <argument>`, the argument empty when
+the role has no `argument`. The program reads its settings document on standard input to
+its end, by the rules of §Settings. Then it listens on the Unix socket whose path is the variable `QORY_TOOL_LISTEN`, within a
 minute. The runner sends it every request it allows for `serves` as HTTP/1.1 over that
 socket. A failure before it listens follows §Exit status: non-zero, one line on standard
 error, nothing on standard output. Once it listens, what it writes to standard error is
@@ -254,7 +268,7 @@ document of §Settings from them, is the runner's contract,
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version, with the `x-secret-name` of its secret and the credential role's `settings` added; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `acme-tracker-mcp.json`, one with both ways, a credential role and a tool role with `mcp`, a secret each and one plain setting they share; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version, with the `x-secret-name` of its secret, the credential role's `settings` and `required` in place of the settings' top-level `required`, and no top-level `oneOf` over `private_key` and `private_key_file`; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `acme-tracker-mcp.json`, one with both ways, a credential role and a tool role with `mcp`, a secret each and one plain setting they share; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.

@@ -66,11 +66,14 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		"fixtures/invalid/description-tool-extra-member.json":         "/roles/tool additionalProperties",
 		"fixtures/invalid/description-tool-mcp-not-https.json":        "/roles/tool/mcp pattern",
 		"fixtures/invalid/description-tool-no-serves.json":            "/roles/tool required serves",
+		"fixtures/invalid/description-tool-no-settings.json":          "/roles/tool required settings",
+		"fixtures/invalid/description-tool-serves-port.json":          "/roles/tool/serves/0 pattern",
 		"fixtures/invalid/description-domains-bad-name.json":          "/domains/0 pattern",
 		"fixtures/invalid/description-domains-duplicate.json":         "/domains uniqueItems",
 		"fixtures/invalid/description-domains-empty.json":             "/domains minItems",
 		"fixtures/invalid/description-no-settings.json":               "/ required settings",
 		"fixtures/invalid/description-settings-not-object.json":       "/settings/type const",
+		"fixtures/invalid/description-settings-required.json":         "/settings not",
 		"fixtures/invalid/description-version-2.json":                 "/version const",
 	}
 	for _, f := range files(t, "fixtures/invalid") {
@@ -89,11 +92,58 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 	}
 }
 
+// TestSettingsCarryNoKeywordASubsetBreaks pins that the schema refuses settings whose
+// top level carries a keyword a role's subset of the settings can break, each alone, and
+// accepts the keywords a subset passes, and any keyword nested in a property.
+func TestSettingsCarryNoKeywordASubsetBreaks(t *testing.T) {
+	schema, err := contracts.Compile("description.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	describe := func(settings string) any {
+		doc, err := jsonschema.UnmarshalJSON(strings.NewReader(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
+		 "settings": ` + settings + `,
+		 "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": []}}}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return doc
+	}
+	for _, keyword := range []string{
+		`"required": ["url"]`, `"required": []`, `"allOf": [{}]`, `"anyOf": [{}]`, `"oneOf": [{}]`,
+		`"not": false`, `"if": {}`, `"then": {}`, `"else": {}`, `"dependentRequired": {}`,
+		`"dependentSchemas": {}`, `"minProperties": 0`, `"maxProperties": 9`,
+		`"$ref": "#/$defs/x", "$defs": {"x": {}}`, `"$dynamicRef": "#x"`,
+	} {
+		v, ok := schema.Validate(describe(`{"type": "object", ` + keyword + `}`)).(*jsonschema.ValidationError)
+		if !ok {
+			t.Errorf("settings with %s were accepted", keyword)
+			continue
+		}
+		if got := strings.Join(leaves(v), "; "); got != "/settings not" {
+			t.Errorf("settings with %s are refused for %q, want %q", keyword, got, "/settings not")
+		}
+	}
+	allowed := `{"$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://acme.example/settings",
+	 "type": "object", "title": "Settings", "description": "The tracker's settings.",
+	 "properties": {"url": {"type": "string", "anyOf": [{"pattern": "^https://"}], "not": {"const": ""}},
+	                "auth": {"type": "object", "required": ["user"], "oneOf": [{}], "minProperties": 1, "$ref": "#/$defs/auth"}},
+	 "patternProperties": {"^x_": {"type": "string"}}, "additionalProperties": false,
+	 "propertyNames": {"pattern": "^[a-z_]+$"}, "$defs": {"auth": {"type": "object"}}}`
+	if err := schema.Validate(describe(allowed)); err != nil {
+		t.Errorf("settings with the keywords a subset passes: %v", err)
+	}
+}
+
 // leaves are a refusal's reasons, each where, the keyword, and what a required one
-// misses.
+// misses. A not has no keyword path of its own, so it is spelled not.
 func leaves(v *jsonschema.ValidationError) []string {
 	if len(v.Causes) == 0 {
-		r := "/" + strings.Join(v.InstanceLocation, "/") + " " + strings.Join(v.ErrorKind.KeywordPath(), "/")
+		keyword := v.ErrorKind.KeywordPath()
+		if _, ok := v.ErrorKind.(*kind.Not); ok {
+			keyword = []string{"not"}
+		}
+		r := "/" + strings.Join(v.InstanceLocation, "/") + " " + strings.Join(keyword, "/")
 		if k, ok := v.ErrorKind.(*kind.Required); ok {
 			r += " " + strings.Join(k.Missing, ",")
 		}

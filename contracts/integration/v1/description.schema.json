@@ -24,10 +24,11 @@
     },
     "program_version": {"description": "The program's own version, as it was built.", "type": "string", "minLength": 1},
     "settings": {
-      "description": "A JSON Schema, draft 2020-12, of the settings document: an object. It has no top-level required: what a run needs is each role's required. Each role's standard input holds the settings the role lists and is valid against it. A property marked writeOnly is a secret: a form shows it as one, written and never read back, and a log leaves it out. A secret is a property of the settings object itself, never a nested one, its title, a string that is not only white space, is its label, and a secret <name> has a setting <name>_file, the path of a file that contains it, for a secret kept on disk. A secret may carry x-secret-name, ^[A-Z][A-Z0-9_]{0,127}$, the conventional name of the secret, such as GITHUB_APP_PRIVATE_KEY, which a control plane fills in as the name to store the secret under; no other setting carries one, and no two secrets carry the same. The settings are checked against JSON Schema's own meta-schema, which cannot express these rules: the conformance package checks them.",
+      "description": "A JSON Schema, draft 2020-12, of the settings document: an object. Each role's standard input holds the settings the role lists, a subset of them, and is valid against it. So the top level carries no keyword a subset can break: required, allOf, anyOf, oneOf, not, if, then, else, dependentRequired, dependentSchemas, minProperties, maxProperties, $ref or $dynamicRef. A rule across settings belongs in a role's required or in the program. A property marked writeOnly is a secret: a form shows it as one, written and never read back, and a log leaves it out. A secret is a property of the settings object itself, never a nested one, its title, a string that is not only white space, is its label, and a secret <name> has a setting <name>_file, the path of a file that contains it, for a secret kept on disk. A secret may carry x-secret-name, ^[A-Z][A-Z0-9_]{0,127}$, the conventional name of the secret, such as GITHUB_APP_PRIVATE_KEY, which a control plane fills in as the name to store the secret under; no other setting carries one, and no two secrets carry the same. The settings are checked against JSON Schema's own meta-schema, and refused with one of those keywords at the top. The meta-schema cannot express the rules on secrets: the conformance package checks them.",
       "allOf": [
         {"$ref": "https://json-schema.org/draft/2020-12/schema"},
-        {"type": "object", "required": ["type"], "properties": {"type": {"const": "object"}}}
+        {"type": "object", "required": ["type"], "properties": {"type": {"const": "object"}}},
+        {"not": {"anyOf": [{"required": ["required"]}, {"required": ["allOf"]}, {"required": ["anyOf"]}, {"required": ["oneOf"]}, {"required": ["not"]}, {"required": ["if"]}, {"required": ["then"]}, {"required": ["else"]}, {"required": ["dependentRequired"]}, {"required": ["dependentSchemas"]}, {"required": ["minProperties"]}, {"required": ["maxProperties"]}, {"required": ["$ref"]}, {"required": ["$dynamicRef"]}]}}
       ]
     },
     "roles": {
@@ -60,7 +61,7 @@
           "additionalProperties": false,
           "required": ["serves", "settings"],
           "properties": {
-            "argument": {"description": "A regular expression, RE2, the run's argument must match whole. Absent means the run passes none, and the program is started with an empty argument.", "type": "string", "minLength": 1},
+            "argument": {"description": "A regular expression, RE2, the run's argument must match whole. Absent means the role ignores the run's argument: the program is started with an empty argument, and the runner matches the run's argument only against the roles that have one.", "type": "string", "minLength": 1},
             "serves": {
               "description": "The hosts whose requests the runner sends to the tool, at least one. None is a host the credential role answers for.",
               "type": "array",

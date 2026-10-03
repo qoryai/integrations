@@ -5,9 +5,9 @@
 //
 // Beyond the description's schema, it checks the rules the schema cannot express: where
 // a secret is, its title, its <name>_file and its x-secret-name; the settings each role
-// lists and requires, credential and tool, and that the settings have no top-level
-// required; that the credential role's hosts and the tool role's serves do not overlap;
-// and the tool role's mcp URL.
+// lists and requires, credential and tool; that the credential role's hosts and the tool
+// role's serves do not overlap; and the tool role's mcp URL. It names each keyword the
+// settings' top level may not carry, such as required, which the schema refuses.
 //
 // An integration's tests run the program and hand this package what it printed, so the
 // program and the contracts cannot drift apart. The integration template's tests show
@@ -56,11 +56,16 @@ var (
 //
 // The credential and tool roles list settings the settings define, a secret as <name>,
 // never <name>_file, a role requires only settings it lists, and a role lists every
-// secret. The settings have no top-level required: what a role needs is its own. No
-// host is both one the credential role answers for and one the tool role serves, the
-// same or covered by a *. pattern. The tool role's mcp is an https URL with no userinfo,
-// port or fragment, on a host the tool serves. It reports the schema's refusal, or else
-// every rule beyond the schema the output breaks.
+// secret. No host is both one the credential role answers for and one the tool role
+// serves, the same or covered by a *. pattern. The tool role's mcp is an https URL with
+// no userinfo, port or fragment, on a lower-case host name the tool serves.
+//
+// The settings' top level carries none of required, allOf, anyOf, oneOf, not, if, then,
+// else, dependentRequired, dependentSchemas, minProperties, maxProperties, $ref and
+// $dynamicRef: each role's document holds a subset of the settings, and each of these
+// can refuse a subset the whole settings pass. The schema refuses them, and Description
+// names each one the settings carry beside the schema's refusal. Otherwise it reports
+// the schema's refusal, or else every rule beyond the schema the output breaks.
 func Description(stdout []byte) error {
 	doc, err := one(stdout)
 	if err != nil {
@@ -71,6 +76,9 @@ func Description(stdout []byte) error {
 		return err
 	}
 	if err := schema.Validate(doc); err != nil {
+		if problems := topLevel(doc); len(problems) > 0 {
+			return fmt.Errorf("describe: %s; the contract's schema refuses the description: %w", strings.Join(problems, "; "), err)
+		}
 		return fmt.Errorf("describe: the contract's schema refuses the description: %w", err)
 	}
 	if problems := append(secrets(doc), roles(doc)...); len(problems) > 0 {
@@ -130,6 +138,29 @@ func one(b []byte) (any, error) {
 		return nil, errors.New("standard output contains more than one JSON document")
 	}
 	return jsonschema.UnmarshalJSON(bytes.NewReader(first))
+}
+
+// subsetBreaks are the keywords the settings' top level may not carry. Each role's
+// document holds a subset of the settings, and each of these keywords can refuse a
+// subset the whole settings pass. A rule across settings belongs in a role's required
+// or in the program.
+var subsetBreaks = []string{
+	"required", "allOf", "anyOf", "oneOf", "not", "if", "then", "else",
+	"dependentRequired", "dependentSchemas", "minProperties", "maxProperties", "$ref", "$dynamicRef",
+}
+
+// topLevel are the keywords of subsetBreaks the settings' top level carries, in the
+// order of subsetBreaks.
+func topLevel(doc any) []string {
+	d, _ := doc.(map[string]any)
+	settings, _ := d["settings"].(map[string]any)
+	var out []string
+	for _, k := range subsetBreaks {
+		if _, ok := settings[k]; ok {
+			out = append(out, fmt.Sprintf("the settings have the top-level keyword %s, which a role's subset of the settings can break", k))
+		}
+	}
+	return out
 }
 
 // secretName is the grammar of an x-secret-name, the conventional name of a secret, such
@@ -198,10 +229,10 @@ var defined = []string{"credential", "tool"}
 // roles are the ways a description's roles break the rules the schema cannot express
 // (contracts/integration/v1 §Settings and §Roles). A role lists settings the settings
 // define, and a secret as <name>, never as <name>_file. A role requires only settings
-// it lists. A role lists every secret. The settings have no top-level required. No host
-// is both one the credential role answers for and one the tool role serves, the same or
-// covered by a *. pattern. The tool's mcp is an https URL with no userinfo, port or
-// fragment, on a host the tool serves.
+// it lists. A role lists every secret. No host is both one the credential role answers
+// for and one the tool role serves, the same or covered by a *. pattern. The tool's mcp
+// is an https URL with no userinfo, port or fragment, on a lower-case host name the tool
+// serves.
 func roles(doc any) []string {
 	d, _ := doc.(map[string]any)
 	settings, _ := d["settings"].(map[string]any)
@@ -244,9 +275,6 @@ func roles(doc any) []string {
 			out = append(out, fmt.Sprintf("the secret %s is listed by no role", name))
 		}
 	}
-	if _, ok := settings["required"]; ok {
-		out = append(out, "the settings have a top-level required; what a role needs is in its own required")
-	}
 	credential, _ := all["credential"].(map[string]any)
 	tool, _ := all["tool"].(map[string]any)
 	serves := stringsOf(tool["serves"])
@@ -263,8 +291,31 @@ func roles(doc any) []string {
 	return out
 }
 
+// hostName is the grammar of a lower-case host name, the host grammar of the contract's
+// schema without its *. pattern.
+var hostName = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// written is the host of the https URL m as m spells it: what follows https:// up to
+// the path, the query or the fragment, without userinfo and port. url.Parse decodes a
+// host's percent escapes, and this does not.
+func written(m string) string {
+	host := strings.TrimPrefix(m, "https://")
+	if i := strings.IndexAny(host, "/?#"); i >= 0 {
+		host = host[:i]
+	}
+	if i := strings.LastIndex(host, "@"); i >= 0 {
+		host = host[i+1:]
+	}
+	if i := strings.LastIndex(host, ":"); i >= 0 && !strings.Contains(host[i:], "]") {
+		host = host[:i]
+	}
+	return host
+}
+
 // mcp are the ways the tool role's mcp, m, breaks the rules the schema cannot express:
-// it is an https URL with no userinfo, port or fragment, whose host the tool serves.
+// it is an https URL with no userinfo, port or fragment, whose host is a lower-case host
+// name the tool serves. An upper-case letter, a trailing dot, an IPv6 address and a
+// percent escape in the host are each refused.
 func mcp(m string, serves []string) []string {
 	u, err := url.Parse(m)
 	if err != nil || u.Scheme != "https" || u.Opaque != "" {
@@ -280,8 +331,12 @@ func mcp(m string, serves []string) []string {
 	if strings.Contains(m, "#") {
 		out = append(out, fmt.Sprintf("the role tool's mcp %q has a fragment", m))
 	}
-	host := strings.ToLower(u.Hostname())
-	if !slices.ContainsFunc(serves, func(served string) bool { return covers(served, host) }) {
+	switch host := written(m); {
+	case host == "":
+		out = append(out, fmt.Sprintf("the role tool's mcp %q has no host", m))
+	case !hostName.MatchString(host):
+		out = append(out, fmt.Sprintf("the role tool's mcp %q has the host %q, which is not a lower-case host name", m, host))
+	case !slices.ContainsFunc(serves, func(served string) bool { return covers(served, host) }):
 		out = append(out, fmt.Sprintf("the role tool's mcp %q is on the host %q, which the role tool does not serve", m, host))
 	}
 	return out

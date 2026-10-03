@@ -51,7 +51,8 @@ An integration offers one or more ways. A way is a role of its description:
 - the MCP way is the `tool` role.
 
 A run's connection names the ways it uses, and the runner starts those roles alone. An
-API that needs only a static key needs no integration: the runner's services cover it.
+API that needs only a static key needs no program and no role: the runner's services
+cover it.
 A stdio MCP server the agent would start inside its enclosure is outside the contract.
 
 ## The contract in short
@@ -70,8 +71,12 @@ A stdio MCP server the agent would start inside its enclosure is outside the con
   ```
 
 - `--` is always there, even when the role has no arguments. The credential role and the
-  tool role each get exactly one argument, the run's, empty when the run gives none:
-  `<program> credential -- <argument>`, `<program> tool -- <argument>`.
+  tool role each get exactly one argument: `<program> credential -- <argument>`,
+  `<program> tool -- <argument>`.
+- A role with an `argument` pattern gets the run's argument, empty when the run gives
+  none. A role without `argument` ignores the run's argument and gets an empty one. The
+  run's argument is matched only against the roles that have a pattern, so a credential
+  role with a pattern and a tool role with none both run in one connection.
 - A program takes no flags for a role. It refuses `--settings` as it refuses any flag it
   does not know.
 - A program reads its settings from standard input alone: no setting and no secret from
@@ -118,9 +123,14 @@ leaves out every other setting.
 
 A role lists in `required` the settings of its `settings` it needs. A secret is listed
 by its `<name>`, and either `<name>` or `<name>_file` satisfies it. A setting the role
-lists and does not require is optional: the program handles it being absent. The
-settings schema has no top-level `required`: what a run needs is said per role, and
-only there.
+lists and does not require is optional: the program handles it being absent.
+
+Each role's document holds a subset of the settings, so the settings schema's top level
+carries no keyword a subset can break: `required`, `allOf`, `anyOf`, `oneOf`, `not`,
+`if`, `then`, `else`, `dependentRequired`, `dependentSchemas`, `minProperties`,
+`maxProperties`, `$ref` or `$dynamicRef`. The contract's schema refuses each of them. A
+rule across settings belongs in a role's `required` or in the program. A property may
+carry any keyword.
 
 ```json
 "settings": {"type": "object", "properties": {
@@ -137,9 +147,13 @@ only there.
            "settings": ["url", "mcp_key", "project"], "required": ["url", "mcp_key"]}}
 ```
 
-The runner checks each role's document before it starts the role: it holds only the
-settings the role lists, every setting the role requires, and not both `<name>` and
-`<name>_file`, and it is valid against the description's `settings`.
+The runner checks each role's document before it starts the role, in this order:
+
+1. it holds only the settings the role lists, and nothing in the connection is outside
+   every chosen role's list;
+2. it holds every setting the role requires;
+3. it is valid against the description's `settings`;
+4. it does not hold both `<name>` and `<name>_file`.
 
 On standard input, the program:
 
@@ -164,7 +178,8 @@ and [§Settings](../contracts/integration/v1/README.md#settings).
 A tool role serves an MCP server over HTTP, behind the runner's wall. The runner:
 
 1. starts the program as `<program> tool -- <argument>`, outside the agent's enclosure,
-   with the variable `QORY_TOOL_LISTEN`, the path of a Unix socket, and `QORY_RUN_ID`;
+   with the variable `QORY_TOOL_LISTEN`, the path of a Unix socket, and `QORY_RUN_ID`.
+   The argument is empty when the role has no `argument`;
 2. writes the role's settings document on its standard input;
 3. sends it every request it allows for the hosts in `serves`, as HTTP/1.1 over the
    socket;
@@ -216,8 +231,9 @@ The Go package `github.com/qoryai/integrations/conformance` checks what a progra
 
 - `conformance.Description`: what `describe` printed, against the contract's schema and
   the rules the schema cannot express: where a secret is, its `title`, its
-  `<name>_file` and its `x-secret-name`; the settings each role lists and requires, and
-  no top-level `required`; hosts in both `hosts` and `serves`; and the tool role's `mcp`.
+  `<name>_file` and its `x-secret-name`; the settings each role lists and requires;
+  hosts in both `hosts` and `serves`; and the tool role's `mcp`. It names each keyword
+  the settings' top level may not carry, such as `required`.
 - `conformance.Credential`: a credential role's answer, against the runner's schema.
 - `conformance.Failure`: how a failed command ended.
 

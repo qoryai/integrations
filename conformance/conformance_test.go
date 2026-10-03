@@ -91,8 +91,7 @@ func roles(settings, roles string) []byte {
 // TestARoleListsTheSettingsItNeeds pins the rules on the settings a credential or a tool
 // role lists and requires that the schema cannot express: a role lists settings the
 // settings define, a secret by its name and never by its <name>_file, it requires only
-// settings it lists, some role lists every secret, and the settings have no top-level
-// required.
+// settings it lists, and some role lists every secret.
 func TestARoleListsTheSettingsItNeeds(t *testing.T) {
 	const settings = `{"type": "object", "properties": {
 	 "url": {"type": "string"}, "project": {"type": "string"},
@@ -115,8 +114,6 @@ func TestARoleListsTheSettingsItNeeds(t *testing.T) {
 		{"a secret a reserved role alone lists", roles(settings, credential(`["url", "api_key"]`, `[]`)+`, "work_source": {"settings": ["mcp_key"]}`), "the secret mcp_key is listed by no role"},
 		{"a required setting the role does not list", roles(settings, credential(`["url", "api_key"]`, `["url", "api_key"]`)+", "+tool(`["mcp_key"]`, `["url", "mcp_key"]`)), "the role tool requires url, which its settings do not list"},
 		{"a required secret's file", roles(settings, credential(`["url", "api_key"]`, `["api_key_file"]`)+", "+tool(`["mcp_key"]`, `[]`)), "the role credential requires api_key_file, which its settings do not list"},
-		{"a top-level required", roles(strings.Replace(settings, `"properties"`, `"required": ["url"], "properties"`, 1), credential(`["url", "api_key"]`, `["url"]`)+", "+tool(`["url", "mcp_key"]`, `["url"]`)), "the settings have a top-level required; what a role needs is in its own required"},
-		{"an empty top-level required", roles(`{"type": "object", "required": []}`, credential(`[]`, `[]`)), "the settings have a top-level required"},
 	} {
 		err := conformance.Description(tc.stdout)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -137,6 +134,82 @@ func TestARoleListsTheSettingsItNeeds(t *testing.T) {
 		if err := conformance.Description(tc.stdout); err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 		}
+	}
+}
+
+// TestSettingsCarryNoKeywordASubsetBreaks pins that Description names each keyword the
+// settings' top level may not carry, since a role's document holds a subset of the
+// settings, beside the schema's refusal, and accepts such a keyword nested in a property.
+func TestSettingsCarryNoKeywordASubsetBreaks(t *testing.T) {
+	for _, tc := range []struct{ keyword, member string }{
+		{"required", `"required": ["url"]`},
+		{"required", `"required": []`},
+		{"allOf", `"allOf": [{}]`},
+		{"anyOf", `"anyOf": [{}]`},
+		{"oneOf", `"oneOf": [{"required": ["url"]}, {"required": ["url_file"]}]`},
+		{"not", `"not": false`},
+		{"if", `"if": {}`},
+		{"then", `"then": {}`},
+		{"else", `"else": {}`},
+		{"dependentRequired", `"dependentRequired": {"url": ["project"]}`},
+		{"dependentSchemas", `"dependentSchemas": {"url": {}}`},
+		{"minProperties", `"minProperties": 1`},
+		{"maxProperties", `"maxProperties": 2`},
+		{"$ref", `"$ref": "#/$defs/base", "$defs": {"base": {}}`},
+		{"$dynamicRef", `"$dynamicRef": "#base"`},
+	} {
+		stdout := roles(`{"type": "object", `+tc.member+`, "properties": {"url": {"type": "string"}, "project": {"type": "string"}}}`,
+			`"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ["url", "project"]}`)
+		err := conformance.Description(stdout)
+		want := "describe: the settings have the top-level keyword " + tc.keyword + ", which a role's subset of the settings can break; the contract's schema refuses the description"
+		if err == nil || !strings.HasPrefix(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", tc.member, err, want)
+		}
+	}
+	two := roles(`{"type": "object", "minProperties": 1, "required": ["url"], "properties": {"url": {"type": "string"}}}`,
+		`"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ["url"]}`)
+	want := "describe: the settings have the top-level keyword required, which a role's subset of the settings can break; the settings have the top-level keyword minProperties, which a role's subset of the settings can break; "
+	if err := conformance.Description(two); err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("two keywords: %v, want %q", err, want)
+	}
+	nested := roles(`{"type": "object", "additionalProperties": false, "propertyNames": {"pattern": "^[a-z_]+$"},
+	 "patternProperties": {"^x_": {"type": "string"}}, "$defs": {"auth": {"type": "object"}},
+	 "properties": {"auth": {"type": "object", "required": ["user"], "oneOf": [{}], "minProperties": 1, "$ref": "#/$defs/auth"}}}`,
+		`"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ["auth"], "required": ["auth"]}`)
+	if err := conformance.Description(nested); err != nil {
+		t.Errorf("the keywords nested in a property: %v", err)
+	}
+}
+
+// TestADescriptionReportsEveryRuleInOrder pins that Description reports every rule
+// beyond the schema a description breaks, in one order: the secrets by name, then the
+// roles, credential before tool, each in the order it lists them, then the hosts and the
+// mcp. A description with no roles is the schema's to refuse.
+func TestADescriptionReportsEveryRuleInOrder(t *testing.T) {
+	stdout := roles(`{"type": "object", "properties": {
+	 "b_key": {"title": "B key", "type": "string", "writeOnly": true}, "b_key_file": {"type": "string"},
+	 "a_key": {"type": "string", "writeOnly": true}, "a_key_file": {"type": "string"}}}`,
+		`"tool": {"serves": ["*.acme.example"], "mcp": "https://MCP.acme.example/mcp", "settings": ["zeta", "a_key_file"], "required": ["b_key"]},
+		 "credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example", "acme.example"], "settings": ["omega"]}`)
+	want := "describe: " + strings.Join([]string{
+		"the secret a_key has no title",
+		"the role credential lists the setting omega, which the settings do not define",
+		"the role tool lists the setting zeta, which the settings do not define",
+		"the role tool lists a_key_file, the file of the secret a_key; it lists the secret as a_key",
+		"the role tool requires b_key, which its settings do not list",
+		"the secret a_key is listed by no role",
+		"the secret b_key is listed by no role",
+		"the host tracker.acme.example of the role credential and the host *.acme.example the role tool serves overlap",
+		`the role tool's mcp "https://MCP.acme.example/mcp" has the host "MCP.acme.example", which is not a lower-case host name`,
+	}, "; ")
+	for range 10 {
+		if err := conformance.Description(stdout); err == nil || err.Error() != want {
+			t.Fatalf("%v, want %q", err, want)
+		}
+	}
+	err := conformance.Description([]byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0", "settings": {"type": "object"}}`))
+	if err == nil || !strings.Contains(err.Error(), "the contract's schema refuses the description") || !strings.Contains(err.Error(), "roles") {
+		t.Errorf("no roles: %v, want the schema's refusal of a missing roles", err)
 	}
 }
 
@@ -186,7 +259,14 @@ func TestAToolsMCPIsOnAHostItServes(t *testing.T) {
 	for _, tc := range []struct{ name, serves, mcp, want string }{
 		{"another host", `["mcp.acme.example"]`, "https://tracker.acme.example/mcp", `the role tool's mcp "https://tracker.acme.example/mcp" is on the host "tracker.acme.example", which the role tool does not serve`},
 		{"the name a pattern is below", `["*.acme.example"]`, "https://acme.example/mcp", `is on the host "acme.example", which the role tool does not serve`},
-		{"no host", `["mcp.acme.example"]`, "https:///mcp", `is on the host "", which the role tool does not serve`},
+		{"no host", `["mcp.acme.example"]`, "https:///mcp", `the role tool's mcp "https:///mcp" has no host`},
+		{"an upper-case host", `["mcp.acme.example"]`, "https://MCP.acme.example/mcp", `the role tool's mcp "https://MCP.acme.example/mcp" has the host "MCP.acme.example", which is not a lower-case host name`},
+		{"a trailing dot", `["mcp.acme.example"]`, "https://mcp.acme.example./mcp", `has the host "mcp.acme.example.", which is not a lower-case host name`},
+		{"a percent escape", `["mcp.acme.example"]`, "https://mcp%c3%a9.acme.example/mcp", `has the host "mcp%c3%a9.acme.example", which is not a lower-case host name`},
+		{"an escape url.Parse refuses", `["mcp.acme.example"]`, "https://mcp%2eacme.example/mcp", `is not an https URL`},
+		{"an IPv6 address", `["mcp.acme.example"]`, "https://[2001:db8::1]/mcp", `has the host "[2001:db8::1]", which is not a lower-case host name`},
+		{"an IPv6 address and a port", `["mcp.acme.example"]`, "https://[2001:db8::1]:8443/mcp", `has a port; the role tool's mcp "https://[2001:db8::1]:8443/mcp" has the host "[2001:db8::1]"`},
+		{"a query on a host it does not serve", `["mcp.acme.example"]`, "https://tracker.acme.example?mcp", `is on the host "tracker.acme.example", which the role tool does not serve`},
 		{"userinfo", `["mcp.acme.example"]`, "https://dev@mcp.acme.example/mcp", `the role tool's mcp "https://dev@mcp.acme.example/mcp" has userinfo`},
 		{"a port", `["mcp.acme.example"]`, "https://mcp.acme.example:8443/mcp", `the role tool's mcp "https://mcp.acme.example:8443/mcp" has a port`},
 		{"an empty port", `["mcp.acme.example"]`, "https://mcp.acme.example:/mcp", `has a port`},

@@ -122,9 +122,12 @@ Every integration publishes releases the same way, so `qory` can install any of 
 
 An integration's source is where its releases are, one of:
 
-- **A repository on a forge**, `<host>/<path>`: a lower-case host name with no scheme or
-  port, then two or more path segments. Each segment is
-  `[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99}`, and the source does not end in `.git`. Examples:
+- **A repository on a forge**, `<host>/<path>`: a lower-case host name of two or more
+  labels with no scheme or port, then two or more path segments. Each segment is
+  `[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99}`, and the source does not end in `.git`. The whole
+  source matches
+  `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+(/[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99}){2,}$`.
+  Examples:
   GitHub `github.com/<owner>/<repo>`, GitLab
   `gitlab.com/<group>[/<subgroup>…]/<project>`, Forgejo or Gitea `<host>/<owner>/<repo>`.
   - The forge is `github` on github.com, `gitlab` on gitlab.com and `forgejo` on

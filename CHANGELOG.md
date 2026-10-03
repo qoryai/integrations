@@ -13,10 +13,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   started as `<program> <role> -- [arguments]`, `--` always there, even when the role
   has no arguments; the credential role as `<program> credential -- <argument>`, exactly
   one argument, the run's, empty when the run gives none, and the tool role as
-  `<program> tool -- <argument>` the same way. Standard input carries exactly one JSON
-  document, the settings the role lists and nothing else, a secret's value in it as any
-  other; `{}` when it holds none. The program reads standard input to its end before
-  it acts and before any network call, and refuses empty input, anything after the first
+  `<program> tool -- <argument>`, the argument empty when the role has no `argument`.
+  Standard input carries exactly one JSON document, the settings the role lists and
+  nothing else, a secret's value in it as any other; `{}` when it holds none. The
+  program reads standard input to its end before it acts and before any network call, and refuses empty input, anything after the first
   document but white space, and input larger than 64 KiB, 65536 bytes; the writer refuses
   a larger document before it starts the program, writes the document whole, closes
   standard input, and never connects it to a terminal. Nothing in the document is
@@ -52,7 +52,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   settings on standard input, and listens on the Unix socket `QORY_TOOL_LISTEN` names,
   where the runner sends it the requests it allows for `serves` as HTTP/1.1.
 - `fixtures/acme-tracker-mcp.json`, a description with both ways, and invalid fixtures
-  for the roles' new members.
+  for the roles' new members and for a top-level `required` in the settings.
 
 ### Changed
 
@@ -76,17 +76,27 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `release.yml` and the README say it publishes a GitHub release. An integration on
   another forge publishes the same files with that forge's own CI.
 - Each role's standard input holds the settings that role lists and nothing else; the
-  runner leaves out every other setting. The settings schema has no top-level
-  `required`: what a role needs is in its own `required`.
+  runner leaves out every other setting. The runner checks each role's document in
+  order: only the names the role lists, its `required` present, valid against the
+  settings, and not both `<name>` and `<name>_file`.
+- The settings schema's top level carries no keyword a role's subset of the settings can
+  break: `required`, `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`,
+  `dependentRequired`, `dependentSchemas`, `minProperties`, `maxProperties`, `$ref` or
+  `$dynamicRef`. The description's schema refuses each of them. What a role needs is in
+  its own `required`; another rule across settings is the program's.
+- A role without `argument` ignores the run's argument and is started with an empty
+  one. The run's argument is matched only against the roles that have an `argument`
+  pattern.
 - `tool` is defined here, no longer reserved. `work_source` and `output` stay reserved.
 - Hosts are per role: no host is in both the credential role's `hosts` and the tool
   role's `serves`.
 - `conformance.Description` refuses a role's `settings` that names a setting the
   settings do not define or a secret's `<name>_file`, a role's `required` that names a
-  setting its `settings` does not list, a secret no role lists, a top-level `required`
-  in the settings, a credential host and a tool host that overlap, the same or under a
-  `*.` pattern, and a tool's `mcp` that is not an `https` URL, has userinfo, a port or a
-  fragment, or is on a host the tool does not serve.
+  setting its `settings` does not list, a secret no role lists, a credential host and a
+  tool host that overlap, the same or under a `*.` pattern, and a tool's `mcp` that is
+  not an `https` URL, has userinfo, a port or a fragment, has a host that is not a
+  lower-case host name, or is on a host the tool does not serve. It names each keyword
+  of the settings' top level that a role's subset can break.
 
 ### Removed
 
@@ -110,6 +120,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `qory-github`'s credential role becomes `"settings": ["app_id", "installation_id",
   "api_url", "permissions", "private_key"], "required": ["app_id", "private_key"]`.
 - A description lists each secret in some role's `settings`.
+- A description's settings drop every top-level keyword a role's subset can break, such
+  as a `oneOf` over a secret's `<name>` and `<name>_file`: the role's `required` and the
+  rule against both forms say the same. `qory-github`'s settings drop their top-level
+  `oneOf`.
 
 ## [0.2.0] - 2026-09-30
 

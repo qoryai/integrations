@@ -10,18 +10,6 @@
   "settings": {
     "type": "object",
     "additionalProperties": false,
-    "oneOf": [
-      {
-        "required": [
-          "private_key_file"
-        ]
-      },
-      {
-        "required": [
-          "private_key"
-        ]
-      }
-    ],
     "properties": {
       "app_id": {
         "title": "App id",
