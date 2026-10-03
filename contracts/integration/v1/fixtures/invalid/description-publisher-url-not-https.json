@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "name": "Acme Tracker",
+  "name": "acme-tracker",
   "title": "Acme tracker",
-  "publisher": {"name": "Acme", "url": "https://acme.example"},
+  "publisher": {"name": "Acme", "url": "http://acme.example"},
   "program_version": "0.1.0",
   "settings": {"type": "object"},
   "roles": {

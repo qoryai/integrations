@@ -31,12 +31,28 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - README §Release rule defines an integration's source, where its releases are: a
   repository on a forge, `<host>/<path>`, such as `github.com/<owner>/<repo>`,
   `gitlab.com/<group>/<project>` or a Forgejo or Gitea `<host>/<owner>/<repo>`, or an
-  HTTPS URL of a `description.json` with the release's other files beside it. The forge
-  is `github` on github.com, `gitlab` on gitlab.com and `forgejo` on codeberg.org; on
-  any other host it is named beside the source. It defines where each forge's release
-  files download from, the files of a release, and the version, `X.Y.Z`, the
-  description's `program_version`, which a reader compares exactly; on a forge the tag
-  is `vX.Y.Z`.
+  HTTPS URL of a `description.json` with the release's other files beside it. Each form
+  has an exact pattern. The host is a lower-case DNS name with at least one dot whose
+  last label starts with a letter, so no IP address, port, userinfo, query or fragment is
+  admitted; a path segment is never `.` or `..` and holds no `%`; `localhost` and hosts
+  under `.localhost`, `.local`, `.internal` and `.home.arpa` are refused. A reader that
+  fetches refuses a host whose address is loopback, private, link-local or unspecified,
+  checked on the address it connects to. The forge kind is `github`, `gitlab` or
+  `forgejo`, implied on github.com, gitlab.com and codeberg.org and named beside the
+  source on any other host; a run's connection carries them as its `source` and
+  `forge_kind`. It defines the files of a release, the version, `X.Y.Z`, the
+  description's `program_version`, and the tag on a forge, `vX.Y.Z`.
+- README §Release rule lists where each kind of source serves a release's files, by
+  version and for the latest release: the download URLs of GitHub, Forgejo and Gitea,
+  and GitLab, the APIs that answer the latest release's `tag_name`, and the directory of
+  a URL source's `description.json`. A reader checks `description.json` and each archive
+  against `checksums.txt`, and that `program_version` is the version it asked for. A URL
+  source is one release, whose files a newer release may replace.
+- `publisher` in the description, required: `name`, 1 to 100 characters, not only white
+  space, and `url`, an `https://` URL, which may be absent. It is the name the program
+  gives for who publishes it. A reader shows it beside the source's verifiable owner, the
+  forge namespace or the URL's host, and never instead of it. A `publisher` that differs
+  from the owner is allowed and shown as given.
 - Ways. An integration offers one or more ways, each a role of its description: the
   credential role for an API, the tool role for an MCP server. A run's connection names
   in its `ways` the roles it uses, and the runner starts those alone. An API that needs
@@ -52,7 +68,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   settings on standard input, and listens on the Unix socket `QORY_TOOL_LISTEN` names,
   where the runner sends it the requests it allows for `serves` as HTTP/1.1.
 - `fixtures/acme-tracker-mcp.json`, a description with both ways, and invalid fixtures
-  for the roles' new members and for a top-level `required` in the settings.
+  for the roles' new members, for a top-level `required` in the settings, and for a
+  missing `publisher`, an empty publisher name and a publisher URL that is not `https`.
 
 ### Changed
 
@@ -79,11 +96,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   runner leaves out every other setting. The runner checks each role's document in
   order: only the names the role lists, its `required` present, valid against the
   settings, and not both `<name>` and `<name>_file`.
-- The settings schema's top level carries no keyword a role's subset of the settings can
-  break: `required`, `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`,
-  `dependentRequired`, `dependentSchemas`, `minProperties`, `maxProperties`, `$ref` or
-  `$dynamicRef`. The description's schema refuses each of them. What a role needs is in
-  its own `required`; another rule across settings is the program's.
+- The settings schema's top level carries only keywords no role's subset of the
+  settings can break: `type`, `properties`, `patternProperties`, `additionalProperties`,
+  `unevaluatedProperties`, `propertyNames`, `title`, `description`, `$comment`,
+  `$schema`, `$id` and `$defs`. The description's schema refuses every other keyword at
+  the top level, such as `required`, `oneOf`, `const` or `enum`. Each role's document
+  holds a subset of the settings, so what a role needs is in its own `required`, and
+  another rule across settings is the program's.
 - A role without `argument` ignores the run's argument and is started with an empty
   one. The run's argument is matched only against the roles that have an `argument`
   pattern.
@@ -95,8 +114,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   setting its `settings` does not list, a secret no role lists, a credential host and a
   tool host that overlap, the same or under a `*.` pattern, and a tool's `mcp` that is
   not an `https` URL, has userinfo, a port or a fragment, has a host that is not a
-  lower-case host name, or is on a host the tool does not serve. It names each keyword
-  of the settings' top level that a role's subset can break.
+  lower-case host name, or is on a host the tool does not serve. It names, in sorted
+  order, each keyword the settings' top level carries outside the list it may carry.
 
 ### Removed
 
@@ -120,10 +139,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `qory-github`'s credential role becomes `"settings": ["app_id", "installation_id",
   "api_url", "permissions", "private_key"], "required": ["app_id", "private_key"]`.
 - A description lists each secret in some role's `settings`.
-- A description's settings drop every top-level keyword a role's subset can break, such
-  as a `oneOf` over a secret's `<name>` and `<name>_file`: the role's `required` and the
-  rule against both forms say the same. `qory-github`'s settings drop their top-level
+- A description's settings drop every top-level keyword outside the list they may carry,
+  such as a `oneOf` over a secret's `<name>` and `<name>_file`: the role's `required` and
+  the rule against both forms say the same. `qory-github`'s settings drop their top-level
   `oneOf`.
+- A description gains `publisher`, which the schema requires. `qory-github`'s is
+  `{"name": "Qory", "url": "https://qory.dev"}`.
 
 ## [0.2.0] - 2026-09-30
 

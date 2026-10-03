@@ -2,6 +2,7 @@
   "version": 1,
   "name": "acme-tracker",
   "title": "Acme tracker",
+  "publisher": {"name": "Acme", "url": "https://acme.example"},
   "description": "Issues of the Acme tracker: an access token for a run's project, and the issues as work.",
   "program_version": "0.2.0",
   "settings": {

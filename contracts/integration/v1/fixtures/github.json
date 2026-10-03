@@ -2,6 +2,10 @@
   "version": 1,
   "name": "github",
   "title": "GitHub",
+  "publisher": {
+    "name": "Qory",
+    "url": "https://qory.dev"
+  },
   "description": "Mints a GitHub App installation token for the repositories a run works on, with the permissions the machine allows and no more.",
   "domains": [
     "software"

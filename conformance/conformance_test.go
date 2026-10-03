@@ -56,7 +56,7 @@ func TestEveryRefusedFixtureDoesNot(t *testing.T) {
 	}
 }
 
-const tracker = `{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
+const tracker = `{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "publisher": {"name": "Acme"}, "program_version": "0.1.0",
  "settings": %s,
  "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": %l}}}
 `
@@ -84,7 +84,7 @@ func describe(settings string) []byte {
 
 // roles is a description with the settings and the roles given.
 func roles(settings, roles string) []byte {
-	return []byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
+	return []byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "publisher": {"name": "Acme"}, "program_version": "0.1.0",
  "settings": ` + settings + `, "roles": {` + roles + `}}`)
 }
 
@@ -137,10 +137,15 @@ func TestARoleListsTheSettingsItNeeds(t *testing.T) {
 	}
 }
 
-// TestSettingsCarryNoKeywordASubsetBreaks pins that Description names each keyword the
-// settings' top level may not carry, since a role's document holds a subset of the
-// settings, beside the schema's refusal, and accepts such a keyword nested in a property.
-func TestSettingsCarryNoKeywordASubsetBreaks(t *testing.T) {
+// allowed is the list of the keywords the settings' top level may carry, as Description
+// names it.
+const allowed = "the top level may carry only type, properties, patternProperties, additionalProperties, unevaluatedProperties, propertyNames, title, description, $comment, $schema, $id, $defs, which no role's subset of the settings can break"
+
+// TestSettingsTopLevelIsAnAllowlist pins that Description names each keyword the
+// settings' top level carries outside the list it may carry, since a role's document
+// holds a subset of the settings, in sorted order and beside the schema's refusal, and
+// accepts every keyword of the list and any keyword nested in a property.
+func TestSettingsTopLevelIsAnAllowlist(t *testing.T) {
 	for _, tc := range []struct{ keyword, member string }{
 		{"required", `"required": ["url"]`},
 		{"required", `"required": []`},
@@ -157,27 +162,34 @@ func TestSettingsCarryNoKeywordASubsetBreaks(t *testing.T) {
 		{"maxProperties", `"maxProperties": 2`},
 		{"$ref", `"$ref": "#/$defs/base", "$defs": {"base": {}}`},
 		{"$dynamicRef", `"$dynamicRef": "#base"`},
+		{"const", `"const": {"url": "https://tracker.acme.example"}`},
+		{"enum", `"enum": [{"url": "https://tracker.acme.example"}]`},
+		{"default", `"default": {"project": "WEB"}`},
+		{"format", `"format": "uri"`},
 	} {
 		stdout := roles(`{"type": "object", `+tc.member+`, "properties": {"url": {"type": "string"}, "project": {"type": "string"}}}`,
 			`"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ["url", "project"]}`)
 		err := conformance.Description(stdout)
-		want := "describe: the settings have the top-level keyword " + tc.keyword + ", which a role's subset of the settings can break; the contract's schema refuses the description"
+		want := "describe: the settings have the top-level keyword " + tc.keyword + "; " + allowed + "; the contract's schema refuses the description"
 		if err == nil || !strings.HasPrefix(err.Error(), want) {
 			t.Errorf("%s: %v, want %q", tc.member, err, want)
 		}
 	}
-	two := roles(`{"type": "object", "minProperties": 1, "required": ["url"], "properties": {"url": {"type": "string"}}}`,
+	two := roles(`{"type": "object", "required": ["url"], "minProperties": 1, "properties": {"url": {"type": "string"}}}`,
 		`"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ["url"]}`)
-	want := "describe: the settings have the top-level keyword required, which a role's subset of the settings can break; the settings have the top-level keyword minProperties, which a role's subset of the settings can break; "
+	want := "describe: the settings have the top-level keyword minProperties; the settings have the top-level keyword required; " + allowed + "; "
 	if err := conformance.Description(two); err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("two keywords: %v, want %q", err, want)
 	}
-	nested := roles(`{"type": "object", "additionalProperties": false, "propertyNames": {"pattern": "^[a-z_]+$"},
+	every := roles(`{"$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://acme.example/settings",
+	 "$comment": "The tracker's settings.", "type": "object", "title": "Settings", "description": "The tracker's settings.",
+	 "additionalProperties": false, "unevaluatedProperties": false, "propertyNames": {"pattern": "^[a-z_]+$"},
 	 "patternProperties": {"^x_": {"type": "string"}}, "$defs": {"auth": {"type": "object"}},
-	 "properties": {"auth": {"type": "object", "required": ["user"], "oneOf": [{}], "minProperties": 1, "$ref": "#/$defs/auth"}}}`,
+	 "properties": {"auth": {"type": "object", "required": ["user"], "oneOf": [{}], "minProperties": 1, "$ref": "#/$defs/auth",
+	                         "const": {"user": "dev"}, "default": {"user": "dev"}, "format": "uri"}}}`,
 		`"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ["auth"], "required": ["auth"]}`)
-	if err := conformance.Description(nested); err != nil {
-		t.Errorf("the keywords nested in a property: %v", err)
+	if err := conformance.Description(every); err != nil {
+		t.Errorf("every keyword of the list, and others nested in a property: %v", err)
 	}
 }
 
@@ -207,7 +219,7 @@ func TestADescriptionReportsEveryRuleInOrder(t *testing.T) {
 			t.Fatalf("%v, want %q", err, want)
 		}
 	}
-	err := conformance.Description([]byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0", "settings": {"type": "object"}}`))
+	err := conformance.Description([]byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "publisher": {"name": "Acme"}, "program_version": "0.1.0", "settings": {"type": "object"}}`))
 	if err == nil || !strings.Contains(err.Error(), "the contract's schema refuses the description") || !strings.Contains(err.Error(), "roles") {
 		t.Errorf("no roles: %v, want the schema's refusal of a missing roles", err)
 	}
@@ -304,7 +316,7 @@ func TestADescriptionIsOneDocumentWithItsSecretsOnTop(t *testing.T) {
 		{"a secret without its file", describe(`{"type": "object", "properties": {"token": {"title": "Access token", "type": "string", "writeOnly": true}}}`), "the secret token has no setting token_file"},
 		{"a secret in a setting", describe(`{"type": "object", "properties": {"auth": {"type": "object", "properties": {"token": {"type": "string", "writeOnly": true}}}}}`), "/settings/properties/auth/properties/token is a secret nested in a setting"},
 		{"a secret outside the properties", describe(`{"type": "object", "$defs": {"token": {"type": "string", "writeOnly": true}}}`), "/settings/$defs/token is a secret outside the settings' properties"},
-		{"the settings marked a secret", describe(`{"type": "object", "writeOnly": true}`), "/settings is a secret outside the settings' properties"},
+		{"the settings marked a secret", describe(`{"type": "object", "writeOnly": true}`), "the settings have the top-level keyword writeOnly; " + allowed},
 	} {
 		err := conformance.Description(tc.stdout)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -348,7 +360,7 @@ func TestASecretHasATitleAndAtMostOneName(t *testing.T) {
 		{"a name twice", settings(secret("token", `, "title": "Access token", "x-secret-name": "TRACKER_TOKEN"`), secret("webhook_secret", `, "title": "Webhook secret", "x-secret-name": "TRACKER_TOKEN"`)), "the secrets token and webhook_secret have the same x-secret-name TRACKER_TOKEN"},
 		{"a name in a setting", settings(`"auth": {"type": "object", "properties": {"user": {"type": "string", "x-secret-name": "TRACKER_USER"}}}`), "/settings/properties/auth/properties/user has an x-secret-name nested in a setting"},
 		{"a name outside the properties", describe(`{"type": "object", "$defs": {"token": {"type": "string", "x-secret-name": "TRACKER_TOKEN"}}}`), "/settings/$defs/token has an x-secret-name outside the settings' properties"},
-		{"a name on the settings", describe(`{"type": "object", "x-secret-name": "FOO"}`), "/settings has an x-secret-name outside the settings' properties"},
+		{"a name on the settings", describe(`{"type": "object", "x-secret-name": "FOO"}`), "the settings have the top-level keyword x-secret-name; " + allowed},
 	} {
 		err := conformance.Description(tc.stdout)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {

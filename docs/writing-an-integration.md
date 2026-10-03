@@ -60,6 +60,7 @@ A stdio MCP server the agent would start inside its enclosure is outside the con
 - `<program> describe` prints the integration's description: one JSON document. It
   contains:
   - the integration's name,
+  - its `publisher`, who publishes it, as the program names it,
   - the domains it serves,
   - its settings, as a JSON Schema,
   - the roles it plays, each with the settings it needs.
@@ -126,11 +127,12 @@ by its `<name>`, and either `<name>` or `<name>_file` satisfies it. A setting th
 lists and does not require is optional: the program handles it being absent.
 
 Each role's document holds a subset of the settings, so the settings schema's top level
-carries no keyword a subset can break: `required`, `allOf`, `anyOf`, `oneOf`, `not`,
-`if`, `then`, `else`, `dependentRequired`, `dependentSchemas`, `minProperties`,
-`maxProperties`, `$ref` or `$dynamicRef`. The contract's schema refuses each of them. A
-rule across settings belongs in a role's `required` or in the program. A property may
-carry any keyword.
+carries only keywords no subset can break: `type`, `properties`, `patternProperties`,
+`additionalProperties`, `unevaluatedProperties`, `propertyNames`, `title`,
+`description`, `$comment`, `$schema`, `$id` and `$defs`. The contract's schema refuses
+every other keyword at the top level, such as `required`, `oneOf`, `const`, `enum` or
+`$ref`. A rule across settings belongs in a role's `required` or in the program. A
+property may carry any keyword.
 
 ```json
 "settings": {"type": "object", "properties": {
@@ -233,7 +235,7 @@ The Go package `github.com/qoryai/integrations/conformance` checks what a progra
   the rules the schema cannot express: where a secret is, its `title`, its
   `<name>_file` and its `x-secret-name`; the settings each role lists and requires;
   hosts in both `hosts` and `serves`; and the tool role's `mcp`. It names each keyword
-  the settings' top level may not carry, such as `required`.
+  the settings' top level carries outside the list above, such as `required`.
 - `conformance.Credential`: a credential role's answer, against the runner's schema.
 - `conformance.Failure`: how a failed command ended.
 
@@ -264,12 +266,20 @@ repository on a forge, such as GitHub, GitLab, Forgejo or Gitea, or an HTTPS URL
   to learn the integration without running it.
 - `describe` reports the release's version, `X.Y.Z`, as `program_version`. On a forge
   the tag is `vX.Y.Z`.
+- A reader checks `description.json` and each archive against `checksums.txt`, and that
+  `program_version` is the version it asked for.
+- `describe` names the `publisher`. A reader shows it beside the source's owner, the
+  forge namespace or the URL's host, and never instead of it.
+
+The release rule lists where each forge serves a release's files, and how a reader finds
+the latest release.
 
 A Go integration on GitHub calls [`release.yml`](../.github/workflows/release.yml) on
 its tags. It builds the program with `-X main.version=X.Y.Z`, the tag without its `v`,
 and fails when `describe` reports another `program_version`. Have `describe` report
 `main.version` as `program_version`. On another forge, publish the same files with the
-forge's own CI; goreleaser can publish to GitLab and Gitea releases.
+forge's own CI. goreleaser publishes them to GitLab with `release.gitlab` and
+`gitlab_urls`, and to Gitea with `release.gitea` and `gitea_urls`.
 
 ## Declaring it
 

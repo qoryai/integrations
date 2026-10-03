@@ -7,7 +7,8 @@
 // a secret is, its title, its <name>_file and its x-secret-name; the settings each role
 // lists and requires, credential and tool; that the credential role's hosts and the tool
 // role's serves do not overlap; and the tool role's mcp URL. It names each keyword the
-// settings' top level may not carry, such as required, which the schema refuses.
+// settings' top level carries outside the few it may, such as required, which the
+// schema refuses.
 //
 // An integration's tests run the program and hand this package what it printed, so the
 // program and the contracts cannot drift apart. The integration template's tests show
@@ -60,12 +61,13 @@ var (
 // serves, the same or covered by a *. pattern. The tool role's mcp is an https URL with
 // no userinfo, port or fragment, on a lower-case host name the tool serves.
 //
-// The settings' top level carries none of required, allOf, anyOf, oneOf, not, if, then,
-// else, dependentRequired, dependentSchemas, minProperties, maxProperties, $ref and
-// $dynamicRef: each role's document holds a subset of the settings, and each of these
-// can refuse a subset the whole settings pass. The schema refuses them, and Description
-// names each one the settings carry beside the schema's refusal. Otherwise it reports
-// the schema's refusal, or else every rule beyond the schema the output breaks.
+// The settings' top level carries only type, properties, patternProperties,
+// additionalProperties, unevaluatedProperties, propertyNames, title, description,
+// $comment, $schema, $id and $defs: each role's document holds a subset of the settings,
+// and another keyword, such as required, can refuse a subset the whole settings pass.
+// The schema refuses every other keyword, and Description names each one the settings
+// carry, in sorted order, beside the schema's refusal. Otherwise it reports the schema's
+// refusal, or else every rule beyond the schema the output breaks.
 func Description(stdout []byte) error {
 	doc, err := one(stdout)
 	if err != nil {
@@ -140,25 +142,28 @@ func one(b []byte) (any, error) {
 	return jsonschema.UnmarshalJSON(bytes.NewReader(first))
 }
 
-// subsetBreaks are the keywords the settings' top level may not carry. Each role's
-// document holds a subset of the settings, and each of these keywords can refuse a
-// subset the whole settings pass. A rule across settings belongs in a role's required
-// or in the program.
-var subsetBreaks = []string{
-	"required", "allOf", "anyOf", "oneOf", "not", "if", "then", "else",
-	"dependentRequired", "dependentSchemas", "minProperties", "maxProperties", "$ref", "$dynamicRef",
+// topKeywords are the only keywords the settings' top level may carry. Each role's
+// document holds a subset of the settings, and none of these can refuse a subset the
+// whole settings pass. A rule across settings belongs in a role's required or in the
+// program.
+var topKeywords = []string{
+	"type", "properties", "patternProperties", "additionalProperties", "unevaluatedProperties",
+	"propertyNames", "title", "description", "$comment", "$schema", "$id", "$defs",
 }
 
-// topLevel are the keywords of subsetBreaks the settings' top level carries, in the
-// order of subsetBreaks.
+// topLevel are the keywords the settings' top level carries outside topKeywords, each
+// named in sorted order, followed by the list it may carry when there is one.
 func topLevel(doc any) []string {
 	d, _ := doc.(map[string]any)
 	settings, _ := d["settings"].(map[string]any)
 	var out []string
-	for _, k := range subsetBreaks {
-		if _, ok := settings[k]; ok {
-			out = append(out, fmt.Sprintf("the settings have the top-level keyword %s, which a role's subset of the settings can break", k))
+	for _, k := range sortedKeys(settings) {
+		if !slices.Contains(topKeywords, k) {
+			out = append(out, fmt.Sprintf("the settings have the top-level keyword %s", k))
 		}
+	}
+	if len(out) > 0 {
+		out = append(out, "the top level may carry only "+strings.Join(topKeywords, ", ")+", which no role's subset of the settings can break")
 	}
 	return out
 }

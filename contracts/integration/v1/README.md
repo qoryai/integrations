@@ -31,16 +31,30 @@ from it.
 | `version` | `1`, the contract's version |
 | `name` | the integration's name, `^[a-z0-9][a-z0-9_-]{0,63}$`: the key it is declared under, such as `github`, unless the machine chooses another. The key is the name of the runner's credential, `^[a-z0-9][a-z0-9_.-]{0,63}$`, and of a program Qory publishes, `qory-<key>`, so the name is the credential's grammar without the dot, which in a program's name reads as an extension |
 | `title`, `description` | human text, for a form or a listing; `description` may be absent |
+| `publisher` | who publishes the program, as the program names it: `name`, 1 to 100 characters, not only white space, and `url`, an `https://` URL, which may be absent; no other member |
 | `domains` | the domains the integration serves, each a domain name, `^[a-z][a-z0-9-]{0,63}$`, such as `software`, the domain of software work; at least one and none twice; may be absent |
 | `program_version` | the program's own version, a string |
 | `settings` | a JSON Schema, draft 2020-12, of type `object`: the settings document the program takes |
 | `roles` | the roles the program plays, the ways it offers, an object keyed by the role's name; at least one (§Roles) |
 
 ```json
-{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
+{"version": 1, "name": "acme-tracker", "title": "Acme tracker",
+ "publisher": {"name": "Acme", "url": "https://acme.example"}, "program_version": "0.1.0",
  "settings": {"type": "object"},
  "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": []}}}
 ```
+
+**Publisher.** `publisher` is the name the program gives for who publishes it. Nothing
+verifies it. A reader shows it beside the source's verifiable owner, and never instead
+of it ([README §Release rule](../../../README.md#release-rule)):
+
+- For a forge source, the owner is the forge namespace: `<host>/<owner>` on GitHub,
+  Forgejo and Gitea, and `<host>/<group>[/<subgroup>…]` on GitLab, the group path.
+- For a URL source, the owner is the URL's host.
+
+A `publisher` that differs from the owner is allowed, and is shown as given. The runner
+records nothing about it. The digest of `describe`'s output that `qory` records at
+install covers it, as it covers the rest of the description.
 
 **Domains.** A control plane offers a workspace the integrations whose `domains` include
 the workspace's domain name exactly, the same string, and those whose description has no
@@ -81,7 +95,8 @@ the rules of §Settings and §Roles that join one part of the description to ano
 a role's `settings` and `required` name, that the credential role's `hosts` and the tool
 role's `serves` do not overlap, and where the tool role's `mcp` is.
 The Go package `github.com/qoryai/integrations/conformance` checks them. The schema
-itself refuses the top-level keywords of §Settings, and the package names each one.
+itself refuses a top-level keyword outside the list of §Settings, and the package names
+each one.
 
 ## Settings
 
@@ -111,14 +126,13 @@ role of `fixtures/github.json`:
 
 What a role needs is its `required`, a subset of its `settings` (§Roles). Each role's
 document holds a subset of the settings and is valid against the one `settings`. So the
-top level of the settings schema carries no keyword a subset can break: `required`,
-`allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`, `dependentRequired`,
-`dependentSchemas`, `minProperties`, `maxProperties`, `$ref` or `$dynamicRef`. The
-schema refuses each of them. A rule across settings belongs in a role's `required` or in
-the program. The top level keeps `properties`, `patternProperties`,
-`additionalProperties`, `propertyNames`, `type`, `title`, `description`, `$schema`,
-`$id` and `$defs`, and a property may carry any keyword: a `required` inside a setting
-of type `object` is JSON Schema's as usual.
+top level of the settings schema carries only keywords no subset can break: `type`,
+`properties`, `patternProperties`, `additionalProperties`, `unevaluatedProperties`,
+`propertyNames`, `title`, `description`, `$comment`, `$schema`, `$id` and `$defs`. The
+schema refuses every other keyword at the top level, such as `required`, `oneOf`,
+`const`, `enum` or `$ref`. A rule across settings belongs in a role's `required` or in
+the program. A property may carry any keyword: a `required` inside a setting of type
+`object` is JSON Schema's as usual.
 
 The runner checks each started role's document, in this order:
 
@@ -268,7 +282,7 @@ document of §Settings from them, is the runner's contract,
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version, with the `x-secret-name` of its secret, the credential role's `settings` and `required` in place of the settings' top-level `required`, and no top-level `oneOf` over `private_key` and `private_key_file`; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `acme-tracker-mcp.json`, one with both ways, a credential role and a tool role with `mcp`, a secret each and one plain setting they share; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version, with the `x-secret-name` of its secret, the credential role's `settings` and `required` in place of the settings' top-level `required`, no top-level `oneOf` over `private_key` and `private_key_file`, and the `publisher` `{"name": "Qory", "url": "https://qory.dev"}`; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `acme-tracker-mcp.json`, one with both ways, a credential role and a tool role with `mcp`, a secret each and one plain setting they share; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.
