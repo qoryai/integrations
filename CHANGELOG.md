@@ -9,19 +9,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
-- Settings on standard input: `<program> <role> --settings - -- [arguments]` reads the
-  settings from standard input, exactly one JSON document, the whole settings object, a
-  secret's value in it as any other. The program reads standard input to its end before
+- Settings on standard input, the only way a program receives them. Every role is
+  started as `<program> <role> -- [arguments]`, `--` always there, even when the role
+  has no arguments; the credential role as `<program> credential -- <argument>`, exactly
+  one argument, the run's, empty when the run gives none. Standard input carries exactly
+  one JSON document, the whole settings object, a secret's value in it as any other;
+  `{}` when the settings are empty. The program reads standard input to its end before
   it acts and before any network call, and refuses empty input, anything after the first
   document but white space, and input larger than 64 KiB, 65536 bytes; the writer refuses
-  a larger document before it starts the program, writes the document whole, and closes
-  standard input. Nothing in the document is replaced or escaped. `--settings <json>` on
-  the command line stays as it is, and refuses a `writeOnly` value as before. A runner
-  that supports standard input starts the program with
-  `[<program>, credential, --settings, -, --, "${argument}"]` and writes the settings
-  document to its standard input; how a definition gives it that document is the
-  runner's contract,
-  [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials).
+  a larger document before it starts the program, writes the document whole, closes
+  standard input, and never connects it to a terminal. Nothing in the document is
+  replaced or escaped. `describe` reads no standard input.
 - `x-secret-name` on a secret, `^[A-Z][A-Z0-9_]{0,127}$`, such as
   `GITHUB_APP_PRIVATE_KEY`: the conventional name of the secret, which a control plane
   fills in as the name to store the secret under. It is a suggestion, not an identity.
@@ -38,9 +36,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
 ### Changed
 
 - Every secret has a `title`, a string that is not only white space: its label in a form.
-- A program reads no setting and no secret from its environment, and refuses settings
-  that contain both `<name>` and `<name>_file` for one secret, on the command line and on
-  standard input.
+- A program reads no setting and no secret from its environment. A secret has one
+  source: its value inline in the document under `<name>`, or `<name>_file`, the path of
+  a file that contains it. A program refuses settings that contain both.
+- A program takes no flags for a role, and refuses `--settings` as it refuses any flag it
+  does not know.
+- §Declaring an integration lists what a reader checks: it runs `<program> describe`,
+  checks the settings against the description's `settings`, and expands the roles it
+  knows. It no longer shows a declaration expanded into the runner's credential
+  definitions with an `adapter` command line: how a run carries an integration's
+  settings and secrets is the runner's contract.
 - `conformance.Description` refuses a secret without a `title`, an `x-secret-name` on a
   setting that is not a secret or outside the settings' own properties, one that does not
   match its pattern, and two secrets with the same one.
@@ -48,12 +53,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   flags before it publishes, runs `<program> describe`, and fails unless that prints one
   JSON object with `version` 1 and the tag's version as `program_version`.
 
+### Removed
+
+- `--settings <json>` and `--settings -`, and with them the refusal of a `writeOnly`
+  value on the command line and the `$` of the settings written `\u0024`.
+
 ### Upgrading
 
-- A program accepts `--settings -` and reads its settings from standard input by the
-  rules above.
+- A program drops `--settings`, reads its settings from standard input by the rules
+  above, and refuses `--settings`.
 - A program reads no setting and no secret from its environment, and refuses settings
-  that contain both `<name>` and `<name>_file` for one secret, in either form.
+  that contain both `<name>` and `<name>_file` for one secret.
 - A description gives every secret a `title`, and may give it an `x-secret-name`:
   `conformance.Description` now refuses a secret without a title, so an integration's
   tests fail until each secret has one.

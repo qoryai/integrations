@@ -52,19 +52,20 @@ the others as they are.
   - the domains it serves,
   - its settings, as a JSON Schema,
   - the roles it plays.
-- Every role is started the same way:
+- Every role is started the same way, the settings one JSON document on standard input:
 
   ```sh
-  # <json>: the settings, one word of the command line
-  <program> <role> --settings <json> -- [the role's own arguments]
-  # -: the settings, one JSON document on standard input
-  <program> <role> --settings - -- [the role's own arguments]
+  <program> <role> -- [the role's own arguments]
   ```
 
-- A program accepts both forms. It reads its settings from there alone: no setting and
-  no secret from its environment.
-- For the credential role, that command line is exactly the adapter of a runner
-  definition.
+- `--` is always there, even when the role has no arguments. The credential role gets
+  exactly one argument, the run's, empty when the run gives none:
+  `<program> credential -- <argument>`.
+- A program takes no flags for a role. It refuses `--settings` as it refuses any flag it
+  does not know.
+- A program reads its settings from standard input alone: no setting and no secret from
+  its environment. When the settings are empty the document is `{}`. `describe` reads no
+  standard input.
 - Every integration speaks the contract, Qory's and yours alike.
 
 The roles the runner calls follow the
@@ -85,14 +86,11 @@ The roles the runner calls follow the
   ```
 
 - A secret reaches the program in one of two ways:
+  - inline in the document on standard input, under `<name>`, as any other value.
   - as a file whose path the settings define: `<name>_file`. For example,
     `private_key_file` for the secret `private_key`. Only the program's user may read
     that file.
-  - in the settings on standard input, `--settings -`, as any other value.
-- A command line is visible to the machine's other processes. So a program refuses a
-  `writeOnly` value in `--settings <json>`. It reports which setting, never the value.
-- A program refuses settings that contain both `<name>` and `<name>_file`, in either
-  form.
+- A program refuses settings that contain both `<name>` and `<name>_file`.
 
 On standard input, the program:
 
@@ -103,12 +101,11 @@ On standard input, the program:
    `$`.
 
 The writer, whatever starts the program, refuses a document larger than 65536 bytes
-before it starts the program, writes the document whole, and closes standard input. A
-runner that supports standard input starts the program with
-`[<program>, credential, --settings, -, --, "${argument}"]` and writes the settings
-document to its standard input. How a definition gives the runner that document is the
-runner's contract,
-[§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials).
+before it starts the program, writes the document whole, and closes standard input. It
+always connects standard input to the document, never to a terminal. The runner always
+starts the program with `[<program>, credential, --, <argument>]` and writes the document
+to its standard input. How a run carries the settings is the runner's contract,
+[contracts/runner/v1](https://github.com/qoryai/runner/tree/main/contracts/runner/v1).
 
 The contract has the rest, in [§Describe](../contracts/integration/v1/README.md#describe)
 and [§Settings](../contracts/integration/v1/README.md#settings).
@@ -144,6 +141,12 @@ The Go package `github.com/qoryai/integrations/conformance` checks what a progra
 - `conformance.Credential`: a credential role's answer, against the runner's schema.
 - `conformance.Failure`: how a failed command ended.
 
+Your tests also check that the program refuses `--settings`: run
+`<program> credential --settings '{}' -- a/b`, and hand its exit code, standard output
+and standard error to `conformance.Failure`. Go's `flag` package prints a usage text of
+several lines when it meets a flag it does not know. A program that uses it sets the
+flag set's output to `io.Discard` and writes its own one-line error on standard error.
+
 ## Release it
 
 Follow the [release rule](../README.md#release-rule), so `qory` installs your integration
@@ -158,22 +161,19 @@ the way it installs any other. A Go integration calls
 
 ## Declaring it
 
-A machine's `runner.yaml` declares each integration under `integrations:`, by name:
+A machine's configuration declares each integration by name:
 
 - its settings,
-- for a program kept elsewhere, `program:`: the program's path, or a name on the `PATH`.
+- for a program kept elsewhere, the program's path, or a name on the `PATH`.
 
 `qory` then:
 
 1. runs the program's `describe`,
 2. checks the settings against the description,
-3. turns each role it knows into the runner's definition.
+3. expands each role it knows.
 
-The credential role becomes a credential of the same name. A run's policy selects it:
-`{name: github, argument: acme/shop}`.
-
-- [qory-github's README](https://github.com/qoryai/qory-github#4-declare-the-integration)
-  shows a declaration, and the policy that selects its credential.
-- The integration contract shows
-  [how a reader expands one](../contracts/integration/v1/README.md#declaring-an-integration)
-  into the runner's definition, an integration of your own among them.
+How a run carries the integration's settings and secrets, and how the runner builds the
+document on standard input from them, is the runner's contract,
+[contracts/runner/v1](https://github.com/qoryai/runner/tree/main/contracts/runner/v1).
+The integration contract lists
+[what a reader checks](../contracts/integration/v1/README.md#declaring-an-integration).
