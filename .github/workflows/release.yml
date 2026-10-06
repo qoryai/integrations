@@ -25,7 +25,11 @@ name: Release an integration
 # The release's body is the version's section of CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD":
 # a tag without one publishes nothing. Neither does a program whose describe fails or
 # prints anything but one JSON object with version 1 and the tag's version, without its
-# v, as program_version.
+# v, as program_version. Nor does one whose description fails conformance.Description:
+# the release runs `go run github.com/qoryai/integrations/cmd/integration-conformance` in
+# the integration's own module, with the version of this module its go.mod requires. A
+# go.mod that does not require github.com/qoryai/integrations, or requires a version
+# without cmd/integration-conformance, publishes nothing.
 
 on:
   workflow_call:
@@ -141,6 +145,27 @@ jobs:
           fi
           if ! jq -e --arg v "$version" '.program_version == $v' "$RUNNER_TEMP/description.json" >/dev/null; then
             echo "describe reports program_version $(jq -c .program_version "$RUNNER_TEMP/description.json"), the tag is $TAG" >&2
+            exit 1
+          fi
+
+      - name: Check the description against the contract
+        # Runs conformance.Description in the integration's own module, so the check uses
+        # the version of qoryai/integrations the integration's tests use.
+        env:
+          PROGRAM: ${{ inputs.program }}
+        run: |
+          module=github.com/qoryai/integrations
+          if ! go list -m "$module" >/dev/null 2>&1; then
+            echo "go.mod must require $module: the release checks the description with its conformance package" >&2
+            exit 1
+          fi
+          if ! go list "$module/cmd/integration-conformance" >/dev/null 2>"$RUNNER_TEMP/go-list.txt"; then
+            echo "go.mod requires $module $(go list -m -f '{{.Version}}' "$module"); the release runs its cmd/integration-conformance, which go cannot build here:" >&2
+            cat "$RUNNER_TEMP/go-list.txt" >&2
+            exit 1
+          fi
+          if ! go run "$module/cmd/integration-conformance" <"$RUNNER_TEMP/description.json"; then
+            echo "$PROGRAM describe prints a description the contract refuses" >&2
             exit 1
           fi
 

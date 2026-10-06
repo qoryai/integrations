@@ -10,6 +10,7 @@ workflows.
 | [`contracts/integration/v1/`](contracts/integration/v1/README.md) | The integration contract: the `describe` command, how settings and secrets are passed, exit status |
 | `contracts/` | Go package: embeds the contract and compiles its schema |
 | `conformance/` | Go package: checks a program's output against the contracts, for use in tests |
+| `cmd/integration-conformance/` | Command: checks a description on standard input with `conformance.Description`, for `release.yml` |
 | [`.github/workflows/go.yml`](.github/workflows/go.yml) | Reusable CI: gofmt, vet, test, build, doc comments |
 | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Reusable release on GitHub: builds and publishes the program and its description |
 
@@ -214,11 +215,12 @@ version. For a URL source the reader asks for no version: it reads `program_vers
 and checks every file against `checksums.txt` each time it fetches, since the files may
 have been replaced. A reader that requires a version refuses any other.
 
-`release.yml` publishes a release for a Go integration on GitHub, and fails the release
-when `describe` reports another version than the tag's. On another forge, publish the same
-files with the forge's own CI. goreleaser publishes them at the URLs above: to GitLab
-with `release.gitlab` and `gitlab_urls`, each file a release link whose direct asset path
-is `/<file>`, and to Gitea with `release.gitea` and `gitea_urls`.
+`release.yml` publishes a release for a Go integration on GitHub. It fails the release
+when `describe` reports another version than the tag's, or prints a description that
+fails `conformance.Description`. On another forge, publish the same files with the
+forge's own CI. goreleaser publishes them at the URLs above: to GitLab with
+`release.gitlab` and `gitlab_urls`, each file a release link whose direct asset path is
+`/<file>`, and to Gitea with `release.gitea` and `gitea_urls`.
 
 ## Use the workflows
 
@@ -251,6 +253,14 @@ jobs:
 
 The release fails unless `CHANGELOG.md` has a section `## [X.Y.Z] - YYYY-MM-DD`; that
 section becomes the release notes.
+
+The release also fails unless `<program> describe` prints one JSON object with `version`
+1 and the tag's version, without its `v`, as `program_version`, and that description
+passes `conformance.Description`. The release runs
+`go run github.com/qoryai/integrations/cmd/integration-conformance` in the integration's
+module, so its `go.mod` requires `github.com/qoryai/integrations`, at a version that has
+`cmd/integration-conformance`. The check uses that version, the one the integration's
+tests use.
 
 ## Development
 

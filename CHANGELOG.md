@@ -70,6 +70,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `fixtures/acme-tracker-mcp.json`, a description with both ways, and invalid fixtures
   for the roles' new members, for a top-level `required` in the settings, and for a
   missing `publisher`, an empty publisher name and a publisher URL that is not `https`.
+- `cmd/integration-conformance`, a command that reads one description on standard
+  input and checks it with `conformance.Description`. It exits 0 and prints nothing
+  when the description passes. Otherwise it exits 1 and prints each refusal on standard
+  error, one per line. `release.yml` runs it.
 
 ### Changed
 
@@ -89,7 +93,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   match its pattern, and two secrets with the same one.
 - `release.yml` builds the program for the runner's own platform with the release's
   flags before it publishes, runs `<program> describe`, and fails unless that prints one
-  JSON object with `version` 1 and the tag's version as `program_version`.
+  JSON object with `version` 1 and the tag's version as `program_version`. It then
+  runs `go run github.com/qoryai/integrations/cmd/integration-conformance` in the
+  integration's own module, and fails unless the description passes
+  `conformance.Description`, by the version of this module the integration's go.mod
+  requires.
 - `release.yml` and the README say it publishes a GitHub release. An integration on
   another forge publishes the same files with that forge's own CI.
 - Each role's standard input holds the settings that role lists and nothing else; the
@@ -134,6 +142,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - A program released with `release.yml` reports the version the build sets with
   `-X main.version=X.Y.Z` as `program_version`. One that reports another version, or
   whose `describe` fails, publishes no release.
+- An integration released with `release.yml` requires `github.com/qoryai/integrations`
+  in its go.mod, at a version that has `cmd/integration-conformance`, and its
+  description passes `conformance.Description` at that version. Otherwise it publishes
+  no release.
 - A description adds `settings` to every credential role, and moves the settings
   schema's top-level `required` into each role's `required`, a secret by its `<name>`.
   `qory-github`'s credential role becomes `"settings": ["app_id", "installation_id",
