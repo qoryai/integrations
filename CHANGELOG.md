@@ -151,6 +151,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   not an `https` URL, has userinfo, a port or a fragment, has a host that is not a
   lower-case host name, or is on a host the tool does not serve. It names, in sorted
   order, each keyword the settings' top level carries outside the list it may carry.
+- README: "Use an integration" and "How qory uses an integration" describe installing
+  with `qory`, the runner file's `integrations:` entry under the description's `name`,
+  connections and ways.
 
 ### Removed
 

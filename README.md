@@ -24,24 +24,25 @@ To list your integration, open a pull request that adds a row.
 
 ## Use an integration
 
-1. Install the program on the machine that runs `qory run`, on its `PATH`.
-2. Declare it in `~/.config/qory/runner.yaml`:
+1. On the machine that runs `qory run`, install the integration with `qory`, from its
+   source ([§Release rule](#release-rule)). A server never triggers an install.
+2. `qory` lists it in `~/.config/qory/runner.yaml`, under its description's `name`:
 
    ```yaml
    integrations:
-     github:                            # the key; the program defaults to qory-<key>
-       settings: {"app_id": 123456, "private_key_file": "/home/dev/.config/qory/github-app.pem"}
-     tracker:
-       program: /opt/acme/bin/acme-tracker   # required when the program is not qory-<key>
-       settings: {"project": "web"}
+     github:                                  # the description's name
+       path: /home/dev/.local/share/qory/integrations/github/qory-github
+       source: github.com/qoryai/qory-github
+       description_sha256: <sha256>           # SHA-256 of the release's description.json
+     acme-tracker:                            # a program of your own: a path, no source
+       path: /opt/acme/bin/acme-tracker
    ```
 
-3. Select it in a run's policy by its key:
+3. A run's connection names the integration by that name, with the ways it uses and its
+   settings.
 
-   ```yaml
-   credentials:
-     - {name: github, argument: acme/shop}
-   ```
+`qory`'s [run guide](https://github.com/qoryai/qory/blob/main/docs/run.md#integrations)
+shows how to install and declare one.
 
 ## How qory uses an integration
 
@@ -49,14 +50,16 @@ An integration offers one or more ways: the `credential` role for an API, the `t
 role for an MCP server. A run's connection names the ways it uses. For the `credential`
 role:
 
-1. You declare the integration in `runner.yaml`.
-2. `qory run` runs `<program> describe` and checks your settings against it.
-3. `qory` turns the declaration into a credential for the
-   [runner](https://github.com/qoryai/runner).
-4. Before the agent starts, the runner runs `<program> credential` outside the agent's
+1. You install the integration with `qory`. It records the program's `path`, its
+   `source` and `description_sha256` in `runner.yaml`.
+2. At run start, the runner runs `<program> describe`. It refuses the run when the
+   SHA-256 of the output differs from `description_sha256`, or when the connection's
+   `source` differs from the recorded one. It checks the connection's settings against
+   the description.
+3. Before the agent starts, the runner runs `<program> credential` outside the agent's
    container. The program prints an access token.
-5. The agent starts. It gets a placeholder, never the access token.
-6. Five minutes before the access token expires, the runner runs the program again.
+4. The agent starts. It gets a placeholder, never the access token.
+5. Five minutes before the access token expires, the runner runs the program again.
 
 In the agent's container:
 
