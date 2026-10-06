@@ -31,7 +31,7 @@ To list your integration, open a pull request that adds a row.
    ```yaml
    integrations:
      github:                                  # the description's name
-       path: /home/dev/.local/share/qory/integrations/github/qory-github
+       path: /home/dev/.local/share/qory/integrations/github/1.4.0/qory-github
        source: github.com/qoryai/qory-github
        description_sha256: <sha256>           # SHA-256 of the release's description.json
      acme-tracker:                            # a program of your own: a path, no source
@@ -52,10 +52,12 @@ role:
 
 1. You install the integration with `qory`. It records the program's `path`, its
    `source` and `description_sha256` in `runner.yaml`.
-2. At run start, the runner runs `<program> describe`. It refuses the run when the
-   SHA-256 of the output differs from `description_sha256`, or when the connection's
-   `source` differs from the recorded one. It checks the connection's settings against
-   the description.
+2. At run start, the runner runs `<program> describe`. It refuses the run when
+   `describe`'s `name` or `program_version` differs from the connection's name and
+   `version`, when the SHA-256 of the output differs from `description_sha256`, or when
+   the connection's `source` differs from the recorded one. A program of your own, with
+   no source, is checked by name and version alone. It checks the connection's settings
+   against the description.
 3. Before the agent starts, the runner runs `<program> credential` outside the agent's
    container. The program prints an access token.
 4. The agent starts. It gets a placeholder, never the access token.
