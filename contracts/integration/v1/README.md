@@ -288,7 +288,7 @@ document of §Settings from them, is the runner's contract,
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version, with the `x-secret-name` of its secret, the credential role's `settings` and `required` in place of the settings' top-level `required`, no top-level `oneOf` over `private_key` and `private_key_file`, and the `publisher` `{"name": "Qory", "url": "https://qory.dev"}`; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `acme-tracker-mcp.json`, one with both ways, a credential role and a tool role with `mcp`, a secret each and one plain setting they share; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at qory-github `next` d0b6eff, built without a version (`go build -buildvcs=false`, no `-X main.version`), so its `program_version` is `dev`, with nothing added; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `acme-tracker-mcp.json`, one with both ways, a credential role and a tool role with `mcp`, a secret each and one plain setting they share; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.

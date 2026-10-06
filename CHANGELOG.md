@@ -159,7 +159,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - A description adds `settings` to every credential role, and moves the settings
   schema's top-level `required` into each role's `required`, a secret by its `<name>`.
   `qory-github`'s credential role becomes `"settings": ["app_id", "installation_id",
-  "api_url", "permissions", "private_key"], "required": ["app_id", "private_key"]`.
+  "permissions", "private_key"], "required": ["app_id", "private_key"]`.
 - A description lists each secret in some role's `settings`.
 - A description's settings drop every top-level keyword outside the list they may carry,
   such as a `oneOf` over a secret's `<name>` and `<name>_file`: the role's `required` and
