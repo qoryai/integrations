@@ -236,7 +236,11 @@ The Go package `github.com/qoryai/integrations/conformance` checks what a progra
   `<name>_file` and its `x-secret-name`; the settings each role lists and requires;
   hosts in both `hosts` and `serves`; and the tool role's `mcp`. It names each keyword
   the settings' top level carries outside the list above, such as `required`.
-- `conformance.Credential`: a credential role's answer, against the runner's schema.
+- `conformance.Credential`: a credential role's answer, against the runner's schema;
+  it also refuses an `apply` entry of the scheme `header` whose `header` the runner
+  reserves, as `headers.json` of the
+  [runner contract](https://github.com/qoryai/runner/tree/main/contracts/runner/v1) lists
+  them.
 - `conformance.Failure`: how a failed command ended.
 
 Your tests also check that the program refuses `--settings`: run

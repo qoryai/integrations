@@ -408,6 +408,52 @@ func TestCredentialIsTheRunnersDocument(t *testing.T) {
 	}
 }
 
+// TestCredentialRefusesAHeaderTheRunnerReserves pins Credential to the runner's
+// headers.json: an apply entry of the scheme header is refused when its header, in lower
+// case, is a name the file lists or starts with a prefix it lists, and each such entry is
+// a refusal of its own, in the order of apply.
+func TestCredentialRefusesAHeaderTheRunnerReserves(t *testing.T) {
+	answer := func(headers ...string) []byte {
+		var apply []string
+		for _, h := range headers {
+			apply = append(apply, `{"hosts":["api.acme.example"],"scheme":"header","header":"`+h+`"}`)
+		}
+		return []byte(`{"version":1,"token":"synthetic","apply":[` + strings.Join(apply, ",") + `]}` + "\n")
+	}
+	for _, tc := range []struct{ name, header string }{
+		{"a refused name in mixed case", "CoOkIe"},
+		{"a refused prefix", "X-Forwarded-Host"},
+		{"accept-language, under the prefix accept", "accept-language"},
+	} {
+		err := conformance.Credential(answer(tc.header))
+		want := "apply[0] sets the header " + tc.header + ", which the runner reserves"
+		if err == nil || err.Error() != "credential: "+want {
+			t.Errorf("%s: %v, want %q", tc.name, err, "credential: "+want)
+		}
+	}
+	if err := conformance.Credential(answer("x-api-key")); err != nil {
+		t.Errorf("x-api-key, which the runner does not reserve: %v", err)
+	}
+
+	err := conformance.Credential(answer("Authorization", "X-Api-Key", "Sec-Fetch-Mode", "x-qory-run"))
+	want := []string{
+		"apply[0] sets the header Authorization, which the runner reserves",
+		"apply[2] sets the header Sec-Fetch-Mode, which the runner reserves",
+		"apply[3] sets the header x-qory-run, which the runner reserves",
+	}
+	if got := unwrapped(t, err); !slices.Equal(got, want) {
+		t.Errorf("Unwrap() is %q, want %q", got, want)
+	}
+	if err.Error() != "credential: "+strings.Join(want, "; ") {
+		t.Errorf("Error() is %q, want the refusals joined by %q after %q", err, "; ", "credential: ")
+	}
+
+	bearer := []byte(`{"version":1,"token":"synthetic","apply":[{"hosts":["api.acme.example"],"scheme":"bearer","header":"Cookie"}]}`)
+	if err := conformance.Credential(bearer); err != nil {
+		t.Errorf("a header beside the scheme bearer, which does not read it: %v", err)
+	}
+}
+
 // TestFailureIsOneLineAndNothingElse pins the exit status the contract's commands share.
 func TestFailureIsOneLineAndNothingElse(t *testing.T) {
 	if err := conformance.Failure(1, nil, []byte("acme-tracker credential: the token file is missing\n")); err != nil {

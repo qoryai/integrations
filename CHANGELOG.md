@@ -78,6 +78,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   returns each refusal as its own error, in the order of the error's text. The schema's
   refusal is one of them and wraps the validator's error, so `errors.Is` and
   `errors.As` reach that error. The error's text is unchanged.
+- `conformance.Credential` refuses an apply header the runner reserves (the runner's
+  `headers.json`): an `apply` entry of the scheme `header` whose `header`, in lower case,
+  is a name `headers.json` lists or starts with a prefix it lists, such as `Cookie` or
+  `X-Forwarded-Host`. Each such entry is a refusal of its own, naming its index and the
+  header. The error has an `Unwrap() []error` method, as `conformance.Description`'s
+  has, and its text for the other refusals is unchanged.
 
 ### Changed
 

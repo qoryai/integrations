@@ -228,6 +228,12 @@ reads its settings on standard input, prints the document and exits.
 | `settings` | the settings the role may receive, by name |
 | `required` | the settings of `settings` the role needs, by name; may be absent |
 
+`conformance.Credential` checks the printed document against the runner's schema, and
+refuses an `apply` entry of the scheme `header` whose `header` the runner reserves, as
+`headers.json` of the
+[runner contract](https://github.com/qoryai/runner/tree/main/contracts/runner/v1) lists
+them.
+
 ### Tool
 
 The runner's tool

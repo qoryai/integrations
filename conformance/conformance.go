@@ -3,6 +3,9 @@
 // contracts/integration/v1, a credential role's answer against the runner's credential
 // document, and a failure against the exit status every command of the contract shares.
 //
+// Beyond the credential document's schema, it refuses an apply entry of the scheme header
+// that sets a header the runner reserves, as the runner's headers.json lists them.
+//
 // Beyond the description's schema, it checks the rules the schema cannot express: where
 // a secret is, its title, its <name>_file and its x-secret-name; the settings each role
 // lists and requires, credential and tool; that the credential role's hosts and the tool
@@ -26,6 +29,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"net/url"
 	"regexp"
@@ -46,7 +50,38 @@ var (
 	credentialSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 		return runner.Compile("credential.schema.json")
 	})
+	reservedHeaders = sync.OnceValues(func() (reserved, error) {
+		var r reserved
+		b, err := fs.ReadFile(runner.FS, "headers.json")
+		if err != nil {
+			return r, err
+		}
+		if err := json.Unmarshal(b, &r); err != nil {
+			return r, fmt.Errorf("the runner's headers.json: %w", err)
+		}
+		if r.Version != 1 {
+			return r, fmt.Errorf("the runner's headers.json has version %d; this package reads version 1", r.Version)
+		}
+		return r, nil
+	})
 )
+
+// reserved are the headers the runner refuses for a connection's header, from its
+// headers.json: the names and the prefixes, each in lower case.
+type reserved struct {
+	Version  int      `json:"version"`
+	Refused  []string `json:"refused"`
+	Prefixes []string `json:"refused_prefixes"`
+}
+
+// has reports whether the runner reserves the header name: its lower-case form is one of
+// the names, or starts with one of the prefixes. The prefix accept covers accept itself
+// and every accept-… header.
+func (r reserved) has(name string) bool {
+	lower := strings.ToLower(name)
+	return slices.Contains(r.Refused, lower) ||
+		slices.ContainsFunc(r.Prefixes, func(p string) bool { return strings.HasPrefix(lower, p) })
+}
 
 // Description checks what `<program> describe` printed on standard output: one JSON
 // document and nothing after it, which the contract's description.schema.json accepts,
@@ -77,61 +112,93 @@ var (
 func Description(stdout []byte) error {
 	doc, err := one(stdout)
 	if err != nil {
-		return refusals{err}
+		return refusals{"describe", []error{err}}
 	}
 	schema, err := descriptionSchema()
 	if err != nil {
 		return err
 	}
 	if err := schema.Validate(doc); err != nil {
-		out := refusals{}
+		out := refusals{command: "describe"}
 		for _, p := range topLevel(doc) {
-			out = append(out, errors.New(p))
+			out.errs = append(out.errs, errors.New(p))
 		}
-		return append(out, fmt.Errorf("the contract's schema refuses the description: %w", err))
+		out.errs = append(out.errs, fmt.Errorf("the contract's schema refuses the description: %w", err))
+		return out
 	}
 	if problems := append(secrets(doc), roles(doc)...); len(problems) > 0 {
-		out := refusals{}
+		out := refusals{command: "describe"}
 		for _, p := range problems {
-			out = append(out, errors.New(p))
+			out.errs = append(out.errs, errors.New(p))
 		}
 		return out
 	}
 	return nil
 }
 
-// refusals are the refusals of a description, each an error of its own.
-type refusals []error
+// refusals are the refusals of what a command printed, each an error of its own.
+type refusals struct {
+	command string
+	errs    []error
+}
 
-// Error is "describe: " followed by the refusals' texts, joined by "; ".
+// Error is the command, ": ", and the refusals' texts, joined by "; ".
 func (r refusals) Error() string {
-	texts := make([]string, len(r))
-	for i, err := range r {
+	texts := make([]string, len(r.errs))
+	for i, err := range r.errs {
 		texts[i] = err.Error()
 	}
-	return "describe: " + strings.Join(texts, "; ")
+	return r.command + ": " + strings.Join(texts, "; ")
 }
 
 // Unwrap returns each refusal, in order.
-func (r refusals) Unwrap() []error { return r }
+func (r refusals) Unwrap() []error { return r.errs }
 
 // Credential checks what `<program> credential` printed on standard output: one JSON
 // document and nothing after it, which the runner's credential.schema.json accepts
 // (https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials).
+//
+// Once the schema accepts the document, Credential refuses each apply entry of the scheme
+// header whose header the runner reserves, as the runner's headers.json lists them: a
+// name in its refused, or one that starts with a prefix in its refused_prefixes, both
+// compared in lower case. The runner refuses such an entry when the run starts.
+//
+// The error's text is "credential: " followed by the refusals, joined by "; ". The error
+// also has an Unwrap() []error method that returns each refusal as its own error, in the
+// order of the text: one refusal of the output, or one of the schema, which wraps the
+// validator's error, or one for each reserved header, in the order of apply, such as
+// "apply[1] sets the header Cookie, which the runner reserves".
 func Credential(stdout []byte) error {
 	if _, err := one(stdout); err != nil {
-		return fmt.Errorf("credential: %w", err)
+		return refusals{"credential", []error{err}}
 	}
 	doc, err := runner.Decode("answer.json", stdout)
 	if err != nil {
-		return fmt.Errorf("credential: %w", err)
+		return refusals{"credential", []error{err}}
 	}
 	schema, err := credentialSchema()
 	if err != nil {
 		return err
 	}
 	if err := schema.Validate(doc); err != nil {
-		return fmt.Errorf("credential: the runner's schema refuses the answer: %w", err)
+		return refusals{"credential", []error{fmt.Errorf("the runner's schema refuses the answer: %w", err)}}
+	}
+	headers, err := reservedHeaders()
+	if err != nil {
+		return err
+	}
+	out := refusals{command: "credential"}
+	d, _ := doc.(map[string]any)
+	apply, _ := d["apply"].([]any)
+	for i, a := range apply {
+		entry, _ := a.(map[string]any)
+		name, _ := entry["header"].(string)
+		if entry["scheme"] == "header" && headers.has(name) {
+			out.errs = append(out.errs, fmt.Errorf("apply[%d] sets the header %s, which the runner reserves", i, name))
+		}
+	}
+	if len(out.errs) > 0 {
+		return out
 	}
 	return nil
 }
