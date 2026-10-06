@@ -46,9 +46,9 @@ shows how to install and declare one.
 
 ## How qory uses an integration
 
-An integration offers one or more ways: the `credential` role for an API, the `tool`
-role for an MCP server. A run's connection names the ways it uses. For the `credential`
-role:
+An integration offers one or more ways. In this release the way is the `credential`
+role, for an API. The `tool` role, for an MCP server, is later. A run's connection names
+the ways it uses. For the `credential` role:
 
 1. You install the integration with `qory`. It records the program's `path`, its
    `source` and `description_sha256` in `runner.yaml`.
@@ -71,11 +71,6 @@ In the agent's container:
 - The runner's proxy replaces it with the access token on each request to the
   integration's hosts and paths.
 - Under `enforce`, a request to another path on those hosts fails.
-
-For the `tool` role, the runner runs `<program> tool` outside the agent's container
-before the agent starts. The runner's proxy sends it the requests to the hosts it
-serves, and `qory` registers its MCP server with the agent. The tool's secrets stay
-outside the container.
 
 This holds when the agent runs in a container, behind the runner's wall. Without one, a
 program that ignores the proxy is bound by nothing.
@@ -106,7 +101,7 @@ is reserved for programs Qory publishes ([TRADEMARKS.md](TRADEMARKS.md)).
 | Role | Called by | Contract |
 |---|---|---|
 | `credential` | the runner, per run | [integration contract](contracts/integration/v1/README.md#credential) and runner [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials) |
-| `tool` | the runner's proxy | [integration contract](contracts/integration/v1/README.md#tool) and runner [§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools) |
+| `tool` | the runner's proxy, in a later release | [integration contract](contracts/integration/v1/README.md#tool) and runner [§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools) |
 | `work_source` | the control plane | reserved, not defined yet |
 | `output` | the control plane | reserved, not defined yet |
 
@@ -164,6 +159,9 @@ host it is named beside the source, which stays `<host>/<path>`. A URL source ha
 A run's connection carries them as its `source` and `forge_kind`
 ([runner contract](https://github.com/qoryai/runner/tree/main/contracts/runner/v1)).
 
+This release reads sources on github.com, gitlab.com and codeberg.org, and URL sources.
+A source on another host, which names its `forge_kind`, is later.
+
 ### Releases
 
 A release is these files:
@@ -181,27 +179,26 @@ integration without running it.
 
 Where each file of a release is, by the source's kind:
 
-- **github**, on github.com or GitHub Enterprise Server:
-  - version X.Y.Z: `https://<host>/<owner>/<repo>/releases/download/vX.Y.Z/<file>`;
-  - latest release: `https://<host>/<owner>/<repo>/releases/latest/download/<file>`, or
-    the API `GET https://api.github.com/repos/<owner>/<repo>/releases/latest` on
-    github.com and `GET https://<host>/api/v3/repos/<owner>/<repo>/releases/latest` on
-    GitHub Enterprise Server, whose `tag_name` is `vX.Y.Z`.
-- **forgejo**, Forgejo and Gitea:
-  - version X.Y.Z: `https://<host>/<owner>/<repo>/releases/download/vX.Y.Z/<file>`;
-  - latest release: `https://<host>/<owner>/<repo>/releases/download/latest/<file>`, or
-    the API `GET https://<host>/api/v1/repos/<owner>/<repo>/releases/latest`, whose
+- **github**, on github.com:
+  - version X.Y.Z: `https://github.com/<owner>/<repo>/releases/download/vX.Y.Z/<file>`;
+  - latest release: `https://github.com/<owner>/<repo>/releases/latest/download/<file>`,
+    or the API `GET https://api.github.com/repos/<owner>/<repo>/releases/latest`, whose
     `tag_name` is `vX.Y.Z`.
-- **gitlab**, GitLab 15.4 or later, through the API. `<project>` is the path,
-  URL-encoded, such as `group%2Fsub%2Fproj`:
-  - version X.Y.Z: `GET https://<host>/api/v4/projects/<project>/releases/vX.Y.Z/downloads/<file>`,
+- **forgejo**, on codeberg.org:
+  - version X.Y.Z: `https://codeberg.org/<owner>/<repo>/releases/download/vX.Y.Z/<file>`;
+  - latest release: `https://codeberg.org/<owner>/<repo>/releases/download/latest/<file>`,
+    or the API `GET https://codeberg.org/api/v1/repos/<owner>/<repo>/releases/latest`,
+    whose `tag_name` is `vX.Y.Z`.
+- **gitlab**, on gitlab.com, through the API. `<project>` is the path, URL-encoded, such
+  as `group%2Fsub%2Fproj`:
+  - version X.Y.Z: `GET https://gitlab.com/api/v4/projects/<project>/releases/vX.Y.Z/downloads/<file>`,
     where each file is a release link whose direct asset path is `/<file>`. It answers
     302 to the link's URL;
-  - latest release: `GET https://<host>/api/v4/projects/<project>/releases/permalink/latest/downloads/<file>`,
-    or `GET https://<host>/api/v4/projects/<project>/releases/permalink/latest`, which
+  - latest release: `GET https://gitlab.com/api/v4/projects/<project>/releases/permalink/latest/downloads/<file>`,
+    or `GET https://gitlab.com/api/v4/projects/<project>/releases/permalink/latest`, which
     gives the latest release, whose `tag_name` is `vX.Y.Z`.
 
-  A reader does not use the web route `https://<host>/<path>/-/releases/…/downloads/<file>`.
+  A reader does not use the web route `https://gitlab.com/<path>/-/releases/…/downloads/<file>`.
   Since GitLab 17.3.2, 17.2.5 and 17.1.7 it redirects only to a link on the GitLab host
   itself. For a link on another host it answers 200 with an HTML warning page, which a
   reader would take for the file.
@@ -227,38 +224,8 @@ version. For a URL source the reader asks for no version: it reads `program_vers
 and checks every file against `checksums.txt` each time it fetches, since the files may
 have been replaced. A reader that requires a version refuses any other.
 
-A private release needs an access token, which the reader sends in a header:
-
-| Kind | Header | What the access token needs |
-|---|---|---|
-| github | `Authorization: Bearer <access token>` | read access to the repository's contents |
-| forgejo | `Authorization: token <access token>` | the scope `read:repository` |
-| gitlab | `PRIVATE-TOKEN: <access token>` | the scope `read_api`, as `read_repository` is not enough, and at least the Reporter role |
-
-- **github**: the reader fetches the files through the API.
-  `GET https://api.github.com/repos/<owner>/<repo>/releases/tags/vX.Y.Z`, with
-  `Accept: application/vnd.github+json`, gives the release. The reader picks the asset
-  by `name`. `GET https://api.github.com/repos/<owner>/<repo>/releases/assets/<id>`, with
-  `Accept: application/octet-stream`, answers 200 with the file, or 302 to a signed
-  storage URL. The reader follows the 302 at once and without the header, since the
-  signed URL expires within minutes. On GitHub Enterprise Server the API is
-  `https://<host>/api/v3`. A public release keeps the download URLs, so it never meets
-  the API's anonymous rate limit of 60 requests an hour.
-- **forgejo**: the reader fetches the files from the download URLs above, since the API
-  has no route that returns a file's bytes. They answer 200, or 303 to storage.
-- **gitlab**: the reader fetches the files from the API routes above.
-
-For the latest release the reader asks the API forms above for it, with the same header,
-and fetches the files by its `tag_name`.
-
-The reader sends the access token only to the forge's API host for the source:
-`api.github.com` for github.com, and the source's own host for GitHub Enterprise Server,
-GitLab, Forgejo and Gitea. It never sends it on a redirect to another host, so it
-follows a redirect to storage without it. It never puts it in a URL query, such as
-`?private_token=`, since a query reaches logs. On GitLab a redirect that stays on the
-source's host under `/api/v4/projects/` may carry the header, since a release link to a
-generic package needs it. A URL source is public: the reader fetches it with no
-credentials.
+Private releases, which need an access token, are later: this release reads public
+releases alone.
 
 `release.yml` publishes a release for a Go integration on GitHub. It fails the release
 when `describe` reports another version than the tag's, or prints a description that

@@ -16,12 +16,12 @@ repository from the [integration template](https://github.com/qoryai/integration
 
 ## Roles
 
-| Role                | In a description | Called by                                   |
-| ------------------- | ---------------- | ------------------------------------------- |
-| credential adapter  | `credential`     | the runner, outside the wall, per run       |
-| tool                | `tool`           | the runner's proxy, for the hosts it serves |
-| work-source adapter | `work_source`    | the control plane                           |
-| output adapter      | `output`         | the control plane                           |
+| Role                | In a description | Called by                                                       |
+| ------------------- | ---------------- | --------------------------------------------------------------- |
+| credential adapter  | `credential`     | the runner, outside the wall, per run                           |
+| tool                | `tool`           | the runner's proxy, for the hosts it serves, in a later release |
+| work-source adapter | `work_source`    | the control plane                                               |
+| output adapter      | `output`         | the control plane                                               |
 
 What each role does:
 
@@ -177,6 +177,8 @@ and [§Settings](../contracts/integration/v1/README.md#settings).
 
 ## Serve a tool
 
+The contract defines the tool role; a runner runs it in a later release.
+
 A tool role serves an MCP server over HTTP, behind the runner's wall. The runner:
 
 1. starts the program as `<program> tool -- <argument>`, outside the agent's enclosure,
@@ -265,7 +267,8 @@ Test each role the description has:
 Follow the [release rule](../README.md#release-rule), so `qory` installs your integration
 the way it installs any other. The integration's source is where its releases are: a
 repository on a forge, such as GitHub, GitLab, Forgejo or Gitea, or an HTTPS URL of a
-`description.json`.
+`description.json`. This release reads sources on github.com, gitlab.com and
+codeberg.org, and URL sources. A source on another host is later.
 
 - A release is a set of files: `description.json`, what `<program> describe` prints,
   the program's archives and `checksums.txt`. A control plane reads `description.json`
@@ -277,8 +280,8 @@ repository on a forge, such as GitHub, GitLab, Forgejo or Gitea, or an HTTPS URL
 - `describe` names the `publisher`. A reader shows it beside the source's owner, the
   forge namespace or the URL's host, and never instead of it.
 
-The release rule lists where each forge serves a release's files, how a reader finds
-the latest release, and how it fetches a private release with an access token.
+The release rule lists where each forge serves a release's files and how a reader finds
+the latest release. Private releases, which need an access token, are later.
 
 A Go integration on GitHub calls [`release.yml`](../.github/workflows/release.yml) on
 its tags. It builds the program with `-X main.version=X.Y.Z`, the tag without its `v`,

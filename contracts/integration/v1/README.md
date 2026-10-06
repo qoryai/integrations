@@ -185,7 +185,7 @@ description serves readers that know different roles.
 | Role | Defined | Started as |
 |---|---|---|
 | `credential` | here | `<program> credential -- <argument>` |
-| `tool` | here | `<program> tool -- <argument>` |
+| `tool` | here; a runner runs it in a later release | `<program> tool -- <argument>` |
 | `work_source` | reserved, for a contract of its own | |
 | `output` | reserved, for a contract of its own | |
 
@@ -235,6 +235,8 @@ refuses an `apply` entry of the scheme `header` whose `header` the runner reserv
 them.
 
 ### Tool
+
+Defined here; a runner runs it in a later release.
 
 The runner's tool
 ([§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools)): an MCP

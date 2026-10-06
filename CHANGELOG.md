@@ -40,24 +40,21 @@ change what an existing reader or program relies on, and notes it under Upgradin
   checked on the address it connects to. The forge kind is `github`, `gitlab` or
   `forgejo`, implied on github.com, gitlab.com and codeberg.org and named beside the
   source on any other host; a run's connection carries them as its `source` and
-  `forge_kind`. It defines the files of a release, the version, `X.Y.Z`, the
-  description's `program_version`, and the tag on a forge, `vX.Y.Z`.
+  `forge_kind`. This release reads sources on github.com, gitlab.com and codeberg.org,
+  and URL sources; a source on another host is later. It defines the files of a
+  release, the version, `X.Y.Z`, the description's `program_version`, and the tag on a
+  forge, `vX.Y.Z`.
 - README §Release rule lists where each kind of source serves a release's files, by
-  version and for the latest release: the download URLs of GitHub, Forgejo and Gitea,
+  version and for the latest release: the download URLs of github.com and codeberg.org,
   the APIs that answer the latest release's `tag_name`, and the directory of a URL
-  source's `description.json`. On GitLab a reader fetches through the API,
+  source's `description.json`. On gitlab.com a reader fetches through the API,
   `/api/v4/projects/<project>/releases/vX.Y.Z/downloads/<file>` and
-  `/releases/permalink/latest/downloads/<file>`, GitLab 15.4 or later, and never through
-  the web route `/-/releases/…/downloads/<file>`: since GitLab 17.3.2, 17.2.5 and 17.1.7
+  `/releases/permalink/latest/downloads/<file>`, and never through the web route
+  `/-/releases/…/downloads/<file>`: since GitLab 17.3.2, 17.2.5 and 17.1.7
   (CVE-2024-4612) that route answers a link on another host with an HTML warning page.
   A reader checks `description.json` and each archive against `checksums.txt`, and that
   `program_version` is the version it asked for. A URL source is one release, whose
-  files a newer release may replace.
-- README §Release rule says how a reader fetches a private release: the header and the
-  access the access token needs on each forge, GitHub's release and asset API, Forgejo's
-  and Gitea's download URLs, and GitLab's API routes. The reader sends the access token
-  only to the forge's API host for the source, never on a redirect to another host and
-  never in a URL query. A URL source is public and fetched with no credentials.
+  files a newer release may replace. This release reads public releases alone.
 - `publisher` in the description, required: `name`, 1 to 100 characters, not only white
   space, and `url`, an `https://` URL, which may be absent. It is the name the program
   gives for who publishes it. A reader shows it beside the source's verifiable owner, the
@@ -76,7 +73,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   tool serves, which `qory` registers with the agent's MCP client, `placeholders`, and
   `settings` and `required`. It is started as `<program> tool -- <argument>`, reads its
   settings on standard input, and listens on the Unix socket `QORY_TOOL_LISTEN` names,
-  where the runner sends it the requests it allows for `serves` as HTTP/1.1.
+  where the runner sends it the requests it allows for `serves` as HTTP/1.1. A runner
+  runs it in a later release.
 - `fixtures/acme-tracker-mcp.json`, a description with both ways, and invalid fixtures
   for the roles' new members, for a top-level `required` in the settings, and for a
   missing `publisher`, an empty publisher name and a publisher URL that is not `https`.
