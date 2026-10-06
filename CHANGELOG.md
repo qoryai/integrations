@@ -30,18 +30,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `description.json` to learn an integration without running it.
 - README §Release rule defines an integration's source, where its releases are: a
   repository on a forge, `<host>/<path>`, such as `github.com/<owner>/<repo>`,
-  `gitlab.com/<group>/<project>` or a Forgejo or Gitea `<host>/<owner>/<repo>`, or an
+  `gitlab.com/<group>/<project>` or `codeberg.org/<owner>/<repo>`, or an
   HTTPS URL of a `description.json` with the release's other files beside it. Each form
   has an exact pattern. The host is a lower-case DNS name with at least one dot whose
   last label starts with a letter, so no IP address, port, userinfo, query or fragment is
   admitted; a path segment is never `.` or `..` and holds no `%`; `localhost` and hosts
   under `.localhost`, `.local`, `.internal` and `.home.arpa` are refused. A reader that
   fetches refuses a host whose address is loopback, private, link-local or unspecified,
-  checked on the address it connects to. The forge kind is `github`, `gitlab` or
-  `forgejo`, implied on github.com, gitlab.com and codeberg.org and named beside the
-  source on any other host; a run's connection carries them as its `source` and
-  `forge_kind`. This release reads sources on github.com, gitlab.com and codeberg.org,
-  and URL sources; a source on another host is later. It defines the files of a
+  checked on the address it connects to. A forge source is on github.com, gitlab.com or
+  codeberg.org, and a reader refuses a forge source on any other host; a URL source may
+  be on any host the grammar admits. The forge kind is `github`, `gitlab` or `forgejo`,
+  implied from those three hosts; naming it for another host is later. A run's
+  connection carries them as its `source` and `forge_kind`. It defines the files of a
   release, the version, `X.Y.Z`, the description's `program_version`, and the tag on a
   forge, `vX.Y.Z`.
 - README §Release rule lists where each kind of source serves a release's files, by

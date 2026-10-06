@@ -266,9 +266,9 @@ Test each role the description has:
 
 Follow the [release rule](../README.md#release-rule), so `qory` installs your integration
 the way it installs any other. The integration's source is where its releases are: a
-repository on a forge, such as GitHub, GitLab, Forgejo or Gitea, or an HTTPS URL of a
-`description.json`. This release reads sources on github.com, gitlab.com and
-codeberg.org, and URL sources. A source on another host is later.
+repository on github.com, gitlab.com or codeberg.org, or an HTTPS URL of a
+`description.json`. A reader refuses a forge source on any other host. A URL source may
+be on any host the release rule admits.
 
 - A release is a set of files: `description.json`, what `<program> describe` prints,
   the program's archives and `checksums.txt`. A control plane reads `description.json`
@@ -291,8 +291,9 @@ and fails when `describe` reports another `program_version`. Have `describe` rep
 which checks the description with `conformance.Description`, and fails when it refuses
 it. Your `go.mod` requires `github.com/qoryai/integrations`, as your tests already
 need, at a version that has `cmd/integration-conformance`. On another forge, publish the
-same files with the forge's own CI. goreleaser publishes them to GitLab with
-`release.gitlab` and `gitlab_urls`, and to Gitea with `release.gitea` and `gitea_urls`.
+same files with the forge's own CI. goreleaser publishes them to gitlab.com with
+`release.gitlab` and `gitlab_urls`, and to codeberg.org with `release.gitea` and
+`gitea_urls`.
 
 ## Declaring it
 

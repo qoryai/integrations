@@ -127,7 +127,7 @@ An integration's source is where its releases are, in one of two forms.
 
 - **A repository on a forge**, `<host>/<path>`, with no scheme. Examples: GitHub
   `github.com/<owner>/<repo>`, GitLab `gitlab.com/<group>[/<subgroup>…]/<project>`,
-  Forgejo or Gitea `<host>/<owner>/<repo>`. It has two or more path segments, does not
+  Forgejo `codeberg.org/<owner>/<repo>`. It has two or more path segments, does not
   end in `.git`, and matches:
 
   ```
@@ -153,14 +153,14 @@ Both forms follow the same rules for the host and the path:
 - A reader that fetches refuses a host whose address is loopback, private, link-local or
   unspecified, checked on the address it connects to.
 
-The forge kind is `github`, `gitlab` or `forgejo`; Gitea is `forgejo`. It is implied on
-github.com (`github`), gitlab.com (`gitlab`) and codeberg.org (`forgejo`). On any other
-host it is named beside the source, which stays `<host>/<path>`. A URL source has none.
-A run's connection carries them as its `source` and `forge_kind`
-([runner contract](https://github.com/qoryai/runner/tree/main/contracts/runner/v1)).
+The forge kind is `github`, `gitlab` or `forgejo`; Gitea is `forgejo`. It is implied
+from the host: github.com (`github`), gitlab.com (`gitlab`) and codeberg.org
+(`forgejo`). A URL source has none. A run's connection carries them as its `source` and
+`forge_kind` ([runner contract](https://github.com/qoryai/runner/tree/main/contracts/runner/v1)).
 
-This release reads sources on github.com, gitlab.com and codeberg.org, and URL sources.
-A source on another host, which names its `forge_kind`, is later.
+A forge source is on github.com, gitlab.com or codeberg.org: a reader refuses a forge
+source on any other host. A URL source may be on any host the grammar admits.
+`forge_kind` is implied from those three hosts; naming it for another host is later.
 
 ### Releases
 
@@ -230,9 +230,9 @@ releases alone.
 `release.yml` publishes a release for a Go integration on GitHub. It fails the release
 when `describe` reports another version than the tag's, or prints a description that
 fails `conformance.Description`. On another forge, publish the same files with the
-forge's own CI. goreleaser publishes them where the forms above find them: to GitLab
+forge's own CI. goreleaser publishes them where the forms above find them: to gitlab.com
 with `release.gitlab` and `gitlab_urls`, each file a release link whose direct asset
-path is `/<file>`, and to Gitea with `release.gitea` and `gitea_urls`.
+path is `/<file>`, and to codeberg.org with `release.gitea` and `gitea_urls`.
 
 ## Use the workflows
 
