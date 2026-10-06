@@ -103,11 +103,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a file that contains it. A program refuses settings that contain both.
 - A program takes no flags for a role, and refuses `--settings` as it refuses any flag it
   does not know.
-- §Declaring an integration lists what a reader checks: it runs `<program> describe`,
-  checks the settings against the description's `settings`, and expands the roles it
-  knows. It no longer shows a declaration expanded into the runner's credential
-  definitions with an `adapter` command line: how a run carries an integration's
-  settings and secrets is the runner's contract.
+- §Declaring an integration lists what a reader checks: it runs `<path> describe` and
+  checks that the description's `name` is the entry's key, refuses a description whose
+  SHA-256 differs from the entry's `description_sha256`, checks a connection's settings
+  by the rules of §Settings per chosen role, and expands the roles it knows. It no
+  longer shows a declaration expanded into the runner's credential definitions with an
+  `adapter` command line: how a run carries an integration's settings and secrets is the
+  runner's contract.
+- §Declaring an integration: a machine lists an installed integration under its
+  description's `name`, with its `path`, `source` and `description_sha256`; the
+  `qory-<key>` default on the `PATH` is gone.
+- The description's `name` is the key the machine's runner file lists the integration
+  under, and the name a run's connection uses. The machine no longer chooses another.
 - `conformance.Description` refuses a secret without a `title`, an `x-secret-name` on a
   setting that is not a secret or outside the settings' own properties, one that does not
   match its pattern, and two secrets with the same one.

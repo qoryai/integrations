@@ -208,6 +208,8 @@ rest: the headers the proxy sets, and what a tool decides.
 
 ## Names
 
+- The description's `name` is the key a machine's runner file lists the integration
+  under, and the name a run's connection uses.
 - A program Qory publishes is `qory-<name>`, in the repository `qoryai/qory-<name>`, built
   from its `cmd/qory-<name>/`.
 - A program kept elsewhere takes a name of its own, such as `acme-tracker`
@@ -291,19 +293,26 @@ same files with the forge's own CI. goreleaser publishes them to GitLab with
 
 ## Declaring it
 
-A machine's configuration declares each integration by name:
+The node owner installs an integration with `qory`, from its source. `qory` lists it in
+the machine's runner file, in `integrations:`, under the description's `name`, with:
 
-- its settings,
-- for a program kept elsewhere, the program's path, or a name on the `PATH`.
+- `path`, the program's path;
+- `source`, where it was installed from;
+- `description_sha256`, the SHA-256 of the release's `description.json`.
 
-`qory` then:
+A program of your own may be listed by its `path`, with no `source`. A run's connection
+names the integration by the same name. At run start, a reader:
 
-1. runs the program's `describe`,
-2. checks the settings against the description,
-3. expands each role it knows.
+1. runs `<path> describe`, and checks that its `name` is the entry's key;
+2. refuses the entry when it records `description_sha256` and the SHA-256 of what
+   `describe` printed differs;
+3. checks the connection's settings for each role it uses;
+4. expands each role it knows.
 
 How a run carries the integration's settings and secrets, and how the runner builds the
 document on standard input from them, is the runner's contract,
 [contracts/runner/v1](https://github.com/qoryai/runner/tree/main/contracts/runner/v1).
 The integration contract lists
 [what a reader checks](../contracts/integration/v1/README.md#declaring-an-integration).
+`qory`'s [run guide](https://github.com/qoryai/qory/blob/main/docs/run.md#integrations)
+shows how to install and declare one.

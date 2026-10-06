@@ -3,9 +3,9 @@
 What a program of an integration reports about itself, and how it is handed its settings.
 A reader, `qory` or a control plane, finds and sets up every integration the same way:
 Qory's own `qory-<name>` programs and the programs you keep in a repository of your own
-alike. The machine's configuration declares each integration and the program that
-serves it; the reader runs `<program> describe` and checks the declaration against the
-answer alone. This directory is the contract: the description's JSON schema and the
+alike. The machine's runner file lists each integration installed on it and the program
+that serves it; the reader runs `<program> describe` and checks the entry against the
+answer. This directory is the contract: the description's JSON schema and the
 fixtures a program or a reader is tested against.
 
 ## Versions
@@ -29,7 +29,7 @@ from it.
 | Field | |
 |---|---|
 | `version` | `1`, the contract's version |
-| `name` | the integration's name, `^[a-z0-9][a-z0-9_-]{0,63}$`: the key it is declared under, such as `github`, unless the machine chooses another. The key is the name of the runner's credential, `^[a-z0-9][a-z0-9_.-]{0,63}$`, and of a program Qory publishes, `qory-<key>`, so the name is the credential's grammar without the dot, which in a program's name reads as an extension |
+| `name` | the integration's name, `^[a-z0-9][a-z0-9_-]{0,63}$`, such as `github`: the key the machine's runner file lists the integration under in `integrations:`, and the name a run's connection uses. The machine does not choose another. A program Qory publishes is `qory-<name>`, and in a program's name a dot reads as an extension, so the name has no dot |
 | `title`, `description` | human text, for a form or a listing; `description` may be absent |
 | `publisher` | who publishes the program, as the program names it: `name`, 1 to 100 characters, not only white space, and `url`, an `https://` URL, which may be absent; no other member |
 | `domains` | the domains the integration serves, each a domain name, `^[a-z][a-z0-9-]{0,63}$`, such as `software`, the domain of software work; at least one and none twice; may be absent |
@@ -269,20 +269,34 @@ and what the tool decides.
 
 ## Declaring an integration
 
-A machine's configuration declares each integration under a key, with its settings. A
-reader checks each declared integration:
+**Installing.** The node owner installs an integration with `qory`, from its source
+([README §Release rule](../../../README.md#release-rule)). A server never triggers an
+install at run start. `qory` records the integration in the machine's runner file, in
+`integrations:`, under the description's `name`:
 
-1. The program is the one the declaration names, by a path or a name on the `PATH`.
-   When it names none, the program is `qory-<key>`, found on the `PATH`, which is the
-   case for the integrations Qory publishes declared under their own name.
-2. It runs `<program> describe` and refuses the declaration unless the program exits 0
-   with a description this schema accepts.
-3. It checks the settings against the description's `settings`.
-4. It expands the roles it knows, and leaves a description's other roles as they are.
+- `path`, the program's path;
+- `source`, the source it was installed from;
+- `description_sha256`, the SHA-256 of the release's `description.json`.
+
+The entry may also bound what a server may choose: the `ways`, the `arguments`, the
+`settings`, and the paths a credential may claim. A program of the owner's own may be
+listed by its `path`, with no `source`. A run's connection names the integration by the
+same name.
+
+**What a reader checks.** For each entry, a reader:
+
+1. Runs `<path> describe`, and refuses the entry unless the program exits 0 with a
+   description this schema accepts whose `name` is the entry's key.
+2. When the entry records `description_sha256`, refuses the entry if the SHA-256 of
+   `describe`'s output differs.
+3. Checks a connection's settings by the rules of §Settings, per chosen role.
+4. Expands the roles it knows, and leaves a description's other roles as they are.
 
 How a run carries an integration's settings and secrets, and how the runner builds the
 document of §Settings from them, is the runner's contract,
 [contracts/runner/v1](https://github.com/qoryai/runner/tree/main/contracts/runner/v1).
+`qory`'s [run guide](https://github.com/qoryai/qory/blob/main/docs/run.md#integrations)
+shows how to install and declare one.
 
 ## Fixtures
 
