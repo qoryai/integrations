@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "name": "Acme Tracker",
+  "name": "acme-tracker",
   "title": "Acme tracker",
   "publisher": {"name": "Acme", "url": "https://acme.example"},
-  "program_version": "0.1.0",
+  "program_version": "0.3.0",
   "settings": {"type": "object"},
   "roles": {
-    "credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": []}
+    "tool": {"serves": ["mcp.acme.example"], "hosts": ["mcp.acme.example"], "settings": []}
   }
 }

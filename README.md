@@ -11,7 +11,7 @@ workflows.
 | `contracts/` | Go package: embeds the contract and compiles its schema |
 | `conformance/` | Go package: checks a program's output against the contracts, for use in tests |
 | [`.github/workflows/go.yml`](.github/workflows/go.yml) | Reusable CI: gofmt, vet, test, build, doc comments |
-| [`.github/workflows/release.yml`](.github/workflows/release.yml) | Reusable release: builds and publishes the program and its description |
+| [`.github/workflows/release.yml`](.github/workflows/release.yml) | Reusable release on GitHub: builds and publishes the program and its description |
 
 ## Integrations
 
@@ -44,7 +44,9 @@ To list your integration, open a pull request that adds a row.
 
 ## How qory uses an integration
 
-Today the only role is `credential`. For it:
+An integration offers one or more ways: the `credential` role for an API, the `tool`
+role for an MCP server. A run's connection names the ways it uses. For the `credential`
+role:
 
 1. You declare the integration in `runner.yaml`.
 2. `qory run` runs `<program> describe` and checks your settings against it.
@@ -63,6 +65,11 @@ In the agent's container:
 - The runner's proxy replaces it with the access token on each request to the
   integration's hosts and paths.
 - Under `enforce`, a request to another path on those hosts fails.
+
+For the `tool` role, the runner runs `<program> tool` outside the agent's container
+before the agent starts. The runner's proxy sends it the requests to the hosts it
+serves, and `qory` registers its MCP server with the agent. The tool's secrets stay
+outside the container.
 
 This holds when the agent runs in a container, behind the runner's wall. Without one, a
 program that ignores the proxy is bound by nothing.
@@ -93,7 +100,7 @@ is reserved for programs Qory publishes ([TRADEMARKS.md](TRADEMARKS.md)).
 | Role | Called by | Contract |
 |---|---|---|
 | `credential` | the runner, per run | [integration contract](contracts/integration/v1/README.md#credential) and runner [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials) |
-| `tool` | the runner's proxy | runner [§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools) |
+| `tool` | the runner's proxy | [integration contract](contracts/integration/v1/README.md#tool) and runner [§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools) |
 | `work_source` | the control plane | reserved, not defined yet |
 | `output` | the control plane | reserved, not defined yet |
 
@@ -111,24 +118,107 @@ Each returns an error that says which rule the output breaks.
 
 ## Release rule
 
-Every integration publishes releases the same way, so `qory` can install any of them:
+Every integration publishes releases the same way, so `qory` can install any of them.
 
-- Tag `vX.Y.Z` and publish a GitHub release for it.
-- Attach `<program>_X.Y.Z_<os>_<arch>.tar.gz` for `linux` and `darwin`, `amd64` and
-  `arm64`, with the program at the archive's root.
-- Attach `description.json`, what `<program> describe` prints, as it prints it.
-- Attach `checksums.txt` with the SHA-256 of each archive and of `description.json`.
-- `<program> describe` reports `"program_version": "X.Y.Z"`.
+### Sources
 
-`release.yml` does all of this for a Go integration, and fails the release when
-`describe` reports another version than the tag's.
+An integration's source is where its releases are, in one of two forms.
 
-An integration's source is the repository that holds its releases, written
-`github.com/<owner>/<repo>`. Its version is `X.Y.Z`, the release's tag `vX.Y.Z` without
-the `v`, which `describe` reports as `program_version`; a reader that requires a version
-compares that string exactly. A control plane fetches
-`https://github.com/<owner>/<repo>/releases/download/vX.Y.Z/description.json` to learn
-an integration without running it.
+- **A repository on a forge**, `<host>/<path>`, with no scheme. Examples: GitHub
+  `github.com/<owner>/<repo>`, GitLab `gitlab.com/<group>[/<subgroup>…]/<project>`,
+  Forgejo or Gitea `<host>/<owner>/<repo>`. It has two or more path segments, does not
+  end in `.git`, and matches:
+
+  ```
+  ^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?(?:/[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99}){2,}$
+  ```
+
+- **An HTTPS URL of a `description.json`**, with the release's other files in the same
+  directory. It matches:
+
+  ```
+  ^https://(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?(?:/[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99})*/description\.json$
+  ```
+
+Both forms follow the same rules for the host and the path:
+
+- The host is a lower-case DNS name with at least one dot, and its last label starts with
+  a letter. So no IP address is admitted in any spelling, such as `127.0.0.1`, `127.1` or
+  `10.0.0.0x7f`. There is no IPv6 address, port, userinfo, query or fragment.
+- A path segment starts with a letter, a digit, `_` or `-`. So a segment is never `.` or
+  `..`, and `%` never occurs.
+- A host that is `localhost` or ends in `.localhost`, `.local`, `.internal` or
+  `.home.arpa` is refused.
+- A reader that fetches refuses a host whose address is loopback, private, link-local or
+  unspecified, checked on the address it connects to.
+
+The forge kind is `github`, `gitlab` or `forgejo`; Gitea is `forgejo`. It is implied on
+github.com (`github`), gitlab.com (`gitlab`) and codeberg.org (`forgejo`). On any other
+host it is named beside the source, which stays `<host>/<path>`. A URL source has none.
+A run's connection carries them as its `source` and `forge_kind`
+([runner contract](https://github.com/qoryai/runner/tree/main/contracts/runner/v1)).
+
+### Releases
+
+A release is these files:
+
+- `description.json`, what `<program> describe` prints, as it prints it;
+- `<program>_X.Y.Z_<os>_<arch>.tar.gz` for `linux` and `darwin`, `amd64` and `arm64`,
+  with the program at the archive's root;
+- `checksums.txt`, the SHA-256 of each archive and of `description.json`.
+
+The version is `X.Y.Z`, the description's `program_version`. On a forge the release is
+tagged `vX.Y.Z`. A control plane fetches the release's `description.json` to learn an
+integration without running it.
+
+### Finding a release
+
+Where each file of a release is, by the source's kind:
+
+- **github**, on github.com or GitHub Enterprise Server:
+  - version X.Y.Z: `https://<host>/<owner>/<repo>/releases/download/vX.Y.Z/<file>`;
+  - latest release: `https://<host>/<owner>/<repo>/releases/latest/download/<file>`, or
+    the API `GET https://api.github.com/repos/<owner>/<repo>/releases/latest` on
+    github.com and `GET https://<host>/api/v3/repos/<owner>/<repo>/releases/latest` on
+    GitHub Enterprise Server, whose `tag_name` is `vX.Y.Z`.
+- **forgejo**, Forgejo and Gitea:
+  - version X.Y.Z: `https://<host>/<owner>/<repo>/releases/download/vX.Y.Z/<file>`;
+  - latest release: `https://<host>/<owner>/<repo>/releases/download/latest/<file>`, or
+    the API `GET https://<host>/api/v1/repos/<owner>/<repo>/releases/latest`, whose
+    `tag_name` is `vX.Y.Z`.
+- **gitlab**:
+  - version X.Y.Z: `https://<host>/<path>/-/releases/vX.Y.Z/downloads/<file>`, where
+    each file is a release link whose direct asset path is `/<file>`;
+  - latest release: `https://<host>/<path>/-/releases/permalink/latest/downloads/<file>`,
+    or the API `GET https://<host>/api/v4/projects/<path, URL-encoded>/releases/permalink/latest`,
+    which redirects to the release, whose `tag_name` is `vX.Y.Z`.
+- **URL source**: each file is `<dir>/<file>`, where `<dir>` is the URL without
+  `/description.json`. A URL source is one release. Its version is the description's
+  `program_version`. A newer release may replace the files at the URL.
+
+On github and forgejo the latest release is the newest that is neither a draft nor a
+prerelease. On gitlab it is the release with the latest `released_at`, an upcoming release
+included.
+
+Every kind is read the same way. A reader:
+
+1. fetches `description.json` and `checksums.txt`;
+2. checks `description.json` and each archive it fetches against `checksums.txt`;
+3. checks that `program_version` equals the version it asked for, the tag without its
+   `v`.
+
+For the latest release, the version it asked for is the API's `tag_name` without its
+`v`. A reader that uses a latest download form instead takes the version from the
+`description.json` that form serves, and fetches `checksums.txt` and the archives by that
+version. For a URL source the reader asks for no version: it reads `program_version`
+and checks every file against `checksums.txt` each time it fetches, since the files may
+have been replaced. A reader that requires a version refuses any other.
+
+`release.yml` publishes a release for a Go integration on GitHub, and fails the release
+when `describe` reports another version than the tag's. On another forge, publish the same
+files with the forge's own CI. goreleaser publishes them at the URLs above: to GitLab
+with `release.gitlab` and `gitlab_urls`, each file a release link whose direct asset path
+is `/<file>`, and to Gitea with `release.gitea` and `gitea_urls`.
 
 ## Use the workflows
 
