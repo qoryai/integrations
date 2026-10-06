@@ -44,10 +44,20 @@ change what an existing reader or program relies on, and notes it under Upgradin
   description's `program_version`, and the tag on a forge, `vX.Y.Z`.
 - README §Release rule lists where each kind of source serves a release's files, by
   version and for the latest release: the download URLs of GitHub, Forgejo and Gitea,
-  and GitLab, the APIs that answer the latest release's `tag_name`, and the directory of
-  a URL source's `description.json`. A reader checks `description.json` and each archive
-  against `checksums.txt`, and that `program_version` is the version it asked for. A URL
-  source is one release, whose files a newer release may replace.
+  the APIs that answer the latest release's `tag_name`, and the directory of a URL
+  source's `description.json`. On GitLab a reader fetches through the API,
+  `/api/v4/projects/<project>/releases/vX.Y.Z/downloads/<file>` and
+  `/releases/permalink/latest/downloads/<file>`, GitLab 15.4 or later, and never through
+  the web route `/-/releases/…/downloads/<file>`: since GitLab 17.3.2, 17.2.5 and 17.1.7
+  (CVE-2024-4612) that route answers a link on another host with an HTML warning page.
+  A reader checks `description.json` and each archive against `checksums.txt`, and that
+  `program_version` is the version it asked for. A URL source is one release, whose
+  files a newer release may replace.
+- README §Release rule says how a reader fetches a private release: the header and the
+  access the access token needs on each forge, GitHub's release and asset API, Forgejo's
+  and Gitea's download URLs, and GitLab's API routes. The reader sends the access token
+  only to the forge's API host for the source, never on a redirect to another host and
+  never in a URL query. A URL source is public and fetched with no credentials.
 - `publisher` in the description, required: `name`, 1 to 100 characters, not only white
   space, and `url`, an `https://` URL, which may be absent. It is the name the program
   gives for who publishes it. A reader shows it beside the source's verifiable owner, the

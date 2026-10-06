@@ -275,8 +275,8 @@ repository on a forge, such as GitHub, GitLab, Forgejo or Gitea, or an HTTPS URL
 - `describe` names the `publisher`. A reader shows it beside the source's owner, the
   forge namespace or the URL's host, and never instead of it.
 
-The release rule lists where each forge serves a release's files, and how a reader finds
-the latest release.
+The release rule lists where each forge serves a release's files, how a reader finds
+the latest release, and how it fetches a private release with an access token.
 
 A Go integration on GitHub calls [`release.yml`](../.github/workflows/release.yml) on
 its tags. It builds the program with `-X main.version=X.Y.Z`, the tag without its `v`,

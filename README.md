@@ -187,12 +187,19 @@ Where each file of a release is, by the source's kind:
   - latest release: `https://<host>/<owner>/<repo>/releases/download/latest/<file>`, or
     the API `GET https://<host>/api/v1/repos/<owner>/<repo>/releases/latest`, whose
     `tag_name` is `vX.Y.Z`.
-- **gitlab**:
-  - version X.Y.Z: `https://<host>/<path>/-/releases/vX.Y.Z/downloads/<file>`, where
-    each file is a release link whose direct asset path is `/<file>`;
-  - latest release: `https://<host>/<path>/-/releases/permalink/latest/downloads/<file>`,
-    or the API `GET https://<host>/api/v4/projects/<path, URL-encoded>/releases/permalink/latest`,
-    which redirects to the release, whose `tag_name` is `vX.Y.Z`.
+- **gitlab**, GitLab 15.4 or later, through the API. `<project>` is the path,
+  URL-encoded, such as `group%2Fsub%2Fproj`:
+  - version X.Y.Z: `GET https://<host>/api/v4/projects/<project>/releases/vX.Y.Z/downloads/<file>`,
+    where each file is a release link whose direct asset path is `/<file>`. It answers
+    302 to the link's URL;
+  - latest release: `GET https://<host>/api/v4/projects/<project>/releases/permalink/latest/downloads/<file>`,
+    or `GET https://<host>/api/v4/projects/<project>/releases/permalink/latest`, which
+    redirects to the release, whose `tag_name` is `vX.Y.Z`.
+
+  A reader does not use the web route `https://<host>/<path>/-/releases/…/downloads/<file>`.
+  Since GitLab 17.3.2, 17.2.5 and 17.1.7 it redirects only to a link on the GitLab host
+  itself. For a link on another host it answers 200 with an HTML warning page, which a
+  reader would take for the file.
 - **URL source**: each file is `<dir>/<file>`, where `<dir>` is the URL without
   `/description.json`. A URL source is one release. Its version is the description's
   `program_version`. A newer release may replace the files at the URL.
@@ -215,12 +222,43 @@ version. For a URL source the reader asks for no version: it reads `program_vers
 and checks every file against `checksums.txt` each time it fetches, since the files may
 have been replaced. A reader that requires a version refuses any other.
 
+A private release needs an access token, which the reader sends in a header:
+
+| Kind | Header | What the access token needs |
+|---|---|---|
+| github | `Authorization: Bearer <access token>` | read access to the repository's contents |
+| forgejo | `Authorization: token <access token>` | the scope `read:repository` |
+| gitlab | `PRIVATE-TOKEN: <access token>` | the scope `read_api`, as `read_repository` is not enough, and at least the Reporter role |
+
+- **github**: the reader fetches the files through the API.
+  `GET https://api.github.com/repos/<owner>/<repo>/releases/tags/vX.Y.Z`, with
+  `Accept: application/vnd.github+json`, gives the release. The reader picks the asset
+  by `name`. `GET https://api.github.com/repos/<owner>/<repo>/releases/assets/<id>`, with
+  `Accept: application/octet-stream`, answers 200 with the file, or 302 to a signed
+  storage URL. On GitHub Enterprise Server the API is `https://<host>/api/v3`. A public
+  release keeps the download URLs above, which cost no API rate limit.
+- **forgejo**: the reader fetches the files from the download URLs above, since the API
+  has no route that returns a file's bytes. They answer 200, or 303 to storage.
+- **gitlab**: the reader fetches the files from the API routes above.
+
+For the latest release the reader asks the API forms above for it, with the same header,
+and fetches the files by its `tag_name`.
+
+The reader sends the access token only to the forge's API host for the source:
+`api.github.com` for github.com, and the source's own host for GitHub Enterprise Server,
+GitLab, Forgejo and Gitea. It never sends it on a redirect to another host, so it
+follows a redirect to storage without it. It never puts it in a URL query, such as
+`?private_token=`, since a query reaches logs. On GitLab a redirect that stays on the
+source's host under `/api/v4/projects/` may carry the header, since a release link to a
+generic package needs it. A URL source is public: the reader fetches it with no
+credentials.
+
 `release.yml` publishes a release for a Go integration on GitHub. It fails the release
 when `describe` reports another version than the tag's, or prints a description that
 fails `conformance.Description`. On another forge, publish the same files with the
-forge's own CI. goreleaser publishes them at the URLs above: to GitLab with
-`release.gitlab` and `gitlab_urls`, each file a release link whose direct asset path is
-`/<file>`, and to Gitea with `release.gitea` and `gitea_urls`.
+forge's own CI. goreleaser publishes them where the forms above find them: to GitLab
+with `release.gitlab` and `gitlab_urls`, each file a release link whose direct asset
+path is `/<file>`, and to Gitea with `release.gitea` and `gitea_urls`.
 
 ## Use the workflows
 
