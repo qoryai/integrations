@@ -194,7 +194,7 @@ Where each file of a release is, by the source's kind:
     302 to the link's URL;
   - latest release: `GET https://<host>/api/v4/projects/<project>/releases/permalink/latest/downloads/<file>`,
     or `GET https://<host>/api/v4/projects/<project>/releases/permalink/latest`, which
-    redirects to the release, whose `tag_name` is `vX.Y.Z`.
+    gives the latest release, whose `tag_name` is `vX.Y.Z`.
 
   A reader does not use the web route `https://<host>/<path>/-/releases/…/downloads/<file>`.
   Since GitLab 17.3.2, 17.2.5 and 17.1.7 it redirects only to a link on the GitLab host
@@ -235,8 +235,10 @@ A private release needs an access token, which the reader sends in a header:
   `Accept: application/vnd.github+json`, gives the release. The reader picks the asset
   by `name`. `GET https://api.github.com/repos/<owner>/<repo>/releases/assets/<id>`, with
   `Accept: application/octet-stream`, answers 200 with the file, or 302 to a signed
-  storage URL. On GitHub Enterprise Server the API is `https://<host>/api/v3`. A public
-  release keeps the download URLs above, which cost no API rate limit.
+  storage URL. The reader follows the 302 at once and without the header, since the
+  signed URL expires within minutes. On GitHub Enterprise Server the API is
+  `https://<host>/api/v3`. A public release keeps the download URLs, so it never meets
+  the API's anonymous rate limit of 60 requests an hour.
 - **forgejo**: the reader fetches the files from the download URLs above, since the API
   has no route that returns a file's bytes. They answer 200, or 303 to storage.
 - **gitlab**: the reader fetches the files from the API routes above.
