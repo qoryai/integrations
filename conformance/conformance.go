@@ -68,26 +68,52 @@ var (
 // The schema refuses every other keyword, and Description names each one the settings
 // carry, in sorted order, beside the schema's refusal. Otherwise it reports the schema's
 // refusal, or else every rule beyond the schema the output breaks.
+//
+// The error's text is "describe: " followed by the refusals, joined by "; ". The error
+// also has an Unwrap() []error method that returns each refusal as its own error, in
+// the order of the text. The schema's refusal is one of them and comes last: its text
+// is "the contract's schema refuses the description: " followed by the validator's
+// error, which it wraps, so errors.Is and errors.As reach that error.
 func Description(stdout []byte) error {
 	doc, err := one(stdout)
 	if err != nil {
-		return fmt.Errorf("describe: %w", err)
+		return refusals{err}
 	}
 	schema, err := descriptionSchema()
 	if err != nil {
 		return err
 	}
 	if err := schema.Validate(doc); err != nil {
-		if problems := topLevel(doc); len(problems) > 0 {
-			return fmt.Errorf("describe: %s; the contract's schema refuses the description: %w", strings.Join(problems, "; "), err)
+		out := refusals{}
+		for _, p := range topLevel(doc) {
+			out = append(out, errors.New(p))
 		}
-		return fmt.Errorf("describe: the contract's schema refuses the description: %w", err)
+		return append(out, fmt.Errorf("the contract's schema refuses the description: %w", err))
 	}
 	if problems := append(secrets(doc), roles(doc)...); len(problems) > 0 {
-		return fmt.Errorf("describe: %s", strings.Join(problems, "; "))
+		out := refusals{}
+		for _, p := range problems {
+			out = append(out, errors.New(p))
+		}
+		return out
 	}
 	return nil
 }
+
+// refusals are the refusals of a description, each an error of its own.
+type refusals []error
+
+// Error is "describe: " followed by the refusals' texts, joined by "; ".
+func (r refusals) Error() string {
+	texts := make([]string, len(r))
+	for i, err := range r {
+		texts[i] = err.Error()
+	}
+	return "describe: " + strings.Join(texts, "; ")
+}
+
+// Unwrap returns each refusal, in order.
+func (r refusals) Unwrap() []error { return r }
 
 // Credential checks what `<program> credential` printed on standard output: one JSON
 // document and nothing after it, which the runner's credential.schema.json accepts

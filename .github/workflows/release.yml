@@ -26,10 +26,11 @@ name: Release an integration
 # a tag without one publishes nothing. Neither does a program whose describe fails or
 # prints anything but one JSON object with version 1 and the tag's version, without its
 # v, as program_version. Nor does one whose description fails conformance.Description:
-# the release runs `go run github.com/qoryai/integrations/cmd/integration-conformance` in
-# the integration's own module, with the version of this module its go.mod requires. A
-# go.mod that does not require github.com/qoryai/integrations, or requires a version
-# without cmd/integration-conformance, publishes nothing.
+# the release builds github.com/qoryai/integrations/cmd/integration-conformance in the
+# integration's own module, with the version of this module its go.mod requires, and
+# runs it on the description. A go.mod that does not require
+# github.com/qoryai/integrations, or requires a version without
+# cmd/integration-conformance, publishes nothing.
 
 on:
   workflow_call:
@@ -149,8 +150,9 @@ jobs:
           fi
 
       - name: Check the description against the contract
-        # Runs conformance.Description in the integration's own module, so the check uses
-        # the version of qoryai/integrations the integration's tests use.
+        # Builds the check in the integration's own module, so it runs
+        # conformance.Description from the version of qoryai/integrations the
+        # integration's tests use.
         env:
           PROGRAM: ${{ inputs.program }}
         run: |
@@ -159,12 +161,11 @@ jobs:
             echo "go.mod must require $module: the release checks the description with its conformance package" >&2
             exit 1
           fi
-          if ! go list "$module/cmd/integration-conformance" >/dev/null 2>"$RUNNER_TEMP/go-list.txt"; then
-            echo "go.mod requires $module $(go list -m -f '{{.Version}}' "$module"); the release runs its cmd/integration-conformance, which go cannot build here:" >&2
-            cat "$RUNNER_TEMP/go-list.txt" >&2
+          if ! go build -o "$RUNNER_TEMP/bin/integration-conformance" "$module/cmd/integration-conformance"; then
+            echo "go.mod requires $module $(go list -m -f '{{.Version}}' "$module"); the release runs its cmd/integration-conformance, which go cannot build here" >&2
             exit 1
           fi
-          if ! go run "$module/cmd/integration-conformance" <"$RUNNER_TEMP/description.json"; then
+          if ! "$RUNNER_TEMP/bin/integration-conformance" <"$RUNNER_TEMP/description.json"; then
             echo "$PROGRAM describe prints a description the contract refuses" >&2
             exit 1
           fi

@@ -74,6 +74,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   input and checks it with `conformance.Description`. It exits 0 and prints nothing
   when the description passes. Otherwise it exits 1 and prints each refusal on standard
   error, one per line. `release.yml` runs it.
+- The error `conformance.Description` returns has an `Unwrap() []error` method that
+  returns each refusal as its own error, in the order of the error's text. The schema's
+  refusal is one of them and wraps the validator's error, so `errors.Is` and
+  `errors.As` reach that error. The error's text is unchanged.
 
 ### Changed
 
@@ -94,10 +98,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `release.yml` builds the program for the runner's own platform with the release's
   flags before it publishes, runs `<program> describe`, and fails unless that prints one
   JSON object with `version` 1 and the tag's version as `program_version`. It then
-  runs `go run github.com/qoryai/integrations/cmd/integration-conformance` in the
-  integration's own module, and fails unless the description passes
-  `conformance.Description`, by the version of this module the integration's go.mod
-  requires.
+  builds `github.com/qoryai/integrations/cmd/integration-conformance` in the
+  integration's own module, runs it on the description, and fails unless the
+  description passes `conformance.Description`, by the version of this module the
+  integration's go.mod requires.
 - `release.yml` and the README say it publishes a GitHub release. An integration on
   another forge publishes the same files with that forge's own CI.
 - Each role's standard input holds the settings that role lists and nothing else; the

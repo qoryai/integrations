@@ -277,8 +277,8 @@ the latest release.
 A Go integration on GitHub calls [`release.yml`](../.github/workflows/release.yml) on
 its tags. It builds the program with `-X main.version=X.Y.Z`, the tag without its `v`,
 and fails when `describe` reports another `program_version`. Have `describe` report
-`main.version` as `program_version`. It then runs
-`go run github.com/qoryai/integrations/cmd/integration-conformance` in your module,
+`main.version` as `program_version`. It then builds
+`github.com/qoryai/integrations/cmd/integration-conformance` in your module and runs it,
 which checks the description with `conformance.Description`, and fails when it refuses
 it. Your `go.mod` requires `github.com/qoryai/integrations`, as your tests already
 need, at a version that has `cmd/integration-conformance`. On another forge, publish the

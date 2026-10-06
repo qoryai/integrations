@@ -2,6 +2,7 @@ package conformance_test
 
 import (
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"path"
 	"slices"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/qoryai/integrations/conformance"
 	"github.com/qoryai/integrations/contracts"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 // fixtures are the contents of the contract's fixtures directly under dir, by path.
@@ -427,5 +429,64 @@ func TestFailureIsOneLineAndNothingElse(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%s: %v, want %q", tc.name, err, tc.want)
 		}
+	}
+}
+
+// unwrapped are the texts of the errors err's Unwrap() []error returns, or fails.
+func unwrapped(t *testing.T, err error) []string {
+	t.Helper()
+	r, ok := err.(interface{ Unwrap() []error })
+	if !ok {
+		t.Fatalf("%v has no Unwrap() []error", err)
+	}
+	var out []string
+	for _, e := range r.Unwrap() {
+		out = append(out, e.Error())
+	}
+	return out
+}
+
+// TestRefusalsUnwrap pins that Description's error returns each refusal separately, in
+// the order of its text, the schema's refusal last and wrapping the validator's error.
+func TestRefusalsUnwrap(t *testing.T) {
+	beyond := []byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "publisher": {"name": "Acme"}, "program_version": "0.1.0",
+ "settings": {"type": "object", "properties": {"api_key": {"type": "string", "writeOnly": true}}},
+ "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": ["region"]}}}`)
+	err := conformance.Description(beyond)
+	want := []string{
+		"the secret api_key has no setting api_key_file",
+		"the secret api_key has no title",
+		"the role credential lists the setting region, which the settings do not define",
+		"the secret api_key is listed by no role",
+	}
+	if got := unwrapped(t, err); !slices.Equal(got, want) {
+		t.Errorf("Unwrap() is %q, want %q", got, want)
+	}
+	if err.Error() != "describe: "+strings.Join(want, "; ") {
+		t.Errorf("Error() is %q, want the refusals joined by %q after %q", err, "; ", "describe: ")
+	}
+
+	b, rerr := fs.ReadFile(contracts.FS, "fixtures/invalid/description-settings-required.json")
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	err = conformance.Description(b)
+	got := unwrapped(t, err)
+	if len(got) != 3 || got[0] != "the settings have the top-level keyword required" ||
+		!strings.HasPrefix(got[1], "the top level may carry only ") ||
+		!strings.HasPrefix(got[2], "the contract's schema refuses the description: ") {
+		t.Errorf("Unwrap() is %q, want the keyword, the list it may carry, and the schema's refusal", got)
+	}
+	if err.Error() != "describe: "+strings.Join(got, "; ") {
+		t.Errorf("Error() is %q, want the refusals joined by %q after %q", err, "; ", "describe: ")
+	}
+	var invalid *jsonschema.ValidationError
+	if !errors.As(err, &invalid) {
+		t.Errorf("errors.As does not reach the validator's error in %v", err)
+	}
+
+	err = conformance.Description([]byte("not json"))
+	if got := unwrapped(t, err); len(got) != 1 || !strings.HasPrefix(got[0], "standard output is not a JSON document: ") {
+		t.Errorf("Unwrap() is %q, want one refusal of the output", got)
 	}
 }

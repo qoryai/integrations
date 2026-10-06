@@ -256,11 +256,11 @@ section becomes the release notes.
 
 The release also fails unless `<program> describe` prints one JSON object with `version`
 1 and the tag's version, without its `v`, as `program_version`, and that description
-passes `conformance.Description`. The release runs
-`go run github.com/qoryai/integrations/cmd/integration-conformance` in the integration's
-module, so its `go.mod` requires `github.com/qoryai/integrations`, at a version that has
-`cmd/integration-conformance`. The check uses that version, the one the integration's
-tests use.
+passes `conformance.Description`. The release builds
+`github.com/qoryai/integrations/cmd/integration-conformance` in the integration's module
+and runs it on the description, so its `go.mod` requires `github.com/qoryai/integrations`,
+at a version that has `cmd/integration-conformance`. The check uses that version, the one
+the integration's tests use.
 
 ## Development
 
