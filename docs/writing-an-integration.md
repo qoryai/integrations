@@ -107,6 +107,11 @@ The roles the runner calls follow the
   - as a file whose path the settings define: `<name>_file`. For example,
     `private_key_file` for the secret `private_key`. Only the program's user may read
     that file.
+
+  The runner trims one trailing `\n` or `\r\n` from a secret value it reads from a file
+  and passes inline; a `<name>_file` path is passed as is, and the program reads the file
+  itself.
+
 - A program refuses settings that contain both `<name>` and `<name>_file`.
 
 ### Each role's settings
