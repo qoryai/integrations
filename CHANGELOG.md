@@ -42,9 +42,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The integration contract, `contracts/integration/v1`: `<program> describe` prints one
   JSON document, `description.schema.json`, with the integration's name, the domains it
   serves, its settings as a JSON Schema, a secret marked `writeOnly`, and the roles it
-  plays, `credential` with the argument and the hosts of a runner definition. A control
-  plane offers a workspace the integrations whose `domains` include the workspace's domain
-  name exactly, and those whose description has no `domains` in every domain. Every role
+  plays, `credential` with the argument and the hosts of a runner definition. Every role
   is started as `<program> <role> --settings <json> -- [arguments]`, so a reader expands
   any declared integration into its definitions from its description alone; a `$` of the
   settings is written `$`. A secret is a top-level setting with a `<name>_file` in

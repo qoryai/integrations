@@ -93,9 +93,6 @@ is reserved for programs Qory publishes ([TRADEMARKS.md](TRADEMARKS.md)).
 | Role | Called by | Contract |
 |---|---|---|
 | `credential` | the runner, per run | [integration contract](contracts/integration/v1/README.md#credential) and runner [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials) |
-| `tool` | the runner's proxy | runner [§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools) |
-| `work_source` | the control plane | reserved, not defined yet |
-| `output` | the control plane | reserved, not defined yet |
 
 ## Test against the contract
 

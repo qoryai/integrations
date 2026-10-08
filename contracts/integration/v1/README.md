@@ -31,7 +31,7 @@ from it.
 | `version` | `1`, the contract's version |
 | `name` | the integration's name, `^[a-z0-9][a-z0-9_-]{0,63}$`: the key it is declared under, such as `github`, unless the machine chooses another. The key is the name of the runner's credential, `^[a-z0-9][a-z0-9_.-]{0,63}$`, and of a program Qory publishes, `qory-<key>`, so the name is the credential's grammar without the dot, which in a program's name reads as an extension |
 | `title`, `description` | human text, for a form or a listing; `description` may be absent |
-| `domains` | the domains the integration serves, each a domain name, `^[a-z][a-z0-9-]{0,63}$`, such as `software`, the domain of software work; at least one and none twice; may be absent |
+| `domains` | the domains the integration works with, each a domain name, `^[a-z][a-z0-9-]{0,63}$`, such as `software`, the domain of software work; at least one and none twice; may be absent |
 | `program_version` | the program's own version, a string |
 | `settings` | a JSON Schema, draft 2020-12, of type `object`: the settings document the program takes |
 | `roles` | the roles the program plays, an object keyed by the role's name; at least one |
@@ -42,12 +42,7 @@ from it.
  "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}}}
 ```
 
-**Domains.** A control plane offers a workspace the integrations whose `domains` include
-the workspace's domain name exactly, the same string, and those whose description has no
-`domains` in every domain: the field is absent, never an empty list, which the schema
-refuses. A domain name is, for example, `software`, the domain of software work;
-`qory-github` declares `["software"]`. A declared integration expands the same whatever
-its domains: they decide what is offered, not what runs.
+**Domains.** `domains` lists the domains the integration works with, each a domain name, for example `software`, the domain of software work; `qory-github` declares `["software"]`. When the integration names no domain, the field is absent, never an empty list, which the schema refuses.
 
 **Secrets.** A property of the settings marked `writeOnly: true` is a secret. A form
 shows it as one, written and never read back, a log leaves it out, and it stays off
@@ -99,9 +94,6 @@ description serves readers that know different roles.
 | Role | Defined | Started as |
 |---|---|---|
 | `credential` | here | `<program> credential --settings <json> -- ${argument}`: exactly the adapter of a runner definition |
-| `tool` | reserved, for a contract of its own | |
-| `work_source` | reserved, for a contract of its own | |
-| `output` | reserved, for a contract of its own | |
 
 ### Credential
 
@@ -185,7 +177,7 @@ A run's policy selects them by the key, as it selects any credential:
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential` | `description.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.

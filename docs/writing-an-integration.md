@@ -12,16 +12,13 @@ repository from the [integration template](https://github.com/qoryai/integration
   speaks it as written.
 - So an integration can be written in any language, and live in any repository. Each
   integration has a repository of its own, with its own releases.
-- The domains an integration serves are data of its description.
+- The domains an integration works with are data of its description.
 
 ## Roles
 
 | Role                | In a description | Called by                                   |
 | ------------------- | ---------------- | ------------------------------------------- |
 | credential adapter  | `credential`     | the runner, outside the wall, per run       |
-| tool                | `tool`           | the runner's proxy, for the hosts it serves |
-| work-source adapter | `work_source`    | the control plane                           |
-| output adapter      | `output`         | the control plane                           |
 
 What each role does:
 
@@ -31,25 +28,15 @@ What each role does:
   Its contract is the runner's
   [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials):
   one JSON document on standard output.
-- **tool**: serves the session's requests to its hosts: a protocol, a
-  signature, a service of the machine's. Its contract is the runner's
-  [§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools): HTTP
-  over a Unix socket.
-- **work-source adapter**: brings work items and their events in. It has no contract
-  yet.
-- **output adapter**: applies a change request to the system it is for. It has no
-  contract yet.
 
-The integration contract defines `credential`. It reserves `tool`, `work_source` and
-`output`, each for a contract of its own. A reader expands the roles it knows, and leaves
-the others as they are.
+The integration contract defines `credential`. A reader expands the roles it knows, and leaves the others as they are.
 
 ## The contract in short
 
 - `<program> describe` prints the integration's description: one JSON document. It
   contains:
   - the integration's name,
-  - the domains it serves,
+  - the domains it works with,
   - its settings, as a JSON Schema,
   - the roles it plays.
 - Every role is started the same way:
@@ -65,7 +52,7 @@ the others as they are.
 
 The roles the runner calls follow the
 [runner's contracts](https://github.com/qoryai/runner/tree/main/contracts/runner/v1):
-§Credentials and §Tools.
+§Credentials.
 
 ### Secrets
 
