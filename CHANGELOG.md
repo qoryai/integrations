@@ -18,6 +18,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   own module, at the version of this module its `go.mod` requires. A describe that fails,
   a description the contract refuses, or a `go.mod` that does not require
   `github.com/qoryai/integrations` publishes nothing.
+- `conformance.Credential` refuses an `apply` entry of the scheme `header` whose `header`
+  is one it reserves: a name in `conformance/headers.json`'s `refused`, or one that starts
+  with a prefix in its `refused_prefixes`, compared in lower case, such as `Cookie` or
+  `X-Forwarded-Host`. Each such entry is a refusal of its own, naming its index and the
+  header, and the error has an `Unwrap() []error` method that returns them. The text of
+  every other refusal is unchanged.
 
 ## [0.2.0] - 2026-09-30
 

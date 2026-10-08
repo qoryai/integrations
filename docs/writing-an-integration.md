@@ -109,7 +109,9 @@ The Go package `github.com/qoryai/integrations/conformance` checks what a progra
 
 - `conformance.Description`: what `describe` printed, against the contract's schema and
   the secret rule.
-- `conformance.Credential`: a credential role's answer, against the runner's schema.
+- `conformance.Credential`: a credential role's answer, against the runner's schema;
+  it also refuses an `apply` entry of the scheme `header` whose `header` is one it
+  reserves, as `conformance/headers.json` lists them.
 - `conformance.Failure`: how a failed command ended.
 
 ## Release it

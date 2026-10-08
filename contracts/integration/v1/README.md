@@ -115,6 +115,11 @@ the runner's credential document.
 | `argument` | a regular expression, RE2, the policy's argument must match whole: the definition's `argument` |
 | `hosts` | the hosts the adapter answers for, at least one: the definition's `hosts`, the most an answer may claim |
 
+`conformance.Credential` checks the printed document against the runner's schema, and
+refuses an `apply` entry of the scheme `header` whose `header` is one it reserves: a name
+in `conformance/headers.json`'s `refused`, or one that starts with a prefix in its
+`refused_prefixes`, compared in lower case.
+
 ## Declaring an integration
 
 `qory` reads the `integrations:` section of a machine's `runner.yaml`:
