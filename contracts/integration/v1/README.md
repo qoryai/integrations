@@ -177,7 +177,7 @@ A run's policy selects them by the key, as it selects any credential:
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit 98b236e, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with nothing added; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential` | `description.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.
