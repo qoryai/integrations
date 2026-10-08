@@ -1,9 +1,8 @@
 name: Release an integration
 
-# Publishes a GitHub release of a Go integration's program, by the rule every integration
-# follows, so a reader installs any of them the same way (README §Release rule). An
-# integration on another forge publishes the same files with that forge's own CI. An
-# integration on GitHub calls it from a workflow that runs on its tags:
+# Publishes a release of a Go integration's program, the same way for every integration,
+# so a reader installs any of them by one rule (README §Release rule). An integration calls
+# it from a workflow that runs on its tags:
 #
 #   on:
 #     push:
@@ -19,18 +18,9 @@ name: Release an integration
 #
 # It builds the program from ./cmd/<program> for Linux and macOS, amd64 and arm64, with
 # its version set to the tag's, and publishes <program>_<version>_<os>_<arch>.tar.gz with
-# the program at the archive's root, description.json, what `<program> describe` prints,
-# and checksums.txt, the SHA-256 of each archive and of description.json. A control plane
-# fetches description.json from the release to learn the integration without running it.
-# The release's body is the version's section of CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD":
-# a tag without one publishes nothing. Neither does a program whose describe fails or
-# prints anything but one JSON object with version 1 and the tag's version, without its
-# v, as program_version. Nor does one whose description fails conformance.Description:
-# the release builds github.com/qoryai/integrations/cmd/integration-conformance in the
-# integration's own module, with the version of this module its go.mod requires, and
-# runs it on the description. A go.mod that does not require
-# github.com/qoryai/integrations, or requires a version without
-# cmd/integration-conformance, publishes nothing.
+# the program at the archive's root, and checksums.txt, the SHA-256 of each archive. The
+# release's body is the version's section of CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD": a
+# tag without one publishes nothing.
 
 on:
   workflow_call:
@@ -113,62 +103,12 @@ jobs:
               files: [$files]
           checksum:
             name_template: checksums.txt
-            extra_files:
-              - glob: "$RUNNER_TEMP/description.json"
           changelog:
             use: github
             sort: asc
           release:
             prerelease: auto
-            extra_files:
-              - glob: "$RUNNER_TEMP/description.json"
           EOF
-
-      - name: Describe the program
-        # The same build as the release's, for the runner's own platform, so describe
-        # reports the version the archives' programs report.
-        env:
-          PROGRAM: ${{ inputs.program }}
-          MAIN: ${{ inputs.main }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          version="${TAG#v}"
-          main="${MAIN:-./cmd/$PROGRAM}"
-          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$RUNNER_TEMP/bin/$PROGRAM" "$main"
-          "$RUNNER_TEMP/bin/$PROGRAM" describe >"$RUNNER_TEMP/description.json"
-          if ! jq -se 'length == 1 and (.[0] | type == "object")' "$RUNNER_TEMP/description.json" >/dev/null; then
-            echo "$PROGRAM describe prints no single JSON object" >&2
-            exit 1
-          fi
-          if ! jq -e '.version == 1' "$RUNNER_TEMP/description.json" >/dev/null; then
-            echo "describe reports version $(jq -c .version "$RUNNER_TEMP/description.json"), the contract's is 1" >&2
-            exit 1
-          fi
-          if ! jq -e --arg v "$version" '.program_version == $v' "$RUNNER_TEMP/description.json" >/dev/null; then
-            echo "describe reports program_version $(jq -c .program_version "$RUNNER_TEMP/description.json"), the tag is $TAG" >&2
-            exit 1
-          fi
-
-      - name: Check the description against the contract
-        # Builds the check in the integration's own module, so it runs
-        # conformance.Description from the version of qoryai/integrations the
-        # integration's tests use.
-        env:
-          PROGRAM: ${{ inputs.program }}
-        run: |
-          module=github.com/qoryai/integrations
-          if ! go list -m "$module" >/dev/null 2>&1; then
-            echo "go.mod must require $module: the release checks the description with its conformance package" >&2
-            exit 1
-          fi
-          if ! go build -o "$RUNNER_TEMP/bin/integration-conformance" "$module/cmd/integration-conformance"; then
-            echo "go.mod requires $module $(go list -m -f '{{.Version}}' "$module"); the release runs its cmd/integration-conformance, which go cannot build here" >&2
-            exit 1
-          fi
-          if ! "$RUNNER_TEMP/bin/integration-conformance" <"$RUNNER_TEMP/description.json"; then
-            echo "$PROGRAM describe prints a description the contract refuses" >&2
-            exit 1
-          fi
 
       - name: Release
         uses: goreleaser/goreleaser-action@v7
