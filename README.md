@@ -151,7 +151,9 @@ jobs:
 ```
 
 The release fails unless `CHANGELOG.md` has a section `## [X.Y.Z] - YYYY-MM-DD`; that
-section becomes the release notes.
+section becomes the release notes. It also fails unless `<program> describe` prints a
+description that `conformance.Description` accepts, checked with the version of this
+module the integration's `go.mod` requires.
 
 ## Development
 
