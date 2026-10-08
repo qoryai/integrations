@@ -1,6 +1,9 @@
 package contracts_test
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"io/fs"
 	"path"
 	"strings"
@@ -9,6 +12,7 @@ import (
 	"github.com/qoryai/integrations/contracts"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
+	"gopkg.in/yaml.v3"
 )
 
 // files are the fixtures directly under dir.
@@ -57,27 +61,15 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"fixtures/invalid/description-bad-name.json":                  "/name pattern",
-		"fixtures/invalid/description-name-with-dot.json":             "/name pattern",
-		"fixtures/invalid/description-credential-no-hosts.json":       "/roles/credential required hosts",
-		"fixtures/invalid/description-credential-no-settings.json":    "/roles/credential required settings",
-		"fixtures/invalid/description-role-required-not-strings.json": "/roles/credential/required/0 type",
-		"fixtures/invalid/description-tool-bad-placeholder.json":      "/roles/tool/placeholders/0 pattern",
-		"fixtures/invalid/description-tool-extra-member.json":         "/roles/tool additionalProperties hosts",
-		"fixtures/invalid/description-tool-mcp-not-https.json":        "/roles/tool/mcp pattern",
-		"fixtures/invalid/description-tool-no-serves.json":            "/roles/tool required serves",
-		"fixtures/invalid/description-tool-no-settings.json":          "/roles/tool required settings",
-		"fixtures/invalid/description-tool-serves-port.json":          "/roles/tool/serves/0 pattern",
-		"fixtures/invalid/description-domains-bad-name.json":          "/domains/0 pattern",
-		"fixtures/invalid/description-domains-duplicate.json":         "/domains uniqueItems",
-		"fixtures/invalid/description-domains-empty.json":             "/domains minItems",
-		"fixtures/invalid/description-no-settings.json":               "/ required settings",
-		"fixtures/invalid/description-settings-not-object.json":       "/settings/type const",
-		"fixtures/invalid/description-settings-required.json":         "/settings additionalProperties required",
-		"fixtures/invalid/description-no-publisher.json":              "/ required publisher",
-		"fixtures/invalid/description-publisher-empty-name.json":      "/publisher/name pattern",
-		"fixtures/invalid/description-publisher-url-not-https.json":   "/publisher/url pattern",
-		"fixtures/invalid/description-version-2.json":                 "/version const",
+		"fixtures/invalid/description-bad-name.json":            "/name pattern",
+		"fixtures/invalid/description-name-with-dot.json":       "/name pattern",
+		"fixtures/invalid/description-credential-no-hosts.json": "/roles/credential required hosts",
+		"fixtures/invalid/description-domains-bad-name.json":    "/domains/0 pattern",
+		"fixtures/invalid/description-domains-duplicate.json":   "/domains uniqueItems",
+		"fixtures/invalid/description-domains-empty.json":       "/domains minItems",
+		"fixtures/invalid/description-no-settings.json":         "/ required settings",
+		"fixtures/invalid/description-settings-not-object.json": "/settings/type const",
+		"fixtures/invalid/description-version-2.json":           "/version const",
 	}
 	for _, f := range files(t, "fixtures/invalid") {
 		doc, err := contracts.Document(f)
@@ -95,114 +87,13 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestSettingsTopLevelIsAnAllowlist pins that the schema refuses settings whose top
-// level carries a keyword outside the list a role's subset of the settings cannot break,
-// each alone, and accepts every keyword of the list, and any keyword nested in a
-// property.
-func TestSettingsTopLevelIsAnAllowlist(t *testing.T) {
-	schema, err := contracts.Compile("description.schema.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, tc := range []struct{ keyword, member string }{
-		{"required", `"required": ["url"]`}, {"required", `"required": []`}, {"allOf", `"allOf": [{}]`},
-		{"anyOf", `"anyOf": [{}]`}, {"oneOf", `"oneOf": [{}]`}, {"not", `"not": false`},
-		{"if", `"if": {}`}, {"then", `"then": {}`}, {"else", `"else": {}`},
-		{"dependentRequired", `"dependentRequired": {}`}, {"dependentSchemas", `"dependentSchemas": {}`},
-		{"minProperties", `"minProperties": 0`}, {"maxProperties", `"maxProperties": 9`},
-		{"$ref", `"$ref": "#/$defs/x", "$defs": {"x": {}}`}, {"$dynamicRef", `"$dynamicRef": "#x"`},
-		{"const", `"const": {}`}, {"enum", `"enum": [{}]`}, {"default", `"default": {}`},
-		{"format", `"format": "uri"`}, {"writeOnly", `"writeOnly": false`}, {"x-secret-name", `"x-secret-name": "FOO"`},
-	} {
-		v, ok := schema.Validate(describe(t, `{"type": "object", `+tc.member+`}`)).(*jsonschema.ValidationError)
-		if !ok {
-			t.Errorf("settings with %s were accepted", tc.member)
-			continue
-		}
-		want := "/settings additionalProperties " + tc.keyword
-		if got := strings.Join(leaves(v), "; "); got != want {
-			t.Errorf("settings with %s are refused for %q, want %q", tc.member, got, want)
-		}
-	}
-	allowed := `{"$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://acme.example/settings",
-	 "$comment": "The tracker's settings.", "type": "object", "title": "Settings", "description": "The tracker's settings.",
-	 "properties": {"url": {"type": "string", "anyOf": [{"pattern": "^https://"}], "not": {"const": ""}},
-	                "auth": {"type": "object", "required": ["user"], "oneOf": [{}], "minProperties": 1, "$ref": "#/$defs/auth"}},
-	 "patternProperties": {"^x_": {"type": "string"}}, "additionalProperties": false, "unevaluatedProperties": false,
-	 "propertyNames": {"pattern": "^[a-z_]+$"}, "$defs": {"auth": {"type": "object"}}}`
-	if err := schema.Validate(describe(t, allowed)); err != nil {
-		t.Errorf("settings with every keyword of the list: %v", err)
-	}
-}
-
-// TestAPublisherHasANameAndAnHTTPSURL pins the publisher's grammar: a name of 1 to 100
-// characters that is not only white space, and an https URL that may be absent.
-func TestAPublisherHasANameAndAnHTTPSURL(t *testing.T) {
-	schema, err := contracts.Compile("description.schema.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, tc := range []struct{ publisher, want string }{
-		{`{"url": "https://acme.example"}`, "/publisher required name"},
-		{`{"name": " \t "}`, "/publisher/name pattern"},
-		{`{"name": "` + strings.Repeat("A", 101) + `"}`, "/publisher/name maxLength"},
-		{`{"name": "Acme", "url": "https:///acme"}`, "/publisher/url pattern"},
-		{`{"name": "Acme", "url": "https://acme example"}`, "/publisher/url pattern"},
-		{`{"name": "Acme", "email": "dev@acme.example"}`, "/publisher additionalProperties email"},
-	} {
-		v, ok := schema.Validate(publish(t, tc.publisher)).(*jsonschema.ValidationError)
-		if !ok {
-			t.Errorf("the publisher %s was accepted", tc.publisher)
-			continue
-		}
-		if got := strings.Join(leaves(v), "; "); got != tc.want {
-			t.Errorf("the publisher %s is refused for %q, want %q", tc.publisher, got, tc.want)
-		}
-	}
-	for _, publisher := range []string{
-		`{"name": "Acme"}`, `{"name": "A"}`, `{"name": "` + strings.Repeat("A", 100) + `"}`,
-		`{"name": "Acme", "url": "https://acme.example"}`, `{"name": "Acme", "url": "https://acme.example/tracker?lang=en"}`,
-	} {
-		if err := schema.Validate(publish(t, publisher)); err != nil {
-			t.Errorf("the publisher %s: %v", publisher, err)
-		}
-	}
-}
-
-// describe is a description with the settings given.
-func describe(t *testing.T, settings string) any {
-	t.Helper()
-	return document(t, `{"name": "Acme"}`, settings)
-}
-
-// publish is a description with the publisher given.
-func publish(t *testing.T, publisher string) any {
-	t.Helper()
-	return document(t, publisher, `{"type": "object"}`)
-}
-
-// document is a description with the publisher and the settings given.
-func document(t *testing.T, publisher, settings string) any {
-	t.Helper()
-	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker",
-	 "publisher": ` + publisher + `, "program_version": "0.1.0", "settings": ` + settings + `,
-	 "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": []}}}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return doc
-}
-
 // leaves are a refusal's reasons, each where, the keyword, and what a required one
-// misses or what an additionalProperties refuses.
+// misses.
 func leaves(v *jsonschema.ValidationError) []string {
 	if len(v.Causes) == 0 {
 		r := "/" + strings.Join(v.InstanceLocation, "/") + " " + strings.Join(v.ErrorKind.KeywordPath(), "/")
-		switch k := v.ErrorKind.(type) {
-		case *kind.Required:
+		if k, ok := v.ErrorKind.(*kind.Required); ok {
 			r += " " + strings.Join(k.Missing, ",")
-		case *kind.AdditionalProperties:
-			r += " " + strings.Join(k.Properties, ",")
 		}
 		return []string{r}
 	}
@@ -211,4 +102,107 @@ func leaves(v *jsonschema.ValidationError) []string {
 		out = append(out, leaves(c)...)
 	}
 	return out
+}
+
+// TestTheContractsExampleIsWhatAReaderExpands expands the declaration the contract's
+// README shows and pins the definitions the README shows for it, whole: both
+// integrations, their programs, settings words, arguments and hosts.
+func TestTheContractsExampleIsWhatAReaderExpands(t *testing.T) {
+	b, err := fs.ReadFile(contracts.FS, "README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract := string(b)
+	block := func(after string) string {
+		t.Helper()
+		_, rest, ok := strings.Cut(contract, after+"\n\n```yaml\n")
+		body, _, closed := strings.Cut(rest, "```")
+		if !ok || !closed {
+			t.Fatalf("the contract's README has no yaml block after %q", after)
+		}
+		return body
+	}
+	declared, expanded := block("Declared:"), block("to the runner's definitions:")
+	if got := expand(t, declared); got != expanded {
+		t.Errorf("the contract's README declares\n%s\nwhich expands to\n%s\nand the README shows\n%s", declared, got, expanded)
+	}
+	if !strings.Contains(expanded, `'{"project":"it''s \u0024X"}'`) {
+		t.Errorf("the contract's example shows no $ written \\u0024 beside a doubled quote:\n%s", expanded)
+	}
+}
+
+// described are the descriptions the programs of the contract's example answer, the
+// contract's fixtures.
+var described = map[string]string{
+	"qory-github":                "fixtures/github.json",
+	"/opt/acme/bin/acme-tracker": "fixtures/acme-tracker.json",
+}
+
+// expand is a declaration as the integration contract's reader expands it (§Declaring an
+// integration, step 4), in the order declared: for each key, the credential of the same
+// key, with the adapter [<program>, credential, --settings, <json>, --, "${argument}"],
+// the program qory-<key> when none is declared, <json> the settings, {} when none are
+// declared, as compact JSON with every $ written \u0024, in a single-quoted scalar, and
+// the argument and the hosts of the description the program answers.
+func expand(t *testing.T, integrations string) string {
+	t.Helper()
+	var doc struct {
+		Integrations yaml.Node `yaml:"integrations"`
+	}
+	if err := yaml.Unmarshal([]byte(integrations), &doc); err != nil || doc.Integrations.Kind != yaml.MappingNode {
+		t.Fatalf("%v\n%s", err, integrations)
+	}
+	var b strings.Builder
+	b.WriteString("credentials:\n")
+	nodes := doc.Integrations.Content
+	for i := 0; i+1 < len(nodes); i += 2 {
+		key := nodes[i].Value
+		var decl struct {
+			Program  string         `yaml:"program"`
+			Settings map[string]any `yaml:"settings"`
+		}
+		if err := nodes[i+1].Decode(&decl); err != nil {
+			t.Fatalf("%s: %v", key, err)
+		}
+		if decl.Program == "" {
+			decl.Program = "qory-" + key
+		}
+		if decl.Settings == nil {
+			decl.Settings = map[string]any{}
+		}
+		var settings bytes.Buffer
+		enc := json.NewEncoder(&settings)
+		enc.SetEscapeHTML(false)
+		if err := enc.Encode(decl.Settings); err != nil {
+			t.Fatal(err)
+		}
+		fixture, err := fs.ReadFile(contracts.FS, described[decl.Program])
+		if err != nil {
+			t.Fatalf("%s: no description for %s: %v", key, decl.Program, err)
+		}
+		var d struct {
+			Roles struct {
+				Credential struct {
+					Argument string   `json:"argument"`
+					Hosts    []string `json:"hosts"`
+				} `json:"credential"`
+			} `json:"roles"`
+		}
+		if err := json.Unmarshal(fixture, &d); err != nil {
+			t.Fatal(err)
+		}
+		word := strings.ReplaceAll(strings.TrimSuffix(settings.String(), "\n"), "$", `\u0024`)
+		fmt.Fprintf(&b, `  %s:
+    adapter: [%s, credential, --settings, %s, --, "${argument}"]
+    argument: %s
+    hosts: [%s]
+`, key, decl.Program, quote(word), quote(d.Roles.Credential.Argument), strings.Join(d.Roles.Credential.Hosts, ", "))
+	}
+	return b.String()
+}
+
+// quote is YAML's single-quoted scalar, in which nothing is an escape but the quote,
+// doubled.
+func quote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }

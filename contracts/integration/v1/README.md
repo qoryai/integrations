@@ -4,7 +4,7 @@ What a program of an integration reports about itself, and how it is handed its 
 A reader, `qory` or a control plane, finds and sets up every integration the same way:
 Qory's own `qory-<name>` programs and the programs you keep in a repository of your own
 alike. The machine's configuration declares each integration and the program that
-serves it; the reader runs `<program> describe` and checks the declaration against the
+serves it; the reader runs `<program> describe` and expands the definitions from the
 answer alone. This directory is the contract: the description's JSON schema and the
 fixtures a program or a reader is tested against.
 
@@ -31,131 +31,51 @@ from it.
 | `version` | `1`, the contract's version |
 | `name` | the integration's name, `^[a-z0-9][a-z0-9_-]{0,63}$`: the key it is declared under, such as `github`, unless the machine chooses another. The key is the name of the runner's credential, `^[a-z0-9][a-z0-9_.-]{0,63}$`, and of a program Qory publishes, `qory-<key>`, so the name is the credential's grammar without the dot, which in a program's name reads as an extension |
 | `title`, `description` | human text, for a form or a listing; `description` may be absent |
-| `publisher` | who publishes the program, as the program names it: `name`, 1 to 100 characters, not only white space, and `url`, an `https://` URL, which may be absent; no other member |
-| `domains` | the domains the integration serves, each a domain name, `^[a-z][a-z0-9-]{0,63}$`, such as `software`, the domain of software work; at least one and none twice; may be absent |
+| `domains` | the domains the integration works with, each a domain name, `^[a-z][a-z0-9-]{0,63}$`, such as `software`, the domain of software work; at least one and none twice; may be absent |
 | `program_version` | the program's own version, a string |
 | `settings` | a JSON Schema, draft 2020-12, of type `object`: the settings document the program takes |
-| `roles` | the roles the program plays, the ways it offers, an object keyed by the role's name; at least one (§Roles) |
+| `roles` | the roles the program plays, an object keyed by the role's name; at least one |
 
 ```json
-{"version": 1, "name": "acme-tracker", "title": "Acme tracker",
- "publisher": {"name": "Acme", "url": "https://acme.example"}, "program_version": "0.1.0",
+{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
  "settings": {"type": "object"},
- "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"], "settings": []}}}
+ "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}}}
 ```
 
-**Publisher.** `publisher` is the name the program gives for who publishes it. Nothing
-verifies it. A reader shows it beside the source's verifiable owner, and never instead
-of it ([README §Release rule](../../../README.md#release-rule)):
-
-- For a forge source, the owner is the forge namespace: `<host>/<owner>` on GitHub,
-  Forgejo and Gitea, and `<host>/<group>[/<subgroup>…]` on GitLab, the group path.
-- For a URL source, the owner is the URL's host.
-
-A `publisher` that differs from the owner is allowed, and is shown as given. The runner
-records nothing about it. The digest of `describe`'s output that `qory` records at
-install covers it, as it covers the rest of the description.
-
-**Domains.** A control plane offers a workspace the integrations whose `domains` include
-the workspace's domain name exactly, the same string, and those whose description has no
-`domains` in every domain: the field is absent, never an empty list, which the schema
-refuses. A domain name is, for example, `software`, the domain of software work;
-`qory-github` declares `["software"]`. A declared integration expands the same whatever
-its domains: they decide what is offered, not what runs.
+**Domains.** `domains` lists the domains the integration works with, each a domain name, for example `software`, the domain of software work; `qory-github` declares `["software"]`. When the integration names no domain, the field is absent, never an empty list, which the schema refuses.
 
 **Secrets.** A property of the settings marked `writeOnly: true` is a secret. A form
-shows it as one, written and never read back, and a log leaves it out. A secret is a
-property of the settings document itself, never one nested in another, so a reader finds
-every secret among the settings' `properties`.
-Every secret has a `title`, a string that is not only white space: its label, which a
-form shows. Every secret `<name>` has a setting `<name>_file`, the path of a file that
-contains it, for a secret kept on disk: for example the secret `private_key` and the
-setting `private_key_file`. Every secret is in the `settings` of a role, the credential
-role's or the tool role's, by its `<name>` (§Roles).
-
-A secret may carry `x-secret-name`, the conventional name of the secret,
-`^[A-Z][A-Z0-9_]{0,127}$`. A control plane that stores secrets by name fills it in as
-the name to store the secret under. It is a suggestion, not an identity: the control
-plane may store the secret under another name, and the program never sees the name. A
-setting that is not a secret carries no `x-secret-name`, and no two secrets of a
-description carry the same one. Like `title`, it sits on the property it describes, and
-JSON Schema reads it as an annotation:
-
-```json
-"private_key": {"title": "Private key", "type": "string", "writeOnly": true,
-                "x-secret-name": "GITHUB_APP_PRIVATE_KEY"},
-"private_key_file": {"title": "Private key file", "type": "string"}
-```
-
-The schema checks a description's `settings` against JSON Schema's own meta-schema,
-which cannot express the rules of the two paragraphs above: that a secret is a property
-of the settings themselves, has a `title` and a `<name>_file`, is in a role's
-`settings`, and where `x-secret-name` may be and what it may contain. Nor can it express
-the rules of §Settings and §Roles that join one part of the description to another: what
-a role's `settings` and `required` name, that the credential role's `hosts` and the tool
-role's `serves` do not overlap, and where the tool role's `mcp` is.
-The Go package `github.com/qoryai/integrations/conformance` checks them. The schema
-itself refuses a top-level keyword outside the list of §Settings, and the package names
-each one.
+shows it as one, written and never read back, a log leaves it out, and it stays off
+every command line. A secret is a property of the settings document itself, never one
+nested in another, so a reader finds every secret among the settings' `properties`.
+Every secret `<name>` has a setting passed on a command line in its place,
+`<name>_file`, a file that contains it: for example the secret `private_key` and the
+setting `private_key_file`.
 
 ## Settings
 
 Every role is started the same way, so a reader needs no template language:
 
 ```sh
-<program> <role> -- [the role's own arguments]
+<program> <role> --settings <json> -- [the role's own arguments]
 ```
 
-`--` is always there, even when the role has no arguments, and an argument after it is
-never read as a flag. The credential role is `<program> credential -- <argument>`, and
-the tool role is `<program> tool -- <argument>`: exactly one argument each. A role with
-an `argument` pattern gets the run's argument, which is empty when the run gives none.
-A role without `argument` ignores the run's argument and is started with an empty one
-(§Roles). A program takes no flags for a role, and refuses `--settings` as it refuses any
-flag it does not know, by the rules of §Exit status.
+`<json>` is one word of the command line containing the settings document, valid against
+the description's `settings`. A program reads its settings from there and from nowhere
+else, and keeps none of them. `--` ends the flags, as it does for Go's `flag` package and
+POSIX `getopt`, and a program takes it so: an argument a policy defines is never read as
+a flag, whatever it starts with.
 
-Standard input carries exactly one JSON document, the settings object of the role,
-valid against the description's `settings`, a secret's value in it as any other value.
-The document holds the settings the role lists and nothing else, a secret as `<name>`
-or `<name>_file`. The runner leaves out every other setting. For example, the credential
-role of `fixtures/github.json`:
+A command line is visible to the machine's other processes, so the settings passed on a
+command line contain no `writeOnly` value. A secret reaches a program as a file whose
+path the settings define, such as `private_key_file`, readable by the program's user
+alone. A program refuses a `writeOnly` value it receives on its command line, and reports
+which setting, never the value.
 
-```json
-{"app_id": 123456, "private_key": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"}
-```
-
-What a role needs is its `required`, a subset of its `settings` (§Roles). Each role's
-document holds a subset of the settings and is valid against the one `settings`. So the
-top level of the settings schema carries only keywords no subset can break: `type`,
-`properties`, `patternProperties`, `additionalProperties`, `unevaluatedProperties`,
-`propertyNames`, `title`, `description`, `$comment`, `$schema`, `$id` and `$defs`. The
-schema refuses every other keyword at the top level, such as `required`, `oneOf`,
-`const`, `enum` or `$ref`. A rule across settings belongs in a role's `required` or in
-the program. A property may carry any keyword: a `required` inside a setting of type
-`object` is JSON Schema's as usual.
-
-The runner checks each started role's document, in this order:
-
-1. It holds only the names the role lists in `settings`, a secret as `<name>` or
-   `<name>_file`, and nothing in the connection falls outside every chosen role's list.
-2. Every name in the role's `required` is present, a secret in either form.
-3. It is valid against the description's `settings`.
-4. It does not hold both `<name>` and `<name>_file`.
-
-When the document holds no setting it is `{}`. The program reads standard input to
-its end before it acts and before any network call. It refuses empty input, a second
-document or anything but white space after the first, and input larger than 64 KiB,
-65536 bytes. The writer refuses a larger document before it starts the program, writes
-the document whole, and closes standard input. The writer always connects standard input
-to the document, never to a terminal. Nothing in the document is replaced and nothing is
-escaped: it is data, and a `$` in it is a `$`. `describe` reads no standard input.
-
-A program reads its settings from standard input alone and keeps none of them: it reads
-no setting and no secret from its environment.
-
-A secret has one source: either its value inline in the document under `<name>`, or
-`<name>_file`, a path the settings define for a secret kept on disk, readable by the
-program's user alone. Settings with both `<name>` and `<name>_file` are refused.
+The runner replaces `${argument}` wherever it appears in an adapter's argument, so a
+reader writes every `$` of the settings as `\u0024`, JSON's escape for the same
+character: `${argument}` in a setting reaches the program as written, and never as the
+policy's argument.
 
 ## Exit status
 
@@ -166,123 +86,98 @@ and writes one line on standard error describing what failed, never a secret. Th
 reports that line as the reason it refuses the declaration when `describe` fails, and the
 runner reports it as the reason it refuses the run when a role fails.
 
-The tool role prints no document: it serves until the runner ends it (§Tool). A tool
-that fails before it listens ends as any failure does.
-
 ## Roles
-
-An integration offers one or more ways, and a way is a role of its description: the
-credential role for an API, the tool role for an MCP server. A run uses an integration
-in the ways its connection names: the connection's `ways`, at least one, names roles of
-the description; the runner starts those roles alone
-([runner contract](https://github.com/qoryai/runner/tree/main/contracts/runner/v1)). An
-API that needs only a static key needs no program and no role: the runner's services
-cover it, and the description does not declare it.
 
 A reader expands the roles it knows and leaves the others as they are, so one
 description serves readers that know different roles.
 
 | Role | Defined | Started as |
 |---|---|---|
-| `credential` | here | `<program> credential -- <argument>` |
-| `tool` | here | `<program> tool -- <argument>` |
-| `work_source` | reserved, for a contract of its own | |
-| `output` | reserved, for a contract of its own | |
-
-Every credential and every tool role has `settings`: the names of the top-level
-settings the role may receive, plain and secret alike, none twice, possibly none. Two
-roles may list the same setting. A secret is listed by its `<name>`, never by
-`<name>_file`. The role's standard input holds those settings alone (§Settings).
-
-The run's argument is matched, whole, only against the roles that have an `argument`
-pattern. A role without `argument` ignores the run's argument and is started with an
-empty one. So a credential role with a pattern and a tool role with none both run in one
-connection.
-
-A role may have `required`: the names of its `settings` it needs, none twice. A secret
-is listed by its `<name>`, and either `<name>` or `<name>_file` in the document
-satisfies it. A setting the role lists and does not require is optional: the program
-handles it being absent.
-
-```json
-"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"],
-               "settings": ["url", "project", "api_key"], "required": ["url", "api_key"]}
-```
-
-Hosts are per role. The runner's proxy sets the credential role's access token on its
-`hosts`, and sends the requests to the tool role's `serves` to the tool. A host is never
-in both, the same host or one a `*.` pattern covers.
+| `credential` | here | `<program> credential --settings <json> -- ${argument}`: exactly the adapter of a runner definition |
 
 ### Credential
 
 The runner's credential adapter
 ([§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials)):
-the program mints or fetches an access token for the run's argument and prints the
-runner's credential document. It is started as `<program> credential -- <argument>`,
-reads its settings on standard input, prints the document and exits.
+the program mints or fetches a token for the argument a run's policy defines and prints
+the runner's credential document.
 
 | Field | |
 |---|---|
-| `argument` | a regular expression, RE2, the run's argument must match whole |
-| `hosts` | the hosts the program answers for, at least one, the most an answer may claim: a lower-case host name, or `*.` followed by one for every host below it |
-| `settings` | the settings the role may receive, by name |
-| `required` | the settings of `settings` the role needs, by name; may be absent |
+| `argument` | a regular expression, RE2, the policy's argument must match whole: the definition's `argument` |
+| `hosts` | the hosts the adapter answers for, at least one: the definition's `hosts`, the most an answer may claim |
 
-### Tool
-
-The runner's tool
-([§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools)): an MCP
-server reached over HTTP behind the runner's wall, so its secrets stay outside the
-agent's enclosure. A stdio MCP server the agent would start inside the enclosure is
-outside this contract.
-
-| Field | |
-|---|---|
-| `argument` | a regular expression, RE2, the run's argument must match whole; may be absent. A tool role without it ignores the run's argument and is started with an empty one (§Roles) |
-| `serves` | the hosts whose requests the runner sends to the tool, at least one, none twice, in the grammar of the credential role's `hosts` |
-| `mcp` | the `https://` URL of the MCP server the tool serves, with no userinfo, port or fragment, its host one of `serves`; may be absent. `qory` registers it with the agent's MCP client |
-| `placeholders` | variables the enclosure gets with the placeholder value, as a credential's ([§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials)), each `^[A-Z_][A-Z0-9_]{0,127}$`, none twice; may be absent. A credential role has no `placeholders`: its answer lists them |
-| `settings` | the settings the role may receive, by name |
-| `required` | the settings of `settings` the role needs, by name; may be absent |
-
-```json
-"tool": {"serves": ["mcp.tracker.acme.example"], "mcp": "https://mcp.tracker.acme.example/mcp",
-         "settings": ["url", "mcp_key"], "required": ["url", "mcp_key"]}
-```
-
-The runner starts the program as `<program> tool -- <argument>`, the argument empty when
-the role has no `argument`. The program reads its settings document on standard input to
-its end, by the rules of §Settings. Then it listens on the Unix socket whose path is the variable `QORY_TOOL_LISTEN`, within a
-minute. The runner sends it every request it allows for `serves` as HTTP/1.1 over that
-socket. A failure before it listens follows §Exit status: non-zero, one line on standard
-error, nothing on standard output. Once it listens, what it writes to standard error is
-reported as the runner's own lines, and its standard output is discarded. SIGTERM ends
-it. `QORY_TOOL_LISTEN` and `QORY_RUN_ID` are the only variables it reads, and they are
-not settings. The runner's §Tools has the rest: the socket, the headers the proxy sets,
-and what the tool decides.
+`conformance.Credential` checks the printed document against the runner's schema, and
+refuses an `apply` entry of the scheme `header` whose `header` is one it reserves: a name
+in `conformance/headers.json`'s `refused`, or one that starts with a prefix in its
+`refused_prefixes`, compared in lower case.
 
 ## Declaring an integration
 
-A machine's configuration declares each integration under a key, with its settings. A
-reader checks each declared integration:
+`qory` reads the `integrations:` section of a machine's `runner.yaml`:
 
-1. The program is the one the declaration names, by a path or a name on the `PATH`.
-   When it names none, the program is `qory-<key>`, found on the `PATH`, which is the
-   case for the integrations Qory publishes declared under their own name.
+```yaml
+integrations:
+  <key>:
+    program: <program>     # may be left out when the program is qory-<key> on the PATH
+    settings: {...}        # the settings document; absent is {}
+```
+
+A reader expands each declared integration:
+
+1. The program is `program`. Absent, it is `qory-<key>`, found on the `PATH`, which
+   is the case for the integrations Qory publishes declared under their own name; an
+   integration of your own defines its program, by a path or a name on the `PATH`, and
+   one of Qory's declared under another key defines it too.
 2. It runs `<program> describe` and refuses the declaration unless the program exits 0
    with a description this schema accepts.
-3. It checks the settings against the description's `settings`.
-4. It expands the roles it knows, and leaves a description's other roles as they are.
+3. It checks the settings against the description's `settings`, and refuses a
+   `writeOnly` value among them, since every role it expands is started with them on a
+   command line.
+4. For the `credential` role it defines the credential `<key>`:
+   `adapter: [<program>, credential, --settings, <json>, --, "${argument}"]`, with
+   `<json>` the settings as compact JSON, every `$` in it written `\u0024`, and the
+   role's `argument` and `hosts`. Written in YAML, `<json>` is a single-quoted scalar,
+   in which nothing is an escape but a quote, doubled, so the word reaches the runner as
+   it was written.
+5. It expands the roles it knows, and leaves a description's other roles as they are.
 
-How a run carries an integration's settings and secrets, and how the runner builds the
-document of §Settings from them, is the runner's contract,
-[contracts/runner/v1](https://github.com/qoryai/runner/tree/main/contracts/runner/v1).
+Declared:
+
+```yaml
+integrations:
+  github: {settings: {app_id: 123456, private_key_file: /etc/qory/github-app.pem}}
+  tracker: {program: /opt/acme/bin/acme-tracker, settings: {project: "it's $X"}}
+```
+
+`qory-github describe` answers [`fixtures/github.json`](fixtures/github.json) and
+`/opt/acme/bin/acme-tracker describe` answers
+[`fixtures/acme-tracker.json`](fixtures/acme-tracker.json), and the declaration expands
+to the runner's definitions:
+
+```yaml
+credentials:
+  github:
+    adapter: [qory-github, credential, --settings, '{"app_id":123456,"private_key_file":"/etc/qory/github-app.pem"}', --, "${argument}"]
+    argument: '[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}(,[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100})*'
+    hosts: [github.com, api.github.com]
+  tracker:
+    adapter: [/opt/acme/bin/acme-tracker, credential, --settings, '{"project":"it''s \u0024X"}', --, "${argument}"]
+    argument: '[A-Z]+'
+    hosts: [tracker.acme.example]
+```
+
+The tracker's `$X` is written `\u0024X`, which JSON reads as `$X`, and the quote of
+`it's` is doubled in the single-quoted scalar: the program reads `it's $X`.
+
+A run's policy selects them by the key, as it selects any credential:
+`{name: github, argument: acme/shop}`.
 
 ## Fixtures
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at 0.1.0, built without a version, with the `x-secret-name` of its secret, the credential role's `settings` and `required` in place of the settings' top-level `required`, no top-level `oneOf` over `private_key` and `private_key_file`, and the `publisher` `{"name": "Qory", "url": "https://qory.dev"}`; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `acme-tracker-mcp.json`, one with both ways, a credential role and a tool role with `mcp`, a secret each and one plain setting they share; `unknown-role.json`, one with `work_source`, a reserved role, beside `credential` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit 98b236e, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with nothing added; `acme-tracker.json`, the least a description of your own contains; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential` | `description.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.
@@ -292,6 +187,4 @@ Every fixture is synthetic. No host name of anyone's infrastructure and no real 
 - [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation),
   §9.4 for `writeOnly`.
 - The runner's contract, [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials),
-  for the credential document a credential role prints, and
-  [§Tools](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#tools), for how
-  the runner starts a tool role and reaches it.
+  for the adapter definition a credential role expands to.

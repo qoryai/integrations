@@ -4,10 +4,10 @@ Thank you for considering a contribution.
 
 ## Where contributions go
 
-- **The contract**, `contracts/integration/v1/`: a rule a reader or a program needs, or a
-  role's contract once it is written. An addition keeps `version` 1; a change that breaks
-  a reader is `version` 2 ([§Versions](contracts/integration/v1/README.md#versions)). Its
-  schema and its fixtures change together, and the tests in `contracts/` keep them so.
+- **The contract**, `contracts/integration/v1/`: a rule a reader or a program needs. An
+  addition keeps `version` 1; a change that breaks a reader is `version` 2
+  ([§Versions](contracts/integration/v1/README.md#versions)). Its schema and its fixtures
+  change together, and the tests in `contracts/` keep them so.
 - **The conformance checks**, `conformance/`: a rule of the contract a program can break
   and a test can see.
 - **The workflows**, `.github/workflows/`: every integration calls them, so a change there
@@ -28,8 +28,7 @@ the Apache License, Version 2.0. You keep your copyright.
 
 Opening a pull request against this repository is your acceptance of the agreement, for that
 contribution and every later one. The pull request is the record of your acceptance. Read
-[CLA.md](CLA.md) before your first pull request. A signing step on the pull request may be
-added later; it will not change the terms.
+[CLA.md](CLA.md) before your first pull request.
 
 The agreement names the owner with successors-and-assigns wording, so that if the
 project moves into a dedicated entity, existing grants travel with it and nobody signs again.
