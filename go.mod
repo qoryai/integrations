@@ -3,7 +3,7 @@ module github.com/qoryai/integrations
 go 1.27.1
 
 require (
-	github.com/qoryai/runner v0.6.0
+	github.com/qoryai/runner v0.6.1-0.20261008152236-65183a62b0b5
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	gopkg.in/yaml.v3 v3.0.1
 )
