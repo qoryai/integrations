@@ -6,9 +6,8 @@
 //	./integration-conformance <description.json
 //
 // It exits 0 and prints nothing when the description passes. Otherwise it exits 1 and
-// prints the refusal on standard error: the error conformance.Description returns, or,
-// when that error joins several, each of them on a line of its own. The schema's refusal
-// takes the lines the schema's validator gives it. It exits 2 when it is given an
+// prints the error conformance.Description returns on standard error. A refusal by the
+// schema takes the lines the schema's validator gives it. It exits 2 when it is given an
 // argument or cannot read standard input.
 //
 // release.yml builds it in the calling integration's module, so a release checks its
@@ -34,13 +33,7 @@ func main() {
 		os.Exit(2)
 	}
 	if err := conformance.Description(b); err != nil {
-		refusals := []error{err}
-		if r, ok := err.(interface{ Unwrap() []error }); ok {
-			refusals = r.Unwrap()
-		}
-		for _, r := range refusals {
-			fmt.Fprintln(os.Stderr, r)
-		}
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
