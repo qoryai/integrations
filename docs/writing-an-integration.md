@@ -103,8 +103,8 @@ The Go package `github.com/qoryai/integrations/conformance` checks what a progra
 
 ## Release it
 
-Follow the [release rule](../README.md#release-rule), so `qory` installs your integration
-the way it installs any other. A Go integration calls
+Follow the [release rule](../README.md#release-rule), so your integration installs the
+way any other does. A Go integration calls
 [`release.yml`](../.github/workflows/release.yml) on its tags.
 
 ## Declaring it

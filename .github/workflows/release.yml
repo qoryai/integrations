@@ -1,8 +1,8 @@
 name: Release an integration
 
 # Publishes a release of a Go integration's program, the same way for every integration,
-# so a reader installs any of them by one rule (README §Release rule). An integration calls
-# it from a workflow that runs on its tags:
+# so any of them installs by one rule (README §Release rule). An integration calls it from
+# a workflow that runs on its tags:
 #
 #   on:
 #     push:

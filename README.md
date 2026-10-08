@@ -44,7 +44,7 @@ To list your integration, open a pull request that adds a row.
 
 ## How qory uses an integration
 
-Today the only role is `credential`. For it:
+The only role is `credential`. For it:
 
 1. You declare the integration in `runner.yaml`.
 2. `qory run` runs `<program> describe` and checks your settings against it.
@@ -108,7 +108,7 @@ Each returns an error that says which rule the output breaks.
 
 ## Release rule
 
-Every integration publishes releases the same way, so `qory` can install any of them:
+Every integration publishes releases the same way, so any of them installs by one rule:
 
 - Tag `vX.Y.Z` and publish a GitHub release for it.
 - Attach `<program>_X.Y.Z_<os>_<arch>.tar.gz` for `linux` and `darwin`, `amd64` and

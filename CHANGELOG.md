@@ -57,8 +57,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   and one line on standard error.
 - The workflows every Go integration calls: `go.yml`, its formatting, vet, tests, build
   and doc comments, and `release.yml`, which builds the program for Linux and macOS, amd64
-  and arm64, and publishes the release every reader installs by one rule, README
-  §Release rule.
+  and arm64, and publishes the release by one rule, README §Release rule.
 - The catalog of integrations in the README, `qory-github` first.
 - `docs/writing-an-integration.md`, the guide: what an integration is, its roles, the
   contract in short, secrets, names, layout, testing, releasing and declaring it.
