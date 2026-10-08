@@ -7,6 +7,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ## [Unreleased]
 
+### Added
+
+- Command `integration-conformance`, `cmd/integration-conformance`: reads one description
+  on standard input and checks it with `conformance.Description`. It exits 0 when the
+  description passes, 1 with the refusal on standard error when it does not, and 2 when
+  it is given an argument or cannot read standard input.
+- `release.yml` runs `<program> describe` and checks the description with
+  `conformance.Description`, through `integration-conformance` built in the integration's
+  own module, at the version of this module its `go.mod` requires. A describe that fails,
+  a description the contract refuses, or a `go.mod` that does not require
+  `github.com/qoryai/integrations` publishes nothing.
+
 ## [0.2.0] - 2026-09-30
 
 ### Upgrading
