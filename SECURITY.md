@@ -29,7 +29,7 @@ earlier one.
 
 - A vulnerability in an integration: report it to that integration's repository, such as
   [qoryai/qory-github](https://github.com/qoryai/qory-github/blob/main/SECURITY.md).
-- The runner, and what it does with a credential role's answer, are the
-  [runner's](https://github.com/qoryai/runner/blob/main/SECURITY.md).
+- Forager, and what it does with a credential role's answer, are
+  [Forager's](https://github.com/qoryai/forager/blob/main/SECURITY.md).
 
 If you are not sure which side something falls on, write anyway.

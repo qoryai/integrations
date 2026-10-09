@@ -1,6 +1,6 @@
 // Package conformance checks what a program of an integration prints against the
 // contracts it speaks: its description against the integration contract,
-// contracts/integration/v1, a credential role's answer against the runner's credential
+// contracts/integration/v1, a credential role's answer against the gateway's credential
 // document, and a failure against the exit status every command of the contract shares.
 //
 // Beyond the credential document's schema, it refuses an apply entry of the scheme header
@@ -23,8 +23,8 @@ import (
 	"strings"
 	"sync"
 
+	forager "github.com/qoryai/forager/contracts"
 	"github.com/qoryai/integrations/contracts"
-	runner "github.com/qoryai/runner/contracts"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -33,7 +33,7 @@ var (
 		return contracts.Compile("description.schema.json")
 	})
 	credentialSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
-		return runner.Compile("credential.schema.json")
+		return forager.Compile("credential.schema.json")
 	})
 	reservedHeaders = sync.OnceValues(func() (reserved, error) {
 		var r reserved
@@ -108,8 +108,8 @@ func Description(stdout []byte) error {
 }
 
 // Credential checks what `<program> credential` printed on standard output: one JSON
-// document and nothing after it, which the runner's credential.schema.json accepts
-// (https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials).
+// document and nothing after it, which the gateway's credential.schema.json accepts
+// (https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials).
 //
 // Once the schema accepts the document, Credential refuses each apply entry of the scheme
 // header whose header is one it reserves: a name in conformance/headers.json's refused,
@@ -122,7 +122,7 @@ func Credential(stdout []byte) error {
 	if _, err := one(stdout); err != nil {
 		return fmt.Errorf("credential: %w", err)
 	}
-	doc, err := runner.Decode("answer.json", stdout)
+	doc, err := forager.Decode("answer.json", stdout)
 	if err != nil {
 		return fmt.Errorf("credential: %w", err)
 	}
@@ -131,7 +131,7 @@ func Credential(stdout []byte) error {
 		return err
 	}
 	if err := schema.Validate(doc); err != nil {
-		return fmt.Errorf("credential: the runner's schema refuses the answer: %w", err)
+		return fmt.Errorf("credential: the gateway's schema refuses the answer: %w", err)
 	}
 	headers, err := reservedHeaders()
 	if err != nil {

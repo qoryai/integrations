@@ -11,8 +11,8 @@ fixtures a program or a reader is tested against.
 ## Versions
 
 The description contains `version: 1`, an integer, and its schema is addressed by URL
-under `https://qory.dev/contracts/integration/v1/`, as the runner's documents are
-([§Versions](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#versions)).
+under `https://qory.dev/contracts/integration/v1/`, as Forager's documents are
+([§Versions](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#versions)).
 A reader reads the versions it knows and refuses a description of any other. An
 addition keeps `version` 1; a change that breaks a reader is `version` 2.
 
@@ -29,7 +29,7 @@ from it.
 | Field | |
 |---|---|
 | `version` | `1`, the contract's version |
-| `name` | the integration's name, `^[a-z0-9][a-z0-9_-]{0,63}$`: the key it is declared under, such as `github`, unless the machine chooses another. The key is the name of the runner's credential, `^[a-z0-9][a-z0-9_.-]{0,63}$`, and of a program Qory publishes, `qory-<key>`, so the name is the credential's grammar without the dot, which in a program's name reads as an extension |
+| `name` | the integration's name, `^[a-z0-9][a-z0-9_-]{0,63}$`: the key it is declared under, such as `github`, unless the machine chooses another. The key is the name of the gateway's credential, `^[a-z0-9][a-z0-9_.-]{0,63}$`, and of a program Qory publishes, `qory-<key>`, so the name is the credential's grammar without the dot, which in a program's name reads as an extension |
 | `title`, `description` | human text, for a form or a listing; `description` may be absent |
 | `domains` | the domains the integration works with, each a domain name, `^[a-z][a-z0-9-]{0,63}$`, such as `software`, the domain of software work; at least one and none twice; may be absent |
 | `program_version` | the program's own version, a string |
@@ -72,7 +72,7 @@ path the settings define, such as `private_key_file`, readable by the program's 
 alone. A program refuses a `writeOnly` value it receives on its command line, and reports
 which setting, never the value.
 
-The runner replaces `${argument}` wherever it appears in an adapter's argument, so a
+The gateway replaces `${argument}` wherever it appears in an adapter's argument, so a
 reader writes every `$` of the settings as `\u0024`, JSON's escape for the same
 character: `${argument}` in a setting reaches the program as written, and never as the
 policy's argument.
@@ -84,7 +84,7 @@ document on standard output, the description or the one the role's contract spec
 and nothing else there. On failure it exits non-zero, prints nothing on standard output,
 and writes one line on standard error describing what failed, never a secret. The reader
 reports that line as the reason it refuses the declaration when `describe` fails, and the
-runner reports it as the reason it refuses the run when a role fails.
+gateway reports it as the reason it refuses the run when a role fails.
 
 ## Roles
 
@@ -93,34 +93,35 @@ description serves readers that know different roles.
 
 | Role | Defined | Started as |
 |---|---|---|
-| `credential` | here | `<program> credential --settings <json> -- ${argument}`: exactly the adapter of a runner definition |
+| `credential` | here | `<program> credential --settings <json> -- ${argument}`: exactly the adapter of a gateway definition |
 
 ### Credential
 
-The runner's credential adapter
-([§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials)):
+The gateway's credential adapter
+([§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials)):
 the program mints or fetches a token for the argument a run's policy defines and prints
-the runner's credential document.
+the gateway's credential document.
 
 | Field | |
 |---|---|
 | `argument` | a regular expression, RE2, the policy's argument must match whole: the definition's `argument` |
 | `hosts` | the hosts the adapter answers for, at least one: the definition's `hosts`, the most an answer may claim |
 
-`conformance.Credential` checks the printed document against the runner's schema, and
+`conformance.Credential` checks the printed document against the gateway's schema, and
 refuses an `apply` entry of the scheme `header` whose `header` is one it reserves: a name
 in `conformance/headers.json`'s `refused`, or one that starts with a prefix in its
 `refused_prefixes`, compared in lower case.
 
 ## Declaring an integration
 
-`qory` reads the `integrations:` section of a machine's `runner.yaml`:
+`qory` reads the `gateway.integrations` section of a machine's `forager.yaml`:
 
 ```yaml
-integrations:
-  <key>:
-    program: <program>     # may be left out when the program is qory-<key> on the PATH
-    settings: {...}        # the settings document; absent is {}
+gateway:
+  integrations:
+    <key>:
+      program: <program>     # may be left out when the program is qory-<key> on the PATH
+      settings: {...}        # the settings document; absent is {}
 ```
 
 A reader expands each declared integration:
@@ -138,33 +139,35 @@ A reader expands each declared integration:
    `adapter: [<program>, credential, --settings, <json>, --, "${argument}"]`, with
    `<json>` the settings as compact JSON, every `$` in it written `\u0024`, and the
    role's `argument` and `hosts`. Written in YAML, `<json>` is a single-quoted scalar,
-   in which nothing is an escape but a quote, doubled, so the word reaches the runner as
+   in which nothing is an escape but a quote, doubled, so the word reaches the gateway as
    it was written.
 5. It expands the roles it knows, and leaves a description's other roles as they are.
 
 Declared:
 
 ```yaml
-integrations:
-  github: {settings: {app_id: 123456, private_key_file: /etc/qory/github-app.pem}}
-  tracker: {program: /opt/acme/bin/acme-tracker, settings: {project: "it's $X"}}
+gateway:
+  integrations:
+    github: {settings: {app_id: 123456, private_key_file: /etc/qory/github-app.pem}}
+    tracker: {program: /opt/acme/bin/acme-tracker, settings: {project: "it's $X"}}
 ```
 
 `qory-github describe` answers [`fixtures/github.json`](fixtures/github.json) and
 `/opt/acme/bin/acme-tracker describe` answers
 [`fixtures/acme-tracker.json`](fixtures/acme-tracker.json), and the declaration expands
-to the runner's definitions:
+to the gateway's definitions:
 
 ```yaml
-credentials:
-  github:
-    adapter: [qory-github, credential, --settings, '{"app_id":123456,"private_key_file":"/etc/qory/github-app.pem"}', --, "${argument}"]
-    argument: '[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}(,[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100})*'
-    hosts: [github.com, api.github.com]
-  tracker:
-    adapter: [/opt/acme/bin/acme-tracker, credential, --settings, '{"project":"it''s \u0024X"}', --, "${argument}"]
-    argument: '[A-Z]+'
-    hosts: [tracker.acme.example]
+gateway:
+  credentials:
+    github:
+      adapter: [qory-github, credential, --settings, '{"app_id":123456,"private_key_file":"/etc/qory/github-app.pem"}', --, "${argument}"]
+      argument: '[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}(,[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100})*'
+      hosts: [github.com, api.github.com]
+    tracker:
+      adapter: [/opt/acme/bin/acme-tracker, credential, --settings, '{"project":"it''s \u0024X"}', --, "${argument}"]
+      argument: '[A-Z]+'
+      hosts: [tracker.acme.example]
 ```
 
 The tracker's `$X` is written `\u0024X`, which JSON reads as `$X`, and the quote of
@@ -186,5 +189,5 @@ Every fixture is synthetic. No host name of anyone's infrastructure and no real 
 
 - [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation),
   §9.4 for `writeOnly`.
-- The runner's contract, [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials),
+- Forager's contract, [§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials),
   for the adapter definition a credential role expands to.

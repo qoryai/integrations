@@ -18,15 +18,15 @@ repository from the [integration template](https://github.com/qoryai/integration
 
 | Role                | In a description | Called by                                   |
 | ------------------- | ---------------- | ------------------------------------------- |
-| credential adapter  | `credential`     | the runner, outside the wall, per run       |
+| credential adapter  | `credential`     | the gateway, outside the wall, per run      |
 
 What each role does:
 
 - **credential adapter**: mints an access token for what a run requests. It lists the
-  hosts and paths the access token is used on. The runner keeps the access token outside
+  hosts and paths the access token is used on. The gateway keeps the access token outside
   the session.
-  Its contract is the runner's
-  [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials):
+  Its contract is Forager's
+  [§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials):
   one JSON document on standard output.
 
 The integration contract defines `credential`. A reader expands the roles it knows, and leaves the others as they are.
@@ -46,12 +46,12 @@ The integration contract defines `credential`. A reader expands the roles it kno
   <program> <role> --settings <json> -- [the role's own arguments]
   ```
 
-- For the credential role, that command line is exactly the adapter of a runner
+- For the credential role, that command line is exactly the adapter of a gateway
   definition.
 - Every integration speaks the contract, Qory's and yours alike.
 
-The roles the runner calls follow the
-[runner's contracts](https://github.com/qoryai/runner/tree/main/contracts/runner/v1):
+The roles the gateway calls follow
+[Forager's contracts](https://github.com/qoryai/forager/tree/main/contracts/forager/v1):
 §Credentials.
 
 ### Secrets
@@ -96,7 +96,7 @@ The Go package `github.com/qoryai/integrations/conformance` checks what a progra
 
 - `conformance.Description`: what `describe` printed, against the contract's schema and
   the secret rule.
-- `conformance.Credential`: a credential role's answer, against the runner's schema;
+- `conformance.Credential`: a credential role's answer, against the gateway's schema;
   it also refuses an `apply` entry of the scheme `header` whose `header` is one it
   reserves, as `conformance/headers.json` lists them.
 - `conformance.Failure`: how a failed command ended.
@@ -109,7 +109,8 @@ way any other does. A Go integration calls
 
 ## Declaring it
 
-A machine's `runner.yaml` declares each integration under `integrations:`, by name:
+A machine's `forager.yaml` declares each integration under `gateway.integrations`, by
+name:
 
 - its settings,
 - for a program kept elsewhere, `program:`: the program's path, or a name on the `PATH`.
@@ -118,7 +119,7 @@ A machine's `runner.yaml` declares each integration under `integrations:`, by na
 
 1. runs the program's `describe`,
 2. checks the settings against the description,
-3. turns each role it knows into the runner's definition.
+3. turns each role it knows into the gateway's definition.
 
 The credential role becomes a credential of the same name. A run's policy selects it:
 `{name: github, argument: acme/shop}`.
@@ -127,4 +128,4 @@ The credential role becomes a credential of the same name. A run's policy select
   shows a declaration, and the policy that selects its credential.
 - The integration contract shows
   [how a reader expands one](../contracts/integration/v1/README.md#declaring-an-integration)
-  into the runner's definition, an integration of your own among them.
+  into the gateway's definition, an integration of your own among them.
