@@ -5,6 +5,16 @@ on:
     branches: [main, next]
   pull_request:
 
+# A new push to a pull request cancels its running checks. Other repositories build
+# against commits on main and next, so each push there runs in a group of its own and is
+# never cancelled or replaced.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   go:
+    # A pull request from this repository's next proposes a commit that next's push run
+    # already checks.
+    if: github.event_name != 'pull_request' || github.head_ref != 'next' || github.event.pull_request.head.repo.full_name != github.repository
     uses: ./.github/workflows/go.yml

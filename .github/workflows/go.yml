@@ -45,6 +45,24 @@ jobs:
           restore-keys: |
             go-${{ runner.os }}-
 
+      - name: Find the build cache
+        id: go-env
+        # go keeps it under HOME, which the runner sets for the container.
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "goversion=$(go env GOVERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the build cache
+        # Each run saves its own, so the cache keeps up with the code. A build cache from
+        # another Go version holds nothing this one can use.
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.go-env.outputs.gocache }}
+          key: go-build-${{ runner.os }}-${{ steps.go-env.outputs.goversion }}-${{ hashFiles('go.sum') }}-${{ github.run_id }}
+          restore-keys: |
+            go-build-${{ runner.os }}-${{ steps.go-env.outputs.goversion }}-${{ hashFiles('go.sum') }}-
+            go-build-${{ runner.os }}-${{ steps.go-env.outputs.goversion }}-
+
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
 
