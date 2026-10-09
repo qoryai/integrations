@@ -32,6 +32,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   in `contracts/forager/v1`. Its refusal of an answer that schema refuses reads
   `credential: the gateway's schema refuses the answer: …`, where it read
   `credential: the runner's schema refuses the answer: …`.
+- `go.yml` keeps Go's build cache between runs, next to the module cache: it restores the
+  newest one saved for the same Go version, preferring the same `go.sum`, and each passing
+  run saves its own.
 
 ## [0.2.0] - 2026-09-30
 
