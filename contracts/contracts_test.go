@@ -122,7 +122,7 @@ func TestTheContractsExampleIsWhatAReaderExpands(t *testing.T) {
 		}
 		return body
 	}
-	declared, expanded := block("Declared:"), block("to the runner's definitions:")
+	declared, expanded := block("Declared:"), block("to the gateway's definitions:")
 	if got := expand(t, declared); got != expanded {
 		t.Errorf("the contract's README declares\n%s\nwhich expands to\n%s\nand the README shows\n%s", declared, got, expanded)
 	}
@@ -139,22 +139,25 @@ var described = map[string]string{
 }
 
 // expand is a declaration as the integration contract's reader expands it (§Declaring an
-// integration, step 4), in the order declared: for each key, the credential of the same
-// key, with the adapter [<program>, credential, --settings, <json>, --, "${argument}"],
+// integration, step 4), in the order declared: for each key under gateway.integrations,
+// the credential of the same key under gateway.credentials, with the adapter
+// [<program>, credential, --settings, <json>, --, "${argument}"],
 // the program qory-<key> when none is declared, <json> the settings, {} when none are
 // declared, as compact JSON with every $ written \u0024, in a single-quoted scalar, and
 // the argument and the hosts of the description the program answers.
 func expand(t *testing.T, integrations string) string {
 	t.Helper()
 	var doc struct {
-		Integrations yaml.Node `yaml:"integrations"`
+		Gateway struct {
+			Integrations yaml.Node `yaml:"integrations"`
+		} `yaml:"gateway"`
 	}
-	if err := yaml.Unmarshal([]byte(integrations), &doc); err != nil || doc.Integrations.Kind != yaml.MappingNode {
+	if err := yaml.Unmarshal([]byte(integrations), &doc); err != nil || doc.Gateway.Integrations.Kind != yaml.MappingNode {
 		t.Fatalf("%v\n%s", err, integrations)
 	}
 	var b strings.Builder
-	b.WriteString("credentials:\n")
-	nodes := doc.Integrations.Content
+	b.WriteString("gateway:\n  credentials:\n")
+	nodes := doc.Gateway.Integrations.Content
 	for i := 0; i+1 < len(nodes); i += 2 {
 		key := nodes[i].Value
 		var decl struct {
@@ -192,10 +195,10 @@ func expand(t *testing.T, integrations string) string {
 			t.Fatal(err)
 		}
 		word := strings.ReplaceAll(strings.TrimSuffix(settings.String(), "\n"), "$", `\u0024`)
-		fmt.Fprintf(&b, `  %s:
-    adapter: [%s, credential, --settings, %s, --, "${argument}"]
-    argument: %s
-    hosts: [%s]
+		fmt.Fprintf(&b, `    %s:
+      adapter: [%s, credential, --settings, %s, --, "${argument}"]
+      argument: %s
+      hosts: [%s]
 `, key, decl.Program, quote(word), quote(d.Roles.Credential.Argument), strings.Join(d.Roles.Credential.Hosts, ", "))
 	}
 	return b.String()

@@ -24,15 +24,16 @@ To list your integration, open a pull request that adds a row.
 ## Use an integration
 
 1. Install the program on the machine that runs `qory run`, on its `PATH`.
-2. Declare it in `~/.config/qory/runner.yaml`:
+2. Declare it in `~/.config/qory/forager.yaml`:
 
    ```yaml
-   integrations:
-     github:                            # the key; the program defaults to qory-<key>
-       settings: {"app_id": 123456, "private_key_file": "/home/dev/.config/qory/github-app.pem"}
-     tracker:
-       program: /opt/acme/bin/acme-tracker   # required when the program is not qory-<key>
-       settings: {"project": "web"}
+   gateway:
+     integrations:
+       github:                            # the key; the program defaults to qory-<key>
+         settings: {"app_id": 123456, "private_key_file": "/home/dev/.config/qory/github-app.pem"}
+       tracker:
+         program: /opt/acme/bin/acme-tracker   # required when the program is not qory-<key>
+         settings: {"project": "web"}
    ```
 
 3. Select it in a run's policy by its key:
@@ -46,25 +47,25 @@ To list your integration, open a pull request that adds a row.
 
 The only role is `credential`. For it:
 
-1. You declare the integration in `runner.yaml`.
+1. You declare the integration in `forager.yaml`.
 2. `qory run` runs `<program> describe` and checks your settings against it.
-3. `qory` turns the declaration into a credential for the
-   [runner](https://github.com/qoryai/runner).
-4. Before the agent starts, the runner runs `<program> credential` outside the agent's
+3. `qory` turns the declaration into a credential for
+   [Forager](https://github.com/qoryai/forager)'s gateway.
+4. Before the agent starts, the gateway runs `<program> credential` outside the agent's
    container. The program prints an access token.
 5. The agent starts. It gets a placeholder, never the access token.
-6. Five minutes before the access token expires, the runner runs the program again.
+6. Five minutes before the access token expires, the gateway runs the program again.
 
 In the agent's container:
 
 - The variables the integration lists hold a placeholder,
   `qory-sets-the-credential-outside-the-enclosure`. Tools that read them start and send
   the placeholder.
-- The runner's proxy replaces it with the access token on each request to the
+- The gateway's proxy replaces it with the access token on each request to the
   integration's hosts and paths.
 - Under `enforce`, a request to another path on those hosts fails.
 
-This holds when the agent runs in a container, behind the runner's wall. Without one, a
+This holds when the agent runs in a container, behind Forager's wall. Without one, a
 program that ignores the proxy is bound by nothing.
 
 ## Write an integration
@@ -92,7 +93,7 @@ is reserved for programs Qory publishes ([TRADEMARKS.md](TRADEMARKS.md)).
 
 | Role | Called by | Contract |
 |---|---|---|
-| `credential` | the runner, per run | [integration contract](contracts/integration/v1/README.md#credential) and runner [§Credentials](https://github.com/qoryai/runner/tree/main/contracts/runner/v1#credentials) |
+| `credential` | the gateway, per run | [integration contract](contracts/integration/v1/README.md#credential) and Forager [§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials) |
 
 ## Test against the contract
 

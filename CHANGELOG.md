@@ -23,7 +23,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   with a prefix in its `refused_prefixes`, compared in lower case, such as `Cookie` or
   `X-Forwarded-Host`. Each such entry is a refusal of its own, naming its index and the
   header, and the error has an `Unwrap() []error` method that returns them. The text of
-  every other refusal is unchanged.
+  every other refusal is unchanged, but for the one under Changed.
+
+### Changed
+
+- The module requires `github.com/qoryai/forager` in place of `github.com/qoryai/runner`,
+  and `conformance.Credential` checks an answer against Forager's `credential.schema.json`,
+  in `contracts/forager/v1`. Its refusal of an answer that schema refuses reads
+  `credential: the gateway's schema refuses the answer: …`, where it read
+  `credential: the runner's schema refuses the answer: …`.
 
 ## [0.2.0] - 2026-09-30
 

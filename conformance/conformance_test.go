@@ -89,16 +89,16 @@ func TestADescriptionIsOneDocumentWithItsSecretsOnTop(t *testing.T) {
 	}
 }
 
-// TestCredentialIsTheRunnersDocument pins Credential to the runner's schema: an answer
+// TestCredentialIsTheGatewaysDocument pins Credential to the gateway's schema: an answer
 // it accepts conforms, and one it refuses, or two, do not.
-func TestCredentialIsTheRunnersDocument(t *testing.T) {
+func TestCredentialIsTheGatewaysDocument(t *testing.T) {
 	answer := `{"version":1,"token":"synthetic","expires_at":"2026-09-25T21:00:00Z","apply":[{"hosts":["tracker.acme.example"],"scheme":"bearer","paths":["/api/*"]}],"placeholders":["TRACKER_TOKEN"]}` + "\n"
 	if err := conformance.Credential([]byte(answer)); err != nil {
 		t.Errorf("a valid answer: %v", err)
 	}
 	for _, tc := range []struct{ name, stdout, want string }{
-		{"no apply", `{"version":1,"token":"synthetic"}`, "the runner's schema refuses"},
-		{"an unknown scheme", `{"version":1,"token":"synthetic","apply":[{"hosts":["a.example"],"scheme":"cookie"}]}`, "the runner's schema refuses"},
+		{"no apply", `{"version":1,"token":"synthetic"}`, "the gateway's schema refuses"},
+		{"an unknown scheme", `{"version":1,"token":"synthetic","apply":[{"hosts":["a.example"],"scheme":"cookie"}]}`, "the gateway's schema refuses"},
 		{"two documents", answer + answer, "more than one JSON document"},
 	} {
 		err := conformance.Credential([]byte(tc.stdout))

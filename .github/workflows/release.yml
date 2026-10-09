@@ -116,7 +116,7 @@ jobs:
           EOF
 
       - name: Describe the program
-        # The same build as the release's, for the runner's own platform.
+        # The same build as the release's, for the build machine's own platform.
         env:
           PROGRAM: ${{ inputs.program }}
           MAIN: ${{ inputs.main }}
