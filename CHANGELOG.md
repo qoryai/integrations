@@ -27,10 +27,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Changed
 
-- `go.yml` runs its job in `public.ecr.aws/docker/library/golang:1.27`, Amazon's public copy
-  of Docker Hub's official image, in place of `docker.io/golang:1.27`: the same image,
-  with no login, and out of reach of Docker Hub's pull limit for anonymous users. A
-  repository that calls `go.yml` pulls it from there.
+- `go.yml` runs its job in `ghcr.io/qoryai/ci-images:golang-1.27`, by digest, in place of
+  `docker.io/golang:1.27`: a copy of Docker Hub's official `golang:1.27` image, under the
+  same digest, in a public package of qoryai's. It is pulled without a login, so a
+  repository that calls `go.yml` grants no permission for it, and it is out of reach of
+  the pull limits that Docker Hub and Amazon's copy set for pulls made without a login.
 - The module requires `github.com/qoryai/forager` in place of `github.com/qoryai/runner`,
   and `conformance.Credential` checks an answer against Forager's `credential.schema.json`,
   in `contracts/forager/v1`. Its refusal of an answer that schema refuses reads
