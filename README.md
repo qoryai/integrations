@@ -23,8 +23,11 @@ To list your integration, open a pull request that adds a row.
 
 ## Use an integration
 
-1. Install the program on the machine that runs `qory run`, on its `PATH`.
-2. Declare it in `~/.config/qory/forager.yaml`:
+1. Install the program, on its `PATH`, on the machine whose gateway the runs go through:
+   the machine that runs `qory run`, when its runs start their own gateway, or the machine
+   that runs `qory gateway`, when they go through a separate one.
+2. Declare it in `~/.config/qory/forager.yaml` on that machine. A machine whose runs go
+   through a separate gateway declares none; the gateway's machine holds them:
 
    ```yaml
    gateway:
@@ -48,7 +51,8 @@ To list your integration, open a pull request that adds a row.
 The only role is `credential`. For it:
 
 1. You declare the integration in `forager.yaml`.
-2. `qory run` runs `<program> describe` and checks your settings against it.
+2. The command that starts the gateway, `qory run` or `qory gateway`, runs
+   `<program> describe` and checks your settings against it.
 3. `qory` turns the declaration into a credential for
    [Forager](https://github.com/qoryai/forager)'s gateway.
 4. Before the agent starts, the gateway runs `<program> credential` outside the agent's
