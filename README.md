@@ -1,9 +1,9 @@
 # Qory integrations
 
 An integration is a program that connects Qory to an outside system, for example GitHub.
-Each integration has its own repository. This repository holds what they share: the
-contract they implement, a Go module for testing against it, and reusable CI and release
-workflows.
+Each integration is kept in a separate repository. This repository holds what they share:
+the contract they implement, a Go module for testing against it, and reusable CI and
+release workflows.
 
 | Path | What it is |
 |---|---|
@@ -23,9 +23,9 @@ To list your integration, open a pull request that adds a row.
 
 ## Use an integration
 
-1. Install the program, on its `PATH`, on the machine whose gateway the runs go through:
-   the machine that runs `qory run`, when its runs start their own gateway, or the machine
-   that runs `qory gateway`, when they go through a separate one.
+1. Install the program, on its `PATH`, on the machine where the gateway runs: the machine
+   that runs `qory run`, if `qory run` starts the gateway itself, or the machine that runs
+   `qory gateway`, if the runs go through a separate gateway.
 2. Declare it in `~/.config/qory/forager.yaml` on that machine. A machine whose runs go
    through a separate gateway declares none; the gateway's machine holds them:
 
