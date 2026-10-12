@@ -117,7 +117,7 @@ func Description(stdout []byte) error {
 // error's text is "credential: " followed by one refusal for each such entry, in the
 // order of apply, joined by "; ", such as "apply[1] sets the header Cookie, which
 // conformance reserves". It also has an Unwrap() []error method that returns each of
-// them as its own error, in the same order.
+// them as a separate error, in the same order.
 func Credential(stdout []byte) error {
 	if _, err := one(stdout); err != nil {
 		return fmt.Errorf("credential: %w", err)

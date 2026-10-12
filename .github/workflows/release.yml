@@ -22,7 +22,7 @@ name: Release an integration
 # release's body is the version's section of CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD": a
 # tag without one publishes nothing. Neither does a program whose describe fails or prints
 # a description that fails conformance.Description: the release builds
-# github.com/qoryai/integrations/cmd/integration-conformance in the integration's own
+# github.com/qoryai/integrations/cmd/integration-conformance within the integration's Go
 # module, with the version of this module its go.mod requires, and runs it on what
 # describe prints. A go.mod that does not require github.com/qoryai/integrations, or
 # requires a version without cmd/integration-conformance, publishes nothing.
@@ -116,7 +116,7 @@ jobs:
           EOF
 
       - name: Describe the program
-        # The same build as the release's, for the build machine's own platform.
+        # The same build as the release's, for the build machine's platform.
         env:
           PROGRAM: ${{ inputs.program }}
           MAIN: ${{ inputs.main }}
@@ -128,7 +128,7 @@ jobs:
           "$RUNNER_TEMP/bin/$PROGRAM" describe >"$RUNNER_TEMP/description.json"
 
       - name: Check the description against the contract
-        # Builds the check in the integration's own module, so it runs
+        # Builds the check within the integration's Go module, so it runs
         # conformance.Description from the version of qoryai/integrations the
         # integration's tests use.
         env:

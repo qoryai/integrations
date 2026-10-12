@@ -37,7 +37,7 @@ func must[T any](v T, err error) T {
 
 // Compile compiles one schema of the contract by its path under integration/v1,
 // "description.schema.json". The JSON Schema meta-schema a description's settings are
-// checked against is the compiler's own copy, so nothing is fetched.
+// checked against is the copy built into the compiler, so nothing is fetched.
 func Compile(name string) (*jsonschema.Schema, error) {
 	doc, err := Document(name)
 	if err != nil {

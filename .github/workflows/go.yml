@@ -1,7 +1,7 @@
 name: Go
 
-# The checks every Go integration runs, this repository's own among them. An integration
-# calls it from its CI:
+# The checks every Go integration runs; this repository's CI runs them too. An
+# integration calls it from its CI:
 #
 #   jobs:
 #     go:
