@@ -12,7 +12,7 @@ fixtures a program or a reader is tested against.
 
 The description contains `version: 1`, an integer, and its schema is addressed by URL
 under `https://qory.dev/contracts/integration/v1/`, as Forager's documents are
-([§Versions](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#versions)).
+([§Versions](https://github.com/qoryai/forager/tree/v0.7.0/contracts/forager/v1#versions)).
 A reader reads the versions it knows and refuses a description of any other. An
 addition keeps `version` 1; a change that breaks a reader is `version` 2.
 
@@ -98,7 +98,7 @@ description serves readers that know different roles.
 ### Credential
 
 The gateway's credential adapter
-([§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials)):
+([§Credentials](https://github.com/qoryai/forager/tree/v0.7.0/contracts/forager/v1#credentials)):
 the program mints or fetches a token for the argument a run's policy defines and prints
 the gateway's credential document.
 
@@ -189,5 +189,5 @@ Every fixture is synthetic. No host name of anyone's infrastructure and no real 
 
 - [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation),
   §9.4 for `writeOnly`.
-- Forager's contract, [§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials),
+- Forager's contract, [§Credentials](https://github.com/qoryai/forager/tree/v0.7.0/contracts/forager/v1#credentials),
   for the adapter definition a credential role expands to.

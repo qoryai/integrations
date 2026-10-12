@@ -26,7 +26,7 @@ What each role does:
   hosts and paths the access token is used on. The gateway keeps the access token outside
   the session.
   Its contract is Forager's
-  [§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials):
+  [§Credentials](https://github.com/qoryai/forager/tree/v0.7.0/contracts/forager/v1#credentials):
   one JSON document on standard output.
 
 The integration contract defines `credential`. A reader expands the roles it knows, and leaves the others as they are.
@@ -51,7 +51,7 @@ The integration contract defines `credential`. A reader expands the roles it kno
 - Every integration speaks the contract, Qory's and yours alike.
 
 The roles the gateway calls follow
-[Forager's contracts](https://github.com/qoryai/forager/tree/main/contracts/forager/v1):
+[Forager's contracts](https://github.com/qoryai/forager/tree/v0.7.0/contracts/forager/v1):
 §Credentials.
 
 ### Secrets

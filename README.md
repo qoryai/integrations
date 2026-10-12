@@ -97,7 +97,7 @@ is reserved for programs Qory publishes ([TRADEMARKS.md](TRADEMARKS.md)).
 
 | Role | Called by | Contract |
 |---|---|---|
-| `credential` | the gateway, per run | [integration contract](contracts/integration/v1/README.md#credential) and Forager [§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials) |
+| `credential` | the gateway, per run | [integration contract](contracts/integration/v1/README.md#credential) and Forager [§Credentials](https://github.com/qoryai/forager/tree/v0.7.0/contracts/forager/v1#credentials) |
 
 ## Test against the contract
 
