@@ -9,6 +9,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ## [0.3.0] - 2026-10-12
 
+### Upgrading
+
+- Require `github.com/qoryai/integrations` v0.3.0, and call the workflows at `@v0.3.0`.
+- `release.yml` publishes nothing unless `<program> describe` prints a description that
+  `conformance.Description` accepts, and the integration's `go.mod` requires this module
+  at v0.3.0 or later.
+- `conformance.Credential` refuses an `apply` entry whose header it reserves, and its
+  refusal of an answer that Forager's schema refuses starts
+  `credential: the gateway's schema refuses the answer:`. A test that matches the old
+  text changes with it.
+
 ### Added
 
 - Command `integration-conformance`, `cmd/integration-conformance`: reads one description
