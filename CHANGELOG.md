@@ -15,8 +15,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `release.yml` publishes nothing unless `<program> describe` prints a description that
   `conformance.Description` accepts, and the integration's `go.mod` requires this module
   at v0.3.0 or later.
-- `conformance.Credential` refuses an `apply` entry whose header it reserves, and its
-  refusal of an answer that Forager's schema refuses starts
+- `conformance.Credential` refuses an `apply` entry of the scheme `header` whose header it
+  reserves, and its refusal of an answer that Forager's schema refuses starts
   `credential: the gateway's schema refuses the answer:`. A test that matches the old
   text changes with it.
 
@@ -52,6 +52,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   that schema refuses reads
   `credential: the gateway's schema refuses the answer: …`, where it read
   `credential: the runner's schema refuses the answer: …`.
+- The contract, the README and the guide declare an integration under `gateway.integrations`
+  in a machine's `~/.config/qory/forager.yaml`, which `qory` expands under
+  `gateway.credentials`, where they said `integrations:` in `runner.yaml`. The program is
+  installed on the machine where the gateway runs.
+- The contract no longer reserves the role names `tool`, `work_source` and `output`, and no
+  longer says how a control plane offers integrations by `domains`. What validates is
+  unchanged.
 - `go.yml` keeps Go's build cache between runs, next to the module cache: it restores the
   newest one saved for the same Go version, preferring the same `go.sum`, and each passing
   run saves the cache for its `go.sum`.
