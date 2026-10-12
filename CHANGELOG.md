@@ -7,6 +7,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-12
+
 ### Added
 
 - Command `integration-conformance`, `cmd/integration-conformance`: reads one description
@@ -88,6 +90,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   This repository keeps the contract, the module every integration imports, and the
   catalog.
 
-[Unreleased]: https://github.com/qoryai/integrations/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/qoryai/integrations/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/qoryai/integrations/releases/tag/v0.3.0
 [0.2.0]: https://github.com/qoryai/integrations/releases/tag/v0.2.0
 [0.1.0]: https://github.com/qoryai/integrations/releases/tag/v0.1.0
