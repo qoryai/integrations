@@ -1,7 +1,7 @@
 name: Go
 
-# The checks every Go integration runs, this repository's own among them. An integration
-# calls it from its CI:
+# The checks every Go integration runs; this repository's CI runs them too. An
+# integration calls it from its CI:
 #
 #   jobs:
 #     go:
@@ -18,7 +18,10 @@ jobs:
     name: Go tests
     runs-on: ubuntu-latest
     container:
-      image: public.ecr.aws/docker/library/golang:1.27
+      # Docker Hub's official golang:1.27, copied by digest to qoryai's public package. It
+      # is pulled without a login, because the package is public, so a calling repository
+      # grants this workflow nothing more.
+      image: ghcr.io/qoryai/ci-images:golang-1.27@sha256:e432b43af23a9328d56a7c499be0476810aa344acbcf65fc7c455d4ff5a40602
     steps:
       - name: Install node for the JavaScript actions
         # checkout@v7 runs on node 24; the image has none.
@@ -53,8 +56,8 @@ jobs:
           echo "goversion=$(go env GOVERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Restore the build cache
-        # Each run saves its own, so the cache keeps up with the code. A build cache from
-        # another Go version holds nothing this one can use.
+        # Each passing run saves a fresh cache, so the cache keeps up with the code. A build
+        # cache from another Go version holds nothing this one can use.
         uses: actions/cache@v6
         with:
           path: ${{ steps.go-env.outputs.gocache }}

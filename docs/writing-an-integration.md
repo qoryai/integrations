@@ -11,7 +11,7 @@ repository from the [integration template](https://github.com/qoryai/integration
 - A role is a contract. The part of Qory that calls the program writes it. The program
   speaks it as written.
 - So an integration can be written in any language, and live in any repository. Each
-  integration has a repository of its own, with its own releases.
+  integration is kept in a separate repository and released separately.
 - The domains an integration works with are data of its description.
 
 ## Roles
@@ -43,7 +43,7 @@ The integration contract defines `credential`. A reader expands the roles it kno
 
   ```sh
   # <json>: the settings, one word of the command line
-  <program> <role> --settings <json> -- [the role's own arguments]
+  <program> <role> --settings <json> -- [the role's arguments]
   ```
 
 - For the credential role, that command line is exactly the adapter of a gateway
@@ -73,7 +73,7 @@ and [§Settings](../contracts/integration/v1/README.md#settings).
 
 - A program Qory publishes is `qory-<name>`, in the repository `qoryai/qory-<name>`, built
   from its `cmd/qory-<name>/`.
-- A program kept elsewhere takes a name of its own, such as `acme-tracker`
+- A program kept elsewhere takes a name without `qory` in it, such as `acme-tracker`
   ([TRADEMARKS.md](../TRADEMARKS.md)).
 - A Go integration's package is at its repository's root, named after its system.
 
@@ -128,4 +128,4 @@ The credential role becomes a credential of the same name. A run's policy select
   shows a declaration, and the policy that selects its credential.
 - The integration contract shows
   [how a reader expands one](../contracts/integration/v1/README.md#declaring-an-integration)
-  into the gateway's definition, an integration of your own among them.
+  into the gateway's definition, including an integration Qory does not publish.

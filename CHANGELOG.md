@@ -14,23 +14,25 @@ change what an existing reader or program relies on, and notes it under Upgradin
   description passes, 1 with the refusal on standard error when it does not, and 2 when
   it is given an argument or cannot read standard input.
 - `release.yml` runs `<program> describe` and checks the description with
-  `conformance.Description`, through `integration-conformance` built in the integration's
-  own module, at the version of this module its `go.mod` requires. A describe that fails,
-  a description the contract refuses, or a `go.mod` that does not require
-  `github.com/qoryai/integrations` publishes nothing.
+  `conformance.Description`, through `integration-conformance`, built within the
+  integration's Go module, at the version of this module that the integration's `go.mod`
+  requires. A describe that fails, a description the contract refuses, or a `go.mod` that
+  does not require `github.com/qoryai/integrations` publishes nothing.
 - `conformance.Credential` refuses an `apply` entry of the scheme `header` whose `header`
   is one it reserves: a name in `conformance/headers.json`'s `refused`, or one that starts
   with a prefix in its `refused_prefixes`, compared in lower case, such as `Cookie` or
-  `X-Forwarded-Host`. Each such entry is a refusal of its own, naming its index and the
-  header, and the error has an `Unwrap() []error` method that returns them. The text of
-  every other refusal is unchanged, but for the one under Changed.
+  `X-Forwarded-Host`. Each such entry is refused separately, and the refusal names the
+  entry's index and the header. The error has an `Unwrap() []error` method that returns
+  the refusals. The text of every other refusal is unchanged, but for the one under
+  Changed.
 
 ### Changed
 
-- `go.yml` runs its job in `public.ecr.aws/docker/library/golang:1.27`, Amazon's public copy
-  of Docker Hub's official image, in place of `docker.io/golang:1.27`: the same image,
-  with no login, and out of reach of Docker Hub's pull limit for anonymous users. A
-  repository that calls `go.yml` pulls it from there.
+- `go.yml` runs its job in `ghcr.io/qoryai/ci-images:golang-1.27`, by digest, in place of
+  `docker.io/golang:1.27`: a copy of Docker Hub's official `golang:1.27` image, under the
+  same digest, in a public package of qoryai's. It is pulled without a login, so a
+  repository that calls `go.yml` grants no permission for it, and it is out of reach of
+  the pull limits that Docker Hub and Amazon's copy set for pulls made without a login.
 - The module requires `github.com/qoryai/forager` in place of `github.com/qoryai/runner`,
   and `conformance.Credential` checks an answer against Forager's `credential.schema.json`,
   in `contracts/forager/v1`. Its refusal of an answer that schema refuses reads
@@ -38,7 +40,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `credential: the runner's schema refuses the answer: …`.
 - `go.yml` keeps Go's build cache between runs, next to the module cache: it restores the
   newest one saved for the same Go version, preferring the same `go.sum`, and each passing
-  run saves its own.
+  run saves the cache for its `go.sum`.
 
 ## [0.2.0] - 2026-09-30
 

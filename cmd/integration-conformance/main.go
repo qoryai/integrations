@@ -11,7 +11,7 @@
 // argument or cannot read standard input.
 //
 // release.yml builds it in the calling integration's module, so a release checks its
-// description with the version of this module the integration's own tests use.
+// description with the version of this module the integration's tests use.
 package main
 
 import (

@@ -117,7 +117,7 @@ func Description(stdout []byte) error {
 // error's text is "credential: " followed by one refusal for each such entry, in the
 // order of apply, joined by "; ", such as "apply[1] sets the header Cookie, which
 // conformance reserves". It also has an Unwrap() []error method that returns each of
-// them as its own error, in the same order.
+// them as a separate error, in the same order.
 func Credential(stdout []byte) error {
 	if _, err := one(stdout); err != nil {
 		return fmt.Errorf("credential: %w", err)
@@ -215,7 +215,8 @@ func secrets(doc any) []string {
 	return out
 }
 
-// writeOnly are the places under v that mark a secret, but v's own mark when top is set.
+// writeOnly are the places under v that mark a secret, but the mark on v itself
+// when top is set.
 func writeOnly(v any, at string, top bool) []string {
 	var out []string
 	switch v := v.(type) {

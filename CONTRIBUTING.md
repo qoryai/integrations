@@ -14,7 +14,7 @@ Thank you for considering a contribution.
   reaches all of them.
 - **The catalog**, the README's table: a row for an integration, yours included.
 
-**An integration itself goes in a repository of its own**, started from the
+**An integration itself goes in a separate repository**, started from the
 [integration template](https://github.com/qoryai/integration-template). A fix to one of
 Qory's goes to its repository, such as [qoryai/qory-github](https://github.com/qoryai/qory-github).
 
