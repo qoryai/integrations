@@ -109,7 +109,7 @@ func Description(stdout []byte) error {
 
 // Credential checks what `<program> credential` printed on standard output: one JSON
 // document and nothing after it, which the gateway's credential.schema.json accepts
-// (https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials).
+// (https://github.com/qoryai/forager/tree/v0.7.0/contracts/forager/v1#credentials).
 //
 // Once the schema accepts the document, Credential refuses each apply entry of the scheme
 // header whose header is one it reserves: a name in conformance/headers.json's refused,

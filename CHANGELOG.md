@@ -7,6 +7,19 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-12
+
+### Upgrading
+
+- Require `github.com/qoryai/integrations` v0.3.0, and call the workflows at `@v0.3.0`.
+- `release.yml` publishes nothing unless `<program> describe` prints a description that
+  `conformance.Description` accepts, and the integration's `go.mod` requires this module
+  at v0.3.0 or later.
+- `conformance.Credential` refuses an `apply` entry of the scheme `header` whose header it
+  reserves, and its refusal of an answer that Forager's schema refuses starts
+  `credential: the gateway's schema refuses the answer:`. A test that matches the old
+  text changes with it.
+
 ### Added
 
 - Command `integration-conformance`, `cmd/integration-conformance`: reads one description
@@ -33,11 +46,19 @@ change what an existing reader or program relies on, and notes it under Upgradin
   same digest, in a public package of qoryai's. It is pulled without a login, so a
   repository that calls `go.yml` grants no permission for it, and it is out of reach of
   the pull limits that Docker Hub and Amazon's copy set for pulls made without a login.
-- The module requires `github.com/qoryai/forager` in place of `github.com/qoryai/runner`,
-  and `conformance.Credential` checks an answer against Forager's `credential.schema.json`,
-  in `contracts/forager/v1`. Its refusal of an answer that schema refuses reads
+- The module requires `github.com/qoryai/forager` v0.7.0 in place of
+  `github.com/qoryai/runner`, and `conformance.Credential` checks an answer against
+  Forager's `credential.schema.json`, in `contracts/forager/v1`. Its refusal of an answer
+  that schema refuses reads
   `credential: the gateway's schema refuses the answer: …`, where it read
   `credential: the runner's schema refuses the answer: …`.
+- The contract, the README and the guide declare an integration under `gateway.integrations`
+  in a machine's `~/.config/qory/forager.yaml`, which `qory` expands under
+  `gateway.credentials`, where they said `integrations:` in `runner.yaml`. The program is
+  installed on the machine where the gateway runs.
+- The contract no longer reserves the role names `tool`, `work_source` and `output`, and no
+  longer says how a control plane offers integrations by `domains`. What validates is
+  unchanged.
 - `go.yml` keeps Go's build cache between runs, next to the module cache: it restores the
   newest one saved for the same Go version, preferring the same `go.sum`, and each passing
   run saves the cache for its `go.sum`.
@@ -87,6 +108,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   This repository keeps the contract, the module every integration imports, and the
   catalog.
 
-[Unreleased]: https://github.com/qoryai/integrations/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/qoryai/integrations/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/qoryai/integrations/releases/tag/v0.3.0
 [0.2.0]: https://github.com/qoryai/integrations/releases/tag/v0.2.0
 [0.1.0]: https://github.com/qoryai/integrations/releases/tag/v0.1.0

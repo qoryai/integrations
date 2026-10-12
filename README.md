@@ -97,7 +97,7 @@ is reserved for programs Qory publishes ([TRADEMARKS.md](TRADEMARKS.md)).
 
 | Role | Called by | Contract |
 |---|---|---|
-| `credential` | the gateway, per run | [integration contract](contracts/integration/v1/README.md#credential) and Forager [§Credentials](https://github.com/qoryai/forager/tree/main/contracts/forager/v1#credentials) |
+| `credential` | the gateway, per run | [integration contract](contracts/integration/v1/README.md#credential) and Forager [§Credentials](https://github.com/qoryai/forager/tree/v0.7.0/contracts/forager/v1#credentials) |
 
 ## Test against the contract
 
@@ -134,7 +134,7 @@ on:
   pull_request:
 jobs:
   go:
-    uses: qoryai/integrations/.github/workflows/go.yml@v0.2.0
+    uses: qoryai/integrations/.github/workflows/go.yml@v0.3.0
 ```
 
 `.github/workflows/release.yml`:
@@ -147,7 +147,7 @@ jobs:
   release:
     permissions:
       contents: write
-    uses: qoryai/integrations/.github/workflows/release.yml@v0.2.0
+    uses: qoryai/integrations/.github/workflows/release.yml@v0.3.0
     with:
       program: acme-tracker     # built from ./cmd/acme-tracker
 ```
