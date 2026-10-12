@@ -215,7 +215,8 @@ func secrets(doc any) []string {
 	return out
 }
 
-// writeOnly are the places under v that mark a secret, but v's own mark when top is set.
+// writeOnly are the places under v that mark a secret, but the mark on v itself
+// when top is set.
 func writeOnly(v any, at string, top bool) []string {
 	var out []string
 	switch v := v.(type) {

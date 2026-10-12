@@ -56,8 +56,8 @@ jobs:
           echo "goversion=$(go env GOVERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Restore the build cache
-        # Each run saves its own, so the cache keeps up with the code. A build cache from
-        # another Go version holds nothing this one can use.
+        # Each passing run saves a fresh cache, so the cache keeps up with the code. A build
+        # cache from another Go version holds nothing this one can use.
         uses: actions/cache@v6
         with:
           path: ${{ steps.go-env.outputs.gocache }}
