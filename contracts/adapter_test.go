@@ -120,7 +120,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-truncated-labels-twice.json":             {"source-items", "/items/0/truncated uniqueItems"},
 		"source-items-truncated-state-reason.json":             {"source-items", "/items/0/truncated/0 enum"},
 		"source-items-truncated-unknown-field.json":            {"source-items", "/items/0/truncated/0 enum"},
-		"sources-disconnect-reason-uninstalled.json":           {"sources-disconnect", "/reason enum"},
+		"sources-disconnect-with-reason.json":                  {"sources-disconnect", "/ additionalProperties"},
 		"connect-pass-without-connection-id.json":              {"connect-pass", "/ required connection_id"},
 		"connections-disconnect-undefined-member.json":         {"connections-disconnect", "/ additionalProperties"},
 		"connections-disconnect-connection-id-adapter-id.json": {"connections-disconnect", "/connection_id pattern"},
@@ -194,7 +194,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 				{Ref: "C-2", URL: "https://tracker.acme.example/TRK/TRK-1#C-2", Author: contracts.Person{Name: "Tracker bot", Kind: "automation"},
 					BodyFormat: "text", CreatedAt: now, UpdatedAt: now, Deleted: true, Truncated: []string{"author.name"}},
 			}}},
-		{"sources-disconnect", contracts.SourcesDisconnect{Version: contracts.Version, Time: now, CollectionRef: "TRK", Reason: "paused"}},
+		{"sources-disconnect", contracts.SourcesDisconnect{Version: contracts.Version, Time: now, CollectionRef: "TRK"}},
 		{"connections-disconnect", contracts.ConnectionsDisconnect{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef"}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_1"}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_2", Changes: []contracts.Change{

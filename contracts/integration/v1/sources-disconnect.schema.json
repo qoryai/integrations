@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/integration/v1/sources-disconnect.schema.json",
   "title": "Source disconnect",
-  "description": "The body of the signed POST /v1/sources/disconnect, application/json: the adapter no longer reaches one collection. The collection's items are marked disconnected, not deleted, so a work item already taken in from one keeps its link. A request for a collection whose connection ended is refused, 409 connection_ended, and one for a collection whose connection is suspended, 409 connection_suspended; definitions.schema.json says what the adapter does on each. On success the control plane answers a signed 204 with no body. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
+  "description": "The body of the signed POST /v1/sources/disconnect, application/json: the adapter no longer reaches one collection, because it is gone from the source or from what the source grants the connection. The collection's items are marked disconnected, not deleted, so a work item already taken in from one keeps its link. A grant the source suspends is not a disconnect: the adapter logs it and fetches again later. A connection the source no longer grants access is ended with connections-disconnect.schema.json, not collection by collection. A request for a collection whose connection ended is refused, 409 connection_ended, and one for a collection whose connection is suspended, 409 connection_suspended; definitions.schema.json says what the adapter does on each. On success the control plane answers a signed 204 with no body. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "time", "collection_ref", "reason"],
+  "required": ["version", "time", "collection_ref"],
   "properties": {
     "version": {
       "description": "The document format. The control plane refuses a version it does not read.",
@@ -18,11 +18,6 @@
     "collection_ref": {
       "description": "The ref of the collection, as source-collections.schema.json listed it.",
       "$ref": "definitions.schema.json#/$defs/ref"
-    },
-    "reason": {
-      "description": "Why: removed, the collection is gone from the source or from the adapter's reach; ended, the source's connection to the adapter ended; paused, the source suspended the adapter's access, which may resume.",
-      "type": "string",
-      "enum": ["removed", "ended", "paused"]
     }
   }
 }

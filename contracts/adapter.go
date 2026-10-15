@@ -198,13 +198,11 @@ type CommentsComplete struct {
 }
 
 // SourcesDisconnect is the body of POST /v1/sources/disconnect,
-// sources-disconnect.schema.json: the adapter no longer reaches one collection, for
-// Reason "removed", "ended" or "paused".
+// sources-disconnect.schema.json: the adapter no longer reaches one collection.
 type SourcesDisconnect struct {
 	Version       int    `json:"version"`
 	Time          string `json:"time"`
 	CollectionRef string `json:"collection_ref"`
-	Reason        string `json:"reason"`
 }
 
 // ConnectionsDisconnect is the body of POST /v1/connections/disconnect,
