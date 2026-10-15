@@ -100,6 +100,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-sync-interval-30.json":              {"changes", "/changes/0/interval minimum"},
 		"changes-unknown-kind.json":                  {"changes", "/changes/0/kind enum"},
 		"changes-work-item-status-linked.json":       {"changes", "/changes/0/status enum"},
+		"changes-without-revision.json":              {"changes", "/ required revision"},
 		"source-collections-no-listing.json":         {"source-collections", "/ required listing"},
 		"source-item-comments-person-kind-app.json":  {"source-item-comments", "/comments/0/author/kind enum"},
 		"source-items-101-items.json":                {"source-items", "/items maxItems"},
@@ -179,8 +180,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 					BodyFormat: "text", CreatedAt: now, UpdatedAt: now, Deleted: true},
 			}}},
 		{"sources-disconnect", contracts.SourcesDisconnect{Version: contracts.Version, Time: now, CollectionRef: "TRK", Reason: "paused"}},
-		{"changes", contracts.Changes{Version: contracts.Version, Cursor: "c_1"}},
-		{"changes", contracts.Changes{Version: contracts.Version, Cursor: "c_2", Changes: []contracts.Change{
+		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_1"}},
+		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_2", Changes: []contracts.Change{
 			{Kind: contracts.ChangeWorkItem, WorkItemID: "wi_1", Ref: "TRK-1", Status: "taken_in", URL: "https://control.example.com/work-items/wi_1"},
 			{Kind: contracts.ChangeCollection, CollectionRef: "TRK", Status: "linked"},
 			{Kind: contracts.ChangeSync},
@@ -348,7 +349,7 @@ func request(t *testing.T, name string) (accesskey.Request, signedRequest) {
 	if s.Body != nil {
 		r.Body = []byte(*s.Body)
 	}
-	if s.Headers["X-Qory-Contract-Version"] != strconv.Itoa(contracts.Version) {
+	if s.Headers["X-Qory-Contract-Version"] != strconv.Itoa(contracts.Revision) {
 		t.Errorf("%s: X-Qory-Contract-Version is %q", name, s.Headers["X-Qory-Contract-Version"])
 	}
 	return r, s
@@ -428,11 +429,12 @@ func TestTheSignedAnswerVerifies(t *testing.T) {
 	}
 }
 
-// verifyConnectPass is a connect pass as an adapter checks it: at most
-// ConnectPassMaxLength characters, the payload and the signature in base64url without
-// padding split on the dot, the signature verified under the pin over ConnectDomain, a
-// line feed and the payload bytes, and then the payload against
-// connect-pass.schema.json. It returns the payload's bytes.
+// verifyConnectPass checks a connect pass's signature and its payload's schema, and
+// nothing else: at most ConnectPassMaxLength characters, the payload and the signature in
+// strict base64url without padding split on the one dot, the signature verified under the
+// pin over ConnectDomain, a line feed and the payload bytes, and then the payload against
+// connect-pass.schema.json. It checks neither adapter_id, expires_at nor the nonce. It
+// returns the payload's bytes.
 func verifyConnectPass(t *testing.T, pass string, pin accesskey.Pin) ([]byte, bool) {
 	t.Helper()
 	encoded, sig, ok := strings.Cut(pass, ".")
