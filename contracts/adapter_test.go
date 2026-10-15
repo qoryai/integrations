@@ -113,6 +113,8 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-url-http.json":                       {"source-items", "/items/0/url pattern"},
 		"source-items-event-empty.json":                    {"source-items", "/items minItems"},
 		"source-item-comments-empty-without-complete.json": {"source-item-comments", "/comments minItems"},
+		"source-items-truncated-labels-twice.json":         {"source-items", "/items/0/truncated uniqueItems"},
+		"source-items-truncated-state-reason.json":         {"source-items", "/items/0/truncated/0 enum"},
 		"source-items-truncated-unknown-field.json":        {"source-items", "/items/0/truncated/0 enum"},
 		"sources-disconnect-reason-uninstalled.json":       {"sources-disconnect", "/reason enum"},
 	}
@@ -170,7 +172,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 				{Ref: "TRK-2", URL: "https://tracker.acme.example/TRK/TRK-2", Type: "bug", Title: "Prices without tax",
 					Body: "Shown **without** tax.", BodyFormat: "markdown", FiledBy: person, Labels: []string{"bug"},
 					State: "closed", StateReason: &reason, CommentCount: 3, CreatedAt: now, UpdatedAt: now, Target: target,
-					Truncated: []string{"title", "body"}},
+					Truncated: []string{"title", "body", "labels"}},
 			}}},
 		{"source-items", contracts.SourceItems{Version: contracts.Version, Time: now, CollectionRef: "TRK",
 			Items: []contracts.Item{{Ref: "TRK-1", URL: "https://tracker.acme.example/TRK/TRK-1", Title: "Checkout fails",

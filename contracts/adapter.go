@@ -116,9 +116,10 @@ func (s SourceItems) MarshalJSON() ([]byte, error) {
 }
 
 // Item is one item of work at the source. A nil Labels marshals as an empty list, and a
-// nil StateReason as null. Truncated names the text fields the adapter cut at a
-// code-point boundary to fit the contract's limit, "title", "body" or "filed_by.name";
-// nil, the adapter cut none.
+// nil StateReason as null. Truncated names the fields the adapter cut to fit the
+// contract's limits: "title", "body" or "filed_by.name", cut at a code-point boundary,
+// or "labels", some cut to 100 characters or those past the 100th left out; nil, the
+// adapter cut none.
 type Item struct {
 	Ref          string   `json:"ref"`
 	URL          string   `json:"url"`
