@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/provisioner/v1/handover-answer.schema.json",
+  "title": "Handover answer",
+  "description": "The body of the signed 200 answer to a handover, application/json, at most 1 MiB: the run key and everything the job needs to run the step. The adapter passes it to the job it started for the dispatch alone, and keeps the run key no longer than that. It is signed under the control plane's server key, and the adapter checks it under a server key it pinned at enrolment before using it, as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The adapter refuses a member this schema does not define.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "run_id",
+    "run_key",
+    "step",
+    "access",
+    "target",
+    "work_item",
+    "inputs"
+  ],
+  "properties": {
+    "version": {
+      "description": "The document format. The adapter refuses a version it does not read.",
+      "const": 1
+    },
+    "run_id": {
+      "description": "The run, the run key's run_id.",
+      "$ref": "definitions.schema.json#/$defs/run_id"
+    },
+    "run_key": {
+      "description": "The run's run key, at most 2048 characters: the Forager contract's run key, whose payload is https://qory.dev/contracts/forager/v1/run-key.schema.json.",
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^qrk_[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+    },
+    "step": {
+      "description": "The step the run is for.",
+      "$ref": "definitions.schema.json#/$defs/step"
+    },
+    "access": {
+      "description": "What the run may do on its target.",
+      "$ref": "definitions.schema.json#/$defs/access"
+    },
+    "target": {
+      "description": "Where the run's change would go.",
+      "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/target"
+    },
+    "work_item": {
+      "description": "The work item the run is for.",
+      "$ref": "definitions.schema.json#/$defs/work_item"
+    },
+    "inputs": {
+      "description": "The step's input, which the control plane writes and the job reads; the adapter passes it to the job unread. At most 768 KiB serialized. Its shape belongs to the step's schema at the control plane, not to this contract, so this object takes any member beside version: it is the one object of the contract that does.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "description": "The version of the step's input, which the step's schema defines.",
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/provisioner/v1/refusal.schema.json",
+  "title": "Refusal",
+  "description": "The body of a refusal the control plane answers a request of the provisioner contract with, application/json, as the integration contract's refusal, https://qory.dev/contracts/integration/v1/refusal.schema.json. The codes the adapter that serves a node pool meets: first those of that refusal, 401 unauthorized, unsigned and the same whatever the cause, 403 forbidden, which a claim of a pool the adapter does not serve gets, the same as an unknown one, 400 unsupported_contract_version and 400 invalid_request; then 409 no_gateway, a claim whose run's pool choice resolves to no gateway; 409 handed_over, a second handover of a dispatch; 409 not_dispatched, a handover before dispatched; 409 lease_expired, a dispatched or a handover after the lease lapsed, when the dispatch has gone back to the queue; 410 gone, a request of a dispatch that ended because its work item was closed or undone. No refusal is tied to a step or to a policy. A 401 is unsigned; every answer to a verified request is signed. A member this schema does not define is refused.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "description": "The refusal code.",
+      "$ref": "https://qory.dev/contracts/integration/v1/refusal.schema.json#/properties/error"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/provisioner/v1/claim.schema.json",
+  "title": "Claim",
+  "description": "The body of the signed POST /v1/pools/claim, application/json, with which the adapter that serves a node pool claims a run waiting for it. Without pool_id the claim covers any node pool the adapter serves; with it, only that pool. A pool the adapter does not serve is refused, 403 forbidden, the same as an unknown one. The control plane holds the request up to wait_seconds while no run waits, and answers a signed 200 with claim-answer.schema.json when one does, or a signed 204 with no body when none came. A run waiting for a pool whose choice resolves to no gateway is refused, 409 no_gateway. It is signed with the adapter's access key as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401. A member this schema does not define is refused, invalid_request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "time",
+    "wait_seconds"
+  ],
+  "properties": {
+    "version": {
+      "description": "The document format. The control plane refuses a version it does not read.",
+      "const": 1
+    },
+    "time": {
+      "description": "When the adapter built the body, RFC 3339 in UTC with whole seconds. The control plane refuses a time more than 300 seconds from its clock, either way, with an unsigned 401.",
+      "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/time"
+    },
+    "pool_id": {
+      "description": "The node pool to claim from. Absent, any node pool the adapter serves.",
+      "$ref": "definitions.schema.json#/$defs/pool_id"
+    },
+    "wait_seconds": {
+      "description": "How long the control plane may hold the request while no run waits, in seconds, from 0 to 25: 0 answers at once.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 25
+    }
+  }
+}

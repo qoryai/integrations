@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/provisioner/v1/dispatched.schema.json",
+  "title": "Dispatched",
+  "description": "The body of the signed POST /v1/dispatches/<dispatch_id>/dispatched, application/json: the adapter that serves the node pool started the job for the dispatch. The dispatch's lease gives way to its start window, within which the adapter asks for the handover, handover.schema.json. After the lease lapsed, when the dispatch has gone back to the queue, it is refused, 409 lease_expired; after the dispatch ended because its work item was closed or undone, 410 gone. It is signed with the adapter's access key as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401. A member this schema does not define is refused, invalid_request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "time"
+  ],
+  "properties": {
+    "version": {
+      "description": "The document format. The control plane refuses a version it does not read.",
+      "const": 1
+    },
+    "time": {
+      "description": "When the adapter built the body, RFC 3339 in UTC with whole seconds. The control plane refuses a time more than 300 seconds from its clock, either way, with an unsigned 401.",
+      "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/time"
+    },
+    "external": {
+      "description": "The job at the provider that runs it, when the adapter knows it. Absent otherwise.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "ref",
+        "url"
+      ],
+      "properties": {
+        "type": {
+          "description": "The adapter's word for what the job is at the provider, stored as data.",
+          "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/type"
+        },
+        "ref": {
+          "description": "The job's ref at the provider.",
+          "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/ref"
+        },
+        "url": {
+          "description": "The job's page at the provider.",
+          "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/url"
+        }
+      }
+    }
+  }
+}

@@ -209,9 +209,10 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 // of the adapter's schemas contains; app may not be a whole value.
 var externalWords = []string{"github", "issue", "pull", "repositor", "installation", "webhook", "workspace"}
 
-// TestTheAdapterSchemasNameNoExternalSystem walks every schema of the adapter and fails
-// on a member name, a required name, a const or an enum value that holds an external
-// system's word, or is app. The fixtures' data are not checked.
+// TestTheAdapterSchemasNameNoExternalSystem walks every schema of the adapter, those of
+// the provisioner contract among them, and fails on a member name, a required name, a
+// const or an enum value that holds an external system's word, or is app. The fixtures'
+// data are not checked.
 func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
 	check := func(name, where, word string) {
 		w := strings.ToLower(word)
@@ -265,6 +266,13 @@ func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
 			t.Fatal(err)
 		}
 		walk(name, doc)
+	}
+	for _, name := range provisionerSchemas {
+		doc, err := contracts.ProvisionerDocument(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		walk("provisioner/v1/"+name, doc)
 	}
 }
 
