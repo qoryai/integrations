@@ -9,8 +9,9 @@
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
 // start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
 // and [ConnectionsDisconnect], the change feed [Changes] it reads back, the [Refusal] of
-// a request, and the [ConnectPass] a person brings when they connect the source. Each
-// type marshals to the document its schema accepts.
+// a request, the [ConnectPass] a person brings when they connect the source, and the
+// [ConnectReturn] the adapter sends the person back with. Each type marshals to the
+// document its schema accepts.
 //
 // Every request is signed with the adapter's access key exactly as
 // github.com/qoryai/forager/accesskey signs a request (Request.Message,

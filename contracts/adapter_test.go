@@ -30,6 +30,7 @@ var adapterSchemas = []string{
 	"connections-disconnect.schema.json",
 	"changes.schema.json",
 	"connect-pass.schema.json",
+	"connect-return.schema.json",
 	"refusal.schema.json",
 }
 
@@ -121,6 +122,10 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-truncated-state-reason.json":             {"source-items", "/items/0/truncated/0 enum"},
 		"source-items-truncated-unknown-field.json":            {"source-items", "/items/0/truncated/0 enum"},
 		"sources-disconnect-with-reason.json":                  {"sources-disconnect", "/ additionalProperties"},
+		"connect-return-refused-without-reason.json":           {"connect-return", "/ required reason"},
+		"connect-return-linked-with-reason.json":               {"connect-return", "/reason "},
+		"connect-return-unknown-outcome.json":                  {"connect-return", "/outcome enum"},
+		"connect-return-undefined-member.json":                 {"connect-return", "/ additionalProperties"},
 		"connect-pass-without-connection-id.json":              {"connect-pass", "/ required connection_id"},
 		"connections-disconnect-undefined-member.json":         {"connections-disconnect", "/ additionalProperties"},
 		"connections-disconnect-connection-id-adapter-id.json": {"connections-disconnect", "/connection_id pattern"},
@@ -205,6 +210,10 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 		}}},
 		{"connect-pass", contracts.ConnectPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
 			ConnectionID: "ac_0123456789abcdef", Nonce: "AAECAwQFBgcICQoLDA0ODw", ExpiresAt: now}},
+		{"connect-return", contracts.ConnectReturn{Version: contracts.Version, ConnectionID: "ac_0123456789abcdef",
+			Nonce: "AAECAwQFBgcICQoLDA0ODw", Outcome: "linked", ExpiresAt: now}},
+		{"connect-return", contracts.ConnectReturn{Version: contracts.Version, ConnectionID: "ac_0123456789abcdef",
+			Nonce: "AAECAwQFBgcICQoLDA0ODw", Outcome: "refused", Reason: "permission_missing", ExpiresAt: now}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 	}
 	for _, c := range values {
@@ -445,27 +454,33 @@ func TestTheSignedAnswerVerifies(t *testing.T) {
 	}
 }
 
-// verifyConnectPass checks a connect pass's signature and its payload's schema, and
-// nothing else: at most ConnectPassMaxLength characters, the payload and the signature in
-// strict base64url without padding split on the one dot, the signature verified under the
-// pin over ConnectDomain, a line feed and the payload bytes, and then the payload against
-// connect-pass.schema.json. It checks neither adapter_id, expires_at nor the nonce. It
-// returns the payload's bytes.
+// verifyConnectPass checks a connect pass's signature and its payload's schema, as
+// verifyToken does over ConnectDomain and connect-pass.schema.json.
 func verifyConnectPass(t *testing.T, pass string, pin accesskey.Pin) ([]byte, bool) {
 	t.Helper()
-	encoded, sig, ok := strings.Cut(pass, ".")
-	if !ok || len(pass) > contracts.ConnectPassMaxLength || strings.Contains(sig, ".") {
+	return verifyToken(t, pass, contracts.ConnectDomain, "connect-pass.schema.json", pin)
+}
+
+// verifyToken checks a signed token's signature and its payload's schema, and nothing
+// else: at most ConnectPassMaxLength characters, the payload and the signature in strict
+// base64url without padding split on the one dot, the signature verified under the pin
+// over the domain line, a line feed and the payload bytes, and then the payload against
+// the schema. It checks no id, no expiry and no nonce. It returns the payload's bytes.
+func verifyToken(t *testing.T, token, domain, schema string, pin accesskey.Pin) ([]byte, bool) {
+	t.Helper()
+	encoded, sig, ok := strings.Cut(token, ".")
+	if !ok || len(token) > contracts.ConnectPassMaxLength || strings.Contains(sig, ".") {
 		return nil, false
 	}
 	payload, err := base64.RawURLEncoding.Strict().DecodeString(encoded)
 	if err != nil {
 		return nil, false
 	}
-	if !pin.Verify(append([]byte(contracts.ConnectDomain+"\n"), payload...), sig) {
+	if !pin.Verify(append([]byte(domain+"\n"), payload...), sig) {
 		return nil, false
 	}
-	if err := validate(compile(t, "connect-pass.schema.json"), payload); err != nil {
-		t.Errorf("the connect pass's payload: %v", err)
+	if err := validate(compile(t, schema), payload); err != nil {
+		t.Errorf("the payload of %s: %v", schema, err)
 		return nil, false
 	}
 	return payload, true
@@ -525,6 +540,62 @@ func TestTheConnectPassVerifies(t *testing.T) {
 	}
 	if _, ok := verifyConnectPass(t, doc.Pass, accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}); ok {
 		t.Error("the connect pass verifies under a pin without the server key")
+	}
+}
+
+// TestTheConnectReturnVerifies pins the connect return token of fixtures/adapter/signed:
+// it verifies under the fixture access key's public half over ConnectReturnDomain, its
+// payload is connect-return/linked.json and connect-return.schema.json accepts it, it
+// verifies neither over ConnectDomain nor under the server key, and the same token with
+// one byte of its connection_id changed is refused.
+func TestTheConnectReturnVerifies(t *testing.T) {
+	access, _, _, server := fixtureKeys(t)
+	var doc struct {
+		Payload  string `json:"payload"`
+		Token    string `json:"token"`
+		Tampered string `json:"tampered"`
+		Note     string `json:"note"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/connect-return.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	pin := accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}
+	payload, ok := verifyToken(t, doc.Token, contracts.ConnectReturnDomain, "connect-return.schema.json", pin)
+	if !ok || string(payload) != doc.Payload {
+		t.Errorf("the connect return token does not verify to its payload: %q", payload)
+	}
+	var fixture bytes.Buffer
+	if err := json.Compact(&fixture, read(t, "fixtures/adapter/connect-return/linked.json")); err != nil || fixture.String() != doc.Payload {
+		t.Error("the connect return token's payload is not connect-return/linked.json")
+	}
+	var r contracts.ConnectReturn
+	if err := json.Unmarshal(payload, &r); err != nil || r.ConnectionID != "ac_f1xt0re000000000" || r.Outcome != "linked" || r.Reason != "" {
+		t.Errorf("the connect return token's payload: %+v, %v", r, err)
+	}
+	if _, ok := verifyToken(t, doc.Token, contracts.ConnectDomain, "connect-return.schema.json", pin); ok {
+		t.Error("the connect return token verifies over the connect pass's domain")
+	}
+	if _, ok := verifyToken(t, doc.Token, contracts.ConnectReturnDomain, "connect-return.schema.json",
+		accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}); ok {
+		t.Error("the connect return token verifies under the server key")
+	}
+	if _, ok := verifyToken(t, doc.Tampered, contracts.ConnectReturnDomain, "connect-return.schema.json", pin); ok {
+		t.Error("the connect return token with a payload byte changed verifies")
+	}
+	tokenPayload, tokenSig, _ := strings.Cut(doc.Token, ".")
+	tamperedPayload, tamperedSig, _ := strings.Cut(doc.Tampered, ".")
+	a, errA := base64.RawURLEncoding.Strict().DecodeString(tokenPayload)
+	b, errB := base64.RawURLEncoding.Strict().DecodeString(tamperedPayload)
+	changed := 0
+	for i := range min(len(a), len(b)) {
+		if a[i] != b[i] {
+			changed++
+		}
+	}
+	var q contracts.ConnectReturn
+	if errA != nil || errB != nil || len(a) != len(b) || changed != 1 || tamperedSig != tokenSig ||
+		json.Unmarshal(b, &q) != nil || q.ConnectionID == r.ConnectionID {
+		t.Error("tampered is not the token with one byte of its connection_id changed")
 	}
 }
 
@@ -651,7 +722,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		}
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
-		"connections-disconnect"} {
+		"connections-disconnect", "connect-pass", "connect-return"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
