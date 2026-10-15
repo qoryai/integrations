@@ -455,21 +455,21 @@ func TestTheSignedAnswerVerifies(t *testing.T) {
 }
 
 // verifyConnectPass checks a connect pass's signature and its payload's schema, as
-// verifyToken does over ConnectDomain and connect-pass.schema.json.
+// verifySigned does over ConnectDomain and connect-pass.schema.json.
 func verifyConnectPass(t *testing.T, pass string, pin accesskey.Pin) ([]byte, bool) {
 	t.Helper()
-	return verifyToken(t, pass, contracts.ConnectDomain, "connect-pass.schema.json", pin)
+	return verifySigned(t, pass, contracts.ConnectDomain, "connect-pass.schema.json", pin)
 }
 
-// verifyToken checks a signed token's signature and its payload's schema, and nothing
+// verifySigned checks a signed value's signature and its payload's schema, and nothing
 // else: at most ConnectPassMaxLength characters, the payload and the signature in strict
 // base64url without padding split on the one dot, the signature verified under the pin
 // over the domain line, a line feed and the payload bytes, and then the payload against
 // the schema. It checks no id, no expiry and no nonce. It returns the payload's bytes.
-func verifyToken(t *testing.T, token, domain, schema string, pin accesskey.Pin) ([]byte, bool) {
+func verifySigned(t *testing.T, signed, domain, schema string, pin accesskey.Pin) ([]byte, bool) {
 	t.Helper()
-	encoded, sig, ok := strings.Cut(token, ".")
-	if !ok || len(token) > contracts.ConnectPassMaxLength || strings.Contains(sig, ".") {
+	encoded, sig, ok := strings.Cut(signed, ".")
+	if !ok || len(signed) > contracts.ConnectPassMaxLength || strings.Contains(sig, ".") {
 		return nil, false
 	}
 	payload, err := base64.RawURLEncoding.Strict().DecodeString(encoded)
@@ -543,10 +543,10 @@ func TestTheConnectPassVerifies(t *testing.T) {
 	}
 }
 
-// TestTheConnectReturnVerifies pins the connect return token of fixtures/adapter/signed:
+// TestTheConnectReturnVerifies pins the connect return of fixtures/adapter/signed:
 // it verifies under the fixture access key's public half over ConnectReturnDomain, its
 // payload is connect-return/linked.json and connect-return.schema.json accepts it, it
-// verifies neither over ConnectDomain nor under the server key, and the same token with
+// verifies neither over ConnectDomain nor under the server key, and the same return with
 // one byte of its connection_id changed is refused.
 func TestTheConnectReturnVerifies(t *testing.T) {
 	access, _, _, server := fixtureKeys(t)
@@ -560,31 +560,31 @@ func TestTheConnectReturnVerifies(t *testing.T) {
 		t.Fatal(err)
 	}
 	pin := accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}
-	payload, ok := verifyToken(t, doc.Token, contracts.ConnectReturnDomain, "connect-return.schema.json", pin)
+	payload, ok := verifySigned(t, doc.Token, contracts.ConnectReturnDomain, "connect-return.schema.json", pin)
 	if !ok || string(payload) != doc.Payload {
-		t.Errorf("the connect return token does not verify to its payload: %q", payload)
+		t.Errorf("the connect return does not verify to its payload: %q", payload)
 	}
 	var fixture bytes.Buffer
 	if err := json.Compact(&fixture, read(t, "fixtures/adapter/connect-return/linked.json")); err != nil || fixture.String() != doc.Payload {
-		t.Error("the connect return token's payload is not connect-return/linked.json")
+		t.Error("the connect return's payload is not connect-return/linked.json")
 	}
 	var r contracts.ConnectReturn
 	if err := json.Unmarshal(payload, &r); err != nil || r.ConnectionID != "ac_f1xt0re000000000" || r.Outcome != "linked" || r.Reason != "" {
-		t.Errorf("the connect return token's payload: %+v, %v", r, err)
+		t.Errorf("the connect return's payload: %+v, %v", r, err)
 	}
-	if _, ok := verifyToken(t, doc.Token, contracts.ConnectDomain, "connect-return.schema.json", pin); ok {
-		t.Error("the connect return token verifies over the connect pass's domain")
+	if _, ok := verifySigned(t, doc.Token, contracts.ConnectDomain, "connect-return.schema.json", pin); ok {
+		t.Error("the connect return verifies over the connect pass's domain")
 	}
-	if _, ok := verifyToken(t, doc.Token, contracts.ConnectReturnDomain, "connect-return.schema.json",
+	if _, ok := verifySigned(t, doc.Token, contracts.ConnectReturnDomain, "connect-return.schema.json",
 		accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}); ok {
-		t.Error("the connect return token verifies under the server key")
+		t.Error("the connect return verifies under the server key")
 	}
-	if _, ok := verifyToken(t, doc.Tampered, contracts.ConnectReturnDomain, "connect-return.schema.json", pin); ok {
-		t.Error("the connect return token with a payload byte changed verifies")
+	if _, ok := verifySigned(t, doc.Tampered, contracts.ConnectReturnDomain, "connect-return.schema.json", pin); ok {
+		t.Error("the connect return with a payload byte changed verifies")
 	}
-	tokenPayload, tokenSig, _ := strings.Cut(doc.Token, ".")
+	returnPayload, returnSig, _ := strings.Cut(doc.Token, ".")
 	tamperedPayload, tamperedSig, _ := strings.Cut(doc.Tampered, ".")
-	a, errA := base64.RawURLEncoding.Strict().DecodeString(tokenPayload)
+	a, errA := base64.RawURLEncoding.Strict().DecodeString(returnPayload)
 	b, errB := base64.RawURLEncoding.Strict().DecodeString(tamperedPayload)
 	changed := 0
 	for i := range min(len(a), len(b)) {
@@ -593,9 +593,9 @@ func TestTheConnectReturnVerifies(t *testing.T) {
 		}
 	}
 	var q contracts.ConnectReturn
-	if errA != nil || errB != nil || len(a) != len(b) || changed != 1 || tamperedSig != tokenSig ||
+	if errA != nil || errB != nil || len(a) != len(b) || changed != 1 || tamperedSig != returnSig ||
 		json.Unmarshal(b, &q) != nil || q.ConnectionID == r.ConnectionID {
-		t.Error("tampered is not the token with one byte of its connection_id changed")
+		t.Error("tampered is not the return with one byte of its connection_id changed")
 	}
 }
 

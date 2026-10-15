@@ -23,8 +23,8 @@ const Revision = 1
 // domain line, a line feed, then the payload bytes.
 const ConnectDomain = "qory-connect-ed25519-v1"
 
-// ConnectReturnDomain is the first line of the message a connect return token's
-// signature covers: the domain line, a line feed, then the payload bytes. It keeps the
+// ConnectReturnDomain is the first line of the message a connect return's signature
+// covers: the domain line, a line feed, then the payload bytes. It keeps the
 // signature from verifying as a request's signature or as a connect pass's.
 const ConnectReturnDomain = "qory-connect-return-ed25519-v1"
 
@@ -295,8 +295,8 @@ type ConnectPass struct {
 	ExpiresAt    string `json:"expires_at"`
 }
 
-// ConnectReturn is the payload of a connect return token, connect-return.schema.json,
-// which the adapter signs with its access key over [ConnectReturnDomain]. The token is
+// ConnectReturn is the payload of a connect return, connect-return.schema.json, which
+// the adapter signs with its access key over [ConnectReturnDomain]. A connect return is
 // at most 1024 characters, as a connect pass is. Outcome is "linked", "refused" or
 // "cancelled"; Reason is set only when Outcome is "refused".
 type ConnectReturn struct {
