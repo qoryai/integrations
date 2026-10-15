@@ -2,11 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/provisioner/v1/handover-answer.schema.json",
   "title": "Handover answer",
-  "description": "The body of the signed 200 answer to a handover, application/json, at most 1 MiB: the run key and everything the job needs to run the step. The adapter passes it to the job it started for the dispatch alone, and keeps the run key no longer than that. It is signed under the control plane's server key, and the adapter checks it under a server key it pinned at enrolment before using it, as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The adapter refuses a member this schema does not define.",
+  "description": "The body of the signed 200 answer to a handover, application/json, at most 1 MiB: the run key and everything the job needs to run the step. The adapter passes it to the job it started for the dispatch alone, and keeps the run key no longer than that. The answer names the contract revision it was built for in revision, inside the signed body: the adapter refuses an answer whose revision is not the revision it implements, the one it sent in X-Qory-Contract-Version, as https://qory.dev/contracts/integration/v1/definitions.schema.json describes for the integration contract. It is signed under the control plane's server key, and the adapter checks it under a server key it pinned at enrolment before using it, as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The adapter refuses a member this schema does not define.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "version",
+    "revision",
     "run_id",
     "run_key",
     "step",
@@ -19,6 +20,11 @@
     "version": {
       "description": "The document format. The adapter refuses a version it does not read.",
       "const": 1
+    },
+    "revision": {
+      "description": "The revision of this contract the control plane built the answer for, the one the request's X-Qory-Contract-Version named. The answer's signature covers it, with the rest of the body. The adapter refuses an answer whose revision is not the revision it implements.",
+      "type": "integer",
+      "minimum": 1
     },
     "run_id": {
       "description": "The run, the run key's run_id.",

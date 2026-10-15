@@ -2,6 +2,12 @@ package contracts
 
 import "encoding/json"
 
+// ProvisionerRevision is the provisioner contract's revision, which
+// X-Qory-Contract-Version carries on its requests as a decimal integer, and which
+// [ClaimAnswer] and [HandoverAnswer] name in Revision. Additions to the contract raise
+// the revision; a change that breaks a reader raises [Version].
+const ProvisionerRevision = 1
+
 // MaxInputs is the most bytes a handover answer's inputs has, serialized.
 const MaxInputs = 768 << 10
 
@@ -17,9 +23,11 @@ type Claim struct {
 	WaitSeconds int    `json:"wait_seconds"`
 }
 
-// ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json.
+// ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json. The
+// adapter refuses one whose Revision is not the revision it sent.
 type ClaimAnswer struct {
 	Version    int      `json:"version"`
+	Revision   int      `json:"revision"`
 	DispatchID string   `json:"dispatch_id"`
 	RunID      string   `json:"run_id"`
 	PoolID     string   `json:"pool_id"`
@@ -64,9 +72,11 @@ type Handover struct {
 // handover-answer.schema.json. Inputs holds the step's input as the answer's bytes, so
 // the adapter passes it to the job unread: its members, their order and its numbers
 // unchanged. json.Marshal writes it compacted, with <, > and & escaped, which a JSON
-// reader reads as the same text.
+// reader reads as the same text. The adapter refuses one whose Revision is not the
+// revision it sent.
 type HandoverAnswer struct {
 	Version  int             `json:"version"`
+	Revision int             `json:"revision"`
 	RunID    string          `json:"run_id"`
 	RunKey   string          `json:"run_key"`
 	Step     string          `json:"step"`

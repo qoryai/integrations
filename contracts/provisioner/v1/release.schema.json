@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/provisioner/v1/release.schema.json",
   "title": "Release",
-  "description": "The body of the signed POST /v1/dispatches/<dispatch_id>/release, application/json: the adapter that serves the node pool gives the run back, why, and whether the run should wait for another claim. After the dispatch ended because its work item was closed or undone, it is refused, 410 gone. It is signed with the adapter's access key as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401. A member this schema does not define is refused, invalid_request.",
+  "description": "The body of the signed POST /v1/dispatches/<dispatch_id>/release, application/json: the adapter that serves the node pool gives the run back, why, and whether the run should wait for another claim. After the dispatch ended because its work item was closed or undone, it is refused, 410 gone. A dispatch_id that is unknown, or that belongs to another adapter, is refused, 403 forbidden, the same answer as an unknown pool, so nobody learns whether an id exists. It is signed with the adapter's access key as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401. A member this schema does not define is refused, invalid_request.",
   "type": "object",
   "additionalProperties": false,
   "required": [

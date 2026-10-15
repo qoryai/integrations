@@ -50,8 +50,10 @@
 // The provisioner contract holds the requests with which the adapter that serves a node
 // pool claims a run waiting for that pool, [Claim] and its [ClaimAnswer], says it started
 // the job, [Dispatched], asks for the run key to hand the job, [Handover] and its
-// [HandoverAnswer], or gives the run back, [Release]. They are signed, and refused with a
-// [Refusal], exactly as the adapter's requests above.
+// [HandoverAnswer], or gives the run back, [Release]. They are signed, retried and
+// refused with a [Refusal] exactly as the adapter's requests above, and the two answers
+// name the revision they were built for, [ProvisionerRevision] here, in Revision, as
+// [Changes] does.
 //
 // Each schema's $id is [Base] followed by the file's path under integration/v1, or
 // [ProvisionerBase] followed by its path under provisioner/v1, and [Compile] and

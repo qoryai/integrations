@@ -2,11 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/provisioner/v1/claim-answer.schema.json",
   "title": "Claim answer",
-  "description": "The body of the signed 200 answer to a claim, application/json: the run the adapter claimed, the dispatch that holds it, and what the job is for. The dispatch is the adapter's until lease_until; the adapter starts the job and says so, dispatched.schema.json, before then, or the dispatch goes back to the queue. The answer carries no credential: the job's run key comes only from the handover, handover-answer.schema.json. It is signed under the control plane's server key, and the adapter checks it under a server key it pinned at enrolment before using it, as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The adapter refuses a member this schema does not define.",
+  "description": "The body of the signed 200 answer to a claim, application/json: the run the adapter claimed, the dispatch that holds it, and what the job is for. The dispatch is the adapter's until lease_until; the adapter starts the job and says so, dispatched.schema.json, before then, or the dispatch goes back to the queue. The answer carries no credential: the job's run key comes only from the handover, handover-answer.schema.json. The answer names the contract revision it was built for in revision, inside the signed body: the adapter refuses an answer whose revision is not the revision it implements, the one it sent in X-Qory-Contract-Version, as https://qory.dev/contracts/integration/v1/definitions.schema.json describes for the integration contract. It is signed under the control plane's server key, and the adapter checks it under a server key it pinned at enrolment before using it, as https://qory.dev/contracts/integration/v1/definitions.schema.json describes. The adapter refuses a member this schema does not define.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "version",
+    "revision",
     "dispatch_id",
     "run_id",
     "pool_id",
@@ -20,6 +21,11 @@
     "version": {
       "description": "The document format. The adapter refuses a version it does not read.",
       "const": 1
+    },
+    "revision": {
+      "description": "The revision of this contract the control plane built the answer for, the one the request's X-Qory-Contract-Version named. The answer's signature covers it, with the rest of the body. The adapter refuses an answer whose revision is not the revision it implements.",
+      "type": "integer",
+      "minimum": 1
     },
     "dispatch_id": {
       "description": "The dispatch: the id the adapter's later requests name in their path.",

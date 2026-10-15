@@ -101,6 +101,7 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"claim-answer-dispatch-id-no-prefix.json": {"claim-answer", "/dispatch_id pattern"},
 		"handover-answer-run-key-no-prefix.json":  {"handover-answer", "/run_key pattern"},
 		"handover-answer-inputs-no-version.json":  {"handover-answer", "/inputs required version"},
+		"handover-answer-without-revision.json":   {"handover-answer", "/ required revision"},
 	}
 	got := provisionerFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -140,13 +141,13 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 	}{
 		{"claim", contracts.Claim{Version: contracts.Version, Time: now, WaitSeconds: 25}},
 		{"claim", contracts.Claim{Version: contracts.Version, Time: now, PoolID: "np_0123456789abcdef"}},
-		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, DispatchID: "dp_1", RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
+		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_1", RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
 			PoolID: "np_0123456789abcdef", LeaseUntil: now, Step: "explore", Access: "write", Target: target, WorkItem: item}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now,
 			External: &contracts.External{Type: "job", Ref: "run-1", URL: "https://ci.example.com/runs/1"}}},
 		{"handover", contracts.Handover{Version: contracts.Version, Time: now}},
-		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
+		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
 			RunKey: "qrk_e30.AAAA", Step: "explore", Access: "read", Target: target, WorkItem: item,
 			Inputs: json.RawMessage(`{"version":1}`)}},
 		{"release", contracts.Release{Version: contracts.Version, Time: now, Reason: "No runner was free.", Retry: false}},
