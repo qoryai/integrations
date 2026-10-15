@@ -24,7 +24,12 @@
 // answer holds only the members, and the change feed only the entry kinds, that the named
 // revision defines: an entry of a kind newer than that revision is skipped for that
 // adapter, not sent, and the feed's cursor still moves past it, so a replay from the
-// start stays in step. So the answers' schemas stay strict, refusing a member they do not
+// start stays in step. The header alone never selects what an adapter accepts: every
+// answer whose content the revision bounds names that revision in its signed body, as
+// [Changes] does in Revision, and the adapter refuses one that names another revision than
+// the one it implements and sent, and advances no cursor from it. An answer's signature
+// covers its body and is bound to the request's signature, so the revision the answer was
+// built for is signed. So the answers' schemas stay strict, refusing a member they do not
 // define and an entry of a kind they do not know, and an addition to the contract never
 // breaks an adapter already deployed. The Forager contract makes additions safe the other
 // way, with lenient answers whose unknown members are ignored; both conventions are

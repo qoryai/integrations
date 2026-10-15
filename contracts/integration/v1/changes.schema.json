@@ -2,14 +2,19 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/integration/v1/changes.schema.json",
   "title": "Changes",
-  "description": "The body of the signed 200 answer to the signed GET /v1/work-items/changes?after=<cursor>, application/json: the entries of the adapter's change feed after the cursor. The adapter sends the answer's cursor as after on its next request; after absent means from the start. The control plane holds the request up to 25 seconds while the feed has no entry after the cursor. The feed is one append-only log per adapter. Reading from the start replays every entry in order, so the last entry per collection_ref is that collection's current link state, the last per work_item_id that work item's current status, and the last sync entry the current interval. An adapter that lost its store reads from the start. Entries apply in cursor order. The entries are bounded by the request's X-Qory-Contract-Version: the feed holds only the entry kinds that revision defines, and an entry of a newer kind is skipped, not sent, while the cursor still moves past it, as definitions.schema.json describes. The feed holds only the work items taken in from the adapter's items, the adapter's collections and the adapter's interval. The GET is signed with the adapter's access key, X-Qory-Timestamp included, and the answer under the control plane's server key, as definitions.schema.json describes; the adapter checks the answer under a server key it pinned at enrolment before using it. The adapter refuses a member this schema does not define.",
+  "description": "The body of the signed 200 answer to the signed GET /v1/work-items/changes?after=<cursor>, application/json: the entries of the adapter's change feed after the cursor. The adapter sends the answer's cursor as after on its next request; after absent means from the start. The control plane holds the request up to 25 seconds while the feed has no entry after the cursor. The feed is one append-only log per adapter. Reading from the start replays every entry in order, so the last entry per collection_ref is that collection's current link state, the last per work_item_id that work item's current status, and the last sync entry the current interval. An adapter that lost its store reads from the start. Entries apply in cursor order. The entries are bounded by the request's X-Qory-Contract-Version: the feed holds only the entry kinds that revision defines, and an entry of a newer kind is skipped, not sent, while the cursor still moves past it, as definitions.schema.json describes. The answer names that revision in revision, inside the signed body: the adapter refuses an answer whose revision is not the revision it implements, the one it sent in X-Qory-Contract-Version, and does not advance its cursor from a refused answer. The feed holds only the work items taken in from the adapter's items, the adapter's collections and the adapter's interval. The GET is signed with the adapter's access key, X-Qory-Timestamp included, and the answer under the control plane's server key, as definitions.schema.json describes; the adapter checks the answer under a server key it pinned at enrolment before using it. The adapter refuses a member this schema does not define.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "cursor", "changes"],
+  "required": ["version", "revision", "cursor", "changes"],
   "properties": {
     "version": {
       "description": "The document format. The adapter refuses a version it does not read.",
       "const": 1
+    },
+    "revision": {
+      "description": "The contract revision the control plane built the answer for, the one the request's X-Qory-Contract-Version named. The answer's signature covers it, with the rest of the body. The adapter refuses an answer whose revision is not the revision it implements, and does not advance its cursor from it.",
+      "type": "integer",
+      "minimum": 1
     },
     "cursor": {
       "description": "Where this answer ends in the feed, 1 to 200 characters, opaque to the adapter.",

@@ -178,9 +178,10 @@ type SourcesDisconnect struct {
 // the entries of the adapter's change feed after a cursor. A nil Changes marshals as an
 // empty list.
 type Changes struct {
-	Version int      `json:"version"`
-	Cursor  string   `json:"cursor"`
-	Changes []Change `json:"changes"`
+	Version  int      `json:"version"`
+	Revision int      `json:"revision"`
+	Cursor   string   `json:"cursor"`
+	Changes  []Change `json:"changes"`
 }
 
 // MarshalJSON writes the document, a nil Changes as an empty list.
