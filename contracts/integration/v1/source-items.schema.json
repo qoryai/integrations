@@ -20,7 +20,7 @@
       "$ref": "definitions.schema.json#/$defs/ref"
     },
     "items": {
-      "description": "The items, 0 to 100 on a listing part, 1 to 100 on an event. A listing of a collection with no open item is one part with no items and complete: true, and as a complete listing it closes every item of the collection it left out, here every item, whose updated_at is before its started_at. 0 items are allowed on any part of a listing, not only the last; only complete: true on the last part closes anything.",
+      "description": "The items, 0 to 100 on a listing part, 1 to 100 on an event. A listing of a collection with no open item can be one part with no items and complete: true, and as a complete listing it closes every item of the collection it left out, here every item, whose updated_at is before its started_at. 0 items are allowed on any part of a listing, not only the last; only complete: true on the last part closes anything.",
       "type": "array",
       "minItems": 0,
       "maxItems": 100,
