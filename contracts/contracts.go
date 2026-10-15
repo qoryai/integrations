@@ -54,10 +54,10 @@
 // 415 or 400 bad_request, the adapter changes no state: no cursor, no run, no key. It
 // treats the request as failed and sends it again, built anew, with backoff. It never
 // takes a 401 as revocation, and never splits or drops items because of an unsigned 413.
-// An unsigned 429 is not a 429: the adapter ignores its Retry-After and backs off by its
-// own rule. A POST whose Content-Type is not application/json is refused 415
-// unsupported_media_type; a GET carries no body and no Content-Type, and is never
-// refused 415. A POST body is application/json. An integer is written without a
+// An unsigned 429 is not a 429: the adapter ignores its Retry-After and backs off as it
+// does for any failed request. A POST whose Content-Type is not application/json is
+// refused 415 unsupported_media_type; a GET carries no body and no Content-Type, and is
+// never refused 415. A POST body is application/json. An integer is written without a
 // fraction or an exponent, and no object repeats a member, at any depth; the control
 // plane refuses either, 400 invalid_request. A POST whose schema names no answer body is
 // answered, on success, with a signed 204 and no body. The adapter's access key belongs
