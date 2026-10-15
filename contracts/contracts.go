@@ -21,39 +21,39 @@
 // X-Qory-Contract-Version is the revision of the contract the adapter implements,
 // [Revision] here, and the control plane refuses one that is missing, sent twice, not a
 // decimal integer, or a revision it does not serve, 400 unsupported_contract_version.
-// The control plane's answer holds only the members, and the change feed only the entry kinds, that the named
-// revision defines: an entry of a kind newer than that revision is skipped for that
-// adapter, not sent, and the feed's cursor still moves past it, so a replay from the
-// start stays in step. The header alone never selects what an adapter accepts: every
-// answer whose content the revision bounds names that revision in its signed body, as
-// [Changes] does in Revision, and the adapter refuses one that names another revision than
-// the one it implements and sent, and advances no cursor from it. An answer's signature
-// covers its body and is bound to the request's signature, so the revision the answer was
-// built for is signed. So the answers' schemas stay strict, refusing a member they do not
-// define and an entry of a kind they do not know, and an addition to the contract never
-// breaks an adapter already deployed. The Forager contract makes additions safe the other
-// way, with lenient answers whose unknown members are ignored; both conventions are
-// safe, and they apply to different contracts.
+// The control plane's answer holds only the members, and the change feed only the entry
+// kinds, that the named revision defines: an entry of a kind newer than that revision is
+// skipped for that adapter, not sent, and the feed's cursor still moves past it, so a
+// replay from the start stays in step. The header alone never selects what an adapter
+// accepts: every answer whose content the revision bounds names that revision in its
+// signed body, as [Changes] does in Revision, and the adapter refuses one that names
+// another revision than the one it implements and sent, and advances no cursor from it.
+// An answer's signature covers its body and is bound to the request's signature, so the
+// revision the answer was built for is signed. So the answers' schemas stay strict,
+// refusing a member they do not define and an entry of a kind they do not know, and an
+// addition to the contract never breaks an adapter already deployed. The Forager
+// contract makes additions safe the other way, with lenient answers whose unknown
+// members are ignored; both conventions are safe, and they apply to different contracts.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;
 // definitions.schema.json has the replay rule. That 401 is one uniform answer for
-// everything about who is asking, whose causes refusal.schema.json lists, and it tells the
-// adapter nothing about which cause applied. 400 bad_request has two causes alone: a
-// signing header sent twice, or an X-Qory-Instance-Id that is absent or outside its
-// pattern. A retry is a new request: the adapter
-// builds it again, a POST with a time and a GET with an X-Qory-Timestamp later than those
-// of the request it retries, and signs it again. A request sent again unchanged has a
-// signature the control plane has seen, and is refused, 401; an adapter never takes that
-// 401 as its access key being revoked. Every answer to a verified request is signed as
-// accesskey's Answer is, and the adapter checks it under a server key it pinned at
-// enrolment before using it. A 401 is always unsigned. A 413, 415 or 400 bad_request may
-// be unsigned, because the control plane may decide them before it verifies the
-// request's signature. Every other answer is signed, and an adapter acts on no other
-// unsigned answer. A POST whose schema names no answer body is answered, on success,
-// with a signed 204 and no body. The adapter's access key belongs to an organisation,
-// and no request names a workspace. forager/accesskey is the reference signer; an
-// adapter may sign to this text itself.
+// everything about who is asking, whose causes refusal.schema.json lists, and it tells
+// the adapter nothing about which cause applied. An X-Qory-Access-Key-Id,
+// X-Qory-Instance-Id, X-Qory-Signature-Ed25519 or X-Qory-Timestamp sent twice, or an
+// X-Qory-Instance-Id that is absent or outside its pattern, is refused 400 bad_request,
+// and only those are. A retry is a new request: the adapter builds it again, a POST with
+// a time and a GET with an X-Qory-Timestamp later than those of the request it retries,
+// and signs it again. A request sent again unchanged has a signature the control plane
+// has seen, and is refused, 401; an adapter never takes that 401 as its access key being
+// revoked. Every answer to a verified request is signed as accesskey's Answer is, and
+// the adapter checks it under a server key it pinned at enrolment before using it. A 401
+// is always unsigned. A 413, 415 or 400 bad_request may be unsigned, because the control
+// plane may decide them before it verifies the request's signature. Every other answer
+// is signed, and an adapter acts on no other unsigned answer. A POST whose schema names
+// no answer body is answered, on success, with a signed 204 and no body. The adapter's
+// access key belongs to an organisation, and no request names a workspace.
+// forager/accesskey is the reference signer; an adapter may sign to this text itself.
 //
 // The provisioner contract holds the requests with which the adapter that serves a node
 // pool claims a run waiting for that pool, [Claim] and its [ClaimAnswer], says it started
