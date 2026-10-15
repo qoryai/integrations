@@ -48,7 +48,8 @@ type WorkItem struct {
 }
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
-// dispatched.schema.json: the adapter started the job. On 409 lease_expired the
+// dispatched.schema.json: the adapter started the job. It is answered, on success, with
+// a signed 204 and no body. On 409 lease_expired the
 // dispatch went back to the queue with the same run, and the adapter stops the job it
 // started for that dispatch.
 type Dispatched struct {
@@ -97,8 +98,8 @@ type HandoverAnswer struct {
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
 // release.schema.json: the adapter gives the run back. Before the handover, Retry true
 // returns the same run to the queue. After it, the release ends the run and is answered
-// 200, the gateway refuses the run's key with 410 when the job attaches, and Retry true
-// queues a new run, with a new run id and a new run key.
+// as a success, the signed 204, not 409; the gateway refuses the run's key with 410 when
+// the job attaches, and Retry true queues a new run, with a new run id and a new run key.
 type Release struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`

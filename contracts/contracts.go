@@ -43,7 +43,10 @@
 // signature the control plane has seen, and is refused, 401; an adapter never takes that
 // 401 as its access key being revoked. Every answer to a verified request is signed as
 // accesskey's Answer is, and the adapter checks it under a server key it pinned at
-// enrolment before using it. The adapter's access key belongs to an
+// enrolment before using it. A 401, 413, 415 or 400 bad_request may be unsigned, because
+// the control plane may decide them before it verifies the request's signature. Every
+// other answer is signed, and an adapter acts on no other unsigned answer. A POST whose
+// schema names no answer body is answered, on success, with a signed 204 and no body. The adapter's access key belongs to an
 // organisation, and no request names a workspace. forager/accesskey is the reference
 // signer; an adapter may sign to this text itself.
 //

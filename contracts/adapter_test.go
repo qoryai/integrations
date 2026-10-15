@@ -110,6 +110,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-time-fraction.json":                  {"source-items", "/time pattern"},
 		"source-items-time-offset.json":                    {"source-items", "/time pattern"},
 		"source-items-undefined-member.json":               {"source-items", "/ additionalProperties"},
+		"refusal-supported-member.json":                    {"refusal", "/ additionalProperties"},
 		"source-items-url-http.json":                       {"source-items", "/items/0/url pattern"},
 		"source-items-event-empty.json":                    {"source-items", "/items minItems"},
 		"source-item-comments-empty-without-complete.json": {"source-item-comments", "/comments minItems"},
