@@ -50,10 +50,19 @@
 // the adapter checks it under a server key it pinned at enrolment before using it. A 401
 // is always unsigned. A 413, 415 or 400 bad_request may be unsigned, because the control
 // plane may decide them before it verifies the request's signature. Every other answer
-// is signed, and an adapter acts on no other unsigned answer. A POST whose schema names
-// no answer body is answered, on success, with a signed 204 and no body. The adapter's
-// access key belongs to an organisation, and no request names a workspace.
-// forager/accesskey is the reference signer; an adapter may sign to this text itself.
+// is signed, and an adapter acts on no other unsigned answer. On an unsigned 401, 413,
+// 415 or 400 bad_request, the adapter changes no state: no cursor, no run, no key. It
+// treats the request as failed and sends it again, built anew, with backoff. It never
+// takes a 401 as revocation, and never splits or drops items because of an unsigned 413.
+// An unsigned 429 is not a 429: the adapter ignores its Retry-After and backs off by its
+// own rule. A POST whose Content-Type is not application/json is refused 415
+// unsupported_media_type; a GET carries no body and no Content-Type, and is never
+// refused 415. A POST body is application/json. An integer is written without a
+// fraction or an exponent, and no object repeats a member, at any depth; the control
+// plane refuses either, 400 invalid_request. A POST whose schema names no answer body is
+// answered, on success, with a signed 204 and no body. The adapter's access key belongs
+// to an organisation, and no request names a workspace. forager/accesskey is the
+// reference signer; an adapter may sign to this text itself.
 //
 // The provisioner contract holds the requests with which the adapter that serves a node
 // pool claims a run waiting for that pool, [Claim] and its [ClaimAnswer], says it started

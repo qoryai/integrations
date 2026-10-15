@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/fs"
 	"path"
 	"strconv"
@@ -71,7 +73,7 @@ func TestAdapterFixturesValidate(t *testing.T) {
 	}
 	seen := 0
 	for _, d := range dirs {
-		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "signed" {
+		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "signed" || d.Name() == "refused-by-control-plane" {
 			continue
 		}
 		schema := compile(t, d.Name()+".schema.json")
@@ -544,6 +546,102 @@ func TestEmptyListsMarshalAsEmptyLists(t *testing.T) {
 		}
 		if err := validate(compile(t, c.schema+".schema.json"), b); err != nil {
 			t.Errorf("%T marshals to %s, which %s.schema.json refuses: %v", c.v, b, c.schema, err)
+		}
+	}
+}
+
+// strictJSON reports the first number written with a fraction or an exponent, and the
+// first member an object repeats, at any depth: the two rules of definitions.schema.json
+// that the control plane checks on a request's raw bytes, and that no schema can express,
+// since a parsed document holds 900.0 as the integer 900 and keeps one member of a name.
+// Every number of an integration request is an integer.
+func strictJSON(b []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.UseNumber()
+	type frame struct {
+		object, key bool
+		seen        map[string]bool
+	}
+	var stack []*frame
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		var top *frame
+		if len(stack) > 0 {
+			top = stack[len(stack)-1]
+		}
+		if top != nil && top.object && top.key {
+			if d, ok := tok.(json.Delim); ok && d == '}' {
+				stack = stack[:len(stack)-1]
+				continue
+			}
+			name := tok.(string)
+			if top.seen[name] {
+				return fmt.Errorf("the member %q is repeated", name)
+			}
+			top.seen[name] = true
+			top.key = false
+			continue
+		}
+		if top != nil && top.object {
+			top.key = true
+		}
+		switch v := tok.(type) {
+		case json.Delim:
+			switch v {
+			case '{':
+				stack = append(stack, &frame{object: true, key: true, seen: map[string]bool{}})
+			case '[':
+				stack = append(stack, &frame{})
+			case ']':
+				stack = stack[:len(stack)-1]
+			}
+		case json.Number:
+			if strings.ContainsAny(string(v), ".eE") {
+				return fmt.Errorf("the number %s has a fraction or an exponent", v)
+			}
+		}
+	}
+}
+
+// TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rule that an integer has no
+// fraction or exponent and that no object repeats a member: each document under
+// fixtures/adapter/refused-by-control-plane is accepted by its schema, since the rule is
+// not expressible in one, and breaks the rule on its raw bytes, so the control plane
+// refuses it, 400 invalid_request; and every accepted request fixture keeps the rule.
+func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
+	refused := map[string]string{
+		"adapter-integer-with-fraction.json": "adapter",
+		"adapter-repeated-member.json":       "adapter",
+	}
+	got := files(t, "fixtures/adapter/refused-by-control-plane")
+	if len(got) != len(refused) {
+		t.Errorf("fixtures/adapter/refused-by-control-plane holds %d documents, and the test expects %d", len(got), len(refused))
+	}
+	for _, f := range got {
+		schema, ok := refused[path.Base(f)]
+		if !ok {
+			t.Errorf("%s: no expected schema", f)
+			continue
+		}
+		b := read(t, f)
+		if err := validate(compile(t, schema+".schema.json"), b); err != nil {
+			t.Errorf("%s is refused by %s.schema.json, and the rule is the control plane's alone: %v", f, schema, err)
+		}
+		if strictJSON(b) == nil {
+			t.Errorf("%s keeps the rule on its raw bytes", f)
+		}
+	}
+	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect"} {
+		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
+			if err := strictJSON(read(t, f)); err != nil {
+				t.Errorf("%s: %v", f, err)
+			}
 		}
 	}
 }
