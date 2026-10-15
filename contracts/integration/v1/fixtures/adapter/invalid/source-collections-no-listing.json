@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "time": "2026-10-15T12:00:00Z",
+  "collections": [
+    {
+      "ref": "TRK",
+      "url": "https://tracker.acme.example/TRK",
+      "title": "Tracker"
+    }
+  ]
+}

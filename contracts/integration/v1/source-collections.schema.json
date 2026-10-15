@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/integration/v1/source-collections.schema.json",
+  "title": "Source collections",
+  "description": "The body of the signed POST /v1/source-collections, application/json: one part of the complete listing of the collections the adapter can reach, sent when the source is connected and whenever that set changes. A collection is a place at the source that items are listed from, such as a project, a board or a project on a code host. Collections belong to the organisation the adapter's access key belongs to, keyed on the adapter and the collection's ref. A collection is not active by being listed: it is linked when a person assigns it to a workspace in the control plane, and the adapter learns that from the change feed (changes.schema.json). A complete listing, every part from 1 to n arrived and part n saying complete: true, disconnects, as removed, every collection of the adapter it left out whose last change is older than its started_at. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401. A member this schema does not define is refused, invalid_request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "time", "collections", "listing"],
+  "properties": {
+    "version": {
+      "description": "The document format. The control plane refuses a version it does not read.",
+      "const": 1
+    },
+    "time": {
+      "description": "When the adapter built the body, RFC 3339 in UTC with whole seconds. The control plane refuses a time more than 300 seconds from its clock, either way, with an unsigned 401.",
+      "$ref": "definitions.schema.json#/$defs/time"
+    },
+    "collections": {
+      "description": "This part's collections, at most 100. A listing of none, complete, says the adapter reaches no collection.",
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "url", "title"],
+        "properties": {
+          "ref": {"description": "The collection's ref.", "$ref": "definitions.schema.json#/$defs/ref"},
+          "url": {"description": "The collection's page at the source.", "$ref": "definitions.schema.json#/$defs/url"},
+          "title": {"description": "The collection's name at the source.", "$ref": "definitions.schema.json#/$defs/title"},
+          "target": {"description": "Where a change for the collection's items would go. Absent when the adapter names none.", "$ref": "definitions.schema.json#/$defs/target"}
+        }
+      }
+    },
+    "listing": {
+      "description": "Which part of which listing this is.",
+      "$ref": "definitions.schema.json#/$defs/listing"
+    }
+  }
+}

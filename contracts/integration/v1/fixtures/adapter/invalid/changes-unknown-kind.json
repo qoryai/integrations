@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "cursor": "c_1",
+  "changes": [
+    {
+      "kind": "settings",
+      "interval": 600
+    }
+  ]
+}

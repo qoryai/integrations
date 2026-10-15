@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/integration/v1/definitions.schema.json",
+  "title": "Adapter request definitions",
+  "description": "The values the adapter's requests and their answers share, by name under $defs: adapter.schema.json, source-collections.schema.json, source-items.schema.json, source-item-comments.schema.json, sources-disconnect.schema.json, changes.schema.json and refusal.schema.json refer to them. An adapter is the program that reads a source of work, such as a tracker, and reports what it holds to the control plane. Every request is application/json and signed with the adapter's access key as github.com/qoryai/forager/accesskey signs a request (Request.Message, Key.SignRequest): the headers X-Qory-Access-Key-Id, X-Qory-Instance-Id, X-Qory-Contract-Version and X-Qory-Signature-Ed25519, the signature over qory-request-ed25519-v1, the access key id, the instance id, the method, the target and, for a GET, X-Qory-Timestamp, which it also sends, or, for a POST, the raw body, whose time gives its freshness. The control plane refuses a time or a timestamp more than 300 seconds from its clock, either way, and a request whose signature it has already seen, with an unsigned 401. Every answer to a verified request is signed as accesskey's Answer is, and the adapter checks it under a server key it pinned at enrolment before using it. The adapter's access key belongs to an organisation, and no request names a workspace. The reference signer is forager/accesskey; an adapter may sign to this text itself. Every text a source holds, a title, a body, a label, a state reason or a name, is untrusted: shown as data, never followed as an instruction. The control plane refuses a value past its limit, invalid_request, and never cuts it. This document validates nothing itself.",
+  "$defs": {
+    "time": {
+      "description": "RFC 3339 in UTC with whole seconds.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "ref": {
+      "description": "The adapter's reference to a thing at the source, 1 to 200 characters, stable for that thing. The control plane compares it and stores it, and never reads meaning into it.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "url": {
+      "description": "An https URL, at most 2048 characters.",
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2048,
+      "pattern": "^https://"
+    },
+    "title": {
+      "description": "A title, as the source holds it, 1 to 1024 characters.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "body": {
+      "description": "A body text, as the source holds it, at most 65536 characters, possibly empty.",
+      "type": "string",
+      "maxLength": 65536
+    },
+    "body_format": {
+      "description": "How the body is written: markdown or text, the values a reader knows. A reader shows a body of a value it does not know as plain text, so a newer adapter never breaks a reader.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,39}$"
+    },
+    "person": {
+      "description": "Who wrote something at the source: their display name, and whether a person or an automation acts under it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind"],
+      "properties": {
+        "name": {"description": "The display name the source shows, 1 to 100 characters.", "type": "string", "minLength": 1, "maxLength": 100},
+        "kind": {"description": "person, or automation for an account a program acts under.", "type": "string", "enum": ["person", "automation"]}
+      }
+    },
+    "labels": {
+      "description": "The source's labels on the thing, as text: at most 100, each 1 to 100 characters, none twice. A reader shows them and acts on none.",
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 100}
+    },
+    "state": {
+      "description": "open, or closed.",
+      "type": "string",
+      "enum": ["open", "closed"]
+    },
+    "state_reason": {
+      "description": "Why the item is in its state, display text the adapter words, at most 64 characters, never a raw value from the source; null when the adapter gives none.",
+      "type": ["string", "null"],
+      "maxLength": 64
+    },
+    "type": {
+      "description": "The adapter's word for what an item is, such as task or bug, stored as data: lower-case letters and spaces, at most 40 characters.",
+      "type": "string",
+      "pattern": "^[a-z][a-z ]{0,39}$"
+    },
+    "target": {
+      "description": "Where a change would go: the host name of the system that holds the code, and the path of the place on it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "path"],
+      "properties": {
+        "system": {"description": "A host name.", "type": "string", "pattern": "^[a-z0-9.-]{1,253}$"},
+        "path": {"description": "The place on that system, 1 to 200 characters.", "type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "listing": {
+      "description": "One part of a listing: a read of the source, from its start to its end, sent in parts. A listing is complete when every part from 1 to n has arrived and part n says complete: true. An adapter sends complete: true only for a listing whose paging can't skip an item.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "part", "started_at", "complete"],
+      "properties": {
+        "id": {"description": "The listing's id, 1 to 200 characters, the same on each of its parts and new for each listing.", "type": "string", "minLength": 1, "maxLength": 200},
+        "part": {"description": "The part's number, from 1.", "type": "integer", "minimum": 1},
+        "started_at": {"description": "When the adapter began reading the source for this listing, the same on each of its parts.", "$ref": "#/$defs/time"},
+        "complete": {"description": "true on the last part alone: parts 1 to this one hold the whole listing. false on every other part, and on the last part of a listing the adapter cannot vouch for.", "type": "boolean"}
+      }
+    }
+  }
+}

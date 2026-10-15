@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/integration/v1/connect-pass.schema.json",
+  "title": "Connect pass payload",
+  "description": "The payload of a connect pass, the exact JSON bytes the control plane signed. A connect pass is the payload in base64url without padding, a dot, and the signature in base64url without padding, at most 1024 characters with no white space; the signature is 64 bytes of Ed25519 under the control plane's server key over qory-connect-ed25519-v1, a line feed and the payload bytes. The control plane sends a person to the adapter's connect_url (adapter.schema.json) with the pass as the query parameter state. The adapter verifies the signature under a server key the adapter pinned at enrolment: after a server key rotation it tries each pinned key, and any one that verifies passes. It then reads the payload against this schema, checks that adapter_id is the id the adapter is enrolled as and that expires_at has not passed, refuses a nonce it has seen, and only then links the connection to the organisation of the adapter it is enrolled as. adapter_id names exactly one organisation, so the pass names no organisation itself. An adapter links a connection to an organisation only through a connect pass.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "adapter_id", "nonce", "expires_at"],
+  "properties": {
+    "version": {
+      "description": "The payload's version.",
+      "const": 1
+    },
+    "adapter_id": {
+      "description": "The adapter the pass is for, as the control plane enrolled it.",
+      "type": "string",
+      "pattern": "^na_[0-9a-hjkmnp-tv-z]{16}$"
+    },
+    "nonce": {
+      "description": "128 random bits in base64url without padding, 22 characters, new for each pass.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{21}[AQgw]$"
+    },
+    "expires_at": {
+      "description": "When the pass expires, RFC 3339 in UTC with whole seconds, at most 15 minutes after the control plane issued it.",
+      "$ref": "definitions.schema.json#/$defs/time"
+    }
+  }
+}

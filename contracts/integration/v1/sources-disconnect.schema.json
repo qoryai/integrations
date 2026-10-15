@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/integration/v1/sources-disconnect.schema.json",
+  "title": "Source disconnect",
+  "description": "The body of the signed POST /v1/sources/disconnect, application/json: the adapter no longer reaches one collection. The collection's items are marked disconnected, not deleted, so a work item already taken in from one keeps its link. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401. A member this schema does not define is refused, invalid_request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "time", "collection_ref", "reason"],
+  "properties": {
+    "version": {
+      "description": "The document format. The control plane refuses a version it does not read.",
+      "const": 1
+    },
+    "time": {
+      "description": "When the adapter built the body, RFC 3339 in UTC with whole seconds. The control plane refuses a time more than 300 seconds from its clock, either way, with an unsigned 401.",
+      "$ref": "definitions.schema.json#/$defs/time"
+    },
+    "collection_ref": {
+      "description": "The ref of the collection, as source-collections.schema.json listed it.",
+      "$ref": "definitions.schema.json#/$defs/ref"
+    },
+    "reason": {
+      "description": "Why: removed, the collection is gone from the source or from the adapter's reach; ended, the source's connection to the adapter ended; paused, the source suspended the adapter's access, which may resume.",
+      "type": "string",
+      "enum": ["removed", "ended", "paused"]
+    }
+  }
+}
