@@ -96,13 +96,23 @@ type Listing struct {
 }
 
 // SourceItems is the body of POST /v1/source-items, source-items.schema.json: items of
-// one collection, an event when Listing is nil and a listing's part otherwise.
+// one collection, an event of 1 to 100 items when Listing is nil, and a listing's part
+// of 0 to 100 otherwise. A nil Items marshals as an empty list.
 type SourceItems struct {
 	Version       int      `json:"version"`
 	Time          string   `json:"time"`
 	CollectionRef string   `json:"collection_ref"`
 	Items         []Item   `json:"items"`
 	Listing       *Listing `json:"listing,omitempty"`
+}
+
+// MarshalJSON writes the document, a nil Items as an empty list.
+func (s SourceItems) MarshalJSON() ([]byte, error) {
+	type plain SourceItems
+	if s.Items == nil {
+		s.Items = []Item{}
+	}
+	return json.Marshal(plain(s))
 }
 
 // Item is one item of work at the source. A nil Labels marshals as an empty list, and a
@@ -144,13 +154,23 @@ type Person struct {
 }
 
 // SourceItemComments is the body of POST /v1/source-items/comments,
-// source-item-comments.schema.json: comments of one item.
+// source-item-comments.schema.json: comments of one item, 1 to 100, or 0 to 100 with
+// Complete. A nil Comments marshals as an empty list.
 type SourceItemComments struct {
 	Version  int               `json:"version"`
 	Time     string            `json:"time"`
 	ItemRef  string            `json:"item_ref"`
 	Comments []Comment         `json:"comments"`
 	Complete *CommentsComplete `json:"complete,omitempty"`
+}
+
+// MarshalJSON writes the document, a nil Comments as an empty list.
+func (s SourceItemComments) MarshalJSON() ([]byte, error) {
+	type plain SourceItemComments
+	if s.Comments == nil {
+		s.Comments = []Comment{}
+	}
+	return json.Marshal(plain(s))
 }
 
 // Comment is one comment on an item; Deleted marks one deleted at the source.

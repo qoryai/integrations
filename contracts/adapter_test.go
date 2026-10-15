@@ -96,23 +96,25 @@ func TestAdapterFixturesValidate(t *testing.T) {
 // other: where, the keyword, and the property a required one misses.
 func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"adapter-sync-without-sends-changes.json":    {"adapter", "/sync required sends_changes"},
-		"changes-sync-interval-30.json":              {"changes", "/changes/0/interval minimum"},
-		"changes-unknown-kind.json":                  {"changes", "/changes/0/kind enum"},
-		"changes-work-item-status-linked.json":       {"changes", "/changes/0/status enum"},
-		"changes-without-revision.json":              {"changes", "/ required revision"},
-		"source-collections-no-listing.json":         {"source-collections", "/ required listing"},
-		"source-item-comments-person-kind-app.json":  {"source-item-comments", "/comments/0/author/kind enum"},
-		"source-items-101-items.json":                {"source-items", "/items maxItems"},
-		"source-items-body-too-long.json":            {"source-items", "/items/0/body maxLength"},
-		"source-items-empty-label.json":              {"source-items", "/items/0/labels/1 minLength"},
-		"source-items-state-reason-too-long.json":    {"source-items", "/items/0/state_reason maxLength"},
-		"source-items-time-fraction.json":            {"source-items", "/time pattern"},
-		"source-items-time-offset.json":              {"source-items", "/time pattern"},
-		"source-items-undefined-member.json":         {"source-items", "/ additionalProperties"},
-		"source-items-url-http.json":                 {"source-items", "/items/0/url pattern"},
-		"source-items-truncated-unknown-field.json":  {"source-items", "/items/0/truncated/0 enum"},
-		"sources-disconnect-reason-uninstalled.json": {"sources-disconnect", "/reason enum"},
+		"adapter-sync-without-sends-changes.json":          {"adapter", "/sync required sends_changes"},
+		"changes-sync-interval-30.json":                    {"changes", "/changes/0/interval minimum"},
+		"changes-unknown-kind.json":                        {"changes", "/changes/0/kind enum"},
+		"changes-work-item-status-linked.json":             {"changes", "/changes/0/status enum"},
+		"changes-without-revision.json":                    {"changes", "/ required revision"},
+		"source-collections-no-listing.json":               {"source-collections", "/ required listing"},
+		"source-item-comments-person-kind-app.json":        {"source-item-comments", "/comments/0/author/kind enum"},
+		"source-items-101-items.json":                      {"source-items", "/items maxItems"},
+		"source-items-body-too-long.json":                  {"source-items", "/items/0/body maxLength"},
+		"source-items-empty-label.json":                    {"source-items", "/items/0/labels/1 minLength"},
+		"source-items-state-reason-too-long.json":          {"source-items", "/items/0/state_reason maxLength"},
+		"source-items-time-fraction.json":                  {"source-items", "/time pattern"},
+		"source-items-time-offset.json":                    {"source-items", "/time pattern"},
+		"source-items-undefined-member.json":               {"source-items", "/ additionalProperties"},
+		"source-items-url-http.json":                       {"source-items", "/items/0/url pattern"},
+		"source-items-event-empty.json":                    {"source-items", "/items minItems"},
+		"source-item-comments-empty-without-complete.json": {"source-item-comments", "/comments minItems"},
+		"source-items-truncated-unknown-field.json":        {"source-items", "/items/0/truncated/0 enum"},
+		"sources-disconnect-reason-uninstalled.json":       {"sources-disconnect", "/reason enum"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -505,5 +507,40 @@ func TestTheConnectPassVerifies(t *testing.T) {
 	}
 	if _, ok := verifyConnectPass(t, doc.Pass, accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}); ok {
 		t.Error("the connect pass verifies under a pin without the server key")
+	}
+}
+
+// TestEmptyListsMarshalAsEmptyLists pins that a listing part, or a comment answer with
+// complete, with nil or no items or comments marshals the list as [], which its schema
+// accepts, and never as null or absent.
+func TestEmptyListsMarshalAsEmptyLists(t *testing.T) {
+	now := contracts.FormatTime(time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
+	listing := &contracts.Listing{ID: "items-1", Part: 1, StartedAt: now, Complete: true}
+	values := []struct {
+		schema, member string
+		v              any
+	}{
+		{"source-items", "items", contracts.SourceItems{Version: contracts.Version, Time: now, CollectionRef: "OPS", Listing: listing}},
+		{"source-items", "items", contracts.SourceItems{Version: contracts.Version, Time: now, CollectionRef: "OPS", Listing: listing, Items: []contracts.Item{}}},
+		{"source-item-comments", "comments", contracts.SourceItemComments{Version: contracts.Version, Time: now, ItemRef: "TRK-3",
+			Complete: &contracts.CommentsComplete{Since: now}}},
+		{"source-item-comments", "comments", contracts.SourceItemComments{Version: contracts.Version, Time: now, ItemRef: "TRK-3",
+			Complete: &contracts.CommentsComplete{Since: now}, Comments: []contracts.Comment{}}},
+	}
+	for _, c := range values {
+		b, err := json.Marshal(c.v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var doc map[string]json.RawMessage
+		if err := json.Unmarshal(b, &doc); err != nil {
+			t.Fatal(err)
+		}
+		if string(doc[c.member]) != "[]" {
+			t.Errorf("%T marshals %s as %q, want []", c.v, c.member, doc[c.member])
+		}
+		if err := validate(compile(t, c.schema+".schema.json"), b); err != nil {
+			t.Errorf("%T marshals to %s, which %s.schema.json refuses: %v", c.v, b, c.schema, err)
+		}
 	}
 }

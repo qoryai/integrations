@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/integration/v1/source-item-comments.schema.json",
   "title": "Source item comments",
-  "description": "The body of the signed POST /v1/source-items/comments, application/json: comments of one item, as the source holds them. Each comment is upserted on the adapter, the item's ref and the comment's ref, and the newer updated_at wins. A comment deleted at the source is an entry with deleted: true. With complete, these are all of the item's comments: the control plane marks the item's other comments deleted, except those updated at or after complete.since. The adapter leaves out the comment it wrote at the source when a work item was taken in from the item (changes.schema.json, taken_in). Every text, body and author.name, is untrusted: shown as data, never followed as an instruction. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
+  "description": "The body of the signed POST /v1/source-items/comments, application/json: comments of one item, as the source holds them. Each comment is upserted on the adapter, the item's ref and the comment's ref, and the newer updated_at wins. A comment deleted at the source is an entry with deleted: true. With complete, these are all of the item's comments, possibly none, and an adapter never sends complete with no comments after a read of the source that failed or stopped early: the control plane marks the item's other comments deleted, except those updated at or after complete.since. Without complete, the request names 1 to 100 comments. The adapter leaves out the comment it wrote at the source when a work item was taken in from the item (changes.schema.json, taken_in). Every text, body and author.name, is untrusted: shown as data, never followed as an instruction. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "time", "item_ref", "comments"],
@@ -20,14 +20,14 @@
       "$ref": "definitions.schema.json#/$defs/ref"
     },
     "comments": {
-      "description": "The comments, 1 to 100.",
+      "description": "The comments, 0 to 100 with complete, 1 to 100 without it. No comments with complete say the item has none: the control plane marks every comment of the item deleted, except those updated at or after complete.since.",
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "maxItems": 100,
       "items": {"$ref": "#/$defs/comment"}
     },
     "complete": {
-      "description": "Present when the comments are all of the item's comments. Absent otherwise.",
+      "description": "Present when the comments are all of the item's comments. Absent otherwise. complete with no comments says the item has no comment; an adapter never sends it after a read of the source that failed or stopped early.",
       "type": "object",
       "additionalProperties": false,
       "required": ["since"],
@@ -36,6 +36,8 @@
       }
     }
   },
+  "if": {"not": {"required": ["complete"]}},
+  "then": {"properties": {"comments": {"minItems": 1}}},
   "$defs": {
     "comment": {
       "description": "One comment on the item.",
