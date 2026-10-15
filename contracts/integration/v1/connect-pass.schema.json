@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/integration/v1/connect-pass.schema.json",
   "title": "Connect pass payload",
-  "description": "The payload of a connect pass, the exact JSON bytes the control plane signed. A connect pass is the payload in base64url without padding, a dot, and the signature in base64url without padding, at most 1024 characters with no white space; the signature is 64 bytes of Ed25519 under the control plane's server key over qory-connect-ed25519-v1, a line feed and the payload bytes. The control plane sends a person to the adapter's connect_url (adapter.schema.json) with the pass as the query parameter state. The adapter decodes the pass strictly, both parts as strict base64url without padding, and verifies the signature under a server key the adapter pinned at enrolment: after a server key rotation it tries each pinned key, and any one that verifies passes. It then reads the payload against this schema, checks that adapter_id is the id the adapter is enrolled as, and refuses a pass whose expires_at has passed on its clock, or is more than 15 minutes ahead of it. It records the nonce in one atomic check-and-insert, refusing a nonce it has seen, and only then links the connection to the organisation of the adapter it is enrolled as. It keeps the nonce, in storage that survives a restart, until expires_at has passed on its clock. adapter_id names exactly one organisation, so the pass names no organisation itself. An adapter links a connection to an organisation only through a connect pass.",
+  "description": "The payload of a connect pass, the exact JSON bytes the control plane signed. Its members come in no set order: the pass carries the exact bytes signed, and the adapter parses those bytes. A connect pass is the payload in base64url without padding, a dot, and the signature in base64url without padding, at most 1024 characters with no white space; the signature is 64 bytes of Ed25519 under the control plane's server key over qory-connect-ed25519-v1, a line feed and the payload bytes. The control plane sends a person to the adapter's connect_url (adapter.schema.json) with the pass as the query parameter state. The adapter decodes the pass strictly, both parts as strict base64url without padding, and verifies the signature under a server key the adapter pinned at enrolment: after a server key rotation it tries each pinned key, and any one that verifies passes. It then reads the payload against this schema, checks that adapter_id is the id the adapter is enrolled as, and refuses a pass whose expires_at has passed on its clock, or is more than 15 minutes ahead of it. It records the nonce in one atomic check-and-insert, refusing a nonce it has seen. It keeps the nonce, in storage that survives a restart, until expires_at has passed on its clock. connection_id names the connection the person is making. After its checks, the adapter links the access the source grants to that connection_id. Access the source grants without a connect pass links nothing.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "adapter_id", "nonce", "expires_at"],
+  "required": ["version", "adapter_id", "connection_id", "nonce", "expires_at"],
   "properties": {
     "version": {
       "description": "The payload's version.",
@@ -15,6 +15,10 @@
       "description": "The adapter the pass is for, as the control plane enrolled it.",
       "type": "string",
       "pattern": "^na_[0-9a-hjkmnp-tv-z]{16}$"
+    },
+    "connection_id": {
+      "description": "The connection the person is making, as the control plane made it. The adapter links the access the source grants to it, and names it in source-collections.schema.json.",
+      "$ref": "definitions.schema.json#/$defs/connection_id"
     },
     "nonce": {
       "description": "128 random bits in base64url without padding, 22 characters, new for each pass.",

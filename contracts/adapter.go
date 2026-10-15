@@ -56,12 +56,14 @@ type Sync struct {
 
 // SourceCollections is the body of POST /v1/source-collections,
 // source-collections.schema.json: one part of the listing of the collections the
-// adapter reaches. A nil Collections marshals as an empty list.
+// adapter reaches through the connection ConnectionID. A nil Collections marshals as an
+// empty list.
 type SourceCollections struct {
-	Version     int          `json:"version"`
-	Time        string       `json:"time"`
-	Collections []Collection `json:"collections"`
-	Listing     Listing      `json:"listing"`
+	Version      int          `json:"version"`
+	Time         string       `json:"time"`
+	ConnectionID string       `json:"connection_id"`
+	Collections  []Collection `json:"collections"`
+	Listing      Listing      `json:"listing"`
 }
 
 // MarshalJSON writes the document, a nil Collections as an empty list.
@@ -205,6 +207,15 @@ type SourcesDisconnect struct {
 	Reason        string `json:"reason"`
 }
 
+// ConnectionsDisconnect is the body of POST /v1/connections/disconnect,
+// connections-disconnect.schema.json: the source no longer grants the connection
+// ConnectionID access.
+type ConnectionsDisconnect struct {
+	Version      int    `json:"version"`
+	Time         string `json:"time"`
+	ConnectionID string `json:"connection_id"`
+}
+
 // Changes is the body of the answer to GET /v1/work-items/changes, changes.schema.json:
 // the entries of the adapter's change feed after a cursor. A nil Changes marshals as an
 // empty list.
@@ -274,10 +285,11 @@ func (c Change) MarshalJSON() ([]byte, error) {
 
 // ConnectPass is the payload of a connect pass, connect-pass.schema.json.
 type ConnectPass struct {
-	Version   int    `json:"version"`
-	AdapterID string `json:"adapter_id"`
-	Nonce     string `json:"nonce"`
-	ExpiresAt string `json:"expires_at"`
+	Version      int    `json:"version"`
+	AdapterID    string `json:"adapter_id"`
+	ConnectionID string `json:"connection_id"`
+	Nonce        string `json:"nonce"`
+	ExpiresAt    string `json:"expires_at"`
 }
 
 // Refusal is the body of the control plane's refusal of an adapter's request,

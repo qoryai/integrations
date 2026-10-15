@@ -27,6 +27,7 @@ var adapterSchemas = []string{
 	"source-items.schema.json",
 	"source-item-comments.schema.json",
 	"sources-disconnect.schema.json",
+	"connections-disconnect.schema.json",
 	"changes.schema.json",
 	"connect-pass.schema.json",
 	"refusal.schema.json",
@@ -98,28 +99,31 @@ func TestAdapterFixturesValidate(t *testing.T) {
 // other: where, the keyword, and the property a required one misses.
 func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"adapter-sync-without-sends-changes.json":          {"adapter", "/sync required sends_changes"},
-		"changes-sync-interval-30.json":                    {"changes", "/changes/0/interval minimum"},
-		"changes-unknown-kind.json":                        {"changes", "/changes/0/kind enum"},
-		"changes-work-item-status-linked.json":             {"changes", "/changes/0/status enum"},
-		"changes-without-revision.json":                    {"changes", "/ required revision"},
-		"source-collections-no-listing.json":               {"source-collections", "/ required listing"},
-		"source-item-comments-person-kind-app.json":        {"source-item-comments", "/comments/0/author/kind enum"},
-		"source-items-101-items.json":                      {"source-items", "/items maxItems"},
-		"source-items-body-too-long.json":                  {"source-items", "/items/0/body maxLength"},
-		"source-items-empty-label.json":                    {"source-items", "/items/0/labels/1 minLength"},
-		"source-items-state-reason-too-long.json":          {"source-items", "/items/0/state_reason maxLength"},
-		"source-items-time-fraction.json":                  {"source-items", "/time pattern"},
-		"source-items-time-offset.json":                    {"source-items", "/time pattern"},
-		"source-items-undefined-member.json":               {"source-items", "/ additionalProperties"},
-		"refusal-supported-member.json":                    {"refusal", "/ additionalProperties"},
-		"source-items-url-http.json":                       {"source-items", "/items/0/url pattern"},
-		"source-items-event-empty.json":                    {"source-items", "/items minItems"},
-		"source-item-comments-empty-without-complete.json": {"source-item-comments", "/comments minItems"},
-		"source-items-truncated-labels-twice.json":         {"source-items", "/items/0/truncated uniqueItems"},
-		"source-items-truncated-state-reason.json":         {"source-items", "/items/0/truncated/0 enum"},
-		"source-items-truncated-unknown-field.json":        {"source-items", "/items/0/truncated/0 enum"},
-		"sources-disconnect-reason-uninstalled.json":       {"sources-disconnect", "/reason enum"},
+		"adapter-sync-without-sends-changes.json":              {"adapter", "/sync required sends_changes"},
+		"changes-sync-interval-30.json":                        {"changes", "/changes/0/interval minimum"},
+		"changes-unknown-kind.json":                            {"changes", "/changes/0/kind enum"},
+		"changes-work-item-status-linked.json":                 {"changes", "/changes/0/status enum"},
+		"changes-without-revision.json":                        {"changes", "/ required revision"},
+		"source-collections-no-listing.json":                   {"source-collections", "/ required listing"},
+		"source-item-comments-person-kind-app.json":            {"source-item-comments", "/comments/0/author/kind enum"},
+		"source-items-101-items.json":                          {"source-items", "/items maxItems"},
+		"source-items-body-too-long.json":                      {"source-items", "/items/0/body maxLength"},
+		"source-items-empty-label.json":                        {"source-items", "/items/0/labels/1 minLength"},
+		"source-items-state-reason-too-long.json":              {"source-items", "/items/0/state_reason maxLength"},
+		"source-items-time-fraction.json":                      {"source-items", "/time pattern"},
+		"source-items-time-offset.json":                        {"source-items", "/time pattern"},
+		"source-items-undefined-member.json":                   {"source-items", "/ additionalProperties"},
+		"refusal-supported-member.json":                        {"refusal", "/ additionalProperties"},
+		"source-items-url-http.json":                           {"source-items", "/items/0/url pattern"},
+		"source-items-event-empty.json":                        {"source-items", "/items minItems"},
+		"source-item-comments-empty-without-complete.json":     {"source-item-comments", "/comments minItems"},
+		"source-items-truncated-labels-twice.json":             {"source-items", "/items/0/truncated uniqueItems"},
+		"source-items-truncated-state-reason.json":             {"source-items", "/items/0/truncated/0 enum"},
+		"source-items-truncated-unknown-field.json":            {"source-items", "/items/0/truncated/0 enum"},
+		"sources-disconnect-reason-uninstalled.json":           {"sources-disconnect", "/reason enum"},
+		"connect-pass-without-connection-id.json":              {"connect-pass", "/ required connection_id"},
+		"connections-disconnect-undefined-member.json":         {"connections-disconnect", "/ additionalProperties"},
+		"connections-disconnect-connection-id-adapter-id.json": {"connections-disconnect", "/connection_id pattern"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -162,8 +166,10 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	}{
 		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
 			Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60, SendsChanges: true}}},
-		{"source-collections", contracts.SourceCollections{Version: contracts.Version, Time: now, Listing: listing}},
-		{"source-collections", contracts.SourceCollections{Version: contracts.Version, Time: now, Listing: listing,
+		{"source-collections", contracts.SourceCollections{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef",
+			Listing: listing}},
+		{"source-collections", contracts.SourceCollections{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef",
+			Listing: listing,
 			Collections: []contracts.Collection{
 				{Ref: "TRK", URL: "https://tracker.acme.example/TRK", Title: "Tracker"},
 				{Ref: "SHOP", URL: "https://code.example.com/acme/shop", Title: "acme/shop", Target: target},
@@ -189,6 +195,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 					BodyFormat: "text", CreatedAt: now, UpdatedAt: now, Deleted: true, Truncated: []string{"author.name"}},
 			}}},
 		{"sources-disconnect", contracts.SourcesDisconnect{Version: contracts.Version, Time: now, CollectionRef: "TRK", Reason: "paused"}},
+		{"connections-disconnect", contracts.ConnectionsDisconnect{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef"}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_1"}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_2", Changes: []contracts.Change{
 			{Kind: contracts.ChangeWorkItem, WorkItemID: "wi_1", Ref: "TRK-1", Status: "taken_in", URL: "https://control.example.com/work-items/wi_1"},
@@ -197,7 +204,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: contracts.ChangeSync, Interval: &interval},
 		}}},
 		{"connect-pass", contracts.ConnectPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
-			Nonce: "AAECAwQFBgcICQoLDA0ODw", ExpiresAt: now}},
+			ConnectionID: "ac_0123456789abcdef", Nonce: "AAECAwQFBgcICQoLDA0ODw", ExpiresAt: now}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 	}
 	for _, c := range values {
@@ -466,8 +473,9 @@ func verifyConnectPass(t *testing.T, pass string, pin accesskey.Pin) ([]byte, bo
 
 // TestTheConnectPassVerifies pins the connect pass of fixtures/adapter/signed: it
 // verifies under a pin of the fixture server key, beside another key as after a
-// rotation, its payload is the fixture's and connect-pass.schema.json accepts it, and
-// the same pass with one payload byte changed is refused.
+// rotation, its payload is the fixture's, with its adapter_id and connection_id, and
+// connect-pass.schema.json accepts it, and the same pass with one byte of its
+// connection_id changed is refused.
 func TestTheConnectPassVerifies(t *testing.T) {
 	access, _, _, server := fixtureKeys(t)
 	var doc struct {
@@ -491,7 +499,8 @@ func TestTheConnectPassVerifies(t *testing.T) {
 		t.Errorf("the connect pass's payload is not connect-pass/payload.json")
 	}
 	var p contracts.ConnectPass
-	if err := json.Unmarshal(payload, &p); err != nil || p.Version != contracts.Version {
+	if err := json.Unmarshal(payload, &p); err != nil || p.Version != contracts.Version ||
+		p.AdapterID != "na_f1xt0re000000000" || p.ConnectionID != "ac_f1xt0re000000000" {
 		t.Errorf("the connect pass's payload: %+v, %v", p, err)
 	}
 	if _, ok := verifyConnectPass(t, doc.Tampered, pin); ok {
@@ -509,6 +518,10 @@ func TestTheConnectPassVerifies(t *testing.T) {
 	}
 	if errA != nil || errB != nil || len(a) != len(b) || changed != 1 || tamperedSig != passSig {
 		t.Error("tampered is not the pass with one payload byte changed")
+	}
+	var q contracts.ConnectPass
+	if err := json.Unmarshal(b, &q); err != nil || q.AdapterID != p.AdapterID || q.ConnectionID == p.ConnectionID {
+		t.Errorf("tampered does not change the pass's connection_id alone: %+v, %v", q, err)
 	}
 	if _, ok := verifyConnectPass(t, doc.Pass, accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}); ok {
 		t.Error("the connect pass verifies under a pin without the server key")
@@ -637,7 +650,8 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 			t.Errorf("%s keeps the rule on its raw bytes", f)
 		}
 	}
-	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect"} {
+	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
+		"connections-disconnect"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)

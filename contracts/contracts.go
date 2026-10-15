@@ -7,10 +7,10 @@
 //
 // The contract also holds the requests an adapter, the program that reads a source of
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
-// start-up, [SourceCollections], [SourceItems], [SourceItemComments] and
-// [SourcesDisconnect], the change feed [Changes] it reads back, the [Refusal] of a
-// request, and the [ConnectPass] a person brings when they connect the source. Each type
-// marshals to the document its schema accepts.
+// start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
+// and [ConnectionsDisconnect], the change feed [Changes] it reads back, the [Refusal] of
+// a request, and the [ConnectPass] a person brings when they connect the source. Each
+// type marshals to the document its schema accepts.
 //
 // Every request is signed with the adapter's access key exactly as
 // github.com/qoryai/forager/accesskey signs a request (Request.Message,
@@ -60,9 +60,10 @@
 // never refused 415. A POST body is application/json. An integer is written without a
 // fraction or an exponent, and no object repeats a member, at any depth; the control
 // plane refuses either, 400 invalid_request. A POST whose schema names no answer body is
-// answered, on success, with a signed 204 and no body. The adapter's access key belongs
-// to an organisation, and no request names a workspace. forager/accesskey is the
-// reference signer; an adapter may sign to this text itself.
+// answered, on success, with a signed 204 and no body. The adapter's access key is the
+// integration's, enrolled once for the instance. An organisation reaches the adapter
+// only through a connection, and no request names an organisation or a workspace.
+// forager/accesskey is the reference signer; an adapter may sign to this text itself.
 //
 // The provisioner contract holds the requests with which the adapter that serves a node
 // pool claims a run waiting for that pool, [Claim] and its [ClaimAnswer], says it started
