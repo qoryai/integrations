@@ -6,9 +6,14 @@ import (
 	"time"
 )
 
-// Version is the version every document of the adapter's requests and answers carries,
-// and the connect pass's payload.
+// Version is the version every request body, the change feed's answer and the connect
+// pass's payload carry.
 const Version = 1
+
+// Revision is the contract revision, which X-Qory-Contract-Version carries as a decimal
+// integer. Additions to this contract raise the revision; a change that breaks a reader
+// raises [Version].
+const Revision = 1
 
 // ConnectDomain is the first line of the message a connect pass's signature covers: the
 // domain line, a line feed, then the payload bytes.

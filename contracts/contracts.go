@@ -16,11 +16,29 @@
 // github.com/qoryai/forager/accesskey signs a request (Request.Message,
 // Key.SignRequest): the headers X-Qory-Access-Key-Id, X-Qory-Instance-Id,
 // X-Qory-Contract-Version and X-Qory-Signature-Ed25519; a GET also sends and signs
-// X-Qory-Timestamp, and a POST signs its raw body, whose time gives its freshness. The control plane refuses a time or a
-// timestamp more than 300 seconds from its clock, either way, and a request whose
-// signature it has already seen, with an unsigned 401. Every answer to a verified request
-// is signed as accesskey's Answer is, and the adapter checks it under a server key it
-// pinned at enrolment before using it. The adapter's access key belongs to an
+// X-Qory-Timestamp, and a POST signs its raw body, whose time gives its freshness.
+//
+// X-Qory-Contract-Version is the revision of the contract the adapter implements,
+// [Revision] here, and the control plane refuses a request without it, or naming a
+// revision it does not serve, 400 unsupported_contract_version. The control plane's
+// answer holds only the members, and the change feed only the entry kinds, that the named
+// revision defines: an entry of a kind newer than that revision is skipped for that
+// adapter, not sent, and the feed's cursor still moves past it, so a replay from the
+// start stays in step. So the answers' schemas stay strict, refusing a member they do not
+// define and an entry of a kind they do not know, and an addition to the contract never
+// breaks an adapter already deployed. The Forager contract makes additions safe the other
+// way, with lenient answers whose unknown members are ignored; both conventions are
+// safe, and they apply to different contracts.
+//
+// The control plane refuses a time or a timestamp more than 300 seconds from its clock,
+// either way, and a request whose signature it has already seen, with an unsigned 401;
+// definitions.schema.json has the replay rule. A retry is a new request: the adapter
+// builds it again, a POST with a time and a GET with an X-Qory-Timestamp later than those
+// of the request it retries, and signs it again. A request sent again unchanged has a
+// signature the control plane has seen, and is refused, 401; an adapter never takes that
+// 401 as its access key being revoked. Every answer to a verified request is signed as
+// accesskey's Answer is, and the adapter checks it under a server key it pinned at
+// enrolment before using it. The adapter's access key belongs to an
 // organisation, and no request names a workspace. forager/accesskey is the reference
 // signer; an adapter may sign to this text itself.
 //

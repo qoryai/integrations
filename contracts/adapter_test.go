@@ -340,7 +340,7 @@ func request(t *testing.T, name string) (accesskey.Request, signedRequest) {
 	if s.Body != nil {
 		r.Body = []byte(*s.Body)
 	}
-	if s.Headers["X-Qory-Contract-Version"] != strconv.Itoa(contracts.Version) {
+	if s.Headers["X-Qory-Contract-Version"] != strconv.Itoa(contracts.Revision) {
 		t.Errorf("%s: X-Qory-Contract-Version is %q", name, s.Headers["X-Qory-Contract-Version"])
 	}
 	return r, s
@@ -420,11 +420,12 @@ func TestTheSignedAnswerVerifies(t *testing.T) {
 	}
 }
 
-// verifyConnectPass is a connect pass as an adapter checks it: at most
-// ConnectPassMaxLength characters, the payload and the signature in base64url without
-// padding split on the dot, the signature verified under the pin over ConnectDomain, a
-// line feed and the payload bytes, and then the payload against
-// connect-pass.schema.json. It returns the payload's bytes.
+// verifyConnectPass checks a connect pass's signature and its payload's schema, and
+// nothing else: at most ConnectPassMaxLength characters, the payload and the signature in
+// strict base64url without padding split on the one dot, the signature verified under the
+// pin over ConnectDomain, a line feed and the payload bytes, and then the payload against
+// connect-pass.schema.json. It checks neither adapter_id, expires_at nor the nonce. It
+// returns the payload's bytes.
 func verifyConnectPass(t *testing.T, pass string, pin accesskey.Pin) ([]byte, bool) {
 	t.Helper()
 	encoded, sig, ok := strings.Cut(pass, ".")
