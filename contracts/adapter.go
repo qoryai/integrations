@@ -106,7 +106,9 @@ type SourceItems struct {
 }
 
 // Item is one item of work at the source. A nil Labels marshals as an empty list, and a
-// nil StateReason as null.
+// nil StateReason as null. Truncated names the text fields the adapter cut at a
+// code-point boundary to fit the contract's limit, "title", "body" or "filed_by.name";
+// nil, the adapter cut none.
 type Item struct {
 	Ref          string   `json:"ref"`
 	URL          string   `json:"url"`
@@ -122,6 +124,7 @@ type Item struct {
 	CreatedAt    string   `json:"created_at"`
 	UpdatedAt    string   `json:"updated_at"`
 	Target       *Target  `json:"target,omitempty"`
+	Truncated    []string `json:"truncated,omitempty"`
 }
 
 // MarshalJSON writes the item, a nil Labels as an empty list.
@@ -151,15 +154,18 @@ type SourceItemComments struct {
 }
 
 // Comment is one comment on an item; Deleted marks one deleted at the source.
+// Truncated names the text fields the adapter cut at a code-point boundary to fit the
+// contract's limit, "body" or "author.name"; nil, the adapter cut none.
 type Comment struct {
-	Ref        string `json:"ref"`
-	URL        string `json:"url"`
-	Author     Person `json:"author"`
-	Body       string `json:"body"`
-	BodyFormat string `json:"body_format"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
-	Deleted    bool   `json:"deleted,omitempty"`
+	Ref        string   `json:"ref"`
+	URL        string   `json:"url"`
+	Author     Person   `json:"author"`
+	Body       string   `json:"body"`
+	BodyFormat string   `json:"body_format"`
+	CreatedAt  string   `json:"created_at"`
+	UpdatedAt  string   `json:"updated_at"`
+	Deleted    bool     `json:"deleted,omitempty"`
+	Truncated  []string `json:"truncated,omitempty"`
 }
 
 // CommentsComplete says a request's comments are all of the item's comments, read from

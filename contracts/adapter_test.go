@@ -111,6 +111,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-time-offset.json":              {"source-items", "/time pattern"},
 		"source-items-undefined-member.json":         {"source-items", "/ additionalProperties"},
 		"source-items-url-http.json":                 {"source-items", "/items/0/url pattern"},
+		"source-items-truncated-unknown-field.json":  {"source-items", "/items/0/truncated/0 enum"},
 		"sources-disconnect-reason-uninstalled.json": {"sources-disconnect", "/reason enum"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
@@ -166,7 +167,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 					FiledBy: person, State: "open", CreatedAt: now, UpdatedAt: now},
 				{Ref: "TRK-2", URL: "https://tracker.acme.example/TRK/TRK-2", Type: "bug", Title: "Prices without tax",
 					Body: "Shown **without** tax.", BodyFormat: "markdown", FiledBy: person, Labels: []string{"bug"},
-					State: "closed", StateReason: &reason, CommentCount: 3, CreatedAt: now, UpdatedAt: now, Target: target},
+					State: "closed", StateReason: &reason, CommentCount: 3, CreatedAt: now, UpdatedAt: now, Target: target,
+					Truncated: []string{"title", "body"}},
 			}}},
 		{"source-items", contracts.SourceItems{Version: contracts.Version, Time: now, CollectionRef: "TRK",
 			Items: []contracts.Item{{Ref: "TRK-1", URL: "https://tracker.acme.example/TRK/TRK-1", Title: "Checkout fails",
@@ -177,7 +179,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 				{Ref: "C-1", URL: "https://tracker.acme.example/TRK/TRK-1#C-1", Author: person, Body: "Seen too.",
 					BodyFormat: "text", CreatedAt: now, UpdatedAt: now},
 				{Ref: "C-2", URL: "https://tracker.acme.example/TRK/TRK-1#C-2", Author: contracts.Person{Name: "Tracker bot", Kind: "automation"},
-					BodyFormat: "text", CreatedAt: now, UpdatedAt: now, Deleted: true},
+					BodyFormat: "text", CreatedAt: now, UpdatedAt: now, Deleted: true, Truncated: []string{"author.name"}},
 			}}},
 		{"sources-disconnect", contracts.SourcesDisconnect{Version: contracts.Version, Time: now, CollectionRef: "TRK", Reason: "paused"}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_1"}},

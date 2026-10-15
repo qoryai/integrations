@@ -50,7 +50,14 @@
         "body_format": {"description": "How body is written.", "$ref": "definitions.schema.json#/$defs/body_format"},
         "created_at": {"description": "When the comment was written at the source.", "$ref": "definitions.schema.json#/$defs/time"},
         "updated_at": {"description": "When the comment last changed at the source, or was deleted: the newer one wins.", "$ref": "definitions.schema.json#/$defs/time"},
-        "deleted": {"description": "true when the comment was deleted at the source. Absent otherwise.", "const": true}
+        "deleted": {"description": "true when the comment was deleted at the source. Absent otherwise.", "const": true},
+        "truncated": {
+          "description": "The comment's text fields the adapter cut: body, or author.name. Present when the source's text was over the contract's limit and the adapter cut it at a code-point boundary to fit: it names the fields the adapter cut, each once. The control plane stores the text as sent. A text over the limit is still refused, invalid_request, and the control plane never cuts a text. Absent when the adapter cut nothing.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["body", "author.name"]}
+        }
       }
     }
   }
