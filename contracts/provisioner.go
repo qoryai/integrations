@@ -4,8 +4,9 @@ import "encoding/json"
 
 // ProvisionerRevision is the provisioner contract's revision, which
 // X-Qory-Contract-Version carries on its requests as a decimal integer, and which
-// [ClaimAnswer] and [HandoverAnswer] name in Revision. Additions to the contract raise
-// the revision; a change that breaks a reader raises [Version].
+// [ClaimAnswer] and [HandoverAnswer] name in Revision. It counts additions alone: each
+// addition to provisioner/v1 raises it. A change that breaks a reader is a new
+// contract, provisioner/v2, not a new revision.
 const ProvisionerRevision = 1
 
 // MaxInputs is the most bytes a handover answer's inputs has, serialized.
@@ -47,7 +48,9 @@ type WorkItem struct {
 }
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
-// dispatched.schema.json: the adapter started the job.
+// dispatched.schema.json: the adapter started the job. On 409 lease_expired the
+// dispatch went back to the queue with the same run, and the adapter stops the job it
+// started for that dispatch.
 type Dispatched struct {
 	Version  int       `json:"version"`
 	Time     string    `json:"time"`
@@ -62,7 +65,10 @@ type External struct {
 }
 
 // Handover is the body of POST /v1/dispatches/<dispatch_id>/handover,
-// handover.schema.json.
+// handover.schema.json. A run key is handed over at most once per run: a second
+// handover is refused, 409 handed_over, and once a handover is answered the dispatch
+// never goes back to the queue. On 409 lease_expired the adapter stops the job it
+// started for that dispatch.
 type Handover struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
@@ -73,7 +79,9 @@ type Handover struct {
 // the adapter passes it to the job unread: its members, their order and its numbers
 // unchanged. json.Marshal writes it compacted, with <, > and & escaped, which a JSON
 // reader reads as the same text. The adapter refuses one whose Revision is not the
-// revision it sent.
+// revision it sent. The control plane sends it once per run, with Cache-Control:
+// no-store, and the adapter passes RunKey to the job it started for the dispatch alone
+// and keeps it no longer than that.
 type HandoverAnswer struct {
 	Version  int             `json:"version"`
 	Revision int             `json:"revision"`
@@ -87,7 +95,10 @@ type HandoverAnswer struct {
 }
 
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
-// release.schema.json: the adapter gives the run back.
+// release.schema.json: the adapter gives the run back. Before the handover, Retry true
+// returns the same run to the queue. After it, the release ends the run and is answered
+// 200, the gateway refuses the run's key with 410 when the job attaches, and Retry true
+// queues a new run, with a new run id and a new run key.
 type Release struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`

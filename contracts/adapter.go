@@ -6,13 +6,17 @@ import (
 	"time"
 )
 
-// Version is the version every request body, the change feed's answer and the connect
-// pass's payload carry.
+// Version is the document format of integration/v1 and provisioner/v1: every request
+// body of both contracts carries it, and so do the change feed's answer, the claim
+// answer, the handover answer and the connect pass's payload. It is 1 for as long as
+// those contracts are v1: a change that breaks a reader is a new contract, v2, not a new
+// Version inside v1.
 const Version = 1
 
-// Revision is the contract revision, which X-Qory-Contract-Version carries as a decimal
-// integer. Additions to this contract raise the revision; a change that breaks a reader
-// raises [Version].
+// Revision is the integration contract's revision, which X-Qory-Contract-Version
+// carries as a decimal integer. It counts additions alone: each addition to
+// integration/v1 raises it. A change that breaks a reader is a new contract,
+// integration/v2, not a new revision.
 const Revision = 1
 
 // ConnectDomain is the first line of the message a connect pass's signature covers: the

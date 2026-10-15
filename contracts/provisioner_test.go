@@ -94,14 +94,15 @@ func TestProvisionerFixturesValidate(t *testing.T) {
 // name, and for no other.
 func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"claim-wait-seconds-26.json":              {"claim", "/wait_seconds maximum"},
-		"claim-pool-id-node.json":                 {"claim", "/pool_id pattern"},
-		"claim-undefined-member.json":             {"claim", "/ additionalProperties"},
-		"claim-answer-access-admin.json":          {"claim-answer", "/access enum"},
-		"claim-answer-dispatch-id-no-prefix.json": {"claim-answer", "/dispatch_id pattern"},
-		"handover-answer-run-key-no-prefix.json":  {"handover-answer", "/run_key pattern"},
-		"handover-answer-inputs-no-version.json":  {"handover-answer", "/inputs required version"},
-		"handover-answer-without-revision.json":   {"handover-answer", "/ required revision"},
+		"claim-wait-seconds-26.json":               {"claim", "/wait_seconds maximum"},
+		"claim-pool-id-node.json":                  {"claim", "/pool_id pattern"},
+		"claim-undefined-member.json":              {"claim", "/ additionalProperties"},
+		"claim-answer-access-admin.json":           {"claim-answer", "/access enum"},
+		"claim-answer-dispatch-id-no-prefix.json":  {"claim-answer", "/dispatch_id pattern"},
+		"claim-answer-dispatch-id-upper-case.json": {"claim-answer", "/dispatch_id pattern"},
+		"handover-answer-run-key-no-prefix.json":   {"handover-answer", "/run_key pattern"},
+		"handover-answer-inputs-no-version.json":   {"handover-answer", "/inputs required version"},
+		"handover-answer-without-revision.json":    {"handover-answer", "/ required revision"},
 	}
 	got := provisionerFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -141,7 +142,7 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 	}{
 		{"claim", contracts.Claim{Version: contracts.Version, Time: now, WaitSeconds: 25}},
 		{"claim", contracts.Claim{Version: contracts.Version, Time: now, PoolID: "np_0123456789abcdef"}},
-		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_1", RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
+		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_0123456789abcdef", RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
 			PoolID: "np_0123456789abcdef", LeaseUntil: now, Step: "explore", Access: "write", Target: target, WorkItem: item}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now,
