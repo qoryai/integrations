@@ -16,7 +16,7 @@ const MaxInputs = 768 << 10
 const MaxHandoverAnswer = 1 << 20
 
 // Claim is the body of POST /v1/pools/claim, provisioner/v1 claim.schema.json. An empty
-// PoolID claims from any node pool the adapter serves.
+// PoolID claims from any node pool the pool's access key serves.
 type Claim struct {
 	Version     int    `json:"version"`
 	Time        string `json:"time"`
@@ -25,7 +25,7 @@ type Claim struct {
 }
 
 // ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json. The
-// adapter refuses one whose Revision is not the revision it sent.
+// starter refuses one whose Revision is not the revision it sent.
 type ClaimAnswer struct {
 	Version    int      `json:"version"`
 	Revision   int      `json:"revision"`
@@ -48,9 +48,9 @@ type WorkItem struct {
 }
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
-// dispatched.schema.json: the adapter started the job. It is answered, on success, with
+// dispatched.schema.json: the starter started the job. It is answered, on success, with
 // a signed 204 and no body. On 409 lease_expired the
-// dispatch went back to the queue with the same run, and the adapter stops the job it
+// dispatch went back to the queue with the same run, and the starter stops the job it
 // started for that dispatch.
 type Dispatched struct {
 	Version  int       `json:"version"`
@@ -68,7 +68,7 @@ type External struct {
 // Handover is the body of POST /v1/dispatches/<dispatch_id>/handover,
 // handover.schema.json. A run key is handed over at most once per run: a second
 // handover is refused, 409 handed_over, and once a handover is answered the dispatch
-// never goes back to the queue. On 409 lease_expired the adapter stops the job it
+// never goes back to the queue. On 409 lease_expired the starter stops the job it
 // started for that dispatch.
 type Handover struct {
 	Version int    `json:"version"`
@@ -77,11 +77,11 @@ type Handover struct {
 
 // HandoverAnswer is the body of the 200 answer to a handover,
 // handover-answer.schema.json. Inputs holds the step's input as the answer's bytes, so
-// the adapter passes it to the job unread: its members, their order and its numbers
+// the starter passes it to the job unread: its members, their order and its numbers
 // unchanged. json.Marshal writes it compacted, with <, > and & escaped, which a JSON
-// reader reads as the same text. The adapter refuses one whose Revision is not the
+// reader reads as the same text. The starter refuses one whose Revision is not the
 // revision it sent. The control plane sends it once per run, with Cache-Control:
-// no-store, and the adapter passes RunKey to the job it started for the dispatch alone
+// no-store, and the starter passes RunKey to the job it started for the dispatch alone
 // and keeps it no longer than that.
 type HandoverAnswer struct {
 	Version  int             `json:"version"`
@@ -96,7 +96,7 @@ type HandoverAnswer struct {
 }
 
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
-// release.schema.json: the adapter gives the run back. Before the handover, Retry true
+// release.schema.json: the starter gives the run back. Before the handover, Retry true
 // returns the same run to the queue. After it, the release ends the run and is answered
 // as a success, the signed 204, not 409; the gateway refuses the run's key with 410 when
 // the job attaches, and Retry true queues a new run, with a new run id and a new run key.

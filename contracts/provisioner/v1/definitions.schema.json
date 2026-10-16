@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json",
   "title": "Provisioner definitions",
-  "description": "The values the provisioner contract's schemas share, by name under $defs. Some of them refer in turn to the integration contract's definitions, https://qory.dev/contracts/integration/v1/definitions.schema.json. The adapter that serves a node pool claims a run waiting for that pool, starts a job for it, hands the job the run key, or gives the run back. Every request is signed with the adapter's access key, and its answers are signed under the control plane's server key, or left unsigned, exactly as the integration contract's adapter requests and their answers are. X-Qory-Contract-Version names the revision of this contract the adapter implements, and the answers whose content the revision bounds, claim-answer.schema.json and handover-answer.schema.json, name it in their signed body, as the integration contract's definitions describe for that contract. A retry is built anew, as they describe. An integer is written without a fraction or an exponent, and no object repeats a member, at any depth; the control plane refuses either, 400 invalid_request. An unsigned answer is handled as they describe. This document validates nothing itself.",
+  "description": "The values the provisioner contract's schemas share, by name under $defs. Some of them refer in turn to the integration contract's definitions, https://qory.dev/contracts/integration/v1/definitions.schema.json. The requests of this contract come from a node pool's starter: the program that serves a node pool, claims its runs, starts a job for each and passes the job its handover. Every request is signed with the pool's access key: a key of the pool kind, node_kind pool in https://qory.dev/contracts/forager/v1/enrolment.schema.json, enrolled for the node pool, which the starter holds. The integration contract's definitions describe the signature, the replay rule, the time window, the unsigned answers and the pinning of the server key for the access key that signs that contract's requests and the program that holds it; they apply to the pool's access key and the starter as they do to that key and that program. The answers are signed under the control plane's server key, or left unsigned, exactly as the answers to the integration contract's requests are. X-Qory-Contract-Version names the revision of this contract the starter implements, and the answers whose content the revision bounds, claim-answer.schema.json and handover-answer.schema.json, name it in their signed body, as the integration contract's definitions describe for that contract. A retry is built anew, as they describe. An integer is written without a fraction or an exponent, and no object repeats a member, at any depth; the control plane refuses either, 400 invalid_request. An unsigned answer is handled as they describe. This document validates nothing itself.",
   "$defs": {
     "dispatch_id": {
-      "description": "The dispatch's public id in the control plane, dp_ and 16 lower-case Crockford base32 characters: one claim of one run, from the claim to its handover or release. The id authorises nothing: the adapter's signature and the control plane's check that the dispatch is the adapter's authorise a request.",
+      "description": "The dispatch's public id in the control plane, dp_ and 16 lower-case Crockford base32 characters: one claim of one run, from the claim to its handover or release. The id authorises nothing: the request's signature with the pool's access key and the control plane's check that the dispatch is of a node pool the key serves authorise a request.",
       "type": "string",
       "pattern": "^dp_[0-9a-hjkmnp-tv-z]{16}$"
     },
@@ -25,7 +25,7 @@
       "pattern": "^[a-z][a-z_]{0,39}$"
     },
     "access": {
-      "description": "What the run may do on its target: read, or write. The adapter's credential service narrows the run's access to it.",
+      "description": "What the run may do on its target: read, or write. The machine's credential integration narrows the run's access to it.",
       "type": "string",
       "enum": [
         "read",

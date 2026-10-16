@@ -1,5 +1,6 @@
-// Package contracts embeds the integration contract, contracts/integration/v1, and the
-// provisioner contract, contracts/provisioner/v1, and compiles their schemas.
+// Package contracts embeds the integration contract, contracts/integration/v1, the
+// provisioner contract, contracts/provisioner/v1, and the explore contract,
+// contracts/explore/v1, and compiles their schemas.
 //
 // The contract is what a program of an integration reports about itself: `<program>
 // describe` prints its description, description.schema.json, and a reader, `qory` or a
@@ -66,19 +67,27 @@
 // only through a connection, and no request names an organisation or a workspace.
 // forager/accesskey is the reference signer; an adapter may sign to this text itself.
 //
-// The provisioner contract holds the requests with which the adapter that serves a node
-// pool claims a run waiting for that pool, [Claim] and its [ClaimAnswer], says it started
-// the job, [Dispatched], asks for the run key to hand the job, [Handover] and its
-// [HandoverAnswer], or gives the run back, [Release]. They are signed, retried and
-// refused with a [Refusal] exactly as the adapter's requests above, and the two answers
-// name the revision they were built for, [ProvisionerRevision] here, in Revision, as
-// [Changes] does.
+// The provisioner contract holds the requests with which a node pool's starter, the
+// program that serves a node pool, claims a run waiting for that pool, [Claim] and its
+// [ClaimAnswer], says it started the job, [Dispatched], asks for the run key to hand the
+// job, [Handover] and its [HandoverAnswer], or gives the run back, [Release]. The starter
+// signs them with the pool's access key, a key of the pool kind enrolled for the node
+// pool. They are signed, retried and refused with a [Refusal] exactly as the integration
+// contract's requests above, and the two answers name the revision they were built for,
+// [ProvisionerRevision] here, in Revision, as [Changes] does.
 //
-// Each schema's $id is [Base] followed by the file's path under integration/v1, or
-// [ProvisionerBase] followed by its path under provisioner/v1, and [Compile] and
-// [CompileProvisioner] compile it by that path, with every embedded schema it refers to.
-// The tests in this package validate every fixture under integration/v1/fixtures and
-// provisioner/v1/fixtures, so the schemas and the fixtures cannot drift apart.
+// The explore contract holds the documents of the step explore: inputs.schema.json, the
+// shape of a handover answer's inputs for that step, and result.schema.json, the run's
+// final response, which the control plane reads from the result text of the Forager
+// contract's dev.qory.session.result event. They are documents of a step, not requests,
+// and are not signed.
+//
+// Each schema's $id is [Base] followed by the file's path under integration/v1,
+// [ProvisionerBase] followed by its path under provisioner/v1, or [ExploreBase] followed
+// by its path under explore/v1, and [Compile], [CompileProvisioner] and [CompileExplore]
+// compile it by that path, with every embedded schema it refers to. The tests in this
+// package validate every fixture under integration/v1/fixtures, provisioner/v1/fixtures
+// and explore/v1/fixtures, so the schemas and the fixtures cannot drift apart.
 package contracts
 
 import (
@@ -100,7 +109,12 @@ const Base = "https://qory.dev/contracts/integration/v1"
 // fetched from it.
 const ProvisionerBase = "https://qory.dev/contracts/provisioner/v1"
 
-//go:embed all:integration all:provisioner
+// ExploreBase is the $id every schema of the explore contract has, followed by the
+// schema's path under explore/v1. It identifies the contract; nothing is fetched from
+// it.
+const ExploreBase = "https://qory.dev/contracts/explore/v1"
+
+//go:embed all:integration all:provisioner all:explore
 var embedded embed.FS
 
 // FS is the contract directory, rooted at integration/v1: the README, the schema and
@@ -110,6 +124,10 @@ var FS = must(fs.Sub(embedded, "integration/v1"))
 // ProvisionerFS is the provisioner contract's directory, rooted at provisioner/v1: the
 // schemas and the fixtures.
 var ProvisionerFS = must(fs.Sub(embedded, "provisioner/v1"))
+
+// ExploreFS is the explore contract's directory, rooted at explore/v1: the schemas and
+// the fixtures.
+var ExploreFS = must(fs.Sub(embedded, "explore/v1"))
 
 func must[T any](v T, err error) T {
 	if err != nil {
@@ -122,7 +140,7 @@ func must[T any](v T, err error) T {
 var trees = []struct {
 	base string
 	fsys fs.FS
-}{{Base, FS}, {ProvisionerBase, ProvisionerFS}}
+}{{Base, FS}, {ProvisionerBase, ProvisionerFS}, {ExploreBase, ExploreFS}}
 
 // Compile compiles one schema of the contract by its path under integration/v1,
 // "description.schema.json" say. A schema of the contract it refers to, such as
@@ -139,6 +157,14 @@ func CompileProvisioner(name string) (*jsonschema.Schema, error) {
 	return compile(ProvisionerBase, ProvisionerFS, name)
 }
 
+// CompileExplore compiles one schema of the explore contract by its path under
+// explore/v1, "result.schema.json" say. A schema it refers to, of this contract or of
+// the integration contract, is read from [ExploreFS] or [FS] by its $id, so nothing is
+// fetched.
+func CompileExplore(name string) (*jsonschema.Schema, error) {
+	return compile(ExploreBase, ExploreFS, name)
+}
+
 // compile compiles the schema at name in fsys, whose $id is base followed by name.
 func compile(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
 	doc, err := document(fsys, name)
@@ -153,8 +179,8 @@ func compile(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
 	return c.Compile(base + "/" + name)
 }
 
-// loader reads a schema of an embedded contract by its $id, from [FS] or
-// [ProvisionerFS], and refuses any other URL.
+// loader reads a schema of an embedded contract by its $id, from [FS],
+// [ProvisionerFS] or [ExploreFS], and refuses any other URL.
 type loader struct{}
 
 // Load returns the document of a schema of an embedded contract by its URL.
@@ -175,6 +201,10 @@ func Document(name string) (any, error) { return document(FS, name) }
 // ProvisionerDocument reads one JSON file of the provisioner contract, by its path
 // under provisioner/v1, as [Document] reads one of the integration contract.
 func ProvisionerDocument(name string) (any, error) { return document(ProvisionerFS, name) }
+
+// ExploreDocument reads one JSON file of the explore contract, by its path under
+// explore/v1, as [Document] reads one of the integration contract.
+func ExploreDocument(name string) (any, error) { return document(ExploreFS, name) }
 
 // document reads the JSON file at name in fsys.
 func document(fsys fs.FS, name string) (any, error) {

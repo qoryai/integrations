@@ -38,7 +38,13 @@ func compileProvisioner(t *testing.T, name string) *jsonschema.Schema {
 // provisionerFiles are the fixtures of the provisioner contract directly under dir.
 func provisionerFiles(t *testing.T, dir string) []string {
 	t.Helper()
-	entries, err := fs.ReadDir(contracts.ProvisionerFS, dir)
+	return treeFiles(t, contracts.ProvisionerFS, dir)
+}
+
+// treeFiles are the fixtures of the contract directory fsys directly under dir.
+func treeFiles(t *testing.T, fsys fs.FS, dir string) []string {
+	t.Helper()
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
