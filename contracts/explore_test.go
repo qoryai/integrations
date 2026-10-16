@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"path"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -63,11 +64,17 @@ func TestInvalidExploreFixturesAreRefused(t *testing.T) {
 		"result-question-escape.json":                  {"result", "/questions/0 pattern"},
 		"result-question-c1-csi.json":                  {"result", "/questions/0 pattern"},
 		"result-source-next-line.json":                 {"result", "/knowledge/0/sources/0 pattern"},
+		"result-understanding-bidi-override.json":      {"result", "/understanding pattern"},
+		"result-question-zero-width-space.json":        {"result", "/questions/0 pattern"},
+		"result-source-space.json":                     {"result", "/knowledge/0/sources/0 pattern"},
+		"result-source-userinfo.json":                  {"result", "/knowledge/0/sources/0 pattern"},
 		"inputs-filer-kind-bot.json":                   {"inputs", "/ticket/filed_by/kind enum"},
 		"inputs-attempt-4.json":                        {"inputs", "/run/attempt maximum"},
 		"inputs-collection-ref.json":                   {"inputs", "/ticket additionalProperties"},
 		"inputs-without-comments-omitted.json":         {"inputs", "/ required comments_omitted"},
 		"inputs-time-not-utc.json":                     {"inputs", "/ticket/filed_at pattern"},
+		"inputs-instruction-escape.json":               {"inputs", "/instruction/text pattern"},
+		"inputs-member-name-line-feed.json":            {"inputs", "/instruction/by/name pattern"},
 	}
 	got := treeFiles(t, contracts.ExploreFS, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -113,6 +120,32 @@ func TestTheHandoverAnswersExploreInputsValidate(t *testing.T) {
 		explore++
 		if err := schema.Validate(answer["inputs"]); err != nil {
 			t.Errorf("%s: its inputs: %v", f, err)
+		}
+	}
+	if explore == 0 {
+		t.Error("fixtures/handover-answer holds no answer for the step explore")
+	}
+}
+
+// TestTheHandoverAnswerTargetIsItsExploreInputsTarget pins that each valid handover
+// answer of the provisioner contract whose step is explore carries the same target in
+// target and in inputs.target, as explore/v1 inputs.schema.json says the control plane
+// writes them.
+func TestTheHandoverAnswerTargetIsItsExploreInputsTarget(t *testing.T) {
+	explore := 0
+	for _, f := range provisionerFiles(t, "fixtures/handover-answer") {
+		doc, err := contracts.ProvisionerDocument(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		answer, ok := doc.(map[string]any)
+		if !ok || answer["step"] != "explore" {
+			continue
+		}
+		explore++
+		inputs, _ := answer["inputs"].(map[string]any)
+		if !reflect.DeepEqual(answer["target"], inputs["target"]) {
+			t.Errorf("%s: target is %v, and inputs.target is %v", f, answer["target"], inputs["target"])
 		}
 	}
 	if explore == 0 {

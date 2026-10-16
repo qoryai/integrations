@@ -117,8 +117,8 @@
       ],
       "properties": {
         "text": {
-          "description": "The instruction, 0 to 4000 characters: empty when none was given.",
-          "type": "string",
+          "description": "The instruction, text as result.schema.json $defs text defines it, so it may span lines, 0 to 4000 characters: empty when none was given.",
+          "$ref": "result.schema.json#/$defs/text",
           "maxLength": 4000
         },
         "by": {
@@ -196,7 +196,7 @@
       }
     },
     "target": {
-      "description": "Where the run's change would go.",
+      "description": "Where the run's change would go: the same target as the handover answer's target, which the signed answer carries. The control plane writes the same value into both.",
       "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/target"
     }
   },
@@ -210,10 +210,11 @@
       ],
       "properties": {
         "name": {
-          "description": "The name the control plane shows for the member, 1 to 160 characters.",
+          "description": "The name the control plane shows for the member, 1 to 160 characters on one line: no control character, U+0000 to U+001F, U+007F and U+0080 to U+009F, and no character result.schema.json $defs text refuses beyond control characters.",
           "type": "string",
           "minLength": 1,
-          "maxLength": 160
+          "maxLength": 160,
+          "pattern": "^[^\u0000-\u001f\u007f\u0080-\u009f\u00ad\u061c\u180e\u200b\u200e\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\ufff9-\ufffb]*$"
         }
       }
     }

@@ -16,7 +16,8 @@ const MaxInputs = 768 << 10
 const MaxHandoverAnswer = 1 << 20
 
 // Claim is the body of POST /v1/pools/claim, provisioner/v1 claim.schema.json. An empty
-// PoolID claims from any node pool the pool's access key serves.
+// PoolID claims from the key's node pool, the one node pool the pool's access key
+// belongs to.
 type Claim struct {
 	Version     int    `json:"version"`
 	Time        string `json:"time"`
@@ -97,9 +98,10 @@ type HandoverAnswer struct {
 
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
 // release.schema.json: the starter gives the run back. Before the handover, Retry true
-// returns the same run to the queue. After it, the release ends the run and is answered
-// as a success, the signed 204, not 409; the gateway refuses the run's key with 410 when
-// the job attaches, and Retry true queues a new run, with a new run id and a new run key.
+// returns the same run to the queue. After it, while the run goes on, the release ends
+// the run and is answered as a success, the signed 204, not 409; the gateway refuses the
+// run's key with 410 when the job attaches, and Retry true queues a new run, with a new
+// run id and a new run key.
 type Release struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
