@@ -53,7 +53,7 @@
           }
         },
         "source": {
-          "description": "The source adapter: the program that reads a source of work, such as a tracker, and speaks the integration contract to the control plane (adapter.schema.json). Every value here is the integration's words, which the control plane shows verbatim as plain text, never as Markdown or HTML. Each value is one line with no control characters and no bidirectional controls, so a value shown verbatim is never reordered, and names the system itself, with no placeholder. The source role is not one a reader starts: it is not started as <program> <role> --settings <json>, and it prints no document. A person runs setup.command, then the enrol command under program, then start, and the program runs as a server. The rules for how a role is started and how it ends apply to describe and to the roles a reader starts, not to this one. A prose line is 1 to 300 characters, and a command 1 to 200 characters of printable ASCII.",
+          "description": "The source adapter: the program that reads a source of work, such as a tracker, and speaks the integration contract to the control plane (adapter.schema.json). Every value here is the integration's words, which the control plane shows verbatim as plain text, never as Markdown or HTML. Each value is one line with no control characters and no bidirectional controls, so no control character in a value overrides the order it is shown in, and names the system itself, with no placeholder. The source role is not one a reader starts: it is not started as <program> <role> --settings <json>, and it prints no document. A person runs setup.command, then the enrol command under program, then start, and the program runs as a server. The rules for how a role is started and how it ends apply to describe and to the roles a reader starts, not to this one. A prose line is 1 to 300 characters, and a command 1 to 200 characters of printable ASCII.",
           "type": "object",
           "additionalProperties": false,
           "required": ["description", "program", "setup", "start", "connect", "access", "disconnect"],
@@ -84,7 +84,7 @@
     }
   },
   "$defs": {
-    "line": {"description": "A prose line of the integration's words: 1 to 300 characters, one line, no control characters, and no bidirectional controls, the marks U+200E and U+200F, the embeddings and overrides U+202A to U+202E and the isolates U+2066 to U+2069, so a value shown verbatim is never reordered.", "type": "string", "minLength": 1, "maxLength": 300, "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]+$"},
+    "line": {"description": "A prose line of the integration's words: 1 to 300 characters, one line, no control characters, and no bidirectional controls, the marks U+061C, U+200E and U+200F, the embeddings and overrides U+202A to U+202E and the isolates U+2066 to U+2069, so no control character in a value overrides the order it is shown in.", "type": "string", "minLength": 1, "maxLength": 300, "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]+$"},
     "command": {"description": "A command a person runs: 1 to 200 characters of printable ASCII.", "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[ -~]+$"}
   }
 }
