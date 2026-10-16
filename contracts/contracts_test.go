@@ -79,6 +79,8 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		"fixtures/invalid/description-source-line-separator.json":     "/roles/source/disconnect pattern",
 		"fixtures/invalid/description-source-bidi-override.json":      "/roles/source/connect pattern",
 		"fixtures/invalid/description-source-arabic-letter-mark.json": "/roles/source/access pattern",
+		"fixtures/invalid/description-source-zero-width-space.json":   "/roles/source/description pattern",
+		"fixtures/invalid/description-source-byte-order-mark.json":    "/roles/source/setup/help pattern",
 	}
 	for _, f := range files(t, "fixtures/invalid") {
 		doc, err := contracts.Document(f)
