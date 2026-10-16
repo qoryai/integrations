@@ -26,7 +26,7 @@
       "pattern": "^[A-Za-z0-9_-]{21}[AQgw]$"
     },
     "expires_at": {
-      "description": "When the pass expires, RFC 3339 in UTC with whole seconds, at most 15 minutes after the control plane issued it, or one second after the expires_at of the connection's previous pass when that is later; such a pass may arrive more than 15 minutes ahead of the adapter's clock, and is then refused pass_expired. The adapter refuses a pass whose expires_at has passed on its clock, or is more than 15 minutes ahead of it, and keeps the pass's nonce until expires_at has passed. It bounds only the pass's arrival at the adapter, not the person's round trip at the source.",
+      "description": "When the pass expires, RFC 3339 in UTC with whole seconds, at most 15 minutes after the control plane issued it, and strictly later than the expires_at of the same connection's previous pass. When a new pass for a pending connection could not meet both, the control plane ends that connection and issues the pass for a new connection; the adapter learns of the end as of any end on the control plane's side, 409 connection_ended (definitions.schema.json). The adapter refuses a pass whose expires_at has passed on its clock, or is more than 15 minutes ahead of it, and keeps the pass's nonce until expires_at has passed. It bounds only the pass's arrival at the adapter, not the person's round trip at the source.",
       "$ref": "definitions.schema.json#/$defs/time"
     }
   }
