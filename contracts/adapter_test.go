@@ -236,7 +236,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 var externalWords = []string{"github", "issue", "pull", "repositor", "installation", "webhook", "workspace"}
 
 // TestTheAdapterSchemasNameNoExternalSystem walks every schema of the adapter, those of
-// the provisioner contract among them, and fails on a member name, a required name, a
+// the provisioner contract and description.schema.json among them, and fails on a member name, a required name, a
 // const or an enum value that holds an external system's word, or is app. The fixtures'
 // data are not checked.
 func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
@@ -286,7 +286,7 @@ func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
 			}
 		}
 	}
-	for _, name := range adapterSchemas {
+	for _, name := range append(adapterSchemas, "description.schema.json") {
 		doc, err := contracts.Document(name)
 		if err != nil {
 			t.Fatal(err)

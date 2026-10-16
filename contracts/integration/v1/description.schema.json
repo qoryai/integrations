@@ -51,8 +51,51 @@
               "items": {"type": "string", "pattern": "^(\\*\\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"}
             }
           }
+        },
+        "source": {
+          "description": "The source adapter: the program that reads a source of work, such as a tracker, and speaks the integration contract to the control plane (adapter.schema.json). Every value here is the integration's words, which the control plane shows verbatim as plain text, never as Markdown or HTML. Each value is one line with no control characters, and names the system itself, with no placeholder. A prose line is 1 to 300 characters, a command 1 to 200 characters of printable ASCII, and a noun 1 to 40 characters.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "program", "setup", "start", "connect", "access", "disconnect", "collection"],
+          "properties": {
+            "description": {"description": "The catalogue line: one sentence on what the source adapter does.", "$ref": "#/$defs/line"},
+            "program": {
+              "description": "The source adapter program's name. Every such program takes the enrol command <program> access-key enrol --secret-file FILE <server> <code>, where FILE is the file the program writes the access key's secret to; the control plane fills in <server>, its origin, and <code>, the enrolment code, when it shows the command.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+            },
+            "setup": {
+              "description": "The one step that prepares the source side.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["command", "help"],
+              "properties": {
+                "command": {"description": "The one command a person runs to prepare the source side, shown as a command.", "$ref": "#/$defs/command"},
+                "help": {"description": "One line on what the command asks and what it does.", "$ref": "#/$defs/line"}
+              }
+            },
+            "start": {"description": "The command that runs the program after enrolment, shown as a command.", "$ref": "#/$defs/command"},
+            "connect": {"description": "The line the control plane shows before its button that sends the person to the source, saying what happens at the source. The button's label is the control plane's text, not this line.", "$ref": "#/$defs/line"},
+            "access": {"description": "How to change, at the source, which collections the adapter reaches.", "$ref": "#/$defs/line"},
+            "disconnect": {"description": "How to remove the grant at the source.", "$ref": "#/$defs/line"},
+            "collection": {
+              "description": "The source's noun for a collection (source-collections.schema.json), singular and plural.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["one", "other"],
+              "properties": {
+                "one": {"description": "The noun for one collection.", "$ref": "#/$defs/noun"},
+                "other": {"description": "The noun for more than one collection.", "$ref": "#/$defs/noun"}
+              }
+            }
+          }
         }
       }
     }
+  },
+  "$defs": {
+    "line": {"description": "A prose line of the integration's words: 1 to 300 characters, one line, no control characters.", "type": "string", "minLength": 1, "maxLength": 300, "pattern": "^[^\\x00-\\x1f\\x7f]+$"},
+    "command": {"description": "A command a person runs: 1 to 200 characters of printable ASCII.", "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[ -~]+$"},
+    "noun": {"description": "A noun of the source: 1 to 40 characters, one line, no control characters.", "type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[^\\x00-\\x1f\\x7f]+$"}
   }
 }
