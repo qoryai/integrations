@@ -60,7 +60,7 @@
           "properties": {
             "description": {"description": "The catalogue line: one sentence on what the source adapter does.", "$ref": "#/$defs/line"},
             "program": {
-              "description": "The source adapter program's name. Every such program takes the enrol command <program> access-key enrol --secret-file FILE <server> <code>, where FILE is the file the program writes the access key's secret to; the control plane fills in <server>, its origin, and <code>, the enrolment code, when it shows the command.",
+              "description": "The source adapter program's name. Every such program takes the enrol command <program> access-key enrol --secret-file FILE <server> <code>, where FILE is the file the program writes the access key's secret to; the control plane fills in <server>, its origin, and <code>, the enrolment code, when it shows the command. The enrol command creates the secret file, and refuses a FILE that already exists; nothing is overwritten.",
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
             },
