@@ -3,15 +3,11 @@ package contracts_test
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/fs"
 	"path"
-	"strconv"
 	"strings"
 	"testing"
-	"unicode/utf16"
-	"unicode/utf8"
 
 	"github.com/qoryai/integrations/contracts"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -228,59 +224,6 @@ func quote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
 
-// strictDescription reports the first rule of description.schema.json that a reader
-// checks on a description's raw bytes and that no schema can express, since a parsed
-// document holds U+FFFD for invalid UTF-8 and for a lone surrogate escape, and keeps one
-// member of a name: the bytes are UTF-8, no string holds a \u escape of a lone
-// surrogate, and no object repeats a member, at any depth.
-func strictDescription(b []byte) error {
-	if !utf8.Valid(b) {
-		return errors.New("the document is not UTF-8")
-	}
-	if err := loneSurrogate(b); err != nil {
-		return err
-	}
-	return strictTokens(b, false)
-}
-
-// loneSurrogate reports the first \u escape in a string of b that names a surrogate,
-// U+D800 to U+DFFF, outside a pair of a high surrogate escape followed at once by a low
-// one. An escape that is not four hexadecimal digits is left to the JSON decoder.
-func loneSurrogate(b []byte) error {
-	in := false
-	for i := 0; i < len(b); i++ {
-		switch {
-		case !in:
-			in = b[i] == '"'
-		case b[i] == '"':
-			in = false
-		case b[i] == '\\' && i+1 < len(b) && b[i+1] == 'u':
-			r, ok := escape(b, i)
-			if !ok || !utf16.IsSurrogate(r) {
-				i += 5
-				continue
-			}
-			if low, ok := escape(b, i+6); r < 0xdc00 && ok && low >= 0xdc00 && low <= 0xdfff {
-				i += 11
-				continue
-			}
-			return fmt.Errorf(`a string holds the lone surrogate escape %s`, b[i:i+6])
-		case b[i] == '\\':
-			i++
-		}
-	}
-	return nil
-}
-
-// escape is the code unit of the \u escape at b[i:i+6], and whether there is one.
-func escape(b []byte, i int) (rune, bool) {
-	if i+6 > len(b) || b[i] != '\\' || b[i+1] != 'u' {
-		return 0, false
-	}
-	n, err := strconv.ParseUint(string(b[i+2:i+6]), 16, 16)
-	return rune(n), err == nil
-}
-
 // TestTheReaderRefusesWhatTheSchemaCannotSee pins the rules of description.schema.json
 // that a reader checks on a description's raw bytes: each document under
 // fixtures/refused-by-reader is accepted by the schema once parsed, since the rule is
@@ -289,8 +232,8 @@ func escape(b []byte, i int) (rune, bool) {
 func TestTheReaderRefusesWhatTheSchemaCannotSee(t *testing.T) {
 	want := map[string]string{
 		"description-string-invalid-utf-8.json":  "the document is not UTF-8",
-		"description-string-lone-surrogate.json": `a string holds the lone surrogate escape \ud800`,
-		"description-member-repeated.json":       `the member "type" is repeated`,
+		"description-string-lone-surrogate.json": `a string holds the \u escape \ud800 of a lone surrogate`,
+		"description-member-repeated.json":       `an object repeats the member "type"`,
 	}
 	schema := compile(t, "description.schema.json")
 	got := files(t, "fixtures/refused-by-reader")
@@ -307,13 +250,47 @@ func TestTheReaderRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		if err := validate(schema, b); err != nil {
 			t.Errorf("%s is refused by description.schema.json, and the rule is the reader's alone: %v", f, err)
 		}
-		if err := strictDescription(b); err == nil || err.Error() != w {
+		if err := contracts.CheckDescription(b); err == nil || err.Error() != w {
 			t.Errorf("%s is refused for %v, want %q", f, err, w)
 		}
 	}
 	for _, f := range files(t, "fixtures") {
-		if err := strictDescription(read(t, f)); err != nil {
+		if err := contracts.CheckDescription(read(t, f)); err != nil {
 			t.Errorf("%s: %v", f, err)
+		}
+	}
+}
+
+// TestCheckDescriptionHoldsTheWordedLimits pins each limit description.schema.json
+// states in words, at the limit and one past it: the raw bytes, a string's and a member
+// name's bytes of UTF-8, counted in bytes and not characters, the values, and the levels
+// of nesting.
+func TestCheckDescriptionHoldsTheWordedLimits(t *testing.T) {
+	e := "é"                       // two bytes of UTF-8
+	values := func(n int) string { // the object, its member's array, and n-2 entries
+		return `{"a":[` + strings.TrimSuffix(strings.Repeat("0,", n-2), ",") + `]}`
+	}
+	levels := func(n int) string { // the object and n-1 arrays inside it
+		return `{"a":` + strings.Repeat("[", n-1) + strings.Repeat("]", n-1) + `}`
+	}
+	for _, tc := range []struct{ name, doc, want string }{
+		{"262144 bytes", `{"a":1}` + strings.Repeat(" ", 262144-7), ""},
+		{"262145 bytes", `{"a":1}` + strings.Repeat(" ", 262145-7), "the document is 262145 bytes, more than 262144 (256 KiB)"},
+		{"a string of 16384 bytes", `{"a":"` + strings.Repeat(e, 8192) + `"}`, ""},
+		{"a string of 16385 bytes in 8193 characters", `{"a":"` + strings.Repeat(e, 8192) + `x"}`, "a string or a member name is 16385 bytes of UTF-8, more than 16384"},
+		{"a member name of 16385 bytes", `{"` + strings.Repeat(e, 8192) + `x":1}`, "a string or a member name is 16385 bytes of UTF-8, more than 16384"},
+		{"4096 values", values(4096), ""},
+		{"4097 values", values(4097), "the document holds more than 4096 JSON values"},
+		{"64 levels", levels(64), ""},
+		{"65 levels", levels(65), "the document nests arrays and objects more than 64 levels deep"},
+	} {
+		err := contracts.CheckDescription([]byte(tc.doc))
+		got := ""
+		if err != nil {
+			got = err.Error()
+		}
+		if got != tc.want {
+			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
 		}
 	}
 }

@@ -85,12 +85,23 @@ func (r refusals) Error() string {
 func (r refusals) Unwrap() []error { return r.errs }
 
 // Description checks what `<program> describe` printed on standard output: one JSON
-// document and nothing after it, which the contract's description.schema.json accepts,
-// and whose every secret, a property marked writeOnly, is a property of the settings
-// themselves with a setting <name>_file beside it (contracts/integration/v1 §Describe).
-// It reports the first rule the output breaks.
+// document and nothing after it; whose raw bytes keep the rules of
+// description.schema.json that no schema can express, as [contracts.CheckDescription]
+// checks them: at most 262144 bytes, UTF-8, no \u escape of a lone surrogate, no
+// object that repeats a member, no string or member name over 16384 bytes of UTF-8, at
+// most 4096 JSON values and at most 64 levels of nesting; which the contract's
+// description.schema.json accepts; and whose every secret, a property marked writeOnly,
+// is a property of the settings themselves with a setting <name>_file beside it
+// (contracts/integration/v1 §Describe). It reports the first rule the output breaks.
 func Description(stdout []byte) error {
-	doc, err := one(stdout)
+	raw, err := one(stdout)
+	if err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
+	if err := contracts.CheckDescription(stdout); err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
 	if err != nil {
 		return fmt.Errorf("describe: %w", err)
 	}
@@ -170,9 +181,9 @@ func Failure(code int, stdout, stderr []byte) error {
 	return nil
 }
 
-// one reads b as one JSON document followed by nothing but white space, into the JSON
-// types a schema validates.
-func one(b []byte) (any, error) {
+// one is the one JSON document of b, followed in b by nothing but white space, as its
+// raw bytes.
+func one(b []byte) (json.RawMessage, error) {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	var first json.RawMessage
 	if err := dec.Decode(&first); err != nil {
@@ -182,7 +193,7 @@ func one(b []byte) (any, error) {
 	if err := dec.Decode(&more); !errors.Is(err, io.EOF) {
 		return nil, errors.New("standard output contains more than one JSON document")
 	}
-	return jsonschema.UnmarshalJSON(bytes.NewReader(first))
+	return first, nil
 }
 
 // secrets are the ways a description breaks the rule the schema cannot express: a secret

@@ -89,6 +89,40 @@ func TestADescriptionIsOneDocumentWithItsSecretsOnTop(t *testing.T) {
 	}
 }
 
+// TestADescriptionKeepsTheRulesOnItsRawBytes pins what Description refuses on the raw
+// bytes before any decoder reads them: each document under fixtures/refused-by-reader,
+// and a description past each limit description.schema.json states in words.
+func TestADescriptionKeepsTheRulesOnItsRawBytes(t *testing.T) {
+	refused := map[string]string{
+		"fixtures/refused-by-reader/description-string-invalid-utf-8.json":  "describe: the document is not UTF-8",
+		"fixtures/refused-by-reader/description-string-lone-surrogate.json": `describe: a string holds the \u escape \ud800 of a lone surrogate`,
+		"fixtures/refused-by-reader/description-member-repeated.json":       `describe: an object repeats the member "type"`,
+	}
+	got := fixtures(t, "fixtures/refused-by-reader")
+	if len(got) != len(refused) {
+		t.Errorf("fixtures/refused-by-reader holds %d documents, and the test expects %d", len(got), len(refused))
+	}
+	for name, b := range got {
+		if err := conformance.Description(b); err == nil || err.Error() != refused[name] {
+			t.Errorf("%s: %v, want %q", name, err, refused[name])
+		}
+	}
+	for _, tc := range []struct{ name, stdout, want string }{
+		{"a string of 16386 bytes in 8193 characters", strings.Replace(string(describe(`{"type": "object"}`)), `"title": "Acme tracker"`, `"title": "`+strings.Repeat("\u00e9", 8193)+`"`, 1),
+			"describe: a string or a member name is 16386 bytes of UTF-8, more than 16384"},
+		{"over 4096 values", string(describe(`{"type": "object", "properties": {"a": {"enum": [` + strings.TrimSuffix(strings.Repeat("0,", 4097), ",") + `]}}}`)),
+			"describe: the document holds more than 4096 JSON values"},
+		{"65 levels", string(describe(`{"type": "object", "default": ` + strings.Repeat("[", 63) + strings.Repeat("]", 63) + `}`)),
+			"describe: the document nests arrays and objects more than 64 levels deep"},
+		{"262145 bytes", string(describe(`{"type": "object"}`)) + strings.Repeat(" ", 262145-len(describe(`{"type": "object"}`))),
+			"describe: the document is 262145 bytes, more than 262144 (256 KiB)"},
+	} {
+		if err := conformance.Description([]byte(tc.stdout)); err == nil || err.Error() != tc.want {
+			t.Errorf("%s: %v, want %q", tc.name, err, tc.want)
+		}
+	}
+}
+
 // TestCredentialIsTheGatewaysDocument pins Credential to the gateway's schema: an answer
 // it accepts conforms, and one it refuses, or two, do not.
 func TestCredentialIsTheGatewaysDocument(t *testing.T) {

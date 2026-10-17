@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"io"
 	"io/fs"
 	"path"
 	"strconv"
@@ -15,6 +13,7 @@ import (
 
 	"github.com/qoryai/forager/accesskey"
 	"github.com/qoryai/integrations/contracts"
+	"github.com/qoryai/integrations/internal/rawjson"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -658,63 +657,7 @@ func TestEmptyListsMarshalAsEmptyLists(t *testing.T) {
 // that the control plane checks on a request's raw bytes, and that no schema can express,
 // since a parsed document holds 900.0 as the integer 900 and keeps one member of a name.
 // Every number of an integration request is an integer.
-func strictJSON(b []byte) error { return strictTokens(b, true) }
-
-// strictTokens reports the first member an object of b repeats, at any depth, and, when
-// integers is true, the first number written with a fraction or an exponent.
-func strictTokens(b []byte, integers bool) error {
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.UseNumber()
-	type frame struct {
-		object, key bool
-		seen        map[string]bool
-	}
-	var stack []*frame
-	for {
-		tok, err := dec.Token()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		var top *frame
-		if len(stack) > 0 {
-			top = stack[len(stack)-1]
-		}
-		if top != nil && top.object && top.key {
-			if d, ok := tok.(json.Delim); ok && d == '}' {
-				stack = stack[:len(stack)-1]
-				continue
-			}
-			name := tok.(string)
-			if top.seen[name] {
-				return fmt.Errorf("the member %q is repeated", name)
-			}
-			top.seen[name] = true
-			top.key = false
-			continue
-		}
-		if top != nil && top.object {
-			top.key = true
-		}
-		switch v := tok.(type) {
-		case json.Delim:
-			switch v {
-			case '{':
-				stack = append(stack, &frame{object: true, key: true, seen: map[string]bool{}})
-			case '[':
-				stack = append(stack, &frame{})
-			case ']':
-				stack = stack[:len(stack)-1]
-			}
-		case json.Number:
-			if integers && strings.ContainsAny(string(v), ".eE") {
-				return fmt.Errorf("the number %s has a fraction or an exponent", v)
-			}
-		}
-	}
-}
+func strictJSON(b []byte) error { return rawjson.Check(b, rawjson.Rules{Integers: true}) }
 
 // TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rule that an integer has no
 // fraction or exponent and that no object repeats a member: each document under
