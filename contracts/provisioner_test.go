@@ -160,6 +160,7 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 			Inputs: json.RawMessage(`{"version":1}`)}},
 		{"release", contracts.Release{Version: contracts.Version, Time: now, Reason: "No runner was free.", Retry: false}},
 		{"refusal", contracts.Refusal{Error: "lease_expired"}},
+		{"refusal", contracts.Refusal{Error: "unavailable"}},
 	}
 	for _, c := range values {
 		b, err := json.Marshal(c.v)

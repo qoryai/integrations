@@ -69,7 +69,8 @@ type External struct {
 // handover.schema.json, which gives its refusals and their order. A run key is handed
 // over at most once per run, and once a dispatch's handover is answered, its run never
 // goes back to the queue. On 409 lease_expired the starter stops the job it started
-// for that dispatch.
+// for that dispatch. On 503 unavailable the handover took no effect, and the starter
+// may send it again while the lease lasts.
 type Handover struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`

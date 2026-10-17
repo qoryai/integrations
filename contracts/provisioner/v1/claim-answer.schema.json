@@ -36,7 +36,7 @@
       "$ref": "definitions.schema.json#/$defs/run_id"
     },
     "pool_id": {
-      "description": "The node pool the run waited for.",
+      "description": "The node pool whose key claimed the run.",
       "$ref": "definitions.schema.json#/$defs/pool_id"
     },
     "lease_until": {
