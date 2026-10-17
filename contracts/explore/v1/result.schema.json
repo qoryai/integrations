@@ -220,7 +220,7 @@
       "maxLength": 20000
     },
     "source": {
-      "description": "A page a piece of knowledge came from: an absolute https URL, at most 2048 characters. Its authority, the part after https:// up to the first /, ? or #, is not empty and holds no @, so the URL carries no user information, and no backslash, U+005C, which a browser reads as /, so the host the control plane checks is the host a browser opens; a path, a query or a fragment may follow it. Nowhere does it hold a space, U+0020, a control character, U+0000 to U+001F, U+007F and U+0080 to U+009F, or a character $defs text refuses beyond control characters.",
+      "description": "A page a piece of knowledge came from: an absolute https URL, at most 2048 characters. Its authority, the part after https:// up to the first /, ? or #, is not empty and holds no @, so the URL carries no user information, and no backslash, U+005C, which a browser reads as /, so a browser's authority ends where this one ends; a path, a query or a fragment may follow it. Nowhere does it hold a space, U+0020, a control character, U+0000 to U+001F, U+007F and U+0080 to U+009F, or a character $defs text refuses beyond control characters.",
       "type": "string",
       "maxLength": 2048,
       "pattern": "^https://[^\u0000-\u0020\u007f\u0080-\u009f\u00ad\u061c\u180e\u200b\u200e\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\ufff9-\ufffb@/?#\\\\]+([/?#][^\u0000-\u0020\u007f\u0080-\u009f\u00ad\u061c\u180e\u200b\u200e\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\ufff9-\ufffb]*)?$"
