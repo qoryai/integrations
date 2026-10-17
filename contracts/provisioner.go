@@ -50,9 +50,9 @@ type WorkItem struct {
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
 // dispatched.schema.json: the starter started the job. It is answered, on success, with
-// a signed 204 and no body. On 409 lease_expired the dispatch is stale, its run back in
-// the queue with the same run id, and the starter stops the job it started for that
-// dispatch.
+// a signed 204 and no body. On 409 lease_expired the dispatch is stale: its run went
+// back to the queue, with the same run id, when the lease lapsed, and the starter stops
+// the job it started for that dispatch.
 type Dispatched struct {
 	Version  int       `json:"version"`
 	Time     string    `json:"time"`
@@ -67,11 +67,10 @@ type External struct {
 }
 
 // Handover is the body of POST /v1/dispatches/<dispatch_id>/handover,
-// handover.schema.json. A run key is handed over at most once per run: a second
-// handover while the run goes on is refused, 409 handed_over, in the order
-// handover.schema.json gives, and once a handover is answered the dispatch never goes
-// back to the queue. On 409 lease_expired the starter stops the job it
-// started for that dispatch.
+// handover.schema.json, which gives its refusals and their order. A run key is handed
+// over at most once per run, and once a dispatch's handover is answered, its run never
+// goes back to the queue. On 409 lease_expired the starter stops the job it started
+// for that dispatch.
 type Handover struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
