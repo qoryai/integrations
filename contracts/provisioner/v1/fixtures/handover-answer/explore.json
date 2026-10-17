@@ -11,13 +11,14 @@
   },
   "work_item": {
     "id": "wi_8Kx2mQ4vT9",
-    "ref": "TRK-1",
+    "external_ref": "TRK-1",
     "url": "https://control.example.com/work-items/wi_8Kx2mQ4vT9",
     "title": "Checkout fails on an empty cart"
   },
   "inputs": {
     "version": 1,
     "work_item": {
+      "id": "wi_8Kx2mQ4vT9",
       "number": 341,
       "url": "https://control.example.com/work-items/wi_8Kx2mQ4vT9"
     },
@@ -26,7 +27,7 @@
       "of": 3
     },
     "ticket": {
-      "ref": "TRK-1",
+      "external_ref": "TRK-1",
       "url": "https://tracker.example.com/items/TRK-1",
       "title": "Checkout fails on an empty cart",
       "body": "Pressing Checkout with an empty cart shows an error page.\nA cart with one item works.",

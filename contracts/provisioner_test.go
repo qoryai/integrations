@@ -141,7 +141,7 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 	now := contracts.FormatTime(time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
 	target := contracts.Target{System: "code.example.com", Path: "acme/shop"}
-	item := contracts.WorkItem{ID: "wi_1", Ref: "TRK-1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
+	item := contracts.WorkItem{ID: "wi_1", ExternalRef: "TRK-1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
 	values := []struct {
 		schema string
 		v      any

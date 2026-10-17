@@ -1,6 +1,7 @@
 {
   "version": 1,
   "work_item": {
+    "id": "wi_8kx2mq4vt9ab3c5d",
     "number": 341,
     "url": "https://control.example.com/work-items/wi_8kx2mq4vt9ab3c5d"
   },
@@ -9,7 +10,7 @@
     "of": 3
   },
   "ticket": {
-    "ref": "TRK-77",
+    "external_ref": "TRK-77",
     "url": "https://tracker.example.com/items/TRK-77",
     "title": "The date parser refuses two-digit years",
     "body": "Importing a file with the date 01/02/26 fails with \"invalid date\".\nFour-digit years work.",

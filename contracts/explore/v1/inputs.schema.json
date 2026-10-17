@@ -26,12 +26,17 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "id",
         "number",
         "url"
       ],
       "properties": {
+        "id": {
+          "description": "The work item's public id in the control plane.",
+          "$ref": "https://qory.dev/contracts/integration/v1/changes.schema.json#/$defs/work_item/properties/work_item_id"
+        },
         "number": {
-          "description": "The work item's number in its workspace, from 1.",
+          "description": "The work item's number in its workspace, from 1, for display.",
           "type": "integer",
           "minimum": 1
         },
@@ -67,7 +72,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "ref",
+        "external_ref",
         "url",
         "title",
         "body",
@@ -76,8 +81,8 @@
         "collection"
       ],
       "properties": {
-        "ref": {
-          "description": "The item's ref, opaque and never parsed.",
+        "external_ref": {
+          "description": "The item's ref at the source, opaque and never parsed.",
           "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/ref"
         },
         "url": {

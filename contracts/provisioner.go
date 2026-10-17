@@ -42,10 +42,10 @@ type ClaimAnswer struct {
 
 // WorkItem is the work item a run is for.
 type WorkItem struct {
-	ID    string `json:"id"`
-	Ref   string `json:"ref"`
-	URL   string `json:"url"`
-	Title string `json:"title"`
+	ID          string `json:"id"`
+	ExternalRef string `json:"external_ref"`
+	URL         string `json:"url"`
+	Title       string `json:"title"`
 }
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,

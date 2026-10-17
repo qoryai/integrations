@@ -29,7 +29,7 @@
       ],
       "properties": {
         "type": {
-          "description": "The starter's word for what the job is at the provider, stored as data.",
+          "description": "The name of the system that runs the job, as the starter names it, stored as data.",
           "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/type"
         },
         "ref": {

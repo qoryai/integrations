@@ -71,6 +71,7 @@ func TestInvalidExploreFixturesAreRefused(t *testing.T) {
 		"inputs-filer-kind-bot.json":                   {"inputs", "/ticket/filed_by/kind enum"},
 		"inputs-attempt-4.json":                        {"inputs", "/run/attempt maximum"},
 		"inputs-collection-ref.json":                   {"inputs", "/ticket additionalProperties"},
+		"inputs-ticket-ref.json":                       {"inputs", "/ticket required external_ref; /ticket additionalProperties"},
 		"inputs-without-comments-omitted.json":         {"inputs", "/ required comments_omitted"},
 		"inputs-time-not-utc.json":                     {"inputs", "/ticket/filed_at pattern"},
 		"inputs-instruction-escape.json":               {"inputs", "/instruction/text pattern"},
@@ -127,11 +128,12 @@ func TestTheHandoverAnswersExploreInputsValidate(t *testing.T) {
 	}
 }
 
-// TestTheHandoverAnswerTargetIsItsExploreInputsTarget pins that each valid handover
-// answer of the provisioner contract whose step is explore carries the same target in
-// target and in inputs.target, as explore/v1 inputs.schema.json says the control plane
-// writes them.
-func TestTheHandoverAnswerTargetIsItsExploreInputsTarget(t *testing.T) {
+// TestTheHandoverAnswerTargetAndWorkItemAreItsExploreInputs pins that each valid
+// handover answer of the provisioner contract whose step is explore carries the same
+// target in target and in inputs.target, as explore/v1 inputs.schema.json says the
+// control plane writes them, and the same work item id in work_item.id and in
+// inputs.work_item.id.
+func TestTheHandoverAnswerTargetAndWorkItemAreItsExploreInputs(t *testing.T) {
 	explore := 0
 	for _, f := range provisionerFiles(t, "fixtures/handover-answer") {
 		doc, err := contracts.ProvisionerDocument(f)
@@ -146,6 +148,11 @@ func TestTheHandoverAnswerTargetIsItsExploreInputsTarget(t *testing.T) {
 		inputs, _ := answer["inputs"].(map[string]any)
 		if !reflect.DeepEqual(answer["target"], inputs["target"]) {
 			t.Errorf("%s: target is %v, and inputs.target is %v", f, answer["target"], inputs["target"])
+		}
+		item, _ := answer["work_item"].(map[string]any)
+		inputsItem, _ := inputs["work_item"].(map[string]any)
+		if item["id"] == nil || item["id"] != inputsItem["id"] {
+			t.Errorf("%s: work_item.id is %v, and inputs.work_item.id is %v", f, item["id"], inputsItem["id"])
 		}
 	}
 	if explore == 0 {
