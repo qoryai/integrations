@@ -42,7 +42,7 @@
       "properties": {
         "ref": {"description": "The item's ref, unique among the items of the integration's live collections.", "$ref": "definitions.schema.json#/$defs/ref"},
         "url": {"description": "The item's page at the source.", "$ref": "definitions.schema.json#/$defs/url"},
-        "key": {"description": "The item's name as people say it at its source, short within its collection, 1 to 64 characters, shown as text and never compared or parsed, such as #1231. Absent when the adapter gives none.", "type": "string", "minLength": 1, "maxLength": 64},
+        "key": {"description": "The item's name as people say it at its source, short within its collection, 1 to 64 characters, shown as text and never compared or parsed, such as #1231. An adapter whose source name is longer than 64 characters leaves key out. Absent when the adapter gives none.", "type": "string", "minLength": 1, "maxLength": 64},
         "type": {"description": "What the item is, in the adapter's word. Absent when the adapter gives none.", "$ref": "definitions.schema.json#/$defs/type"},
         "title": {"description": "The item's title.", "$ref": "definitions.schema.json#/$defs/title"},
         "body": {"description": "The item's text.", "$ref": "definitions.schema.json#/$defs/body"},

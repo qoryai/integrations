@@ -106,6 +106,7 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"claim-answer-access-admin.json":           {"claim-answer", "/access enum"},
 		"claim-answer-dispatch-id-no-prefix.json":  {"claim-answer", "/dispatch_id pattern"},
 		"claim-answer-dispatch-id-upper-case.json": {"claim-answer", "/dispatch_id pattern"},
+		"claim-answer-work-item-url-http.json":     {"claim-answer", "/work_item/url pattern"},
 		"dispatched-external-type-upper-case.json": {"dispatched", "/external/type pattern"},
 		"handover-answer-run-key-no-prefix.json":   {"handover-answer", "/run_key pattern"},
 		"handover-answer-inputs-no-version.json":   {"handover-answer", "/inputs required version"},
