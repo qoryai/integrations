@@ -71,6 +71,7 @@ func TestInvalidExploreFixturesAreRefused(t *testing.T) {
 		"result-source-backslash.json":                 {"result", "/knowledge/0/sources/0 pattern"},
 		"inputs-filer-kind-bot.json":                   {"inputs", "/ticket/filed_by/kind enum"},
 		"inputs-attempt-4.json":                        {"inputs", "/run/attempt maximum"},
+		"inputs-work-item-url-http.json":               {"inputs", "/work_item/url pattern"},
 		"inputs-collection-ref.json":                   {"inputs", "/ticket additionalProperties"},
 		"inputs-ticket-ref.json":                       {"inputs", "/ticket required external_ref; /ticket additionalProperties"},
 		"inputs-without-comments-omitted.json":         {"inputs", "/ required comments_omitted"},
