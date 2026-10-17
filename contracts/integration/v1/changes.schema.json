@@ -52,7 +52,7 @@
         "work_item_id": {"description": "The work item's public id in the control plane.", "type": "string", "pattern": "^wi_[A-Za-z0-9_-]{1,64}$"},
         "ref": {"description": "The ref of the item it was taken in from, as source-items.schema.json sent it.", "$ref": "definitions.schema.json#/$defs/ref"},
         "status": {"description": "taken_in, or undone.", "type": "string", "enum": ["taken_in", "undone"]},
-        "url": {"description": "The work item's page in the control plane.", "$ref": "definitions.schema.json#/$defs/url"}
+        "url": {"description": "The work item's page in the control plane: https, or http to a loopback address only, at most 2048 characters.", "type": "string", "format": "uri", "maxLength": 2048, "pattern": "^(https://[^/?#@\\s]+|http://(localhost|127\\.0\\.0\\.1|\\[::1\\])(:[0-9]+)?)(/[^\\s]*)?$"}
       }
     },
     "collection": {

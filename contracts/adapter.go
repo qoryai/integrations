@@ -122,7 +122,9 @@ func (s SourceItems) MarshalJSON() ([]byte, error) {
 	return json.Marshal(plain(s))
 }
 
-// Item is one item of work at the source. A nil Labels marshals as an empty list, and a
+// Item is one item of work at the source. Key is the item's name as people say it at
+// its source, such as #1231, 1 to 64 characters, shown as text and never compared or
+// parsed; empty, the adapter gives none. A nil Labels marshals as an empty list, and a
 // nil StateReason as null. Truncated names the fields the adapter cut to fit the
 // contract's limits: "title", "body" or "filed_by.name", cut at a code-point boundary,
 // or "labels", some cut to 100 characters or those past the 100th left out; nil, the
@@ -130,6 +132,7 @@ func (s SourceItems) MarshalJSON() ([]byte, error) {
 type Item struct {
 	Ref          string   `json:"ref"`
 	URL          string   `json:"url"`
+	Key          string   `json:"key,omitempty"`
 	Type         string   `json:"type,omitempty"`
 	Title        string   `json:"title"`
 	Body         string   `json:"body"`
