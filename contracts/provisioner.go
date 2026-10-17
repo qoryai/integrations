@@ -6,8 +6,10 @@ import "encoding/json"
 // X-Qory-Contract-Version carries on its requests as a decimal integer, and which
 // [ClaimAnswer] and [HandoverAnswer] name in Revision. It counts additions alone: each
 // addition to provisioner/v1 raises it. A change that breaks a reader is a new
-// contract, provisioner/v2, not a new revision.
-const ProvisionerRevision = 1
+// contract, provisioner/v2, not a new revision. Revision 2 adds the step prebuild and
+// [Prebuilt]. The control plane serves revisions 1 and 2, and a starter that implements
+// revision 1 gets answers of revision 1 and never meets a dispatch of the step prebuild.
+const ProvisionerRevision = 2
 
 // MaxInputs is the most bytes a handover answer's inputs has, serialized.
 const MaxInputs = 768 << 10
@@ -26,18 +28,20 @@ type Claim struct {
 }
 
 // ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json. The
-// starter refuses one whose Revision is not the revision it sent.
+// starter refuses one whose Revision is not the revision it sent. WorkItem is set for
+// the step explore and nil for the step prebuild, whose run builds the environment of
+// Target.
 type ClaimAnswer struct {
-	Version    int      `json:"version"`
-	Revision   int      `json:"revision"`
-	DispatchID string   `json:"dispatch_id"`
-	RunID      string   `json:"run_id"`
-	PoolID     string   `json:"pool_id"`
-	LeaseUntil string   `json:"lease_until"`
-	Step       string   `json:"step"`
-	Access     string   `json:"access"`
-	Target     Target   `json:"target"`
-	WorkItem   WorkItem `json:"work_item"`
+	Version    int       `json:"version"`
+	Revision   int       `json:"revision"`
+	DispatchID string    `json:"dispatch_id"`
+	RunID      string    `json:"run_id"`
+	PoolID     string    `json:"pool_id"`
+	LeaseUntil string    `json:"lease_until"`
+	Step       string    `json:"step"`
+	Access     string    `json:"access"`
+	Target     Target    `json:"target"`
+	WorkItem   *WorkItem `json:"work_item,omitempty"`
 }
 
 // WorkItem is the work item a run is for.
@@ -86,7 +90,8 @@ type Handover struct {
 // reader reads as the same text. The starter refuses one whose Revision is not the
 // revision it sent. The control plane sends it once per run, with Cache-Control:
 // no-store, and the starter passes RunKey to the job it started for the dispatch alone
-// and keeps it no longer than that.
+// and keeps it no longer than that. WorkItem is set for the step explore and nil for the
+// step prebuild, whose Inputs are exactly {"version":1}.
 type HandoverAnswer struct {
 	Version  int             `json:"version"`
 	Revision int             `json:"revision"`
@@ -95,7 +100,7 @@ type HandoverAnswer struct {
 	Step     string          `json:"step"`
 	Access   string          `json:"access"`
 	Target   Target          `json:"target"`
-	WorkItem WorkItem        `json:"work_item"`
+	WorkItem *WorkItem       `json:"work_item,omitempty"`
 	Inputs   json.RawMessage `json:"inputs"`
 }
 
@@ -105,10 +110,32 @@ type HandoverAnswer struct {
 // run to the queue, to be claimed under a new dispatch. After its handover, while the run goes on, the release ends
 // the run and is answered as a success, the signed 204, not 409; the gateway refuses the
 // run's key with 410 when the job attaches, and Retry true queues a new run, with a new
-// run id and a new run key.
+// run id and a new run key. For a dispatch of the step prebuild, a release after its
+// handover never queues a new run: Retry true is read as false, and the run ends. A
+// failed build is reported this way, and the control plane records Reason as the last
+// build's failure; the next prebuild comes only from a change of the collection's
+// environment_ref or from a person asking for one.
 type Release struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
 	Reason  string `json:"reason"`
 	Retry   bool   `json:"retry"`
+}
+
+// Prebuilt is the body of POST /v1/dispatches/<dispatch_id>/prebuilt,
+// prebuilt.schema.json, which gives its refusals and their order: the job for a dispatch
+// of the step prebuild built the environment of its target, and the starter reports
+// Image, pinned by its digest, Size in bytes, and the EnvironmentRef and Commit the job
+// read. It is answered, on success, with a signed 204 and no body: the control plane
+// records the image for the node pool and the target, and the run ends, so any later
+// request naming the dispatch answers 410 gone. A RunID that is not the dispatch's run
+// is refused 409 run_mismatch. A failed build is reported with a [Release] instead.
+type Prebuilt struct {
+	Version        int    `json:"version"`
+	Time           string `json:"time"`
+	RunID          string `json:"run_id"`
+	Image          string `json:"image"`
+	Size           int64  `json:"size"`
+	EnvironmentRef string `json:"environment_ref"`
+	Commit         string `json:"commit"`
 }

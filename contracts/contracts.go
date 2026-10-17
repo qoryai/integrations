@@ -71,7 +71,8 @@
 // program that serves a node pool, claims a run waiting in the queue of the pool's
 // workspace, where any of that workspace's node pools may claim it, [Claim] and its
 // [ClaimAnswer], says it started the job, [Dispatched], asks for the run key to hand the
-// job, [Handover] and its [HandoverAnswer], or gives the run back, [Release]. The starter
+// job, [Handover] and its [HandoverAnswer], gives the run back, [Release], or reports
+// the image a job of the step prebuild built, [Prebuilt]. The starter
 // signs them with the pool's access key, a key of the pool kind enrolled for the node
 // pool. They are signed, retried and refused with a [Refusal] exactly as the integration
 // contract's requests above, and the two answers name the revision they were built for,
