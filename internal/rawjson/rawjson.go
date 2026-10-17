@@ -30,8 +30,8 @@ type Rules struct {
 	MaxDepth int
 }
 
-// Check reports the first rule b breaks, reading it token by token: a member an object
-// repeats, and each rule of r.
+// Check reports the first rule b breaks, reading it one JSON value and member name at a
+// time: a member an object repeats, and each rule of r.
 func Check(b []byte, r Rules) error {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.UseNumber()
@@ -42,7 +42,7 @@ func Check(b []byte, r Rules) error {
 	var stack []*frame
 	values := 0
 	for {
-		tok, err := dec.Token()
+		item, err := dec.Token()
 		if err == io.EOF {
 			return nil
 		}
@@ -53,12 +53,12 @@ func Check(b []byte, r Rules) error {
 		if len(stack) > 0 {
 			top = stack[len(stack)-1]
 		}
-		if d, ok := tok.(json.Delim); ok && (d == '}' || d == ']') {
+		if d, ok := item.(json.Delim); ok && (d == '}' || d == ']') {
 			stack = stack[:len(stack)-1]
 			continue
 		}
 		if top != nil && top.object && top.key {
-			name := tok.(string)
+			name := item.(string)
 			if err := r.str(name); err != nil {
 				return err
 			}
@@ -76,7 +76,7 @@ func Check(b []byte, r Rules) error {
 		if r.MaxValues > 0 && values > r.MaxValues {
 			return fmt.Errorf("the document holds more than %d JSON values", r.MaxValues)
 		}
-		switch v := tok.(type) {
+		switch v := item.(type) {
 		case json.Delim:
 			if r.MaxDepth > 0 && len(stack)+1 > r.MaxDepth {
 				return fmt.Errorf("the document nests arrays and objects more than %d levels deep", r.MaxDepth)
