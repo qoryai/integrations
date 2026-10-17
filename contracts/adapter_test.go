@@ -135,6 +135,8 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-comment-count-above-maximum.json":        {"source-items", "/items/0/comment_count maximum"},
 		"source-items-title-nul.json":                          {"source-items", "/items/0/title pattern"},
 		"source-items-created-at-leap-second.json":             {"source-items", "/items/0/created_at pattern"},
+		"source-items-created-at-hour-24.json":                 {"source-items", "/items/0/created_at pattern"},
+		"source-items-created-at-minute-60.json":               {"source-items", "/items/0/created_at pattern"},
 		"source-items-url-user-information.json":               {"source-items", "/items/0/url pattern"},
 		"source-items-url-bad-percent-escape.json":             {"source-items", "/items/0/url pattern"},
 		"source-items-url-port-0.json":                         {"source-items", "/items/0/url pattern"},
