@@ -50,9 +50,9 @@ type WorkItem struct {
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
 // dispatched.schema.json: the starter started the job. It is answered, on success, with
-// a signed 204 and no body. On 409 lease_expired the
-// dispatch went back to the queue with the same run, and the starter stops the job it
-// started for that dispatch.
+// a signed 204 and no body. On 409 lease_expired the dispatch is stale, its run back in
+// the queue with the same run id, and the starter stops the job it started for that
+// dispatch.
 type Dispatched struct {
 	Version  int       `json:"version"`
 	Time     string    `json:"time"`
@@ -68,8 +68,9 @@ type External struct {
 
 // Handover is the body of POST /v1/dispatches/<dispatch_id>/handover,
 // handover.schema.json. A run key is handed over at most once per run: a second
-// handover is refused, 409 handed_over, and once a handover is answered the dispatch
-// never goes back to the queue. On 409 lease_expired the starter stops the job it
+// handover while the run goes on is refused, 409 handed_over, in the order
+// handover.schema.json gives, and once a handover is answered the dispatch never goes
+// back to the queue. On 409 lease_expired the starter stops the job it
 // started for that dispatch.
 type Handover struct {
 	Version int    `json:"version"`
@@ -97,8 +98,9 @@ type HandoverAnswer struct {
 }
 
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
-// release.schema.json: the starter gives the run back. Before the handover, Retry true
-// returns the same run to the queue. After it, while the run goes on, the release ends
+// release.schema.json: the starter gives the run back. A release before the handover
+// ends the dispatch, and Retry true returns the same run to the queue, to be claimed
+// under a new dispatch. After the handover, while the run goes on, the release ends
 // the run and is answered as a success, the signed 204, not 409; the gateway refuses the
 // run's key with 410 when the job attaches, and Retry true queues a new run, with a new
 // run id and a new run key.
