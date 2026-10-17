@@ -42,7 +42,7 @@
       "properties": {
         "ref": {"description": "The item's ref, unique among the items of the integration's live collections.", "$ref": "definitions.schema.json#/$defs/ref"},
         "url": {"description": "The item's page at the source.", "$ref": "definitions.schema.json#/$defs/url"},
-        "key": {"description": "The item's name as people say it at its source, short within its collection, 1 to 64 characters, shown as text and never compared or parsed, such as #1231. An adapter whose source name is longer than 64 characters leaves key out. Absent when the adapter gives none.", "type": "string", "minLength": 1, "maxLength": 64},
+        "key": {"description": "The item's name as people say it at its source, short within its collection, 1 to 64 characters, shown as text and never compared or parsed, such as #1231. An adapter whose source name is longer than 64 characters leaves key out. Absent when the adapter gives none.", "type": "string", "minLength": 1, "maxLength": 64, "$ref": "definitions.schema.json#/$defs/text"},
         "type": {"description": "What the item is, in the adapter's word. Absent when the adapter gives none.", "$ref": "definitions.schema.json#/$defs/type"},
         "title": {"description": "The item's title.", "$ref": "definitions.schema.json#/$defs/title"},
         "body": {"description": "The item's text.", "$ref": "definitions.schema.json#/$defs/body"},
@@ -51,7 +51,7 @@
         "labels": {"description": "The item's labels, as text.", "$ref": "definitions.schema.json#/$defs/labels"},
         "state": {"description": "Whether the item is open or closed.", "$ref": "definitions.schema.json#/$defs/state"},
         "state_reason": {"description": "Why the item is in its state, or null.", "$ref": "definitions.schema.json#/$defs/state_reason"},
-        "comment_count": {"description": "How many comments the item has at the source.", "type": "integer", "minimum": 0},
+        "comment_count": {"description": "How many comments the item has at the source, from 0 to 9007199254740991, 2^53 - 1.", "type": "integer", "minimum": 0, "maximum": 9007199254740991},
         "created_at": {"description": "When the item was created at the source.", "$ref": "definitions.schema.json#/$defs/time"},
         "updated_at": {"description": "When the item last changed at the source: the newer one wins.", "$ref": "definitions.schema.json#/$defs/time"},
         "target": {"description": "Where a change for the item would go. Absent when the adapter names none.", "$ref": "definitions.schema.json#/$defs/target"},

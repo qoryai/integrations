@@ -131,6 +131,14 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"connect-pass-without-connection-id.json":              {"connect-pass", "/ required connection_id"},
 		"connections-disconnect-undefined-member.json":         {"connections-disconnect", "/ additionalProperties"},
 		"connections-disconnect-connection-id-adapter-id.json": {"connections-disconnect", "/connection_id pattern"},
+		"source-collections-part-10001.json":                   {"source-collections", "/listing/part maximum"},
+		"source-items-comment-count-above-maximum.json":        {"source-items", "/items/0/comment_count maximum"},
+		"source-items-title-nul.json":                          {"source-items", "/items/0/title pattern"},
+		"source-items-created-at-leap-second.json":             {"source-items", "/items/0/created_at pattern"},
+		"source-items-url-user-information.json":               {"source-items", "/items/0/url pattern"},
+		"source-items-url-bad-percent-escape.json":             {"source-items", "/items/0/url pattern"},
+		"source-items-url-port-0.json":                         {"source-items", "/items/0/url pattern"},
+		"source-items-url-port-65536.json":                     {"source-items", "/items/0/url pattern"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
