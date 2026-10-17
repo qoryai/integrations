@@ -32,7 +32,7 @@
       ],
       "properties": {
         "id": {
-          "description": "The work item's public id in the control plane.",
+          "description": "The work item's public id in the control plane: the same id as the handover answer's work_item.id, which the signed answer carries. The control plane writes the same value into both.",
           "$ref": "https://qory.dev/contracts/integration/v1/changes.schema.json#/$defs/work_item/properties/work_item_id"
         },
         "number": {
@@ -82,7 +82,7 @@
       ],
       "properties": {
         "external_ref": {
-          "description": "The item's ref at the source, opaque and never parsed.",
+          "description": "The ref of the item the work item was taken in from, as the source's adapter sent it (integration/v1 `ref`).",
           "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/ref"
         },
         "url": {

@@ -106,6 +106,7 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"claim-answer-access-admin.json":           {"claim-answer", "/access enum"},
 		"claim-answer-dispatch-id-no-prefix.json":  {"claim-answer", "/dispatch_id pattern"},
 		"claim-answer-dispatch-id-upper-case.json": {"claim-answer", "/dispatch_id pattern"},
+		"dispatched-external-type-upper-case.json": {"dispatched", "/external/type pattern"},
 		"handover-answer-run-key-no-prefix.json":   {"handover-answer", "/run_key pattern"},
 		"handover-answer-inputs-no-version.json":   {"handover-answer", "/inputs required version"},
 		"handover-answer-without-revision.json":    {"handover-answer", "/ required revision"},
@@ -141,7 +142,7 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 	now := contracts.FormatTime(time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
 	target := contracts.Target{System: "code.example.com", Path: "acme/shop"}
-	item := contracts.WorkItem{ID: "wi_1", ExternalRef: "TRK-1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
+	item := contracts.WorkItem{ID: "wi_1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
 	values := []struct {
 		schema string
 		v      any
@@ -152,7 +153,7 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 			PoolID: "np_0123456789abcdef", LeaseUntil: now, Step: "explore", Access: "write", Target: target, WorkItem: item}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now,
-			External: &contracts.External{Type: "job", Ref: "run-1", URL: "https://ci.example.com/runs/1"}}},
+			External: &contracts.External{Type: "example-ci", Ref: "run-1", URL: "https://ci.example.com/runs/1"}}},
 		{"handover", contracts.Handover{Version: contracts.Version, Time: now}},
 		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
 			RunKey: "qrk_e30.AAAA", Step: "explore", Access: "read", Target: target, WorkItem: item,

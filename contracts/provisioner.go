@@ -42,10 +42,9 @@ type ClaimAnswer struct {
 
 // WorkItem is the work item a run is for.
 type WorkItem struct {
-	ID          string `json:"id"`
-	ExternalRef string `json:"external_ref"`
-	URL         string `json:"url"`
-	Title       string `json:"title"`
+	ID    string `json:"id"`
+	URL   string `json:"url"`
+	Title string `json:"title"`
 }
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
@@ -97,9 +96,9 @@ type HandoverAnswer struct {
 }
 
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
-// release.schema.json: the starter gives the run back. A release before its handover
-// ends the dispatch, and Retry true returns the same run to the queue, to be claimed
-// under a new dispatch. After its handover, while the run goes on, the release ends
+// release.schema.json: the starter gives the run back. A release before its handover,
+// of a dispatch that is not stale, ends the dispatch, and Retry true returns the same
+// run to the queue, to be claimed under a new dispatch. After its handover, while the run goes on, the release ends
 // the run and is answered as a success, the signed 204, not 409; the gateway refuses the
 // run's key with 410 when the job attaches, and Retry true queues a new run, with a new
 // run id and a new run key.

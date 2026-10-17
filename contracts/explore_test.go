@@ -131,9 +131,9 @@ func TestTheHandoverAnswersExploreInputsValidate(t *testing.T) {
 
 // TestTheHandoverAnswerTargetAndWorkItemAreItsExploreInputs pins that each valid
 // handover answer of the provisioner contract whose step is explore carries the same
-// target in target and in inputs.target, as explore/v1 inputs.schema.json says the
-// control plane writes them, and the same work item id in work_item.id and in
-// inputs.work_item.id.
+// target in target and in inputs.target, and the same work item id in work_item.id and
+// in inputs.work_item.id, as explore/v1 inputs.schema.json says the control plane writes
+// them.
 func TestTheHandoverAnswerTargetAndWorkItemAreItsExploreInputs(t *testing.T) {
 	explore := 0
 	for _, f := range provisionerFiles(t, "fixtures/handover-answer") {

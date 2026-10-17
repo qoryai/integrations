@@ -45,7 +45,7 @@
       "$ref": "definitions.schema.json#/$defs/access"
     },
     "target": {
-      "description": "Where the run's change would go. For the step explore, inputs.target is this target, as https://qory.dev/contracts/explore/v1/inputs.schema.json states.",
+      "description": "Where the run's change would go. For the step explore, inputs.target is this target, and inputs.work_item.id is this answer's work_item.id, as https://qory.dev/contracts/explore/v1/inputs.schema.json states.",
       "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/target"
     },
     "work_item": {
