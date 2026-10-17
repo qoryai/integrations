@@ -68,7 +68,8 @@
 // forager/accesskey is the reference signer; an adapter may sign to this text itself.
 //
 // The provisioner contract holds the requests with which a node pool's starter, the
-// program that serves a node pool, claims a run waiting for that pool, [Claim] and its
+// program that serves a node pool, claims a run waiting in the queue of the pool's
+// workspace, where any of that workspace's node pools may claim it, [Claim] and its
 // [ClaimAnswer], says it started the job, [Dispatched], asks for the run key to hand the
 // job, [Handover] and its [HandoverAnswer], or gives the run back, [Release]. The starter
 // signs them with the pool's access key, a key of the pool kind enrolled for the node

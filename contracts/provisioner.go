@@ -15,9 +15,9 @@ const MaxInputs = 768 << 10
 // MaxHandoverAnswer is the most bytes a handover answer's body has.
 const MaxHandoverAnswer = 1 << 20
 
-// Claim is the body of POST /v1/pools/claim, provisioner/v1 claim.schema.json. An empty
-// PoolID claims from the key's node pool, the one node pool the pool's access key
-// belongs to.
+// Claim is the body of POST /v1/pools/claim, provisioner/v1 claim.schema.json. With an
+// empty PoolID the claim covers the key's node pool, the one node pool the pool's access
+// key belongs to.
 type Claim struct {
 	Version     int    `json:"version"`
 	Time        string `json:"time"`
@@ -67,10 +67,11 @@ type External struct {
 
 // Handover is the body of POST /v1/dispatches/<dispatch_id>/handover,
 // handover.schema.json, which gives its refusals and their order. A run key is handed
-// over at most once per run, and once a dispatch's handover is answered, its run never
-// goes back to the queue. On 409 lease_expired the starter stops the job it started
-// for that dispatch. On 503 unavailable the handover took no effect, and the starter
-// may send it again while the lease lasts.
+// over at most once per run, and once a dispatch's handover is answered with the signed
+// 200, its run never goes back to the queue. On 409 lease_expired the starter stops the
+// job it started for that dispatch. On 503 unavailable the handover took no effect, and
+// the starter may send it again while the lease lasts; it sends it again the same way
+// after an unsigned answer or any other 5xx.
 type Handover struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
