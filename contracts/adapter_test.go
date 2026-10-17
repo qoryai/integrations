@@ -131,6 +131,9 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"connections-disconnect-undefined-member.json":         {"connections-disconnect", "/ additionalProperties"},
 		"connections-disconnect-connection-id-adapter-id.json": {"connections-disconnect", "/connection_id pattern"},
 		"source-collections-part-10001.json":                   {"source-collections", "/listing/part maximum"},
+		"source-collections-environment-ref-empty.json":        {"source-collections", "/collections/0/environment_ref minLength"},
+		"source-collections-environment-ref-201.json":          {"source-collections", "/collections/0/environment_ref maxLength"},
+		"source-collections-environment-ref-nul.json":          {"source-collections", "/collections/0/environment_ref pattern"},
 		"source-items-comment-count-above-maximum.json":        {"source-items", "/items/0/comment_count maximum"},
 		"source-items-title-nul.json":                          {"source-items", "/items/0/title pattern"},
 		"source-items-created-at-leap-second.json":             {"source-items", "/items/0/created_at pattern"},
@@ -188,7 +191,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			Listing: listing,
 			Collections: []contracts.Collection{
 				{Ref: "TRK", URL: "https://tracker.acme.example/TRK", Title: "Tracker"},
-				{Ref: "SHOP", URL: "https://code.example.com/acme/shop", Title: "acme/shop", Target: target},
+				{Ref: "SHOP", URL: "https://code.example.com/acme/shop", Title: "acme/shop", Target: target, EnvironmentRef: "env-3f2a91c4"},
 			}}},
 		{"source-items", contracts.SourceItems{Version: contracts.Version, Time: now, CollectionRef: "TRK", Listing: &listing,
 			Items: []contracts.Item{

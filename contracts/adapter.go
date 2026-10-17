@@ -80,12 +80,15 @@ func (s SourceCollections) MarshalJSON() ([]byte, error) {
 	return json.Marshal(plain(s))
 }
 
-// Collection is a place at the source that items are listed from.
+// Collection is a place at the source that items are listed from. EnvironmentRef is the
+// id of the collection's environment definition, as the adapter reads it at the source's
+// default line of the code; empty, the collection has none.
 type Collection struct {
-	Ref    string  `json:"ref"`
-	URL    string  `json:"url"`
-	Title  string  `json:"title"`
-	Target *Target `json:"target,omitempty"`
+	Ref            string  `json:"ref"`
+	URL            string  `json:"url"`
+	Title          string  `json:"title"`
+	Target         *Target `json:"target,omitempty"`
+	EnvironmentRef string  `json:"environment_ref,omitempty"`
 }
 
 // Target is where a change would go: a host name and a path on it.
