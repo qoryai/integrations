@@ -113,8 +113,7 @@ type HandoverAnswer struct {
 // run id and a new run key. For a dispatch of the step prebuild, a release after its
 // handover never queues a new run: Retry true is read as false, and the run ends. A
 // failed build is reported this way, and the control plane records Reason as the last
-// build's failure; the next prebuild comes only from a change of the collection's
-// environment_ref or from a person asking for one.
+// build's failure.
 type Release struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`

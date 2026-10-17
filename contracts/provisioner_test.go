@@ -101,30 +101,36 @@ func TestProvisionerFixturesValidate(t *testing.T) {
 // name, and for no other.
 func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"claim-wait-seconds-26.json":                  {"claim", "/wait_seconds maximum"},
-		"claim-pool-id-node.json":                     {"claim", "/pool_id pattern"},
-		"claim-undefined-member.json":                 {"claim", "/ additionalProperties"},
-		"claim-answer-access-admin.json":              {"claim-answer", "/access enum"},
-		"claim-answer-dispatch-id-no-prefix.json":     {"claim-answer", "/dispatch_id pattern"},
-		"claim-answer-dispatch-id-upper-case.json":    {"claim-answer", "/dispatch_id pattern"},
-		"claim-answer-work-item-url-http.json":        {"claim-answer", "/work_item/url pattern"},
-		"dispatched-external-type-upper-case.json":    {"dispatched", "/external/type pattern"},
-		"dispatched-external-ref-nul.json":            {"dispatched", "/external/ref pattern"},
-		"release-reason-nul.json":                     {"release", "/reason pattern"},
-		"handover-answer-run-key-no-prefix.json":      {"handover-answer", "/run_key pattern"},
-		"handover-answer-inputs-no-version.json":      {"handover-answer", "/inputs required version"},
-		"handover-answer-without-revision.json":       {"handover-answer", "/ required revision"},
-		"claim-answer-explore-without-work-item.json": {"claim-answer", "/ required work_item"},
-		"claim-answer-prebuild-with-work-item.json":   {"claim-answer", "/ "},
-		"handover-answer-prebuild-inputs-target.json": {"handover-answer", "/inputs additionalProperties"},
-		"prebuilt-image-tag.json":                     {"prebuilt", "/image pattern"},
-		"prebuilt-image-upper-case.json":              {"prebuilt", "/image pattern"},
-		"prebuilt-image-digest-63.json":               {"prebuilt", "/image pattern"},
-		"prebuilt-image-without-name.json":            {"prebuilt", "/image pattern"},
-		"prebuilt-size-0.json":                        {"prebuilt", "/size minimum"},
-		"prebuilt-size-fraction.json":                 {"prebuilt", "/size type"},
-		"prebuilt-undefined-member.json":              {"prebuilt", "/ additionalProperties"},
-		"prebuilt-without-commit.json":                {"prebuilt", "/ required commit"},
+		"claim-wait-seconds-26.json":                     {"claim", "/wait_seconds maximum"},
+		"claim-pool-id-node.json":                        {"claim", "/pool_id pattern"},
+		"claim-undefined-member.json":                    {"claim", "/ additionalProperties"},
+		"claim-answer-access-admin.json":                 {"claim-answer", "/access enum"},
+		"claim-answer-dispatch-id-no-prefix.json":        {"claim-answer", "/dispatch_id pattern"},
+		"claim-answer-dispatch-id-upper-case.json":       {"claim-answer", "/dispatch_id pattern"},
+		"claim-answer-work-item-url-http.json":           {"claim-answer", "/work_item/url pattern"},
+		"dispatched-external-type-upper-case.json":       {"dispatched", "/external/type pattern"},
+		"dispatched-external-ref-nul.json":               {"dispatched", "/external/ref pattern"},
+		"release-reason-nul.json":                        {"release", "/reason pattern"},
+		"handover-answer-run-key-no-prefix.json":         {"handover-answer", "/run_key pattern"},
+		"handover-answer-inputs-no-version.json":         {"handover-answer", "/inputs required version"},
+		"handover-answer-without-revision.json":          {"handover-answer", "/ required revision"},
+		"claim-answer-explore-without-work-item.json":    {"claim-answer", "/ required work_item"},
+		"claim-answer-prebuild-with-work-item.json":      {"claim-answer", "/ "},
+		"handover-answer-prebuild-inputs-target.json":    {"handover-answer", "/inputs additionalProperties"},
+		"prebuilt-image-tag.json":                        {"prebuilt", "/image pattern"},
+		"prebuilt-image-upper-case.json":                 {"prebuilt", "/image pattern"},
+		"prebuilt-image-digest-63.json":                  {"prebuilt", "/image pattern"},
+		"prebuilt-image-without-name.json":               {"prebuilt", "/image pattern"},
+		"prebuilt-size-0.json":                           {"prebuilt", "/size minimum"},
+		"prebuilt-size-fraction.json":                    {"prebuilt", "/size type"},
+		"prebuilt-undefined-member.json":                 {"prebuilt", "/ additionalProperties"},
+		"prebuilt-without-commit.json":                   {"prebuilt", "/ required commit"},
+		"claim-answer-prebuild-revision-1.json":          {"claim-answer", "/revision minimum"},
+		"handover-answer-prebuild-revision-1.json":       {"handover-answer", "/revision minimum"},
+		"handover-answer-prebuild-with-work-item.json":   {"handover-answer", "/ "},
+		"handover-answer-explore-without-work-item.json": {"handover-answer", "/ required work_item"},
+		"handover-answer-prebuild-inputs-version-2.json": {"handover-answer", "/inputs/version const"},
+		"prebuilt-size-above-maximum.json":               {"prebuilt", "/size maximum"},
 	}
 	got := provisionerFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -147,6 +153,30 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		}
 		if r := strings.Join(leaves(v), "; "); r != w.reason {
 			t.Errorf("%s is refused for %q, want %q", f, r, w.reason)
+		}
+	}
+}
+
+// TestAPrebuildIsRefusedForItsWorkItemAlone pins that the invalid answers of the step
+// prebuild that carry work_item, whose refusal names no keyword, are refused for
+// work_item and for nothing else: the same document without work_item is accepted.
+func TestAPrebuildIsRefusedForItsWorkItemAlone(t *testing.T) {
+	for _, c := range []struct{ fixture, schema string }{
+		{"claim-answer-prebuild-with-work-item.json", "claim-answer"},
+		{"handover-answer-prebuild-with-work-item.json", "handover-answer"},
+	} {
+		doc, err := contracts.ProvisionerDocument(path.Join("fixtures/invalid", c.fixture))
+		if err != nil {
+			t.Fatal(err)
+		}
+		answer, ok := doc.(map[string]any)
+		if !ok || answer["step"] != "prebuild" || answer["work_item"] == nil {
+			t.Errorf("%s is not an answer of the step prebuild with work_item", c.fixture)
+			continue
+		}
+		delete(answer, "work_item")
+		if err := compileProvisioner(t, c.schema+".schema.json").Validate(answer); err != nil {
+			t.Errorf("%s without work_item is refused: %v", c.fixture, err)
 		}
 	}
 }

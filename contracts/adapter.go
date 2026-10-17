@@ -15,8 +15,9 @@ const Version = 1
 
 // Revision is the integration contract's revision, which X-Qory-Contract-Version
 // carries as a decimal integer. It counts additions alone: each addition to
-// integration/v1 raises it. A change that breaks a reader is a new contract,
-// integration/v2, not a new revision.
+// integration/v1 raises it. Additions made before revision 1 is released are part of
+// revision 1. A change that breaks a reader is a new contract, integration/v2, not a
+// new revision.
 const Revision = 1
 
 // ConnectDomain is the first line of the message a connect pass's signature covers: the
