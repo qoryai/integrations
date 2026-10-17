@@ -658,7 +658,11 @@ func TestEmptyListsMarshalAsEmptyLists(t *testing.T) {
 // that the control plane checks on a request's raw bytes, and that no schema can express,
 // since a parsed document holds 900.0 as the integer 900 and keeps one member of a name.
 // Every number of an integration request is an integer.
-func strictJSON(b []byte) error {
+func strictJSON(b []byte) error { return strictTokens(b, true) }
+
+// strictTokens reports the first member an object of b repeats, at any depth, and, when
+// integers is true, the first number written with a fraction or an exponent.
+func strictTokens(b []byte, integers bool) error {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.UseNumber()
 	type frame struct {
@@ -705,7 +709,7 @@ func strictJSON(b []byte) error {
 				stack = stack[:len(stack)-1]
 			}
 		case json.Number:
-			if strings.ContainsAny(string(v), ".eE") {
+			if integers && strings.ContainsAny(string(v), ".eE") {
 				return fmt.Errorf("the number %s has a fraction or an exponent", v)
 			}
 		}

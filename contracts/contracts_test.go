@@ -3,11 +3,15 @@ package contracts_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
+	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/qoryai/integrations/contracts"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -222,4 +226,94 @@ func expand(t *testing.T, integrations string) string {
 // doubled.
 func quote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
+// strictDescription reports the first rule of description.schema.json that a reader
+// checks on a description's raw bytes and that no schema can express, since a parsed
+// document holds U+FFFD for invalid UTF-8 and for a lone surrogate escape, and keeps one
+// member of a name: the bytes are UTF-8, no string holds a \u escape of a lone
+// surrogate, and no object repeats a member, at any depth.
+func strictDescription(b []byte) error {
+	if !utf8.Valid(b) {
+		return errors.New("the document is not UTF-8")
+	}
+	if err := loneSurrogate(b); err != nil {
+		return err
+	}
+	return strictTokens(b, false)
+}
+
+// loneSurrogate reports the first \u escape in a string of b that names a surrogate,
+// U+D800 to U+DFFF, outside a pair of a high surrogate escape followed at once by a low
+// one. An escape that is not four hexadecimal digits is left to the JSON decoder.
+func loneSurrogate(b []byte) error {
+	in := false
+	for i := 0; i < len(b); i++ {
+		switch {
+		case !in:
+			in = b[i] == '"'
+		case b[i] == '"':
+			in = false
+		case b[i] == '\\' && i+1 < len(b) && b[i+1] == 'u':
+			r, ok := escape(b, i)
+			if !ok || !utf16.IsSurrogate(r) {
+				i += 5
+				continue
+			}
+			if low, ok := escape(b, i+6); r < 0xdc00 && ok && low >= 0xdc00 && low <= 0xdfff {
+				i += 11
+				continue
+			}
+			return fmt.Errorf(`a string holds the lone surrogate escape %s`, b[i:i+6])
+		case b[i] == '\\':
+			i++
+		}
+	}
+	return nil
+}
+
+// escape is the code unit of the \u escape at b[i:i+6], and whether there is one.
+func escape(b []byte, i int) (rune, bool) {
+	if i+6 > len(b) || b[i] != '\\' || b[i+1] != 'u' {
+		return 0, false
+	}
+	n, err := strconv.ParseUint(string(b[i+2:i+6]), 16, 16)
+	return rune(n), err == nil
+}
+
+// TestTheReaderRefusesWhatTheSchemaCannotSee pins the rules of description.schema.json
+// that a reader checks on a description's raw bytes: each document under
+// fixtures/refused-by-reader is accepted by the schema once parsed, since the rule is
+// not expressible in one, and breaks the rule on its raw bytes; and every description
+// under fixtures keeps the rules.
+func TestTheReaderRefusesWhatTheSchemaCannotSee(t *testing.T) {
+	want := map[string]string{
+		"description-string-invalid-utf-8.json":  "the document is not UTF-8",
+		"description-string-lone-surrogate.json": `a string holds the lone surrogate escape \ud800`,
+		"description-member-repeated.json":       `the member "type" is repeated`,
+	}
+	schema := compile(t, "description.schema.json")
+	got := files(t, "fixtures/refused-by-reader")
+	if len(got) != len(want) {
+		t.Errorf("fixtures/refused-by-reader holds %d documents, and the test expects %d", len(got), len(want))
+	}
+	for _, f := range got {
+		w, ok := want[path.Base(f)]
+		if !ok {
+			t.Errorf("%s: no expected reason", f)
+			continue
+		}
+		b := read(t, f)
+		if err := validate(schema, b); err != nil {
+			t.Errorf("%s is refused by description.schema.json, and the rule is the reader's alone: %v", f, err)
+		}
+		if err := strictDescription(b); err == nil || err.Error() != w {
+			t.Errorf("%s is refused for %v, want %q", f, err, w)
+		}
+	}
+	for _, f := range files(t, "fixtures") {
+		if err := strictDescription(read(t, f)); err != nil {
+			t.Errorf("%s: %v", f, err)
+		}
+	}
 }
