@@ -39,7 +39,8 @@ from it.
 ```json
 {"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
  "settings": {"type": "object"},
- "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}}}
+ "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}},
+ "egress_hosts": ["tracker.acme.example"]}
 ```
 
 **Domains.** `domains` lists the domains the integration works with, each a domain name, for example `software`, the domain of software work; `qory-github` declares `["software"]`. When the integration names no domain, the field is absent, never an empty list, which the schema refuses.
@@ -180,7 +181,7 @@ A run's policy selects them by the key, as it selects any credential:
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with nothing added; `acme-tracker.json`, a description with only the members every description must have; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential` | `description.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.

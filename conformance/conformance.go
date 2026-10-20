@@ -2,9 +2,12 @@
 // contracts it speaks: its description against the integration contract,
 // contracts/integration/v1, a credential role's answer against the gateway's credential
 // document, and a failure against the exit status every command of the contract shares.
+// It also checks a data description, a file of data that no program prints, against the
+// integration contract.
 //
 // Beyond the credential document's schema, it refuses an apply entry of the scheme header
-// whose header is one it reserves, as conformance/headers.json lists them.
+// whose header is one it reserves, as conformance/headers.json lists them. It refuses
+// the same headers in the auth of each API of a description's model_provider role.
 //
 // An integration's tests run the program and hand this package what it printed, so the
 // program and the contracts cannot drift apart. The integration template's tests show
@@ -85,12 +88,29 @@ func (r refusals) Error() string {
 func (r refusals) Unwrap() []error { return r.errs }
 
 // Description checks what `<program> describe` printed on standard output: one JSON
-// document and nothing after it, which the contract's description.schema.json accepts,
-// and whose every secret, a property marked writeOnly, is a property of the settings
-// themselves with a setting <name>_file beside it (contracts/integration/v1 §Describe).
-// It reports the first rule the output breaks.
+// document and nothing after it; whose raw bytes keep the rules of
+// description.schema.json that no schema can express, as [contracts.CheckDescription]
+// checks them: at most 262144 bytes, UTF-8, no \u escape of a lone surrogate, no
+// object that repeats a member, no string or member name over 16384 bytes of UTF-8, at
+// most 4096 JSON values and at most 64 levels of nesting; which the contract's
+// description.schema.json accepts; and whose every secret, a property marked writeOnly,
+// is a property of the settings themselves with a setting <name>_file beside it
+// (contracts/integration/v1 §Describe); and whose model_provider role, when it has one,
+// keeps the rules of the role that the schema does not check, as
+// [contracts.CheckModelProvider] checks them, and whose APIs' auth, when it is of the
+// scheme header, sets no header that conformance reserves, as [Credential] refuses
+// them; and whose egress_hosts keeps the rules the schema does not check, as
+// [contracts.CheckEgressHosts] checks them. It accepts both forms of a description,
+// the program form and the data form. It reports the first rule the output breaks.
 func Description(stdout []byte) error {
-	doc, err := one(stdout)
+	raw, err := one(stdout, "standard output")
+	if err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
+	if err := contracts.CheckDescription(stdout); err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
 	if err != nil {
 		return fmt.Errorf("describe: %w", err)
 	}
@@ -103,6 +123,91 @@ func Description(stdout []byte) error {
 	}
 	if problems := secrets(doc); len(problems) > 0 {
 		return fmt.Errorf("describe: %s", strings.Join(problems, "; "))
+	}
+	if err := contracts.CheckModelProvider(doc); err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
+	if err := contracts.CheckEgressHosts(doc); err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
+	if err := providerHeader(doc); err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
+	return nil
+}
+
+// DataDescription checks a data description, a file of data that no program prints: one
+// JSON document and nothing after it; whose raw bytes keep the rules of
+// description.schema.json that no schema can express, as [contracts.CheckDescription]
+// checks them, the same checks as [Description]; which has no program_version, so it is
+// in the data form and not the program form; which the contract's
+// description.schema.json accepts, so its one role is model_provider; and whose
+// model_provider role keeps the rules of the role that the schema does not check, as
+// [contracts.CheckModelProvider] checks them; whose APIs' auth, when it is of the
+// scheme header, sets no header that conformance reserves, as [Credential] refuses
+// them; and whose egress_hosts keeps the rules the schema does not check, as
+// [contracts.CheckEgressHosts] checks them, the same checks as [Description]. The
+// schema refuses a member writeOnly anywhere in a data description's settings, so the
+// secret rule of [Description], which is about a program's command line, has nothing to
+// check. It reports the first rule the file breaks.
+func DataDescription(b []byte) error {
+	raw, err := one(b, "the file")
+	if err != nil {
+		return fmt.Errorf("data description: %w", err)
+	}
+	if err := contracts.CheckDescription(b); err != nil {
+		return fmt.Errorf("data description: %w", err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+	if err != nil {
+		return fmt.Errorf("data description: %w", err)
+	}
+	if d, _ := doc.(map[string]any); d != nil {
+		if _, ok := d["program_version"]; ok {
+			return errors.New("data description: the file has a program_version, so it is in the program form; a data description has no program_version")
+		}
+	}
+	schema, err := descriptionSchema()
+	if err != nil {
+		return err
+	}
+	if err := schema.Validate(doc); err != nil {
+		return fmt.Errorf("data description: the contract's schema refuses the description: %w", err)
+	}
+	if err := contracts.CheckModelProvider(doc); err != nil {
+		return fmt.Errorf("data description: %w", err)
+	}
+	if err := contracts.CheckEgressHosts(doc); err != nil {
+		return fmt.Errorf("data description: %w", err)
+	}
+	if err := providerHeader(doc); err != nil {
+		return fmt.Errorf("data description: %w", err)
+	}
+	return nil
+}
+
+// providerHeader refuses the auth of each API of a description's model_provider role
+// when it is of the scheme header and its header is one conformance reserves, as
+// [Credential] refuses an apply entry's header. It reports the first such API.
+func providerHeader(doc any) error {
+	d, _ := doc.(map[string]any)
+	roles, _ := d["roles"].(map[string]any)
+	role, _ := roles["model_provider"].(map[string]any)
+	apis, _ := role["apis"].([]any)
+	for i, a := range apis {
+		api, _ := a.(map[string]any)
+		auth, _ := api["auth"].(map[string]any)
+		name, _ := auth["header"].(string)
+		if auth["scheme"] != "header" {
+			continue
+		}
+		headers, err := reservedHeaders()
+		if err != nil {
+			return err
+		}
+		if headers.has(name) {
+			return fmt.Errorf("the auth of model_provider apis[%d] sets the header %s, which conformance reserves", i, name)
+		}
 	}
 	return nil
 }
@@ -119,7 +224,7 @@ func Description(stdout []byte) error {
 // conformance reserves". It also has an Unwrap() []error method that returns each of
 // them as a separate error, in the same order.
 func Credential(stdout []byte) error {
-	if _, err := one(stdout); err != nil {
+	if _, err := one(stdout, "standard output"); err != nil {
 		return fmt.Errorf("credential: %w", err)
 	}
 	doc, err := forager.Decode("answer.json", stdout)
@@ -170,19 +275,19 @@ func Failure(code int, stdout, stderr []byte) error {
 	return nil
 }
 
-// one reads b as one JSON document followed by nothing but white space, into the JSON
-// types a schema validates.
-func one(b []byte) (any, error) {
+// one is the one JSON document of b, followed in b by nothing but white space, as its
+// raw bytes. where is what b is, such as standard output, for the error's text.
+func one(b []byte, where string) (json.RawMessage, error) {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	var first json.RawMessage
 	if err := dec.Decode(&first); err != nil {
-		return nil, fmt.Errorf("standard output is not a JSON document: %w", err)
+		return nil, fmt.Errorf("%s is not a JSON document: %w", where, err)
 	}
 	var more json.RawMessage
 	if err := dec.Decode(&more); !errors.Is(err, io.EOF) {
-		return nil, errors.New("standard output contains more than one JSON document")
+		return nil, fmt.Errorf("%s contains more than one JSON document", where)
 	}
-	return jsonschema.UnmarshalJSON(bytes.NewReader(first))
+	return first, nil
 }
 
 // secrets are the ways a description breaks the rule the schema cannot express: a secret
