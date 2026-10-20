@@ -3,7 +3,7 @@ module github.com/qoryai/integrations
 go 1.27.1
 
 require (
-	github.com/qoryai/forager v0.7.0
+	github.com/qoryai/forager v0.7.1-0.20261020230453-ef5923458810
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -15,5 +15,3 @@ require (
 
 // The module proxy holds an earlier tree under v0.1.0, without the conformance package.
 retract v0.1.0
-
-replace github.com/qoryai/forager => ../../.work/Tessio/deps/forager-3161df55
