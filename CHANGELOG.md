@@ -7,6 +7,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ## [Unreleased]
 
+### Added
+
+- A description can declare the role `model_provider`. The role lists the provider's
+  APIs in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
+  subscription token, and optional `key_prefixes`; and the `models` a new provider of
+  this kind starts with.
+
 ## [0.3.0] - 2026-10-12
 
 ### Upgrading

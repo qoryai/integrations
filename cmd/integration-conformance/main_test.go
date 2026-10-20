@@ -92,6 +92,22 @@ func TestRefusedBeyondTheSchema(t *testing.T) {
 	}
 }
 
+// TestRefusedOnTheRawBytes pins that a description refused on its raw bytes, each
+// document under fixtures/refused-by-reader, exits 1, prints nothing on standard output,
+// and prints conformance.Description's refusal on standard error.
+func TestRefusedOnTheRawBytes(t *testing.T) {
+	for name, want := range map[string]string{
+		"description-string-invalid-utf-8.json":  "describe: the document is not UTF-8\n",
+		"description-string-lone-surrogate.json": "describe: a string holds the \\u escape \\ud800 of a lone surrogate\n",
+		"description-member-repeated.json":       "describe: an object repeats the member \"type\"\n",
+	} {
+		code, stdout, stderr := run(t, fixture(t, "fixtures/refused-by-reader/"+name))
+		if code != 1 || stdout != "" || stderr != want {
+			t.Errorf("%s: exit %d, standard output %q, standard error %q; want 1, nothing on standard output and %q", name, code, stdout, stderr, want)
+		}
+	}
+}
+
 // TestNothing pins that empty standard input is refused, not accepted.
 func TestNothing(t *testing.T) {
 	code, stdout, stderr := run(t, nil)
