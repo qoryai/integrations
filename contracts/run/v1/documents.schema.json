@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/run/v1/documents.schema.json",
   "title": "Run documents",
-  "description": "The run's documents: one object of the members step, domain, inputs, access, target, work_item, run_settings, stack, workflow, harness_hidden, image_destination, environment_destination and environment_image, which the control plane writes and the job reads. The object is the documents member of Forager's run answer: the machine receives it, signed, in the 201 of the run code's redemption, https://qory.dev/contracts/forager/v1/enrolment.schema.json, beside the run key. Forager passes it on unread. step, domain and inputs are present for every run. access is present exactly when target is, and stack exactly when workflow and harness_hidden are. A run of the step explore has work_item. A run of the step prebuild has access, target, image_destination and exactly one of environment_destination and environment_image, has no work_item, no run_settings, no stack, no workflow and no harness_hidden, and its inputs are prebuild_inputs. run_settings is present only for the step explore, and image_destination, environment_destination and environment_image only for the step prebuild. A member this schema does not define is refused.",
+  "description": "The run's documents: one object of the members step, domain, inputs, access, target, work_item, run_settings, stack, stack_reference, workflow, harness_hidden, image_destination, environment_destination and environment_image, which the control plane writes and the job reads. The object is the documents member of Forager's run answer: the machine receives it, signed, in the 201 of the run code's redemption, https://qory.dev/contracts/forager/v1/enrolment.schema.json, beside the run key. Forager passes it on unread. step, domain and inputs are present for every run. access is present exactly when target is, and stack exactly when workflow and harness_hidden are. stack_reference is present exactly when stack is a stack name. A run of the step explore has work_item. A run of the step prebuild has access, target, image_destination and exactly one of environment_destination and environment_image, has no work_item, no run_settings, no stack, no stack_reference, no workflow and no harness_hidden, and its inputs are prebuild_inputs. run_settings is present only for the step explore, and image_destination, environment_destination and environment_image only for the step prebuild. A member this schema does not define is refused.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -34,6 +34,10 @@
     },
     "stack": {
       "$ref": "#/$defs/stack"
+    },
+    "stack_reference": {
+      "description": "The address of the stack whose name stack is set to, in the form of stack_reference. The control plane sets it from the operator's list of stacks, and the machine fetches the stack from it. Present exactly when stack is a stack name.",
+      "$ref": "#/$defs/stack_reference"
     },
     "workflow": {
       "$ref": "#/$defs/workflow"
@@ -159,6 +163,28 @@
         "properties": {
           "environment_destination": false,
           "environment_image": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stack": {
+            "$ref": "#/$defs/stack_name"
+          }
+        },
+        "required": [
+          "stack"
+        ]
+      },
+      "then": {
+        "required": [
+          "stack_reference"
+        ]
+      },
+      "else": {
+        "properties": {
+          "stack_reference": false
         }
       }
     }
@@ -352,7 +378,7 @@
       }
     },
     "stack": {
-      "description": "The stack that the run uses: a stack name or a stack reference. A name, such as core, selects a stack that the machine looks up by name in its stacks file. A reference is where the stack lives, such as https://code.example.com/team/stacks#main:core: an https URL, then #, then a ref, which is a branch, a tag or a commit, then :, then the folder of the stack at that ref, . for the root. Present exactly when workflow and harness_hidden are present, and absent, with them, when the run uses no stack. A run of the step prebuild has no stack.",
+      "description": "The stack that the run uses: a stack name or a stack reference. A name, such as core, is the name of a stack in the operator's list of stacks, and stack_reference is then set to the address of that stack. A reference is where the stack lives, such as https://code.example.com/team/stacks#main:core: an https URL, then #, then a ref, which is a branch, a tag or a commit, then :, then the folder of the stack at that ref, . for the root. Present exactly when workflow and harness_hidden are present, and absent, with them, when the run uses no stack. A run of the step prebuild has no stack.",
       "type": "string",
       "oneOf": [
         {

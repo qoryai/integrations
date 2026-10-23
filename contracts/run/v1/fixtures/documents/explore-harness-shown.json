@@ -12,6 +12,7 @@
     "title": "Checkout fails on an empty cart"
   },
   "stack": "core",
+  "stack_reference": "https://code.example.com/team/stacks#main:core",
   "workflow": "hello",
   "harness_hidden": false,
   "inputs": {
