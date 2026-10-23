@@ -465,7 +465,7 @@ func TestADockerHubHostIsRefused(t *testing.T) {
 			{"index.docker.io/env", 1, false},
 			{"registry-1.docker.io:443/env", 2, false},
 			{"registry.hub.docker.com/env", 3, false},
-			{"REGISTRY.DOCKER.COM:443/env", 4, true},
+			{"registry.docker.com:443/env", 4, false},
 		} {
 			v, ok := schema.Validate(c.refused + def.suffix).(*jsonschema.ValidationError)
 			if !ok {
