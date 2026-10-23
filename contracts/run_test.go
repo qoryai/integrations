@@ -197,10 +197,10 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestAPrebuildIsRefusedForItsStackOrWorkflowAlone pins that the invalid run documents
+// TestAPrebuildIsRefusedForItsStackStackReferenceOrWorkflowAlone pins that the invalid run documents
 // of the step prebuild that have stack, stack_reference, workflow or harness_hidden are
 // refused for that member alone: the same documents without it are accepted.
-func TestAPrebuildIsRefusedForItsStackOrWorkflowAlone(t *testing.T) {
+func TestAPrebuildIsRefusedForItsStackStackReferenceOrWorkflowAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	for _, c := range []struct{ fixture, member string }{
 		{"documents-prebuild-with-stack.json", "stack"},

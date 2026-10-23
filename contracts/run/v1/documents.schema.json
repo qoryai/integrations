@@ -36,7 +36,7 @@
       "$ref": "#/$defs/stack"
     },
     "stack_reference": {
-      "description": "The address of the stack whose name stack is set to, in the form of stack_reference. The control plane sets it from the operator's list of stacks, and the machine fetches the stack from it. Present exactly when stack is a stack name.",
+      "description": "The address of the stack whose name stack is set to, as $defs/stack_reference defines it. The control plane sets it from the operator's list of stacks, and the machine fetches the stack from it. Present exactly when stack is a stack name.",
       "$ref": "#/$defs/stack_reference"
     },
     "workflow": {
