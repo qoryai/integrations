@@ -422,10 +422,10 @@
       "$ref": "#/$defs/image_by_digest"
     },
     "image_place": {
-      "description": "A place at the registry, with no tag and no digest: a host, an optional port, then a path, as the OCI distribution spec writes an image name. The host is DNS labels joined by dots, each of upper-case or lower-case letters, digits and hyphens that starts and ends with a letter or a digit, and a port is a colon and 1 to 5 digits. The host contains a dot, has a port, or is exactly localhost. A Docker Hub host, docker.io, index.docker.io, registry-1.docker.io, registry.hub.docker.com or registry.docker.com, in any case and with or without a port, is refused. Docker reads a lower-case first part with no dot, no port and other than localhost, such as registry/env, as a path on Docker Hub, so such a name is refused. A first part with upper case and with no dot, no port and other than localhost, such as Registry/env, is refused too. The path is one or more components, each after a /; a component is runs of lower-case letters and digits, joined by a dot, one or two underscores, or one or more hyphens. At most 255 characters.",
+      "description": "A place at the registry, with no tag and no digest: a host, an optional port, then a path, as the OCI distribution spec writes an image name. The host is DNS labels joined by dots, each of lower-case letters, digits and hyphens that starts and ends with a letter or a digit, and a port is a colon and 1 to 5 digits. The host contains a dot, has a port, or is exactly localhost. A Docker Hub host, docker.io, index.docker.io, registry-1.docker.io, registry.hub.docker.com or registry.docker.com, in any case and with or without a port, is refused. Docker reads a lower-case first part with no dot, no port and other than localhost, such as registry/env, as a path on Docker Hub, so such a name is refused. The path is one or more components, each after a /; a component is runs of lower-case letters and digits, joined by a dot, one or two underscores, or one or more hyphens. At most 255 characters.",
       "type": "string",
       "maxLength": 255,
-      "pattern": "^(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+(?::[0-9]{1,5})?|[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?:[0-9]{1,5}|localhost)(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)+$",
+      "pattern": "^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?::[0-9]{1,5})?|[a-z0-9](?:[a-z0-9-]*[a-z0-9])?:[0-9]{1,5}|localhost)(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)+$",
       "allOf": [
         {
           "not": {
@@ -458,7 +458,7 @@
       "description": "An image by its digest: a place at the registry as image_place defines it, then @sha256:, then 64 lower-case hexadecimal digits, such as registry.example.com/environments/0123456789abcdef@sha256: and the 64 digits. The host contains a dot, has a port, or is exactly localhost, and a Docker Hub host, docker.io, index.docker.io, registry-1.docker.io, registry.hub.docker.com or registry.docker.com, in any case and with or without a port, is refused. A name with no host, such as env@sha256: and the 64 digits, is refused, because Docker pulls such a name from Docker Hub. A tag, such as :latest, is refused, because the image at a tag can change, and the image at a digest cannot. Upper-case hexadecimal digits are refused too. At most 327 characters, so the place is at most 255.",
       "type": "string",
       "maxLength": 327,
-      "pattern": "^(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+(?::[0-9]{1,5})?|[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?:[0-9]{1,5}|localhost)(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)+@sha256:[0-9a-f]{64}$",
+      "pattern": "^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?::[0-9]{1,5})?|[a-z0-9](?:[a-z0-9-]*[a-z0-9])?:[0-9]{1,5}|localhost)(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)+@sha256:[0-9a-f]{64}$",
       "allOf": [
         {
           "not": {

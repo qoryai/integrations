@@ -218,20 +218,19 @@ func TestAPrebuildIsRefusedForItsStackOrWorkflowAlone(t *testing.T) {
 }
 
 // TestAnImageDestinationIsAnOCIName pins the image_destination of
-// documents.schema.json: a host of DNS labels, an optional port of 1 to 5 digits, and
-// one or more path components of lower-case letters and digits joined by a dot, one or
-// two underscores, or hyphens, with no tag and no digest; that the host contains a dot,
-// has a port, or is localhost; that 255 characters are accepted and 256 refused; that
-// the documents of the step explore with image_destination are refused for that member
-// alone; and that the documents of a step other than explore and prebuild are refused
-// for it by step.
+// documents.schema.json: a lower-case host of DNS labels, an optional port of 1 to 5
+// digits, and one or more path components of lower-case letters and digits joined by
+// a dot, one or two underscores, or hyphens, with no tag and no digest; that the host
+// contains a dot, has a port, or is localhost; that 255 characters are accepted and
+// 256 refused; that the documents of the step explore with image_destination are
+// refused for that member alone; and that the documents of a step other than explore
+// and prebuild are refused for it by step.
 func TestAnImageDestinationIsAnOCIName(t *testing.T) {
 	schema := compileRun(t, runSchema("documents/image_destination"))
 	for _, v := range []string{
 		"registry.example.com/targets/0123456789abcdef",
 		"registry.example.com:5000/env",
 		"localhost/env",
-		"Registry.Example.com/env",
 		"registry.example.com/a.b/c_d/e__f/g-h/i---j",
 		"registry:5000/env",
 		"localhost:5000/env",
@@ -258,6 +257,10 @@ func TestAnImageDestinationIsAnOCIName(t *testing.T) {
 		"registry/env",
 		"registry",
 		"Localhost/env",
+		"Registry.Example.com/env",
+		"Registry.example.com/env",
+		"Registry:5000/env",
+		"LOCALHOST/env",
 		"localhost.:5000/env",
 		"registry.example.com/" + strings.Repeat("a", 235),
 	} {
@@ -401,8 +404,8 @@ func TestAPrebuildHasOneEnvironmentMember(t *testing.T) {
 
 // TestAnEnvironmentImageHasAHost pins the environment_image of documents.schema.json:
 // a place at the registry as image_place defines it, then @sha256: and 64 lower-case
-// hexadecimal digits, at most 327 characters; a name with no host, a Docker Hub host,
-// upper-case hexadecimal digits and a tag are refused.
+// hexadecimal digits, at most 327 characters; a name with no host, an upper-case host,
+// a Docker Hub host, upper-case hexadecimal digits and a tag are refused.
 func TestAnEnvironmentImageHasAHost(t *testing.T) {
 	schema := compileRun(t, runSchema("documents/environment_image"))
 	digest := "@sha256:" + strings.Repeat("0", 64)
@@ -422,6 +425,9 @@ func TestAnEnvironmentImageHasAHost(t *testing.T) {
 	for _, v := range []string{
 		"env" + digest,
 		"team/env" + digest,
+		"Registry.example.com/env" + digest,
+		"Registry:5000/env" + digest,
+		"LOCALHOST/env" + digest,
 		"docker.io/env" + digest,
 		"registry.example.com/env@sha256:" + strings.Repeat("0A", 32),
 		"registry.example.com/env:latest",
@@ -436,9 +442,10 @@ func TestAnEnvironmentImageHasAHost(t *testing.T) {
 // TestADockerHubHostIsRefused pins the rules of image_place and image_by_digest of
 // documents.schema.json that refuse a Docker Hub host: docker.io, index.docker.io,
 // registry-1.docker.io, registry.hub.docker.com and registry.docker.com, in any case,
-// with or without a port. Each refused value is refused by one rule of allOf alone,
-// and docker.example.com/env, notdocker.io/env and hub.docker.example.com/env are
-// accepted, each with the digest for image_by_digest.
+// with or without a port. Each refused value is refused by one rule of allOf, and a
+// value with an upper-case host by the pattern too. docker.example.com/env,
+// notdocker.io/env and hub.docker.example.com/env are accepted, each with the digest
+// for image_by_digest.
 func TestADockerHubHostIsRefused(t *testing.T) {
 	digest := "@sha256:" + strings.Repeat("0", 64)
 	for _, def := range []struct{ name, suffix string }{
@@ -449,13 +456,16 @@ func TestADockerHubHostIsRefused(t *testing.T) {
 		for _, c := range []struct {
 			refused string
 			rule    int
+			// upper is true when the host has upper case, which the pattern
+			// refuses too.
+			upper bool
 		}{
-			{"docker.io/env", 0},
-			{"Docker.IO/env", 0},
-			{"index.docker.io/env", 1},
-			{"registry-1.docker.io:443/env", 2},
-			{"registry.hub.docker.com/env", 3},
-			{"REGISTRY.DOCKER.COM:443/env", 4},
+			{"docker.io/env", 0, false},
+			{"Docker.IO/env", 0, true},
+			{"index.docker.io/env", 1, false},
+			{"registry-1.docker.io:443/env", 2, false},
+			{"registry.hub.docker.com/env", 3, false},
+			{"REGISTRY.DOCKER.COM:443/env", 4, true},
 		} {
 			v, ok := schema.Validate(c.refused + def.suffix).(*jsonschema.ValidationError)
 			if !ok {
@@ -467,6 +477,9 @@ func TestADockerHubHostIsRefused(t *testing.T) {
 				rules = append(rules, l.SchemaURL)
 			}
 			want := fmt.Sprintf("%s/documents.schema.json#/$defs/%s/allOf/%d", contracts.RunBase, def.name, c.rule)
+			if c.upper {
+				want = fmt.Sprintf("%s/documents.schema.json#/$defs/%s; %s", contracts.RunBase, def.name, want)
+			}
 			if strings.Join(rules, "; ") != want {
 				t.Errorf("%s: %s is refused by %q, want %q", def.name, c.refused+def.suffix, rules, want)
 			}
