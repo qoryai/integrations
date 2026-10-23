@@ -13,10 +13,11 @@ const MaxInputs = 768 << 10
 // documents member of Forager's run answer, which the machine receives, signed, in the
 // 201 of the run code's redemption. Forager passes it on unread. Step, Domain and
 // Inputs are set for every run. Access is set exactly when Target is, and Stack
-// exactly when Workflow and HarnessHidden are. A run of the step explore has WorkItem.
-// A run of the step prebuild has Access, Target, ImageDestination and exactly one of
+// exactly when Workflow and HarnessHidden are. StackReference is set exactly when
+// Stack is a stack name. A run of the step explore has WorkItem. A run of the step
+// prebuild has Access, Target, ImageDestination and exactly one of
 // EnvironmentDestination and EnvironmentImage, and no WorkItem, RunSettings, Stack,
-// Workflow or HarnessHidden.
+// StackReference, Workflow or HarnessHidden.
 // RunSettings is set only for the step explore. Inputs is the step's input as the
 // control plane wrote it, whose shape belongs to the step's schema.
 type Documents struct {
@@ -27,12 +28,17 @@ type Documents struct {
 	Target      *Target         `json:"target,omitempty"`
 	WorkItem    *WorkItem       `json:"work_item,omitempty"`
 	RunSettings *RunSettings    `json:"run_settings,omitempty"`
-	// Stack is the stack that the run uses: a stack name, such as core, which selects a
-	// stack that the machine looks up by name in its stacks file, or a stack reference,
-	// url#ref:path, which is where the stack lives, such as
-	// https://code.example.com/team/stacks#main:core.
-	Stack    string `json:"stack,omitempty"`
-	Workflow string `json:"workflow,omitempty"`
+	// Stack is the stack that the run uses: a stack name, such as core, which is the
+	// name of a stack in the operator's list of stacks, with StackReference then set to
+	// the address of that stack, or a stack reference, url#ref:path, which is where the
+	// stack lives, such as https://code.example.com/team/stacks#main:core.
+	Stack string `json:"stack,omitempty"`
+	// StackReference is set exactly when Stack is a stack name: the address of the
+	// stack whose name Stack is set to, a stack reference, url#ref:path, such as
+	// https://code.example.com/team/stacks#main:core. The control plane sets it from
+	// the operator's list of stacks, and the machine fetches the stack from it.
+	StackReference string `json:"stack_reference,omitempty"`
+	Workflow       string `json:"workflow,omitempty"`
 	// HarnessHidden is set exactly when Stack is: when true, the text that comes from
 	// the harness of the stack is hidden in the run, and when false, that text is
 	// shown. A pointer, so that false is written.
