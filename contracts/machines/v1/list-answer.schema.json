@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/list-answer.schema.json",
+  "title": "List answer",
+  "description": "The answer of the command list, on standard output: the machines at the vendor that the adapter made for the request's node pool. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "machines"
+  ],
+  "properties": {
+    "machines": {
+      "description": "The machines of the node pool, empty when the node pool has none. A machine that no longer exists at the vendor is not listed.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "key",
+          "state",
+          "started"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "make-answer.schema.json#/$defs/id",
+            "description": "The vendor's id of the machine."
+          },
+          "key": {
+            "description": "The dispatch the machine was made for, the key of its make request.",
+            "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/dispatch_id"
+          },
+          "state": {
+            "description": "The machine's state at the vendor. starting: the vendor is starting the machine. running: the machine runs. stopped: the machine stopped and still exists. deleting: the vendor is deleting the machine.",
+            "type": "string",
+            "enum": [
+              "starting",
+              "running",
+              "stopped",
+              "deleting"
+            ]
+          },
+          "started": {
+            "description": "When the vendor started the machine, RFC 3339 in UTC with whole seconds.",
+            "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/time"
+          }
+        }
+      }
+    }
+  }
+}

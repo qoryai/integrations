@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/delete-answer.schema.json",
+  "title": "Delete answer",
+  "description": "The answer of the command delete, on standard output: the state of the machine in the request's id after the request. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "state"
+  ],
+  "properties": {
+    "state": {
+      "description": "deleting: the vendor is deleting the machine. gone: no machine with the id exists at the vendor, also when none ever did.",
+      "type": "string",
+      "enum": [
+        "deleting",
+        "gone"
+      ]
+    }
+  }
+}

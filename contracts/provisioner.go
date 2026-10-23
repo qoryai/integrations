@@ -1,23 +1,14 @@
 package contracts
 
-import (
-	"bytes"
-	"encoding/json"
-)
-
 // ProvisionerRevision is the provisioner contract's revision, which
 // X-Qory-Contract-Version carries on its requests as a decimal integer, and which
-// [ClaimAnswer] and [HandoverAnswer] name in Revision. The control plane serves this
-// revision alone and refuses a request that names another, 400
-// unsupported_contract_version. The step prebuild, [Prebuilt] and the handover answer's
-// run_settings are part of it.
-const ProvisionerRevision = 3
-
-// MaxInputs is the most bytes a handover answer's inputs has, serialized.
-const MaxInputs = 768 << 10
-
-// MaxHandoverAnswer is the most bytes a handover answer's body has.
-const MaxHandoverAnswer = 1 << 20
+// [ClaimAnswer] names in Revision. It counts additions alone: each addition to
+// provisioner/v1 raises it. Additions made before revision 1 is released are part of
+// revision 1. A change that breaks a reader is a new contract, provisioner/v2, not a
+// new revision. The control plane serves this revision alone and refuses a request
+// that names another, 400 unsupported_contract_version. The claim answer's run code
+// and gateway URL are part of it.
+const ProvisionerRevision = 1
 
 // Claim is the body of POST /v1/pools/claim, provisioner/v1 claim.schema.json. With an
 // empty PoolID the claim covers the key's node pool, the one node pool the pool's access
@@ -29,222 +20,137 @@ type Claim struct {
 	WaitSeconds int    `json:"wait_seconds"`
 }
 
-// ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json. The
-// starter refuses one whose Revision is not the revision it sent. WorkItem is set for
-// the step explore and nil for the step prebuild, whose run builds the environment of
-// Target. Target is nil, and Access empty, when the run has no place where a change
-// would go, which the step explore allows; Access is set exactly when Target is.
+// ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json: a
+// request for one machine. The starter refuses one whose Revision is not the revision
+// it sent. Machine is the type of machine the job runs on, a name from the control
+// plane's list of machine types, such as small: the starter maps it to the machine it
+// creates, and releases the dispatch when it does not know the name. Machine is empty
+// when the control plane names no type, and the starter then uses its default. RunCode
+// is the run code the control plane made at the claim. GatewayURL is the gateway that
+// the node pool's choice resolved to at the claim: https, a host and an optional port,
+// and nothing after them. The starter passes both to the machine it creates for the
+// dispatch alone, and does not read the code. The control plane binds the code to that
+// gateway, and refuses a redemption that another gateway relays with the same answer
+// as for an unknown code. The machine redeems the code at the enrolment,
+// https://qory.dev/contracts/forager/v1/enrolment.schema.json, which returns the run
+// key and the run's documents, run/v1 documents.schema.json, in its signed 201.
+//
+// The control plane sends the answer with Cache-Control: no-store and gives it once.
+// The starter keeps RunCode and GatewayURL no longer than it takes to pass them to the
+// machine, and writes no line that contains qecr_ to a log. The starter sends the
+// first [Dispatched] before LeaseUntil. The lease ends when the first dispatched is
+// accepted or when the machine redeems the code, whichever comes first. From then on
+// the dispatch never goes stale, and its work is never given to another claim while
+// the dispatch lives. The lease lapses only when neither dispatched nor the redemption
+// came before LeaseUntil: the dispatch is then stale, and the control plane may give
+// the work to another claim. A first dispatched at or after LeaseUntil is refused 409
+// lease_expired when the dispatch is stale, and accepted when the code was redeemed
+// before LeaseUntil. A first redemption at or after LeaseUntil, with neither
+// dispatched nor an earlier redemption before LeaseUntil, is refused, with the same
+// answer as for an unknown code.
+//
+// Of one dispatch, a [Release], a redemption, the first accepted [Dispatched], the lapse
+// of the lease, and the end of the dispatch 15 minutes after the claim when the code is
+// not redeemed take effect one at a time, never two of them together. A release that
+// takes effect first makes the code unusable. After a redemption that takes effect
+// first, the lease does not lapse, and a release is refused 409 machine_exists. After a
+// lapse that takes effect first, a redemption is refused.
+//
+// The run code stops working the moment the lease lapses, and when the dispatch ends
+// for any reason, a release among them. After dispatched, the code can be redeemed
+// until 15 minutes from the claim. When the machine has not redeemed the code within 15
+// minutes of the claim, the control plane ends the dispatch, so the next [Dispatched]
+// is refused 410 gone, and the starter deletes the machine. After the redemption, the
+// 15 minutes from the claim no longer end the dispatch. The code is used once: a
+// repeated redemption by the same machine, as the run_answer of
+// https://qory.dev/contracts/forager/v1/enrolment.schema.json describes, gets the same
+// answer. Once the code is redeemed, a release is refused 409 machine_exists, even
+// before dispatched, because a machine exists.
 type ClaimAnswer struct {
-	Version    int       `json:"version"`
-	Revision   int       `json:"revision"`
-	DispatchID string    `json:"dispatch_id"`
-	RunID      string    `json:"run_id"`
-	PoolID     string    `json:"pool_id"`
-	LeaseUntil string    `json:"lease_until"`
-	Step       string    `json:"step"`
-	Access     string    `json:"access,omitempty"`
-	Target     *Target   `json:"target,omitempty"`
-	WorkItem   *WorkItem `json:"work_item,omitempty"`
-}
-
-// WorkItem is the work item a run is for.
-type WorkItem struct {
-	ID    string `json:"id"`
-	URL   string `json:"url"`
-	Title string `json:"title"`
+	Version    int    `json:"version"`
+	Revision   int    `json:"revision"`
+	DispatchID string `json:"dispatch_id"`
+	PoolID     string `json:"pool_id"`
+	LeaseUntil string `json:"lease_until"`
+	Machine    string `json:"machine,omitempty"`
+	RunCode    string `json:"run_code"`
+	GatewayURL string `json:"gateway_url"`
+	// MaxLifetimeMinutes is the minutes after which the machine powers itself off,
+	// counted from when it starts, whatever it runs: from 15 to 1470. The starter passes
+	// it to the machine with the run code, and deletes a machine of its node pool that
+	// has run longer than MaxLifetimeMinutes plus 15 minutes, counted from the
+	// vendor's launch time.
+	MaxLifetimeMinutes int `json:"max_lifetime_minutes"`
 }
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
-// dispatched.schema.json: the starter started the job. It is answered, on success, with
-// a signed 204 and no body. On 409 lease_expired the dispatch is stale: its run went
-// back to the queue, with the same run id, when the lease lapsed, and the starter stops
-// the job it started for that dispatch.
+// dispatched.schema.json: the starter created the machine for the dispatch and passed
+// it the run code and the gateway URL. The starter sends the first dispatched of a
+// dispatch before the claim answer's LeaseUntil. The lease lapses only when neither the
+// first dispatched nor the redemption of the run code came before LeaseUntil: the
+// dispatch is then stale, the run code stops working, and the control plane may give
+// the work to another claim. Once the run code is redeemed, the dispatch never goes
+// stale, and its work is never given to another claim while the dispatch lives. A first
+// dispatched at or after LeaseUntil on a stale dispatch is refused 409 lease_expired,
+// and the starter then stops the machine it created for that dispatch. A first
+// dispatched at or after LeaseUntil on a dispatch whose run code was redeemed before
+// LeaseUntil is accepted, because that dispatch is not stale. After dispatched, the
+// code can be redeemed until 15 minutes from the claim.
+//
+// The starter sends dispatched again every 60 seconds for each machine it has, with the
+// same External. Each send is built anew, with a later Time and a new signature, as
+// https://qory.dev/contracts/integration/v1/definitions.schema.json describes for a
+// request sent again, so the replay rule does not refuse it. Only the first dispatched
+// of a dispatch is recorded, and nothing of a later one is. While the dispatch lives,
+// the answer is a signed 204 with no body, whether the run code was redeemed or not.
+// Once the dispatch has ended, a dispatched is refused 410 gone, whether the run code
+// was redeemed or not, and the starter then sends the [MachineLog] and deletes the
+// machine. When the machine has not redeemed the run code within 15 minutes of the
+// claim, the control plane ends the dispatch, so the next dispatched is refused 410
+// gone. After dispatched, a [Release] is refused 409 machine_exists.
 type Dispatched struct {
 	Version  int       `json:"version"`
 	Time     string    `json:"time"`
 	External *External `json:"external,omitempty"`
 }
 
-// External is a job at the provider that runs it.
+// External is a job at the vendor that runs it.
 type External struct {
 	Type string `json:"type"`
 	Ref  string `json:"ref"`
 	URL  string `json:"url"`
 }
 
-// Handover is the body of POST /v1/dispatches/<dispatch_id>/handover,
-// handover.schema.json, which gives its refusals and their order. A run key is handed
-// over at most once per run, and once a dispatch's handover is answered with the signed
-// 200, its run never goes back to the queue. On 409 lease_expired the starter stops the
-// job it started for that dispatch. On 503 unavailable the handover took no effect.
-// After a 503 unavailable, and after a transient failure, no answer, an unsigned answer
-// or any other 5xx, the starter may send the handover again while the lease lasts. On
-// 409 handed_over to a handover it sent again after a transient failure, it stops the
-// job, releases the dispatch with retry: true and never recovers the run key.
-type Handover struct {
-	Version int    `json:"version"`
-	Time    string `json:"time"`
-}
-
-// HandoverAnswer is the body of the 200 answer to a handover,
-// handover-answer.schema.json. Inputs holds the step's input as the answer's bytes, so
-// the starter passes it to the job unread: its members, their order and its numbers
-// unchanged. json.Marshal writes it compacted, with <, > and & escaped, which a JSON
-// reader reads as the same text. The starter refuses one whose Revision is not the
-// revision it sent. The control plane sends it once per run, with Cache-Control:
-// no-store, and the starter passes RunKey to the job it started for the dispatch alone
-// and keeps it no longer than that. WorkItem is set for the step explore and nil for the
-// step prebuild, whose Inputs are exactly version and environment_ref, the
-// environment_ref the prebuild was queued for. RunSettings is set only for the step
-// explore, and nil otherwise. Domain is the domain of the workspace the run is for, such
-// as software. Target is nil, and Access empty, when the run has no place where a change
-// would go, which the step explore allows; Access is set exactly when Target is.
-type HandoverAnswer struct {
-	Version     int             `json:"version"`
-	Revision    int             `json:"revision"`
-	RunID       string          `json:"run_id"`
-	RunKey      string          `json:"run_key"`
-	Step        string          `json:"step"`
-	Domain      string          `json:"domain"`
-	Access      string          `json:"access,omitempty"`
-	Target      *Target         `json:"target,omitempty"`
-	WorkItem    *WorkItem       `json:"work_item,omitempty"`
-	RunSettings *RunSettings    `json:"run_settings,omitempty"`
-	Inputs      json.RawMessage `json:"inputs"`
-}
-
-// RunSettings is a handover answer's run_settings, handover-answer.schema.json: the
-// runtime and model settings the job composes the agent's harness with. It contains no
-// key or secret. With no provider chosen, only Runtime is set: the run uses the
-// gateway's configured key and the runtime's default model. Effort and Tiers are set
-// only with Model, and ProviderModels is set exactly when Model is. The control
-// plane guarantees four rules that the schema cannot check: the ids in ProviderModels
-// are unique; Effort is listed for Model in ProviderModels; each tier's model is in
-// ProviderModels; and a tier's effort is listed for that tier's model in
-// ProviderModels. The job writes the values as given, and maps no model or effort value
-// to another.
-type RunSettings struct {
-	// Runtime is the runtime's name in Forager's runtime descriptor, such as claude.
-	Runtime string `json:"runtime"`
-	// Model is the exact id of the model the run uses.
-	Model string `json:"model,omitempty"`
-	// Effort is the effort value the run uses with Model.
-	Effort string `json:"effort,omitempty"`
-	// ProviderModels are the models of the run's provider, 1 to 256. When it is empty,
-	// the agents run on the provider of the gateway's key, and for a run with a target,
-	// the job applies the tier map set at the run's target as written, as on a local
-	// run. A run with no target has no such tier map: with ProviderModels empty, no tier
-	// map applies, and the run uses the runtime's default model. When it is set and the
-	// run has a target, an entry of the tier map set at the run's target applies only
-	// when its model id is listed in ProviderModels, and its effort only when that
-	// effort is listed for that model.
-	ProviderModels []ProviderModel `json:"provider_models,omitempty"`
-	// Tiers is the tier map the control plane resolved for the run.
-	Tiers *Tiers `json:"tiers,omitempty"`
-}
-
-// ProviderModel is one model of the run's provider, an entry of
-// run_settings.provider_models. Effort lists the effort values the model accepts, 1 to
-// 16, each listed once. An entry with no Effort means the model takes no effort value.
-type ProviderModel struct {
-	ID     string   `json:"id"`
-	Effort []string `json:"effort,omitempty"`
-}
-
-// Tiers is run_settings.tiers: a model, and optionally an effort value, for each tier
-// the control plane maps. A tier the control plane does not map is nil. For a run with
-// a target, a tier the control plane maps applies instead of the entry for that tier in
-// the tier map set at the run's target, and the tier map set at the run's target fills
-// only the tiers left nil. A run with no target has no such tier map: only the tiers the
-// control plane maps apply.
-type Tiers struct {
-	Light    *Tier `json:"light,omitempty"`
-	Fast     *Tier `json:"fast,omitempty"`
-	Thinking *Tier `json:"thinking,omitempty"`
-}
-
-// Tier is the model of one tier: in JSON, a model id, or an object of model and an
-// optional effort. A Tier read from JSON is written back in the form it was read in. A
-// Tier built in Go is written as a model id when Effort is empty, and as an object
-// otherwise.
-type Tier struct {
-	Model  string
-	Effort string
-	// object is true when the Tier was read from the object form.
-	object bool
-}
-
-// tierObject is the object form of a [Tier].
-type tierObject struct {
-	Model  string `json:"model"`
-	Effort string `json:"effort,omitempty"`
-}
-
-// MarshalJSON writes t as a model id, or as an object of model and effort.
-func (t Tier) MarshalJSON() ([]byte, error) {
-	if t.Effort == "" && !t.object {
-		return json.Marshal(t.Model)
-	}
-	return json.Marshal(tierObject{Model: t.Model, Effort: t.Effort})
-}
-
-// UnmarshalJSON reads a model id, or an object of model and an optional effort.
-func (t *Tier) UnmarshalJSON(b []byte) error {
-	b = bytes.TrimLeft(b, " \t\r\n")
-	if string(b) == "null" {
-		return nil
-	}
-	if len(b) > 0 && b[0] == '"' {
-		var model string
-		if err := json.Unmarshal(b, &model); err != nil {
-			return err
-		}
-		*t = Tier{Model: model}
-		return nil
-	}
-	var o tierObject
-	if err := json.Unmarshal(b, &o); err != nil {
-		return err
-	}
-	*t = Tier{Model: o.Model, Effort: o.Effort, object: true}
-	return nil
-}
-
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
-// release.schema.json: the starter gives the run back. A release before its handover,
-// of a dispatch that is not stale, ends the dispatch, and Retry true returns the same
-// run to the queue, to be claimed under a new dispatch, except a run of the step
-// prebuild whose collection and node pool have another prebuild run waiting, which ends
-// instead. After its handover, while the run goes on, the release ends
-// the run and is answered as a success, the signed 204, not 409; the gateway refuses the
-// run's key with 410 when the job attaches, and Retry true queues a new run, with a new
-// run id and a new run key. For a dispatch of the step prebuild, a release after its
-// handover never queues a new run: Retry true is read as false, and the run ends. A
-// failed build is reported this way, and the control plane records Reason as the last
-// build's failure.
+// release.schema.json: the starter gives the dispatch back before it says
+// [Dispatched], and Reason says why. A release is accepted only before dispatched, and
+// only while the run code is not redeemed. It ends the dispatch and frees the slot, and
+// the run code stops working at that moment. Whether the work is claimed again is the
+// control plane's decision: the starter does not ask for it. After dispatched, a
+// release is refused 409 machine_exists. Once the run code is redeemed, a release is
+// refused 409 machine_exists even before dispatched, because a machine exists. A
+// release and a redemption of the same dispatch take effect one after the other, never
+// both. A release that takes effect first makes the run code unusable. After a
+// redemption that takes effect first, the release is refused 409 machine_exists.
 type Release struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
 	Reason  string `json:"reason"`
-	Retry   bool   `json:"retry"`
 }
 
-// Prebuilt is the body of POST /v1/dispatches/<dispatch_id>/prebuilt,
-// prebuilt.schema.json, which gives its refusals and their order: the job for a dispatch
-// of the step prebuild built the environment of its target, and the starter reports
-// Image, pinned by its digest, Size in bytes, the Commit the job built, and the
-// EnvironmentRef of the handover answer's inputs, unchanged. It is answered, on success,
-// with a signed 204 and no body: the control plane records the image for the node pool
-// and the target, and the dispatch ends and its slot is freed, so any later request
-// naming the dispatch answers 410 gone, and the run's outcome then decides how the run
-// ended. A RunID that is not the dispatch's run is refused 409 run_mismatch. A failed
-// build is reported with a [Release] instead.
-type Prebuilt struct {
-	Version        int    `json:"version"`
-	Time           string `json:"time"`
-	RunID          string `json:"run_id"`
-	Image          string `json:"image"`
-	Size           int64  `json:"size"`
-	EnvironmentRef string `json:"environment_ref"`
-	Commit         string `json:"commit"`
+// MachineLog is the body of POST /v1/dispatches/<dispatch_id>/machine-log,
+// machine-log.schema.json: the starter uploads the log of the machine it created for
+// the dispatch, from the machine's creation to its end. Log has no U+0000. JSON
+// escaping can make the body larger than Log, so the starter keeps the last part of the
+// log such that Log is at most 768 KiB as UTF-8 and the request body, as serialized and
+// sent, is at most 1 MiB, and sets Truncated when it cut anything. Before the upload,
+// the starter replaces each line that contains qak_, qrk_ or qecr_. The control plane
+// accepts one machine log per dispatch, before or after the dispatch ends, and answers
+// a signed 204 with no body. A dispatch that is unknown, or of another node pool, is
+// refused 403 forbidden, and a second upload 409 machine_log_exists.
+type MachineLog struct {
+	Version   int    `json:"version"`
+	Time      string `json:"time"`
+	Log       string `json:"log"`
+	Truncated bool   `json:"truncated,omitempty"`
 }

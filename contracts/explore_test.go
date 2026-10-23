@@ -105,15 +105,15 @@ func TestInvalidExploreFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestTheHandoverAnswersExploreInputsValidate pins that the inputs of each valid
-// handover answer of the provisioner contract whose step is explore are accepted by
-// explore/v1 inputs.schema.json, the shape handover-answer.schema.json names for that
+// TestTheRunDocumentsExploreInputsValidate pins that the inputs of each valid run
+// documents fixture of the run contract whose step is explore are accepted by
+// explore/v1 inputs.schema.json, the shape run/v1 documents.schema.json gives for that
 // step.
-func TestTheHandoverAnswersExploreInputsValidate(t *testing.T) {
+func TestTheRunDocumentsExploreInputsValidate(t *testing.T) {
 	schema := compileExplore(t, "inputs.schema.json")
 	explore := 0
-	for _, f := range provisionerFiles(t, "fixtures/handover-answer") {
-		doc, err := contracts.ProvisionerDocument(f)
+	for _, f := range runFiles(t, "fixtures/documents") {
+		doc, err := contracts.RunDocument(f)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,19 +127,19 @@ func TestTheHandoverAnswersExploreInputsValidate(t *testing.T) {
 		}
 	}
 	if explore == 0 {
-		t.Error("fixtures/handover-answer holds no answer for the step explore")
+		t.Error("fixtures/documents has no documents for the step explore")
 	}
 }
 
-// TestTheHandoverAnswerTargetDomainAndWorkItemAreItsExploreInputs pins that each valid
-// handover answer of the provisioner contract whose step is explore carries the same
+// TestTheRunTargetDomainAndWorkItemAreItsExploreInputs pins that each valid run
+// documents fixture of the run contract whose step is explore has the same
 // target in target and in inputs.target, or neither, the same domain in domain and in
 // inputs.domain, and the same work item id in work_item.id and in inputs.work_item.id,
 // as explore/v1 inputs.schema.json says the control plane writes them.
-func TestTheHandoverAnswerTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
+func TestTheRunTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
 	explore := 0
-	for _, f := range provisionerFiles(t, "fixtures/handover-answer") {
-		doc, err := contracts.ProvisionerDocument(f)
+	for _, f := range runFiles(t, "fixtures/documents") {
+		doc, err := contracts.RunDocument(f)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -162,6 +162,6 @@ func TestTheHandoverAnswerTargetDomainAndWorkItemAreItsExploreInputs(t *testing.
 		}
 	}
 	if explore == 0 {
-		t.Error("fixtures/handover-answer holds no answer for the step explore")
+		t.Error("fixtures/documents has no documents for the step explore")
 	}
 }

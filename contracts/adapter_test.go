@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -147,10 +148,10 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-comment-count-above-maximum.json":        {"source-items", "/items/0/comment_count maximum"},
 		"source-items-title-nul.json":                          {"source-items", "/items/0/title pattern"},
 		"source-items-created-at-leap-second.json":             {"source-items", "/items/0/created_at pattern"},
-		"source-items-created-at-hour-24.json":                 {"source-items", "/items/0/created_at pattern"},
-		"source-items-created-at-minute-60.json":               {"source-items", "/items/0/created_at pattern"},
+		"source-items-created-at-hour-24.json":                 {"source-items", "/items/0/created_at format"},
+		"source-items-created-at-minute-60.json":               {"source-items", "/items/0/created_at format"},
 		"source-items-url-user-information.json":               {"source-items", "/items/0/url pattern"},
-		"source-items-url-bad-percent-escape.json":             {"source-items", "/items/0/url pattern"},
+		"source-items-url-bad-percent-escape.json":             {"source-items", "/items/0/url format"},
 		"source-items-url-port-0.json":                         {"source-items", "/items/0/url pattern"},
 		"source-items-url-port-65536.json":                     {"source-items", "/items/0/url pattern"},
 		"setup-pass-without-nonce.json":                        {"setup-pass", "/ required nonce"},
@@ -186,6 +187,65 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		}
 		if r := strings.Join(leaves(v), "; "); r != w.reason {
 			t.Errorf("%s is refused for %q, want %q", f, r, w.reason)
+		}
+	}
+}
+
+// node walks a JSON pointer, "/a/b", from a schema document of the contract, or fails
+// the test.
+func node(t *testing.T, name, pointer string) map[string]any {
+	t.Helper()
+	doc, err := contracts.Document(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		m, ok := doc.(map[string]any)
+		if !ok {
+			t.Fatalf("%s#%s: %q is not in an object", name, pointer, k)
+		}
+		doc = m[k]
+	}
+	m, ok := doc.(map[string]any)
+	if !ok {
+		t.Fatalf("%s#%s is not a schema", name, pointer)
+	}
+	return m
+}
+
+// TestTheItemPatternsRefuseTheFormatFixtures pins that the pattern of an item's
+// created_at and url, as source-items.schema.json refers to it, refuses the value of
+// each invalid fixture that the format keyword refuses first, and accepts that value
+// with the one fault fixed. TestInvalidAdapterFixturesAreRefused checks only the first
+// reason, so without this test a pattern could stop refusing these values unnoticed.
+func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
+	for name, c := range map[string]struct{ member, bad, good string }{
+		"source-items-created-at-hour-24.json":     {"created_at", "2026-10-01T24:00:00Z", "2026-10-01T23:00:00Z"},
+		"source-items-created-at-minute-60.json":   {"created_at", "2026-10-01T09:60:00Z", "2026-10-01T09:59:00Z"},
+		"source-items-url-bad-percent-escape.json": {"url", "https://tracker.acme.example/TRK/TRK%2G1", "https://tracker.acme.example/TRK/TRK%2D1"},
+	} {
+		if b := read(t, "fixtures/adapter/invalid/"+name); !bytes.Contains(b, []byte(`"`+c.member+`": "`+c.bad+`"`)) {
+			t.Errorf("%s contains no %s %q", name, c.member, c.bad)
+		}
+		member := node(t, "source-items.schema.json", "/$defs/item/properties/"+c.member)
+		ref, _ := member["$ref"].(string)
+		file, pointer, ok := strings.Cut(ref, "#")
+		if !ok {
+			t.Fatalf("source-items.schema.json: the item's %s refers to %q, not to a definition", c.member, ref)
+		}
+		pattern, ok := node(t, file, pointer)["pattern"].(string)
+		if !ok {
+			t.Fatalf("%s: the item's %s has no pattern", ref, c.member)
+		}
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			t.Fatalf("%s: the pattern of the item's %s does not compile: %v", ref, c.member, err)
+		}
+		if re.MatchString(c.bad) {
+			t.Errorf("%s: the pattern of the item's %s accepts %q", name, c.member, c.bad)
+		}
+		if !re.MatchString(c.good) {
+			t.Errorf("%s: the pattern of the item's %s refuses %q", name, c.member, c.good)
 		}
 	}
 }
