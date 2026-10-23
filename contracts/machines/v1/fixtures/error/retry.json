@@ -1,0 +1,6 @@
+{
+  "error": {
+    "kind": "retry",
+    "message": "The call to the vendor timed out after 30 seconds."
+  }
+}

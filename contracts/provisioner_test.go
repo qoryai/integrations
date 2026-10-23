@@ -3,7 +3,6 @@ package contracts_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"path"
 	"strings"
@@ -20,11 +19,16 @@ var provisionerSchemas = []string{
 	"claim.schema.json",
 	"claim-answer.schema.json",
 	"dispatched.schema.json",
-	"handover.schema.json",
-	"handover-answer.schema.json",
 	"release.schema.json",
-	"prebuilt.schema.json",
+	"machine-log.schema.json",
 	"refusal.schema.json",
+}
+
+// provisionerSchema is the path of the schema that the fixtures under fixtures/<name>,
+// and the invalid fixtures whose expected reason names name, validate against:
+// <name>.schema.json.
+func provisionerSchema(name string) string {
+	return name + ".schema.json"
 }
 
 // compileProvisioner compiles a schema of the provisioner contract, or fails the test.
@@ -63,8 +67,8 @@ func treeFiles(t *testing.T, fsys fs.FS, dir string) []string {
 }
 
 // TestProvisionerFixturesValidate pins that each document under fixtures/<name>/ of the
-// provisioner contract is accepted by <name>.schema.json, and that every schema of the
-// contract compiles.
+// provisioner contract is accepted by the schema [provisionerSchema] gives for name, and
+// that every schema of the contract compiles.
 func TestProvisionerFixturesValidate(t *testing.T) {
 	for _, name := range provisionerSchemas {
 		compileProvisioner(t, name)
@@ -78,7 +82,7 @@ func TestProvisionerFixturesValidate(t *testing.T) {
 		if !d.IsDir() || d.Name() == "invalid" {
 			continue
 		}
-		schema := compileProvisioner(t, d.Name()+".schema.json")
+		schema := compileProvisioner(t, provisionerSchema(d.Name()))
 		for _, f := range provisionerFiles(t, path.Join("fixtures", d.Name())) {
 			seen[d.Name()] = true
 			doc, err := contracts.ProvisionerDocument(f)
@@ -102,56 +106,30 @@ func TestProvisionerFixturesValidate(t *testing.T) {
 // name, and for no other.
 func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"claim-wait-seconds-26.json":                                      {"claim", "/wait_seconds maximum"},
-		"claim-pool-id-node.json":                                         {"claim", "/pool_id pattern"},
-		"claim-undefined-member.json":                                     {"claim", "/ additionalProperties"},
-		"claim-answer-access-admin.json":                                  {"claim-answer", "/access enum"},
-		"claim-answer-dispatch-id-no-prefix.json":                         {"claim-answer", "/dispatch_id pattern"},
-		"claim-answer-dispatch-id-upper-case.json":                        {"claim-answer", "/dispatch_id pattern"},
-		"claim-answer-work-item-url-http.json":                            {"claim-answer", "/work_item/url pattern"},
-		"dispatched-external-type-upper-case.json":                        {"dispatched", "/external/type pattern"},
-		"dispatched-external-ref-nul.json":                                {"dispatched", "/external/ref pattern"},
-		"release-reason-nul.json":                                         {"release", "/reason pattern"},
-		"handover-answer-run-key-no-prefix.json":                          {"handover-answer", "/run_key pattern"},
-		"handover-answer-inputs-no-version.json":                          {"handover-answer", "/inputs required version"},
-		"handover-answer-without-revision.json":                           {"handover-answer", "/ required revision"},
-		"claim-answer-revision-2.json":                                    {"claim-answer", "/revision const"},
-		"handover-answer-revision-2.json":                                 {"handover-answer", "/revision const"},
-		"claim-answer-explore-without-work-item.json":                     {"claim-answer", "/ required work_item"},
-		"claim-answer-prebuild-with-work-item.json":                       {"claim-answer", "/ "},
-		"handover-answer-prebuild-inputs-target.json":                     {"handover-answer", "/inputs additionalProperties"},
-		"prebuilt-image-tag.json":                                         {"prebuilt", "/image pattern"},
-		"prebuilt-image-upper-case.json":                                  {"prebuilt", "/image pattern"},
-		"prebuilt-image-digest-63.json":                                   {"prebuilt", "/image pattern"},
-		"prebuilt-image-without-name.json":                                {"prebuilt", "/image pattern"},
-		"prebuilt-size-0.json":                                            {"prebuilt", "/size minimum"},
-		"prebuilt-size-fraction.json":                                     {"prebuilt", "/size type"},
-		"prebuilt-undefined-member.json":                                  {"prebuilt", "/ additionalProperties"},
-		"prebuilt-without-commit.json":                                    {"prebuilt", "/ required commit"},
-		"handover-answer-prebuild-with-work-item.json":                    {"handover-answer", "/ "},
-		"handover-answer-explore-without-work-item.json":                  {"handover-answer", "/ required work_item"},
-		"handover-answer-prebuild-inputs-version-2.json":                  {"handover-answer", "/inputs/version const"},
-		"prebuilt-size-above-maximum.json":                                {"prebuilt", "/size maximum"},
-		"handover-answer-prebuild-inputs-without-environment-ref.json":    {"handover-answer", "/inputs required environment_ref"},
-		"handover-answer-prebuild-inputs-environment-ref-empty.json":      {"handover-answer", "/inputs/environment_ref minLength"},
-		"handover-answer-prebuild-inputs-environment-ref-201.json":        {"handover-answer", "/inputs/environment_ref maxLength"},
-		"handover-answer-run-settings-prebuild.json":                      {"handover-answer", "/step const"},
-		"handover-answer-run-settings-effort-without-model.json":          {"handover-answer", "/run_settings dependentRequired/effort"},
-		"handover-answer-run-settings-tiers-without-model.json":           {"handover-answer", "/run_settings dependentRequired/tiers"},
-		"handover-answer-run-settings-model-without-provider-models.json": {"handover-answer", "/run_settings dependentRequired/model"},
-		"handover-answer-run-settings-provider-models-without-model.json": {"handover-answer", "/run_settings dependentRequired/provider_models"},
-		"handover-answer-run-settings-unknown-tier.json":                  {"handover-answer", "/run_settings/tiers additionalProperties"},
-		"handover-answer-run-settings-undefined-member.json":              {"handover-answer", "/run_settings additionalProperties"},
-		"handover-answer-run-settings-tier-without-model.json":            {"handover-answer", "/run_settings/tiers/thinking required model"},
-		"handover-answer-run-settings-effort-empty.json":                  {"handover-answer", "/run_settings/provider_models/0/effort minItems"},
-		"claim-answer-access-without-target.json":                         {"claim-answer", "/ dependentRequired/access"},
-		"claim-answer-target-without-access.json":                         {"claim-answer", "/ dependentRequired/target"},
-		"claim-answer-prebuild-without-target.json":                       {"claim-answer", "/ required access,target"},
-		"handover-answer-access-without-target.json":                      {"handover-answer", "/ dependentRequired/access"},
-		"handover-answer-target-without-access.json":                      {"handover-answer", "/ dependentRequired/target"},
-		"handover-answer-prebuild-without-target.json":                    {"handover-answer", "/ required access,target"},
-		"handover-answer-without-domain.json":                             {"handover-answer", "/ required domain"},
-		"handover-answer-domain-upper-case.json":                          {"handover-answer", "/domain pattern"},
+		"claim-wait-seconds-26.json":                     {"claim", "/wait_seconds maximum"},
+		"claim-pool-id-node.json":                        {"claim", "/pool_id pattern"},
+		"claim-undefined-member.json":                    {"claim", "/ additionalProperties"},
+		"claim-answer-dispatch-id-no-prefix.json":        {"claim-answer", "/dispatch_id pattern"},
+		"claim-answer-dispatch-id-upper-case.json":       {"claim-answer", "/dispatch_id pattern"},
+		"dispatched-external-type-upper-case.json":       {"dispatched", "/external/type pattern"},
+		"dispatched-external-ref-nul.json":               {"dispatched", "/external/ref pattern"},
+		"release-with-retry.json":                        {"release", "/ additionalProperties"},
+		"release-reason-nul.json":                        {"release", "/reason pattern"},
+		"claim-answer-revision-2.json":                   {"claim-answer", "/revision const"},
+		"claim-answer-run-code-qecn-prefix.json":         {"claim-answer", "/run_code pattern"},
+		"claim-answer-gateway-url-path.json":             {"claim-answer", "/gateway_url pattern"},
+		"claim-answer-gateway-url-http.json":             {"claim-answer", "/gateway_url pattern"},
+		"claim-answer-without-gateway-url.json":          {"claim-answer", "/ required gateway_url"},
+		"claim-answer-without-run-code.json":             {"claim-answer", "/ required run_code"},
+		"claim-answer-run-id.json":                       {"claim-answer", "/ additionalProperties"},
+		"claim-answer-max-lifetime-minutes-14.json":      {"claim-answer", "/max_lifetime_minutes minimum"},
+		"claim-answer-max-lifetime-minutes-1471.json":    {"claim-answer", "/max_lifetime_minutes maximum"},
+		"claim-answer-without-max-lifetime-minutes.json": {"claim-answer", "/ required max_lifetime_minutes"},
+		"claim-answer-machine-upper-case.json":           {"claim-answer", "/machine pattern"},
+		"machine-log-without-log.json":                   {"machine-log", "/ required log"},
+		"machine-log-undefined-member.json":              {"machine-log", "/ additionalProperties"},
+		"machine-log-log-nul.json":                       {"machine-log", "/log pattern"},
+		"machine-log-version-2.json":                     {"machine-log", "/version const"},
 	}
 	got := provisionerFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -167,7 +145,7 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		v, ok := compileProvisioner(t, w.schema+".schema.json").Validate(doc).(*jsonschema.ValidationError)
+		v, ok := compileProvisioner(t, provisionerSchema(w.schema)).Validate(doc).(*jsonschema.ValidationError)
 		if !ok {
 			t.Errorf("%s was accepted", f)
 			continue
@@ -178,189 +156,32 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestAPrebuildIsRefusedForItsWorkItemAlone pins that the invalid answers of the step
-// prebuild that carry work_item, whose refusal names no keyword, are refused for
-// work_item and for nothing else: the same document without work_item is accepted.
-func TestAPrebuildIsRefusedForItsWorkItemAlone(t *testing.T) {
-	for _, c := range []struct{ fixture, schema string }{
-		{"claim-answer-prebuild-with-work-item.json", "claim-answer"},
-		{"handover-answer-prebuild-with-work-item.json", "handover-answer"},
-	} {
-		doc, err := contracts.ProvisionerDocument(path.Join("fixtures/invalid", c.fixture))
-		if err != nil {
-			t.Fatal(err)
-		}
-		answer, ok := doc.(map[string]any)
-		if !ok || answer["step"] != "prebuild" || answer["work_item"] == nil {
-			t.Errorf("%s is not an answer of the step prebuild with work_item", c.fixture)
-			continue
-		}
-		delete(answer, "work_item")
-		if err := compileProvisioner(t, c.schema+".schema.json").Validate(answer); err != nil {
-			t.Errorf("%s without work_item is refused: %v", c.fixture, err)
-		}
-	}
-}
-
-// TestAPrebuildsInputsAreRefusedForTheirEnvironmentRefAlone pins that the invalid
-// handover answers of the step prebuild whose inputs miss environment_ref, or hold one
-// outside its bounds, are refused for environment_ref and for nothing else: the same
-// document with the inputs of handover-answer/prebuild.json is accepted.
-func TestAPrebuildsInputsAreRefusedForTheirEnvironmentRefAlone(t *testing.T) {
-	schema := compileProvisioner(t, "handover-answer.schema.json")
-	valid, err := contracts.ProvisionerDocument("fixtures/handover-answer/prebuild.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := schema.Validate(valid); err != nil {
-		t.Fatalf("handover-answer/prebuild.json is refused: %v", err)
-	}
-	inputs := valid.(map[string]any)["inputs"]
-	for _, name := range []string{
-		"handover-answer-prebuild-inputs-without-environment-ref.json",
-		"handover-answer-prebuild-inputs-environment-ref-empty.json",
-		"handover-answer-prebuild-inputs-environment-ref-201.json",
-	} {
-		doc, err := contracts.ProvisionerDocument(path.Join("fixtures/invalid", name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		answer, ok := doc.(map[string]any)
-		if !ok || answer["step"] != "prebuild" {
-			t.Errorf("%s is not an answer of the step prebuild", name)
-			continue
-		}
-		if schema.Validate(answer) == nil {
-			t.Errorf("%s is accepted", name)
-		}
-		answer["inputs"] = inputs
-		if err := schema.Validate(answer); err != nil {
-			t.Errorf("%s with the inputs of handover-answer/prebuild.json is refused: %v", name, err)
-		}
-	}
-}
-
-// TestRunSettingsAreRefusedForRunSettingsAlone pins that each invalid handover answer
-// whose name starts with handover-answer-run-settings- is refused for run_settings and
-// for nothing else: the same document without run_settings is accepted.
-func TestRunSettingsAreRefusedForRunSettingsAlone(t *testing.T) {
-	schema := compileProvisioner(t, "handover-answer.schema.json")
-	n := 0
-	for _, f := range provisionerFiles(t, "fixtures/invalid") {
-		if !strings.HasPrefix(path.Base(f), "handover-answer-run-settings-") {
-			continue
-		}
-		n++
-		doc, err := contracts.ProvisionerDocument(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		answer, ok := doc.(map[string]any)
-		if !ok || answer["run_settings"] == nil {
-			t.Errorf("%s is not a handover answer with run_settings", f)
-			continue
-		}
-		delete(answer, "run_settings")
-		if err := schema.Validate(answer); err != nil {
-			t.Errorf("%s without run_settings is refused: %v", f, err)
-		}
-	}
-	if n == 0 {
-		t.Error("fixtures/invalid contains no handover answer with run_settings")
-	}
-}
-
-// TestProviderModelsHaveAtMost256Entries pins the bound of run_settings.provider_models
-// at its edge: 256 entries are accepted, and 257 are refused for their count alone.
-func TestProviderModelsHaveAtMost256Entries(t *testing.T) {
-	schema := compileProvisioner(t, "handover-answer.schema.json")
-	for _, c := range []struct {
-		count  int
-		reason string
-	}{
-		{256, ""},
-		{257, "/run_settings/provider_models maxItems"},
-	} {
-		doc, err := contracts.ProvisionerDocument("fixtures/handover-answer/explore-run-settings.json")
-		if err != nil {
-			t.Fatal(err)
-		}
-		settings := doc.(map[string]any)["run_settings"].(map[string]any)
-		models := []any{map[string]any{"id": settings["model"]}}
-		for i := 1; i < c.count; i++ {
-			models = append(models, map[string]any{"id": fmt.Sprintf("example-%d", i)})
-		}
-		settings["provider_models"] = models
-		err = schema.Validate(doc)
-		if c.reason == "" {
-			if err != nil {
-				t.Errorf("%d provider models are refused: %v", c.count, err)
-			}
-			continue
-		}
-		v, ok := err.(*jsonschema.ValidationError)
-		if !ok {
-			t.Errorf("%d provider models are accepted", c.count)
-			continue
-		}
-		if r := strings.Join(leaves(v), "; "); r != c.reason {
-			t.Errorf("%d provider models are refused for %q, want %q", c.count, r, c.reason)
-		}
-	}
-}
-
 // TestProvisionerTypesMarshalToTheirSchemas marshals one value of each request and
 // answer type of the provisioner contract, with its optional members left out where it
 // has them, and validates it against its schema.
 func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 	now := contracts.FormatTime(time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
-	target := &contracts.Target{System: "code.example.com", Path: "acme/shop"}
-	ads := &contracts.Target{System: "ads.example.com", Path: "accounts/1234"}
-	item := contracts.WorkItem{ID: "wi_1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
 	values := []struct {
 		schema string
 		v      any
 	}{
 		{"claim", contracts.Claim{Version: contracts.Version, Time: now, WaitSeconds: 25}},
 		{"claim", contracts.Claim{Version: contracts.Version, Time: now, PoolID: "np_0123456789abcdef"}},
-		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_0123456789abcdef", RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			PoolID: "np_0123456789abcdef", LeaseUntil: now, Step: "explore", Access: "write", Target: target, WorkItem: &item}},
-		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_0123456789abcdef", RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			PoolID: "np_0123456789abcdef", LeaseUntil: now, Step: "prebuild", Access: "read", Target: target}},
-		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_0123456789abcdef", RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			PoolID: "np_0123456789abcdef", LeaseUntil: now, Step: "explore", WorkItem: &item}},
+		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_0123456789abcdef",
+			PoolID: "np_0123456789abcdef", LeaseUntil: now, RunCode: runCode, GatewayURL: gatewayURL,
+			MaxLifetimeMinutes: 1470}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now,
 			External: &contracts.External{Type: "example-ci", Ref: "run-1", URL: "https://ci.example.com/runs/1"}}},
-		{"handover", contracts.Handover{Version: contracts.Version, Time: now}},
-		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			RunKey: "qrk_e30.AAAA", Step: "explore", Domain: "software", Access: "read", Target: target, WorkItem: &item,
-			Inputs: json.RawMessage(`{"version":1}`)}},
-		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			RunKey: "qrk_e30.AAAA", Step: "explore", Domain: "software", Access: "read", Target: target, WorkItem: &item,
-			RunSettings: &contracts.RunSettings{Runtime: "claude"}, Inputs: json.RawMessage(`{"version":1}`)}},
-		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			RunKey: "qrk_e30.AAAA", Step: "explore", Domain: "software", Access: "read", Target: target, WorkItem: &item,
-			RunSettings: &contracts.RunSettings{Runtime: "claude", Model: "example-large", Effort: "high",
-				ProviderModels: []contracts.ProviderModel{{ID: "example-large", Effort: []string{"low", "high"}}, {ID: "example-small"}},
-				Tiers: &contracts.Tiers{Light: &contracts.Tier{Model: "example-small"},
-					Thinking: &contracts.Tier{Model: "example-large", Effort: "high"}}},
-			Inputs: json.RawMessage(`{"version":1}`)}},
-		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			RunKey: "qrk_e30.AAAA", Step: "explore", Domain: "marketing", WorkItem: &item, Inputs: json.RawMessage(`{"version":1}`)}},
-		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			RunKey: "qrk_e30.AAAA", Step: "explore", Domain: "marketing", Access: "write", Target: ads, WorkItem: &item,
-			Inputs: json.RawMessage(`{"version":1}`)}},
-		{"handover-answer", contracts.HandoverAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			RunKey: "qrk_e30.AAAA", Step: "prebuild", Domain: "software", Access: "read", Target: target,
-			Inputs: json.RawMessage(`{"version":1,"environment_ref":"env-3f2a91c4"}`)}},
-		{"release", contracts.Release{Version: contracts.Version, Time: now, Reason: "No runner was free.", Retry: false}},
-		{"prebuilt", contracts.Prebuilt{Version: contracts.Version, Time: now, RunID: "0192f0c1-7d4e-7a2b-8c3d-4e5f6a7b8c9d",
-			Image: "registry.example.com/acme/shop-env@sha256:" + strings.Repeat("0a", 32), Size: 734003200,
-			EnvironmentRef: "env-3f2a91c4", Commit: "9c1e4a7b2d5f8e0a3c6b9d2f5a8c1e4b7d0a3f6c"}},
+		{"release", contracts.Release{Version: contracts.Version, Time: now, Reason: "No machine of this type was free."}},
+		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_0123456789abcdef",
+			PoolID: "np_0123456789abcdef", LeaseUntil: now, Machine: "small", RunCode: runCode, GatewayURL: gatewayURL,
+			MaxLifetimeMinutes: 1470}},
+		{"machine-log", contracts.MachineLog{Version: contracts.Version, Time: now, Log: "machine created\n"}},
+		{"machine-log", contracts.MachineLog{Version: contracts.Version, Time: now, Log: "machine stopped\n", Truncated: true}},
+		{"refusal", contracts.Refusal{Error: "machine_log_exists"}},
+		{"refusal", contracts.Refusal{Error: "machine_exists"}},
 		{"refusal", contracts.Refusal{Error: "lease_expired"}},
-		{"refusal", contracts.Refusal{Error: "unavailable"}},
-		{"refusal", contracts.Refusal{Error: "not_prebuild"}},
 	}
 	for _, c := range values {
 		b, err := json.Marshal(c.v)
@@ -368,23 +189,86 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 			t.Errorf("%T: %v", c.v, err)
 			continue
 		}
-		if err := validate(compileProvisioner(t, c.schema+".schema.json"), b); err != nil {
-			t.Errorf("%T marshals to %s, which %s.schema.json refuses: %v", c.v, b, c.schema, err)
+		if err := validate(compileProvisioner(t, provisionerSchema(c.schema)), b); err != nil {
+			t.Errorf("%T marshals to %s, which %s refuses: %v", c.v, b, provisionerSchema(c.schema), err)
 		}
 	}
 }
 
-// TestARunWithNoTargetReadsAsNoTarget pins that the answers of the step explore with no
-// target read into Go with a nil Target and an empty Access, and are written back with
-// neither member.
-func TestARunWithNoTargetReadsAsNoTarget(t *testing.T) {
-	for _, c := range []struct {
+// runCode is a run code in the form claim-answer.schema.json gives.
+const runCode = "qecr_01JB8Z3K5Q7R9T2V4W6X8Y0A1C.uoES-kuj1vk0sq0qoGlmAg"
+
+// gatewayURL is a gateway URL in the form claim-answer.schema.json gives.
+const gatewayURL = "https://gateway.example:8443"
+
+// TestAGatewayURLIsHostAndPort pins the gateway_url of claim-answer.schema.json:
+// https://, a host of DNS labels or an IPv6 address in brackets, an optional port
+// from 1 to 65535 with no leading zero, nothing after them, and at most 300
+// characters; a value of 301 characters that the pattern accepts is refused by
+// maxLength alone.
+func TestAGatewayURLIsHostAndPort(t *testing.T) {
+	schema := compileProvisioner(t, "claim-answer.schema.json#/properties/gateway_url")
+	label := strings.Repeat("g", 63)
+	longest := "https://" + label + "." + label + "." + label + "." + label + "." + strings.Repeat("g", 36)
+	if len(longest) != 300 {
+		t.Fatalf("the longest gateway URL has %d characters, want 300", len(longest))
+	}
+	for _, v := range []string{
+		"https://gateway:8443",
+		"https://gateway.example",
+		"https://gateway.example:65535",
+		"https://[::1]:8443",
+		"https://10.0.0.5:8443",
+		longest,
+	} {
+		if err := schema.Validate(v); err != nil {
+			t.Errorf("%s is refused: %v", v, err)
+		}
+	}
+	for _, v := range []string{
+		"https://:443",
+		"https://host:",
+		"https://host:0",
+		"https://host:65536",
+		"https://host:080",
+		"https://<>",
+		"https://ho_st",
+		"https://host.",
+		"https://user@host",
+		"https://ex%41mple.com",
+		"https://host/path",
+		"http://host",
+		"https://" + strings.Repeat("g", 64) + ".example",
+	} {
+		if err := schema.Validate(v); err == nil {
+			t.Errorf("%s is accepted", v)
+		}
+	}
+	v, ok := schema.Validate(longest + "g").(*jsonschema.ValidationError)
+	if !ok {
+		t.Fatal("a gateway URL of 301 characters is accepted")
+	}
+	if r := strings.Join(leaves(v), "; "); r != "/ maxLength" {
+		t.Errorf("a gateway URL of 301 characters is refused for %q, want %q", r, "/ maxLength")
+	}
+}
+
+// TestTheNewMembersRoundTripTheirFixtures pins that each claim answer fixture, and each
+// other fixture with run_code or truncated, reads into its Go type and is written back
+// as the fixture's bytes, compacted.
+func TestTheNewMembersRoundTripTheirFixtures(t *testing.T) {
+	type fixture struct {
 		fixture string
 		v       any
-	}{
-		{"fixtures/claim-answer/explore-without-target.json", &contracts.ClaimAnswer{}},
-		{"fixtures/handover-answer/explore-without-target.json", &contracts.HandoverAnswer{}},
-	} {
+	}
+	var answers []fixture
+	for _, f := range provisionerFiles(t, "fixtures/claim-answer") {
+		answers = append(answers, fixture{f, &contracts.ClaimAnswer{}})
+	}
+	for _, c := range append(answers, []fixture{
+		{"fixtures/machine-log/whole.json", &contracts.MachineLog{}},
+		{"fixtures/machine-log/truncated.json", &contracts.MachineLog{}},
+	}...) {
 		b, err := fs.ReadFile(contracts.ProvisionerFS, c.fixture)
 		if err != nil {
 			t.Fatal(err)
@@ -392,166 +276,76 @@ func TestARunWithNoTargetReadsAsNoTarget(t *testing.T) {
 		if err := json.Unmarshal(b, c.v); err != nil {
 			t.Fatal(err)
 		}
-		switch a := c.v.(type) {
-		case *contracts.ClaimAnswer:
-			if a.Target != nil || a.Access != "" {
-				t.Errorf("%s reads with target %v and access %q", c.fixture, a.Target, a.Access)
-			}
-		case *contracts.HandoverAnswer:
-			if a.Target != nil || a.Access != "" || a.Domain != "marketing" {
-				t.Errorf("%s reads with target %v, access %q and domain %q", c.fixture, a.Target, a.Access, a.Domain)
-			}
+		var want bytes.Buffer
+		if err := json.Compact(&want, b); err != nil {
+			t.Fatal(err)
 		}
 		out, err := json.Marshal(c.v)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var back map[string]any
-		if err := json.Unmarshal(out, &back); err != nil {
-			t.Fatal(err)
-		}
-		if _, ok := back["target"]; ok {
-			t.Errorf("%s is written back with target: %s", c.fixture, out)
-		}
-		if _, ok := back["access"]; ok {
-			t.Errorf("%s is written back with access: %s", c.fixture, out)
+		if !bytes.Equal(out, want.Bytes()) {
+			t.Errorf("%s is written back as %s, want %s", c.fixture, out, want.Bytes())
 		}
 	}
 }
 
-// TestTheHandoverInputsPassThrough pins that a handover answer's inputs pass through a
-// Go value unchanged: read from the fixture, the bytes are the fixture's, and marshalled
-// and read again, the same bytes, with members a map would reorder and numbers a float
-// would round kept as they were.
-func TestTheHandoverInputsPassThrough(t *testing.T) {
-	b, err := fs.ReadFile(contracts.ProvisionerFS, "fixtures/handover-answer/explore.json")
+// TestAMachineLogWithinItsBoundCanExceedTheRequestLimit pins why the starter bounds the
+// serialized body as well as the log: a log of 786432 line feeds, which the schema
+// accepts, marshals to a body over the 1 MiB request limit.
+func TestAMachineLogWithinItsBoundCanExceedTheRequestLimit(t *testing.T) {
+	now := contracts.FormatTime(time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
+	out, err := json.Marshal(contracts.MachineLog{Version: contracts.Version, Time: now,
+		Log: strings.Repeat("\n", 768<<10)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var raw struct {
-		Inputs json.RawMessage `json:"inputs"`
+	if err := validate(compileProvisioner(t, "machine-log.schema.json"), out); err != nil {
+		t.Fatalf("the schema refuses a log of 786432 line feeds: %v", err)
 	}
-	var a contracts.HandoverAnswer
-	if err := json.Unmarshal(b, &raw); err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(b, &a); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(a.Inputs, raw.Inputs) {
-		t.Errorf("the fixture's inputs read as %s, want %s", a.Inputs, raw.Inputs)
-	}
-
-	inputs := `{"version":1,"zeta":"last first","alpha":12345678901234567890,"ratio":1.50,"nested":{"b":[],"a":null}}`
-	a.Inputs = json.RawMessage(inputs)
-	out, err := json.Marshal(a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := validate(compileProvisioner(t, "handover-answer.schema.json"), out); err != nil {
-		t.Errorf("the handover answer marshals to %s, which its schema refuses: %v", out, err)
-	}
-	var back contracts.HandoverAnswer
-	if err := json.Unmarshal(out, &back); err != nil {
-		t.Fatal(err)
-	}
-	if string(back.Inputs) != inputs {
-		t.Errorf("inputs pass through as %s, want %s", back.Inputs, inputs)
+	if len(out) <= 1<<20 {
+		t.Errorf("the body is %d bytes, want more than %d", len(out), 1<<20)
 	}
 }
 
-// TestATierKeepsItsForm pins that a tier read from JSON is written back in the form it
-// was read in, a model id or an object, with or without effort, and that a tier built
-// in Go is written as a model id without effort and as an object with it.
-func TestATierKeepsItsForm(t *testing.T) {
-	for _, in := range []string{
-		`"example-small"`,
-		`{"model":"example-large"}`,
-		`{"model":"example-large","effort":"max"}`,
-	} {
-		var tier contracts.Tier
-		if err := json.Unmarshal([]byte(in), &tier); err != nil {
-			t.Errorf("%s: %v", in, err)
-			continue
-		}
-		out, err := json.Marshal(tier)
-		if err != nil {
-			t.Errorf("%s: %v", in, err)
-			continue
-		}
-		if string(out) != in {
-			t.Errorf("%s is written back as %s", in, out)
-		}
-	}
+// TestAClaimAnswerHasExactlyItsMembers pins that a claim answer built in Go marshals
+// to version, revision, dispatch_id, pool_id, lease_until, machine when it is set,
+// run_code, gateway_url and max_lifetime_minutes, with no member about the work it is
+// for, that its schema accepts it, and that it reads back into the same value.
+func TestAClaimAnswerHasExactlyItsMembers(t *testing.T) {
 	for _, c := range []struct {
-		tier contracts.Tier
+		a    contracts.ClaimAnswer
 		want string
 	}{
-		{contracts.Tier{Model: "example-small"}, `"example-small"`},
-		{contracts.Tier{Model: "example-large", Effort: "max"}, `{"model":"example-large","effort":"max"}`},
+		{contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision,
+			DispatchID: "dp_8w3k0q9t2v7m4r6x", PoolID: "np_f1xt0re000000000", LeaseUntil: "2026-10-15T12:05:00Z",
+			RunCode: runCode, GatewayURL: gatewayURL, MaxLifetimeMinutes: 1470},
+			`{"version":1,"revision":1,"dispatch_id":"dp_8w3k0q9t2v7m4r6x","pool_id":"np_f1xt0re000000000",` +
+				`"lease_until":"2026-10-15T12:05:00Z","run_code":"` + runCode + `","gateway_url":"` + gatewayURL + `",` +
+				`"max_lifetime_minutes":1470}`},
+		{contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision,
+			DispatchID: "dp_8w3k0q9t2v7m4r6x", PoolID: "np_f1xt0re000000000", LeaseUntil: "2026-10-15T12:05:00Z",
+			Machine: "small", RunCode: runCode, GatewayURL: gatewayURL, MaxLifetimeMinutes: 1470},
+			`{"version":1,"revision":1,"dispatch_id":"dp_8w3k0q9t2v7m4r6x","pool_id":"np_f1xt0re000000000",` +
+				`"lease_until":"2026-10-15T12:05:00Z","machine":"small","run_code":"` + runCode + `","gateway_url":"` + gatewayURL + `",` +
+				`"max_lifetime_minutes":1470}`},
 	} {
-		out, err := json.Marshal(c.tier)
+		out, err := json.Marshal(c.a)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if string(out) != c.want {
-			t.Errorf("%+v is written as %s, want %s", c.tier, out, c.want)
+			t.Errorf("the answer is written as %s, want %s", out, c.want)
 		}
-	}
-}
-
-// TestRunSettingsReadFromTheFixture pins that the run_settings of
-// handover-answer/explore-run-settings.json read into [contracts.RunSettings] with every
-// member in place, and are written back as the fixture's bytes, compacted.
-func TestRunSettingsReadFromTheFixture(t *testing.T) {
-	b, err := fs.ReadFile(contracts.ProvisionerFS, "fixtures/handover-answer/explore-run-settings.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var a contracts.HandoverAnswer
-	if err := json.Unmarshal(b, &a); err != nil {
-		t.Fatal(err)
-	}
-	s := a.RunSettings
-	if s == nil {
-		t.Fatal("the fixture's run_settings read as nil")
-	}
-	if s.Runtime != "claude" || s.Model != "example-large" || s.Effort != "high" {
-		t.Errorf("runtime, model and effort read as %q, %q and %q", s.Runtime, s.Model, s.Effort)
-	}
-	if len(s.ProviderModels) != 2 || s.ProviderModels[0].ID != "example-large" ||
-		strings.Join(s.ProviderModels[0].Effort, ",") != "low,medium,high,max" ||
-		s.ProviderModels[1].ID != "example-small" || s.ProviderModels[1].Effort != nil {
-		t.Errorf("provider_models read as %+v", s.ProviderModels)
-	}
-	if s.Tiers == nil || s.Tiers.Light == nil || s.Tiers.Fast != nil || s.Tiers.Thinking == nil ||
-		s.Tiers.Light.Model != "example-small" || s.Tiers.Light.Effort != "" ||
-		s.Tiers.Thinking.Model != "example-large" || s.Tiers.Thinking.Effort != "max" {
-		t.Errorf("tiers read as %+v", s.Tiers)
-	}
-
-	var raw struct {
-		RunSettings json.RawMessage `json:"run_settings"`
-	}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		t.Fatal(err)
-	}
-	var want bytes.Buffer
-	if err := json.Compact(&want, raw.RunSettings); err != nil {
-		t.Fatal(err)
-	}
-	out, err := json.Marshal(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(out, want.Bytes()) {
-		t.Errorf("run_settings are written back as %s, want %s", out, want.Bytes())
-	}
-	whole, err := json.Marshal(a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := validate(compileProvisioner(t, "handover-answer.schema.json"), whole); err != nil {
-		t.Errorf("the handover answer marshals to a document its schema refuses: %v", err)
+		if err := validate(compileProvisioner(t, "claim-answer.schema.json"), out); err != nil {
+			t.Errorf("the answer marshals to %s, which its schema refuses: %v", out, err)
+		}
+		var back contracts.ClaimAnswer
+		if err := json.Unmarshal(out, &back); err != nil {
+			t.Fatal(err)
+		}
+		if back != c.a {
+			t.Errorf("%s reads back as %+v, want %+v", out, back, c.a)
+		}
 	}
 }

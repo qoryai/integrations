@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/log.schema.json",
+  "title": "Log",
+  "description": "The request of the command log. A machine adapter is a program that makes and deletes machines at one vendor, such as a cloud. The provisioner, the starter of the provisioner contract, https://qory.dev/contracts/provisioner/v1/, runs the adapter to make a machine for each dispatch, and to delete the machine once it stops. With log, the adapter reads the console text of the machine in id from the vendor. The command line is `<adapter> log --settings FILE`, where FILE is the path of the adapter's settings, whose content each adapter defines. The adapter reads this request as one JSON document on standard input. On success it writes one JSON answer on standard output, log-answer.schema.json, and exits with status 0. On failure it writes error.schema.json on standard output and exits with status 1. The adapter refuses a request with another version, or with a member this schema does not define, as a failure of kind defect.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id"
+  ],
+  "properties": {
+    "version": {
+      "description": "The request format: 1. The adapter refuses another version, as a failure of kind defect.",
+      "const": 1
+    },
+    "id": {
+      "$ref": "make-answer.schema.json#/$defs/id",
+      "description": "The vendor's id of the machine whose console text the adapter reads."
+    }
+  }
+}

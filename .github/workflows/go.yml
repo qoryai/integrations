@@ -17,6 +17,11 @@ jobs:
   test:
     name: Go tests
     runs-on: ubuntu-latest
+    env:
+      # The image's Go is 1.27.2 and sets GOTOOLCHAIN=local; this module needs 1.27.3 or
+      # later. Go runs at least go1.27.3, and a newer one when go.mod requires it. Remove
+      # this line once the digest below is of a go1.27.3 image.
+      GOTOOLCHAIN: go1.27.3+auto
     container:
       # Docker Hub's official golang:1.27, copied by digest to qoryai's public package. It
       # is pulled without a login, because the package is public, so a calling repository

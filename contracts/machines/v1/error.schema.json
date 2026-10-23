@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/error.schema.json",
+  "title": "Error",
+  "description": "What a machine adapter writes on standard output before it exits with status 1: when check, make, list, log or delete fails, and on a usage error. A usage error, such as an unknown command or no --settings, is a failure of kind defect. The adapter exits with status 0 on success and 1 on failure, and with no other status. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "description": "The failure.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "message"
+      ],
+      "properties": {
+        "kind": {
+          "description": "The kind of failure. limit: the request exceeded a limit at the vendor, such as a quota of machines. retry: a failure that a retry may clear, such as a timeout. defect: the request, the settings or the command line is wrong, and a retry fails the same way. other: any other failure.",
+          "type": "string",
+          "enum": [
+            "limit",
+            "retry",
+            "defect",
+            "other"
+          ]
+        },
+        "message": {
+          "description": "What failed, display text, 1 to 200 characters.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/text"
+        }
+      }
+    }
+  }
+}

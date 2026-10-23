@@ -1,0 +1,6 @@
+{
+  "error": {
+    "kind": "limit",
+    "message": "The request exceeded the quota of machines of this size at the vendor."
+  }
+}

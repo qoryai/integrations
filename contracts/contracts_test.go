@@ -410,3 +410,53 @@ func TestCheckDescriptionHoldsTheWordedLimits(t *testing.T) {
 		}
 	}
 }
+
+// TestAURIIsCheckedForItsFormat pins that the compiler asserts format: the work item
+// url of changes.schema.json, whose pattern accepts any path, refuses a path with an
+// invalid percent-encoding for its format alone.
+func TestAURIIsCheckedForItsFormat(t *testing.T) {
+	schema := compile(t, "changes.schema.json#/$defs/work_item/properties/url")
+	v, ok := schema.Validate("https://qory.example/work/a%zz").(*jsonschema.ValidationError)
+	if !ok {
+		t.Fatal("https://qory.example/work/a%zz is accepted")
+	}
+	if r := strings.Join(leaves(v), "; "); r != "/ format" {
+		t.Errorf("https://qory.example/work/a%%zz is refused for %q, want %q", r, "/ format")
+	}
+}
+
+// TestAURLHostTakesThePercentEncodingsItsTextNames pins the host rule of the url of
+// definitions.schema.json: a host accepts the percent-encodings %80 to %FF in either
+// case, and %25, and its format refuses any other percent-encoding, such as %41 or
+// %7F, and characters after an IPv6 address's closing bracket that are not a port.
+func TestAURLHostTakesThePercentEncodingsItsTextNames(t *testing.T) {
+	schema := compile(t, "definitions.schema.json#/$defs/url")
+	for _, url := range []string{
+		"https://ex%c3%a9mple.com/",
+		"https://ex%C3%A9mple.com/",
+		"https://ex%80mple.com/",
+		"https://ex%FFmple.com/",
+		"https://ex%25mple.com/",
+		"https://[::1]:8080/x",
+	} {
+		if err := schema.Validate(url); err != nil {
+			t.Errorf("%s is refused: %v", url, err)
+		}
+	}
+	for _, url := range []string{
+		"https://ex%41mple.com/",
+		"https://ex%7Fmple.com/",
+		"https://ex%00mple.com/",
+		"https://ex%2fmple.com/",
+		"https://[::1]ab/x",
+	} {
+		v, ok := schema.Validate(url).(*jsonschema.ValidationError)
+		if !ok {
+			t.Errorf("%s is accepted", url)
+			continue
+		}
+		if r := strings.Join(leaves(v), "; "); r != "/ format" {
+			t.Errorf("%s is refused for %q, want %q", url, r, "/ format")
+		}
+	}
+}

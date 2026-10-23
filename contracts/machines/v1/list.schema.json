@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/list.schema.json",
+  "title": "List",
+  "description": "The request of the command list. A machine adapter is a program that makes and deletes machines at one vendor, such as a cloud. The provisioner, the starter of the provisioner contract, https://qory.dev/contracts/provisioner/v1/, runs the adapter to make a machine for each dispatch, and to delete the machine once it stops. With list, the adapter lists the machines at the vendor that it made for the node pool in pool, with the state of each. The command line is `<adapter> list --settings FILE`, where FILE is the path of the adapter's settings, whose content each adapter defines. The adapter reads this request as one JSON document on standard input. On success it writes one JSON answer on standard output, list-answer.schema.json, and exits with status 0. On failure it writes error.schema.json on standard output and exits with status 1. The adapter refuses a request with another version, or with a member this schema does not define, as a failure of kind defect.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "pool"
+  ],
+  "properties": {
+    "version": {
+      "description": "The request format: 1. The adapter refuses another version, as a failure of kind defect.",
+      "const": 1
+    },
+    "pool": {
+      "description": "The node pool whose machines the adapter lists, the provisioner contract's pool_id.",
+      "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/pool_id"
+    }
+  }
+}

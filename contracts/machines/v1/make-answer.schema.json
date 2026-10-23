@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/make-answer.schema.json",
+  "title": "Make answer",
+  "description": "The answer of the command make, on standard output: the vendor's id of the machine the adapter made for the request's key. One key makes at most one machine, so a second make with the same key has the id of the machine that the first make with that key made. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "$defs": {
+    "id": {
+      "description": "A machine's id at the vendor, as the vendor writes it: 1 to 128 printable ASCII characters with no space, and never exactly -.",
+      "type": "string",
+      "pattern": "^[!-~]{1,128}$",
+      "not": {
+        "const": "-"
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "description": "The vendor's id of the machine the adapter made.",
+      "$ref": "#/$defs/id"
+    }
+  }
+}

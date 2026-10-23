@@ -43,7 +43,7 @@ from it.
  "egress_hosts": ["tracker.acme.example"]}
 ```
 
-**Domains.** `domains` lists the domains the integration works with, each a domain name, for example `software`, the domain of software work; `qory-github` declares `["software"]`. When the integration names no domain, the field is absent, never an empty list, which the schema refuses.
+**Domains.** `domains` lists the domains the integration works with, each a domain name, for example `software`, the domain of software work; `qory-github` declares `["software"]`. When the integration names no domain, the field is absent, never an empty list, which the schema refuses. The domains apply only to where work comes from, never to a credential or to a place a workspace reads its configuration from: a credential of the `credential` role reaches a run in a workspace of any domain.
 
 **Secrets.** A property of the settings marked `writeOnly: true` is a secret. A form
 shows it as one, written and never read back, a log leaves it out, and it stays off

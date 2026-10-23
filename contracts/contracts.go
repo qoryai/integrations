@@ -1,6 +1,7 @@
 // Package contracts embeds the integration contract, contracts/integration/v1, the
-// provisioner contract, contracts/provisioner/v1, and the explore contract,
-// contracts/explore/v1, and compiles their schemas.
+// provisioner contract, contracts/provisioner/v1, the run contract, contracts/run/v1,
+// the explore contract, contracts/explore/v1, and the machines contract,
+// contracts/machines/v1, and compiles their schemas.
 //
 // The contract is what a program of an integration reports about itself: `<program>
 // describe` prints its description, description.schema.json, and a reader, `qory` or a
@@ -72,32 +73,47 @@
 // text itself.
 //
 // The provisioner contract holds the requests with which a node pool's starter, the
-// program that serves a node pool, claims a run waiting in the queue of the pool's
-// workspace, where any of that workspace's node pools may claim it, except a run of the
-// step prebuild, which only the node pool it was queued for may claim, [Claim] and its
-// [ClaimAnswer], says it started the job, [Dispatched], asks for the run key to hand the
-// job, [Handover] and its [HandoverAnswer], gives the run back, [Release], or reports
-// the image a job of the step prebuild built, [Prebuilt]. The starter
-// signs them with the pool's access key, a key of the pool kind enrolled for the node
-// pool. They are signed, retried and refused with a [Refusal] exactly as the integration
-// contract's requests above, and the two answers name the revision they were built for,
-// [ProvisionerRevision] here, in Revision, as [Changes] does.
+// program that serves a node pool, claims a request for one machine, [Claim] and its
+// [ClaimAnswer], whose run code and gateway URL it passes to the machine it creates,
+// says it created the machine, [Dispatched], gives the dispatch back before
+// dispatched, [Release], or uploads the log of the machine it created for a dispatch,
+// [MachineLog]. The starter signs them with the pool's access key, a key of the pool
+// kind enrolled for the node pool. They are signed, retried and refused with a
+// [Refusal] exactly as the integration contract's requests above, and the claim answer
+// names the revision it was built for, [ProvisionerRevision] here, in Revision, as
+// [Changes] does. The machine redeems the run code for the run key and the run's
+// documents.
+//
+// The run contract holds the run's documents, documents.schema.json: one object, whose
+// Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types. The object is the documents member of Forager's run answer: the machine
+// receives it, signed, in the 201 of the run code's redemption, and Forager passes it
+// on unread. It is a document, not a request.
 //
 // The explore contract holds the documents of the step explore: inputs.schema.json, the
-// shape of a handover answer's inputs for that step, and result.schema.json, the run's
-// final response, which the control plane reads from the result text of the Forager
-// contract's dev.qory.session.result event. They are documents of a step, not requests,
-// and are not signed.
+// shape of the run's inputs for that step, run/v1 documents.schema.json, and
+// result.schema.json, the run's final response, which the control plane reads from the
+// result text of the Forager contract's dev.qory.runtime.result event. They are
+// documents of a step, not requests, and are not signed.
+//
+// The machines contract holds the protocol of a machine adapter, a program that makes
+// and deletes machines at one vendor, which the provisioner runs as `<adapter>
+// <command> --settings FILE`. Each command, check, make, list, log and delete, reads one
+// request on standard input, [MachinesCheck] say, and writes one answer on standard
+// output, [MachinesCheckAnswer], or writes a [MachinesError] and exits with status 1.
+// Its documents travel between two programs on one host, and are not signed.
 //
 // Each schema's $id is [Base] followed by the file's path under integration/v1,
-// [ProvisionerBase] followed by its path under provisioner/v1, or [ExploreBase] followed
-// by its path under explore/v1, and [Compile], [CompileProvisioner] and [CompileExplore]
-// compile it by that path, with every embedded schema it refers to. A schema of the
-// Forager contract that one of them refers to, whose $id starts with
+// [ProvisionerBase] followed by its path under provisioner/v1, [RunBase] followed by
+// its path under run/v1, [ExploreBase] followed by its path under explore/v1, or
+// [MachinesBase] followed by its path under machines/v1, and [Compile],
+// [CompileProvisioner], [CompileRun], [CompileExplore] and [CompileMachines] compile it
+// by that path, with every embedded schema it refers to. A schema of the Forager
+// contract that one of them refers to, whose $id starts with
 // https://qory.dev/contracts/forager/v1/, is read from the forager module's
-// contracts.FS, at the version go.mod pins. The tests in this
-// package validate every fixture under integration/v1/fixtures, provisioner/v1/fixtures
-// and explore/v1/fixtures, so the schemas and the fixtures cannot drift apart.
+// contracts.FS, at the version go.mod pins. The tests in this package validate every
+// fixture under integration/v1/fixtures, provisioner/v1/fixtures, run/v1/fixtures,
+// explore/v1/fixtures and machines/v1/fixtures, so the schemas and the fixtures cannot
+// drift apart.
 package contracts
 
 import (
@@ -120,12 +136,21 @@ const Base = "https://qory.dev/contracts/integration/v1"
 // fetched from it.
 const ProvisionerBase = "https://qory.dev/contracts/provisioner/v1"
 
+// RunBase is the $id every schema of the run contract has, followed by the schema's
+// path under run/v1. It identifies the contract; nothing is fetched from it.
+const RunBase = "https://qory.dev/contracts/run/v1"
+
 // ExploreBase is the $id every schema of the explore contract has, followed by the
 // schema's path under explore/v1. It identifies the contract; nothing is fetched from
 // it.
 const ExploreBase = "https://qory.dev/contracts/explore/v1"
 
-//go:embed all:integration all:provisioner all:explore
+// MachinesBase is the $id every schema of the machines contract has, followed by the
+// schema's path under machines/v1. It identifies the contract; nothing is fetched from
+// it.
+const MachinesBase = "https://qory.dev/contracts/machines/v1"
+
+//go:embed all:integration all:provisioner all:run all:explore all:machines
 var embedded embed.FS
 
 // FS is the contract directory, rooted at integration/v1: the README, the schema and
@@ -136,9 +161,17 @@ var FS = must(fs.Sub(embedded, "integration/v1"))
 // schemas and the fixtures.
 var ProvisionerFS = must(fs.Sub(embedded, "provisioner/v1"))
 
+// RunFS is the run contract's directory, rooted at run/v1: the schema and the
+// fixtures.
+var RunFS = must(fs.Sub(embedded, "run/v1"))
+
 // ExploreFS is the explore contract's directory, rooted at explore/v1: the schemas and
 // the fixtures.
 var ExploreFS = must(fs.Sub(embedded, "explore/v1"))
+
+// MachinesFS is the machines contract's directory, rooted at machines/v1: the schemas
+// and the fixtures.
+var MachinesFS = must(fs.Sub(embedded, "machines/v1"))
 
 func must[T any](v T, err error) T {
 	if err != nil {
@@ -151,7 +184,10 @@ func must[T any](v T, err error) T {
 var trees = []struct {
 	base string
 	fsys fs.FS
-}{{Base, FS}, {ProvisionerBase, ProvisionerFS}, {ExploreBase, ExploreFS}}
+}{
+	{Base, FS}, {ProvisionerBase, ProvisionerFS}, {RunBase, RunFS},
+	{ExploreBase, ExploreFS}, {MachinesBase, MachinesFS},
+}
 
 // Compile compiles one schema of the contract by its path under integration/v1,
 // "description.schema.json" say. A schema of the contract it refers to, such as
@@ -162,11 +198,21 @@ var trees = []struct {
 func Compile(name string) (*jsonschema.Schema, error) { return compile(Base, FS, name) }
 
 // CompileProvisioner compiles one schema of the provisioner contract by its path under
-// provisioner/v1, "claim.schema.json" say. A schema it refers to, of this contract or of
-// the integration contract, is read from [ProvisionerFS] or [FS] by its $id, so nothing
-// is fetched.
+// provisioner/v1, "claim.schema.json" say. The path may end in a fragment,
+// "definitions.schema.json#/$defs/dispatch_id" say, which compiles that definition. A
+// schema it refers to, of this contract or of the integration contract, is read from
+// [ProvisionerFS] or [FS] by its $id, so nothing is fetched.
 func CompileProvisioner(name string) (*jsonschema.Schema, error) {
 	return compile(ProvisionerBase, ProvisionerFS, name)
+}
+
+// CompileRun compiles one schema of the run contract by its path under run/v1,
+// "documents.schema.json" say. The path may end in a fragment,
+// "documents.schema.json#/$defs/target" say, which compiles that definition. A schema
+// it refers to, of the integration contract or of the Forager contract, is read from
+// [FS] or the forager module's contracts.FS by its $id, so nothing is fetched.
+func CompileRun(name string) (*jsonschema.Schema, error) {
+	return compile(RunBase, RunFS, name)
 }
 
 // CompileExplore compiles one schema of the explore contract by its path under
@@ -177,23 +223,34 @@ func CompileExplore(name string) (*jsonschema.Schema, error) {
 	return compile(ExploreBase, ExploreFS, name)
 }
 
-// compile compiles the schema at name in fsys, whose $id is base followed by name.
+// CompileMachines compiles one schema of the machines contract by its path under
+// machines/v1, "make.schema.json" say. A schema it refers to, of this contract, of the
+// provisioner contract or of the integration contract, is read from [MachinesFS],
+// [ProvisionerFS] or [FS] by its $id, so nothing is fetched.
+func CompileMachines(name string) (*jsonschema.Schema, error) {
+	return compile(MachinesBase, MachinesFS, name)
+}
+
+// compile compiles the schema at name in fsys, whose $id is base followed by name. A
+// fragment after # in name selects a part of that schema, such as a definition.
 func compile(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
-	doc, err := document(fsys, name)
+	file, _, _ := strings.Cut(name, "#")
+	doc, err := document(fsys, file)
 	if err != nil {
 		return nil, err
 	}
 	c := jsonschema.NewCompiler()
+	c.AssertFormat()
 	c.UseLoader(loader{})
-	if err := c.AddResource(base+"/"+name, doc); err != nil {
+	if err := c.AddResource(base+"/"+file, doc); err != nil {
 		return nil, err
 	}
 	return c.Compile(base + "/" + name)
 }
 
 // loader reads a schema of an embedded contract by its $id, from [FS],
-// [ProvisionerFS] or [ExploreFS], or a schema of the Forager contract by its $id, from
-// the forager module's contracts.FS, and refuses any other URL.
+// [ProvisionerFS], [RunFS], [ExploreFS] or [MachinesFS], or a schema of the Forager contract by
+// its $id, from the forager module's contracts.FS, and refuses any other URL.
 type loader struct{}
 
 // Load returns the document of a schema of an embedded contract, or of the Forager
@@ -220,9 +277,17 @@ func Document(name string) (any, error) { return document(FS, name) }
 // under provisioner/v1, as [Document] reads one of the integration contract.
 func ProvisionerDocument(name string) (any, error) { return document(ProvisionerFS, name) }
 
+// RunDocument reads one JSON file of the run contract, by its path under run/v1, as
+// [Document] reads one of the integration contract.
+func RunDocument(name string) (any, error) { return document(RunFS, name) }
+
 // ExploreDocument reads one JSON file of the explore contract, by its path under
 // explore/v1, as [Document] reads one of the integration contract.
 func ExploreDocument(name string) (any, error) { return document(ExploreFS, name) }
+
+// MachinesDocument reads one JSON file of the machines contract, by its path under
+// machines/v1, as [Document] reads one of the integration contract.
+func MachinesDocument(name string) (any, error) { return document(MachinesFS, name) }
 
 // document reads the JSON file at name in fsys.
 func document(fsys fs.FS, name string) (any, error) {

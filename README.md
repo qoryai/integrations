@@ -160,7 +160,7 @@ module the integration's `go.mod` requires.
 ## Development
 
 ```sh
-mise install        # Go 1.27.1
+mise install        # Go 1.27.3
 go test ./...
 ```
 
