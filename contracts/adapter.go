@@ -608,6 +608,38 @@ type GrantEntry struct {
 	GrantRef     string `json:"grant_ref"`
 }
 
+// ResolvePath is the path of the call that resolves addresses, resolve.schema.json: the
+// control plane sends it to the adapter's call_url followed by this path, and signs this
+// path, not the address.
+const ResolvePath = "resolve"
+
+// Resolve is the body of the call with the path [ResolvePath], resolve.schema.json: the
+// addresses, 1 to 64, each as the document the control plane read it from writes it.
+type Resolve struct {
+	Version   int      `json:"version"`
+	Time      string   `json:"time"`
+	Addresses []string `json:"addresses"`
+}
+
+// ResolveAnswer is the body of the adapter's answer to the call with the path
+// [ResolvePath], resolve-answer.schema.json: one result for each address of the call, in
+// the call's order.
+type ResolveAnswer struct {
+	Version  int        `json:"version"`
+	Revision int        `json:"revision"`
+	Results  []Resolved `json:"results"`
+}
+
+// Resolved is the result for one address: GrantRef and ResourceRef, the grant and the
+// resource at the source that cover it, with Covered nil; or Covered pointing to false,
+// with neither ref, when no grant the adapter holds covers the address.
+type Resolved struct {
+	Address     string `json:"address"`
+	GrantRef    string `json:"grant_ref,omitempty"`
+	ResourceRef string `json:"resource_ref,omitempty"`
+	Covered     *bool  `json:"covered,omitempty"`
+}
+
 // Refusal is the body of the control plane's refusal of an adapter's request,
 // refusal.schema.json.
 type Refusal struct {

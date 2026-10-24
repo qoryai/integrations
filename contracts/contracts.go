@@ -77,7 +77,9 @@
 // The control plane also calls an adapter, at the call_url the adapter declares in its
 // start-up body: each call is a POST, a [Call], signed with the control plane's server
 // key over [CallDomain], and the adapter signs its answer, a [CallAnswer], with its
-// access key over [CallAnswerDomain], bound to the call's signature.
+// access key over [CallAnswerDomain], bound to the call's signature. The calls are
+// [Resolve], with the path [ResolvePath], which the adapter answers with
+// [ResolveAnswer].
 //
 // The provisioner contract holds the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its

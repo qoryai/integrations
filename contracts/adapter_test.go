@@ -41,6 +41,8 @@ var adapterSchemas = []string{
 	"adapter-secrets-plaintext.schema.json",
 	"grant.schema.json",
 	"grants.schema.json",
+	"resolve.schema.json",
+	"resolve-answer.schema.json",
 }
 
 // compile compiles a schema of the contract, or fails the test.
@@ -189,6 +191,14 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-secrets-plaintext-17-secrets.json":            {"adapter-secrets-plaintext", "/secrets maxItems"},
 		"adapter-secrets-plaintext-name-upper-case.json":       {"adapter-secrets-plaintext", "/secrets/0/name pattern"},
 		"adapter-secrets-plaintext-empty-value.json":           {"adapter-secrets-plaintext", "/secrets/0/value minLength"},
+		"resolve-65-addresses.json":                            {"resolve", "/addresses maxItems"},
+		"resolve-without-addresses.json":                       {"resolve", "/addresses minItems"},
+		"resolve-address-space.json":                           {"resolve", "/addresses/0 pattern"},
+		"resolve-address-twice.json":                           {"resolve", "/addresses uniqueItems"},
+		"resolve-answer-covered-true.json":                     {"resolve-answer", "/results/1/covered const"},
+		"resolve-answer-not-covered-with-grant-ref.json":       {"resolve-answer", "/results/1/grant_ref "},
+		"resolve-answer-without-resource-ref.json":             {"resolve-answer", "/results/0 required resource_ref"},
+		"resolve-answer-without-revision.json":                 {"resolve-answer", "/ required revision"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -358,6 +368,11 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 		{"grants", contracts.Grants{Version: contracts.Version, Revision: contracts.Revision}},
 		{"grants", contracts.Grants{Version: contracts.Version, Revision: contracts.Revision,
 			Grants: []contracts.GrantEntry{{ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1"}}}},
+		{"resolve", contracts.Resolve{Version: contracts.Version, Time: now, Addresses: []string{"https://code.example.com/acme/harness"}}},
+		{"resolve-answer", contracts.ResolveAnswer{Version: contracts.Version, Revision: contracts.Revision, Results: []contracts.Resolved{
+			{Address: "https://code.example.com/acme/harness", GrantRef: "G_1", ResourceRef: "R_1001"},
+			{Address: "reader@code.example.com:acme/tools", Covered: &noItems},
+		}}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_3", Changes: []contracts.Change{
 			{Kind: contracts.ChangeGrant, ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1", Status: "linked"},
 		}}},
@@ -1181,7 +1196,8 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		}
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
-		"connections-disconnect", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant"} {
+		"connections-disconnect", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
+		"resolve-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
@@ -1577,5 +1593,55 @@ func TestASecretsPlaintextHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
 		if err != nil && (strings.Contains(err.Error(), "value-") || strings.Contains(err.Error(), "\u00e9")) {
 			t.Errorf("the refusal of %s quotes a value: %v", what, err)
 		}
+	}
+}
+
+// TestTheSignedCallIsAResolveCall pins that the signed call of fixtures/adapter/signed has
+// the path ResolvePath and a body resolve.schema.json accepts, resolve/two-addresses.json
+// compact, and that its signed answer has a body resolve-answer.schema.json accepts,
+// resolve-answer/one-covered.json compact, with one result for each address of the
+// call, in its order, which decodes into ResolveAnswer.
+func TestTheSignedCallIsAResolveCall(t *testing.T) {
+	c, _, _ := readCall(t)
+	if c.Path != contracts.ResolvePath {
+		t.Errorf("call.json has the path %q, want %q", c.Path, contracts.ResolvePath)
+	}
+	if err := validate(compile(t, "resolve.schema.json"), c.Body); err != nil {
+		t.Errorf("call.json: the body: %v", err)
+	}
+	var doc struct {
+		Body string `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/call-answer.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(compile(t, "resolve-answer.schema.json"), []byte(doc.Body)); err != nil {
+		t.Errorf("call-answer.json: the body: %v", err)
+	}
+	for name, body := range map[string]string{"resolve/two-addresses.json": string(c.Body), "resolve-answer/one-covered.json": doc.Body} {
+		var want bytes.Buffer
+		if err := json.Compact(&want, read(t, "fixtures/adapter/"+name)); err != nil || want.String() != body {
+			t.Errorf("the signed body is not %s", name)
+		}
+	}
+	var call contracts.Resolve
+	var answer contracts.ResolveAnswer
+	if err := json.Unmarshal(c.Body, &call); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(doc.Body), &answer); err != nil {
+		t.Fatal(err)
+	}
+	if len(answer.Results) != len(call.Addresses) {
+		t.Fatalf("the answer has %d results for %d addresses", len(answer.Results), len(call.Addresses))
+	}
+	for i, r := range answer.Results {
+		if r.Address != call.Addresses[i] {
+			t.Errorf("result %d is for %q, want %q", i, r.Address, call.Addresses[i])
+		}
+	}
+	if answer.Results[0].Covered != nil || answer.Results[0].ResourceRef == "" || answer.Results[1].Covered == nil || *answer.Results[1].Covered ||
+		answer.Results[1].GrantRef != "" {
+		t.Errorf("the answer decodes to %+v", answer.Results)
 	}
 }
