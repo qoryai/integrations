@@ -1886,8 +1886,8 @@ func TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
 }
 
 // TestAConnectFlowOnALiveConnectionHasTheSameShape pins that a connect pass and a linked
-// connect return for a live connection, which adds or replaces the grant of one external
-// account, are accepted by their schemas with the members of a pending connection's:
+// connect return for a live connection, after which a grant report adds or replaces the
+// grant of one external account, are accepted by their schemas with the members of a pending connection's:
 // connect-pass/payload-live-connection.json and connect-return/linked-live-connection.json,
 // with the same connection_id and nonce. Whether the connection is pending or live, and
 // whether another organisation's connection holds the grant, are the control plane's and

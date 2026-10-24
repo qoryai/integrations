@@ -68,7 +68,7 @@
       }
     },
     "grant": {
-      "description": "A grant of one of the adapter's connections linked or unlinked in the control plane's copy (grant.schema.json). On linked the adapter holds the grant for that connection; on unlinked it drops it. The control plane's copy wins.",
+      "description": "A grant of one of the adapter's connections linked or unlinked in the control plane's copy (grant.schema.json). On linked the adapter holds the grant for that connection; on unlinked it drops it. The control plane's copy wins, except for a grant whose report the adapter is still sending again, until the expires_at of its linked connect return (grants.schema.json).",
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "connection_id", "grant_ref", "status"],
