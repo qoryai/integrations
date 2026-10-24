@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/integration/v1/read.schema.json",
+  "title": "Read call",
+  "description": "The body of the control plane's call with the path read, a POST of application/json to the adapter's call_url followed by read (adapter.schema.json), signed as definitions.schema.json describes a call: the text of one document of a resource at the source, at one version, read under one grant. grant_ref and resource_ref are as the adapter answered them to a resolve call (resolve-answer.schema.json). The adapter answers a signed 200 with read-answer.schema.json, or refuses with refusal.schema.json: 404 document_not_found, when the resource has no document at path at the version at, or has no version at; 409 document_not_text, when the document is not UTF-8 text of at most 262144 bytes without a NUL. The adapter refuses a call whose time is more than 300 seconds from its clock, either way, or whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "time",
+    "grant_ref",
+    "resource_ref",
+    "path",
+    "at"
+  ],
+  "properties": {
+    "version": {
+      "description": "The document format. The adapter refuses a version it does not read.",
+      "const": 1
+    },
+    "time": {
+      "description": "When the control plane built the body, RFC 3339 in UTC with whole seconds. The adapter refuses a time more than 300 seconds from its clock, either way, with an unsigned 401.",
+      "$ref": "definitions.schema.json#/$defs/time"
+    },
+    "grant_ref": {
+      "description": "The grant to read under, as the adapter reported it (grant.schema.json).",
+      "$ref": "definitions.schema.json#/$defs/ref"
+    },
+    "resource_ref": {
+      "description": "The resource to read from, as the adapter answered it to a resolve call.",
+      "$ref": "definitions.schema.json#/$defs/ref"
+    },
+    "path": {
+      "description": "The document's path in the resource, 1 to 1024 characters: parts joined by /, with no / at its start or its end, no empty part, no part that is . or .., and no NUL.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?:[^/\\x00.][^/\\x00]*|\\.[^/\\x00.][^/\\x00]*|\\.\\.[^/\\x00]+)(?:/(?:[^/\\x00.][^/\\x00]*|\\.[^/\\x00.][^/\\x00]*|\\.\\.[^/\\x00]+))*$"
+    },
+    "at": {
+      "description": "The version of the resource to read the document at, as the source writes a version or a name of one.",
+      "$ref": "#/$defs/version_ref"
+    }
+  },
+  "$defs": {
+    "version_ref": {
+      "description": "A version of a resource, or a name of one, as the source writes it: 1 to 255 letters, digits, dots, underscores, slashes and hyphens.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._/-]{1,255}$"
+    }
+  }
+}

@@ -43,6 +43,8 @@ var adapterSchemas = []string{
 	"grants.schema.json",
 	"resolve.schema.json",
 	"resolve-answer.schema.json",
+	"read.schema.json",
+	"read-answer.schema.json",
 }
 
 // compile compiles a schema of the contract, or fails the test.
@@ -199,6 +201,13 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"resolve-answer-not-covered-with-grant-ref.json":       {"resolve-answer", "/results/1/grant_ref "},
 		"resolve-answer-without-resource-ref.json":             {"resolve-answer", "/results/0 required resource_ref"},
 		"resolve-answer-without-revision.json":                 {"resolve-answer", "/ required revision"},
+		"read-path-leading-slash.json":                         {"read", "/path pattern"},
+		"read-path-dot-dot.json":                               {"read", "/path pattern"},
+		"read-path-empty-part.json":                            {"read", "/path pattern"},
+		"read-at-space.json":                                   {"read", "/at pattern"},
+		"read-without-at.json":                                 {"read", "/ required at"},
+		"read-answer-content-nul.json":                         {"read-answer", "/content pattern"},
+		"read-answer-without-resolved-at.json":                 {"read-answer", "/ required resolved_at"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -373,6 +382,9 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Address: "https://code.example.com/acme/harness", GrantRef: "G_1", ResourceRef: "R_1001"},
 			{Address: "reader@code.example.com:acme/tools", Covered: &noItems},
 		}}},
+		{"read", contracts.Read{Version: contracts.Version, Time: now, GrantRef: "G_1", ResourceRef: "R_1001", Path: "qory.yaml", At: "main"}},
+		{"read-answer", contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Content: "",
+			ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_3", Changes: []contracts.Change{
 			{Kind: contracts.ChangeGrant, ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1", Status: "linked"},
 		}}},
@@ -1197,7 +1209,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
 		"connections-disconnect", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
-		"resolve-answer"} {
+		"resolve-answer", "read", "read-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
@@ -1643,5 +1655,68 @@ func TestTheSignedCallIsAResolveCall(t *testing.T) {
 	if answer.Results[0].Covered != nil || answer.Results[0].ResourceRef == "" || answer.Results[1].Covered == nil || *answer.Results[1].Covered ||
 		answer.Results[1].GrantRef != "" {
 		t.Errorf("the answer decodes to %+v", answer.Results)
+	}
+}
+
+// TestAReadPathIsRelativeAndHasNoDotParts pins which paths read.schema.json accepts: one
+// or more parts joined by /, with no / at the start or the end, no empty part, and no
+// part that is . or .., while a part that starts with a dot, or has three dots, is a name.
+func TestAReadPathIsRelativeAndHasNoDotParts(t *testing.T) {
+	schema := compile(t, "read.schema.json")
+	body := read(t, "fixtures/adapter/read/at-a-name.json")
+	if !bytes.Contains(body, []byte(`"path": "qory.yaml"`)) {
+		t.Fatal("read/at-a-name.json has no path qory.yaml")
+	}
+	for p, refused := range map[string]bool{
+		"qory.yaml":          false,
+		"docs/setup.md":      false,
+		".config/qory.yaml":  false,
+		"docs/.../notes.txt": false,
+		"docs/..a/b":         false,
+		"/qory.yaml":         true,
+		"docs/":              true,
+		"docs//setup.md":     true,
+		".":                  true,
+		"..":                 true,
+		"docs/./setup.md":    true,
+		"docs/../qory.yaml":  true,
+		"docs/..":            true,
+	} {
+		err := validate(schema, bytes.Replace(body, []byte(`"path": "qory.yaml"`), []byte(`"path": "`+p+`"`), 1))
+		if refused && err == nil {
+			t.Errorf("a read of the path %q is accepted", p)
+		}
+		if !refused && err != nil {
+			t.Errorf("a read of the path %q is refused: %v", p, err)
+		}
+	}
+}
+
+// TestAReadAnswerHoldsItsByteLimit pins ReadAnswer.Check: content of more than 262144
+// bytes of UTF-8 is refused, though the schema accepts it when it has at most 262144
+// characters; content of exactly 262144 bytes is accepted; and so is the fixture answer,
+// which read-answer.schema.json accepts.
+func TestAReadAnswerHoldsItsByteLimit(t *testing.T) {
+	schema := compile(t, "read-answer.schema.json")
+	long := contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Content: strings.Repeat("\u00e9", 131073),
+		ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}
+	b, err := json.Marshal(long)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(schema, b); err != nil {
+		t.Errorf("content of 131073 characters and 262146 bytes is refused by the schema: %v", err)
+	}
+	if long.Check() == nil {
+		t.Error("content of 262146 bytes is accepted")
+	}
+	exact := long
+	exact.Content = strings.Repeat("x", contracts.ReadContentMaxBytes)
+	if err := exact.Check(); err != nil {
+		t.Errorf("content of 262144 bytes is refused: %v", err)
+	}
+	var fixture contracts.ReadAnswer
+	if err := json.Unmarshal(read(t, "fixtures/adapter/read-answer/at-a-fixed-version.json"), &fixture); err != nil || fixture.Check() != nil {
+		t.Errorf("read-answer/at-a-fixed-version.json breaks a rule: %v, %v", err, fixture.Check())
 	}
 }

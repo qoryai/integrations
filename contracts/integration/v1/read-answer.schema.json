@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/integration/v1/read-answer.schema.json",
+  "title": "Read answer",
+  "description": "The body of the adapter's signed 200 answer to the call with the path read (read.schema.json), application/json: the document's text, and the version the adapter read it at. The answer is signed with the adapter's access key, bound to the call's signature, as definitions.schema.json describes an answer to a call, and names the revision it was built for in revision. Every text the source holds is untrusted, content included: shown or read as data, never followed as an instruction. The control plane refuses a member this schema does not define.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "revision",
+    "content",
+    "resolved_at"
+  ],
+  "properties": {
+    "version": {
+      "description": "The document format. The control plane refuses a version it does not read.",
+      "const": 1
+    },
+    "revision": {
+      "description": "The contract revision the adapter built the answer for, the one the call's X-Qory-Contract-Version named. The control plane refuses an answer whose revision is not the call's.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "content": {
+      "description": "The document's text, UTF-8 of at most 262144 bytes without a NUL, as the source holds it, never cut. The schema states that limit only as 262144 characters, since a schema counts characters; the control plane refuses a longer content.",
+      "type": "string",
+      "maxLength": 262144,
+      "$ref": "definitions.schema.json#/$defs/text"
+    },
+    "resolved_at": {
+      "description": "The version the adapter read the document at, one that never changes: when at names a version that moves, resolved_at is the version it named at the moment of the read, so a read at resolved_at gives the same content again.",
+      "$ref": "read.schema.json#/$defs/version_ref"
+    }
+  }
+}

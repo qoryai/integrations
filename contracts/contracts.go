@@ -79,7 +79,8 @@
 // key over [CallDomain], and the adapter signs its answer, a [CallAnswer], with its
 // access key over [CallAnswerDomain], bound to the call's signature. The calls are
 // [Resolve], with the path [ResolvePath], which the adapter answers with
-// [ResolveAnswer].
+// [ResolveAnswer], and [Read], with the path [ReadPath], which it answers with
+// [ReadAnswer].
 //
 // The provisioner contract holds the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its

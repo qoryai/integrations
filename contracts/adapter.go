@@ -640,6 +640,45 @@ type Resolved struct {
 	Covered     *bool  `json:"covered,omitempty"`
 }
 
+// ReadPath is the path of the call that reads a document at a version, read.schema.json:
+// the control plane sends it to the adapter's call_url followed by this path, and signs
+// this path, not the address.
+const ReadPath = "read"
+
+// ReadContentMaxBytes is the most bytes of UTF-8 a read answer's content has.
+const ReadContentMaxBytes = 262144
+
+// Read is the body of the call with the path [ReadPath], read.schema.json: the document
+// at Path in the resource ResourceRef, read under the grant GrantRef, at the version At.
+type Read struct {
+	Version     int    `json:"version"`
+	Time        string `json:"time"`
+	GrantRef    string `json:"grant_ref"`
+	ResourceRef string `json:"resource_ref"`
+	Path        string `json:"path"`
+	At          string `json:"at"`
+}
+
+// ReadAnswer is the body of the adapter's answer to the call with the path [ReadPath],
+// read-answer.schema.json: the document's text, and ResolvedAt, the version the adapter
+// read it at, which never changes.
+type ReadAnswer struct {
+	Version    int    `json:"version"`
+	Revision   int    `json:"revision"`
+	Content    string `json:"content"`
+	ResolvedAt string `json:"resolved_at"`
+}
+
+// Check reports the rule of read-answer.schema.json that the answer breaks and that the
+// schema does not express: the content is UTF-8 of at most [ReadContentMaxBytes] bytes
+// without a NUL, counted in bytes, where the schema counts characters.
+func (a ReadAnswer) Check() error {
+	if len(a.Content) > ReadContentMaxBytes || !utf8.ValidString(a.Content) || strings.ContainsRune(a.Content, 0) {
+		return fmt.Errorf("the content is not UTF-8 of at most %d bytes without a NUL", ReadContentMaxBytes)
+	}
+	return nil
+}
+
 // Refusal is the body of the control plane's refusal of an adapter's request,
 // refusal.schema.json.
 type Refusal struct {
