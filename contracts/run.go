@@ -115,8 +115,9 @@ type HarnessSection struct {
 }
 
 // HarnessBase is a remote source of a stack, the extends of a [HarnessSection]: Git and
-// Ref, with exactly one of Path, the folder of the stack inside the remote source, and
-// Stack, the name of a stack the remote source exports.
+// Ref, with at most one of Path, the folder of the stack inside the remote source, and
+// Stack, the name of a stack the remote source exports. With neither, the source is
+// the root of the remote source.
 type HarnessBase struct {
 	// Git is the address of the remote source.
 	Git string `json:"git"`
@@ -140,8 +141,9 @@ type HarnessModule struct {
 }
 
 // HarnessSource is a remote source of a module, the source of a [HarnessModule]: Git
-// and Ref, with exactly one of Path, the folder of the module inside the remote
-// source, and Module, the name of a module the remote source exports.
+// and Ref, with at most one of Path, the folder of the module inside the remote
+// source, and Module, the name of a module the remote source exports. With neither,
+// the source is the root of the remote source.
 type HarnessSource struct {
 	// Git is the address of the remote source.
 	Git string `json:"git"`

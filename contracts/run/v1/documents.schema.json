@@ -419,7 +419,7 @@
           "type": "string"
         },
         "extends": {
-          "description": "The stack the harness extends: a remote source, with path, the folder of the stack inside the remote source, or with stack, the name of a stack the remote source exports.",
+          "description": "The stack the harness extends: a remote source, with path, the folder of the stack inside the remote source, or with stack, the name of a stack the remote source exports, or with neither, the root of the remote source.",
           "$ref": "#/$defs/harness_base"
         },
         "modules": {
@@ -448,7 +448,7 @@
       }
     },
     "harness_base": {
-      "description": "A remote source of a stack: git and ref, with exactly one of path, the folder of the stack inside the remote source, and stack, the name of a stack the remote source exports. A source of the form {path}, alone or with stack, is refused.",
+      "description": "A remote source of a stack: git and ref, with at most one of path, the folder of the stack inside the remote source, and stack, the name of a stack the remote source exports. A source with neither path nor stack is the root of the remote source. A source with both is refused, and so is a source of the form {path}, alone or with stack.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -476,18 +476,12 @@
           "$ref": "#/$defs/harness_export_name"
         }
       },
-      "oneOf": [
-        {
-          "required": [
-            "path"
-          ]
-        },
-        {
-          "required": [
-            "stack"
-          ]
-        }
-      ]
+      "not": {
+        "required": [
+          "path",
+          "stack"
+        ]
+      }
     },
     "harness_module": {
       "description": "A module appended to the stack: a remote source, with an optional name, exclude or only, and variant. A module given by name alone, and link, are refused.",
@@ -521,7 +515,7 @@
       }
     },
     "harness_source": {
-      "description": "A remote source of a module: git and ref, with exactly one of path, the folder of the module inside the remote source, and module, the name of a module the remote source exports. A source of the form {path}, alone or with module, is refused.",
+      "description": "A remote source of a module: git and ref, with at most one of path, the folder of the module inside the remote source, and module, the name of a module the remote source exports. A source with neither path nor module is the root of the remote source. A source with both is refused, and so is a source of the form {path}, alone or with module.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -549,18 +543,12 @@
           "$ref": "#/$defs/harness_export_name"
         }
       },
-      "oneOf": [
-        {
-          "required": [
-            "path"
-          ]
-        },
-        {
-          "required": [
-            "module"
-          ]
-        }
-      ]
+      "not": {
+        "required": [
+          "path",
+          "module"
+        ]
+      }
     },
     "harness_selection": {
       "description": "Parts of a module, by kind: the names of some entries of each kind listed, true for the instructions, and true or some names for the settings and the variables.",

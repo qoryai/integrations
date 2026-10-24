@@ -149,8 +149,10 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-environment-destination-docker-hub.json":         {"documents", "/environment_destination "},
 		"documents-harness-without-extends.json":                    {"documents", "/harness/harness required extends"},
 		"documents-harness-path-source.json":                        {"documents", "/harness/harness/modules/0/source required git,ref"},
-		"documents-harness-extends-path-stack.json":                 {"documents", "/harness/harness/extends required git,ref; /harness/harness/extends oneOf"},
+		"documents-harness-extends-path-stack.json":                 {"documents", "/harness/harness/extends required git,ref; /harness/harness/extends "},
 		"documents-harness-module-name-only.json":                   {"documents", "/harness/harness/modules/0 required source"},
+		"documents-harness-extends-path-and-stack.json":             {"documents", "/harness/harness/extends "},
+		"documents-harness-module-path-and-module.json":             {"documents", "/harness/harness/modules/0/source "},
 		"documents-harness-module-link.json":                        {"documents", "/harness/harness/modules/0 additionalProperties"},
 		"documents-harness-machine-key-runtime.json":                {"documents", "/harness/harness additionalProperties"},
 		"documents-harness-machine-key-model.json":                  {"documents", "/harness/harness additionalProperties"},
@@ -513,6 +515,10 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	harness := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
 		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0", Stack: "marketing"},
 	}}
+	bare := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
+		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0"},
+		Modules: []contracts.HarnessModule{{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0"}}},
+	}}
 	full := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
 		Name: "campaigns", Description: "The harness of the campaign work.",
 		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0", Path: "stacks/marketing"},
@@ -552,6 +558,7 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item}},
 		{"documents/harness", harness},
 		{"documents/harness", full},
+		{"documents/harness", bare},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: target,
 			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, Workflow: "hello",
