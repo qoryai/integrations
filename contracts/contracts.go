@@ -50,9 +50,11 @@
 // X-Qory-Instance-Id that is absent or outside its pattern, is refused 400 bad_request,
 // and only those are. A retry is a new request: the adapter builds it again, a POST with
 // a time and a GET with an X-Qory-Timestamp later than those of the request it retries,
-// and signs it again. A request sent again unchanged has a signature the control plane
-// has seen, and is refused, 401; an adapter never takes that 401 as its access key being
-// revoked. Every answer to a verified request is signed as accesskey's Answer is, and
+// and signs it again. Each GET an instance sends has an X-Qory-Timestamp later than
+// that of the previous GET it sent, so no two GETs of one instance have the same
+// signature, and an answer bound to one GET verifies for no other. A request sent again
+// unchanged has a signature the control plane has seen, and is refused, 401; an adapter
+// never takes that 401 as its access key being revoked. Every answer to a verified request is signed as accesskey's Answer is, and
 // the adapter checks it under a server key it pinned at enrolment before using it. A 401
 // is always unsigned. A 413, 415 or 400 bad_request may be unsigned, because the control
 // plane may decide them before it verifies the request's signature. Every other answer
