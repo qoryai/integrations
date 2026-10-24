@@ -737,19 +737,45 @@ type Read struct {
 }
 
 // ReadAnswer is the body of the adapter's answer to the call with the path [ReadPath],
-// read-answer.schema.json: the document's text, and ResolvedAt, the version the adapter
-// read it at, which never changes.
+// read-answer.schema.json: Content, the document's text, with Found nil; or Found
+// pointing to false, with no Content, when the resource has no document at the path.
+// In both, ResolvedAt is the version of the resource at which the adapter read the
+// document, or at which the resource has no document, and it never changes.
 type ReadAnswer struct {
 	Version    int    `json:"version"`
 	Revision   int    `json:"revision"`
 	Content    string `json:"content"`
+	Found      *bool  `json:"found,omitempty"`
 	ResolvedAt string `json:"resolved_at"`
 }
 
-// Check reports the rule of read-answer.schema.json that the answer breaks and that the
-// schema does not express: the content is UTF-8 of at most [ReadContentMaxBytes] bytes
-// without a NUL, counted in bytes, where the schema counts characters.
+// MarshalJSON writes the answer: with Found set, without the member content; otherwise
+// with content, an empty Content included.
+func (a ReadAnswer) MarshalJSON() ([]byte, error) {
+	if a.Found == nil {
+		type plain ReadAnswer
+		return json.Marshal(plain(a))
+	}
+	return json.Marshal(struct {
+		Version    int    `json:"version"`
+		Revision   int    `json:"revision"`
+		Found      *bool  `json:"found"`
+		ResolvedAt string `json:"resolved_at"`
+	}{a.Version, a.Revision, a.Found, a.ResolvedAt})
+}
+
+// Check reports the first rule of read-answer.schema.json that the answer breaks and
+// that the schema does not express for a decoded value: with Found set, Found is false
+// and Content is empty; with Found nil, the content is UTF-8 of at most
+// [ReadContentMaxBytes] bytes without a NUL, counted in bytes, where the schema counts
+// characters.
 func (a ReadAnswer) Check() error {
+	if a.Found != nil {
+		if *a.Found || a.Content != "" {
+			return errors.New("found is set, and it is not false or content is not empty")
+		}
+		return nil
+	}
 	if len(a.Content) > ReadContentMaxBytes || !utf8.ValidString(a.Content) || strings.ContainsRune(a.Content, 0) {
 		return fmt.Errorf("the content is not UTF-8 of at most %d bytes without a NUL", ReadContentMaxBytes)
 	}

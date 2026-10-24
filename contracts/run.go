@@ -16,8 +16,11 @@ const MaxInputs = 768 << 10
 // TargetVersion only when Target is. Workflow is set exactly when HarnessHidden is,
 // and a run with Workflow has Harness, TargetVersion, or both.
 // When the run composes a harness, the harness comes from one of two places: if the
-// target has a harness file, the machine reads that file at TargetVersion; if not, the
-// run documents contain Harness. A run of the step explore has WorkItem. A run of the
+// target has a harness file at TargetVersion, the machine reads that file at
+// TargetVersion; if the target has no harness file at TargetVersion, or the run has no
+// target, the run documents contain Harness, and the machine composes Harness and does
+// not read a harness file of the target. The machine works at TargetVersion when it is
+// set. A run of the step explore has WorkItem. A run of the
 // step prebuild has Access, Target, ImageDestination and exactly one of
 // EnvironmentDestination and EnvironmentImage, and no WorkItem, RunSettings, Workflow,
 // HarnessHidden or Harness.
@@ -30,12 +33,14 @@ type Documents struct {
 	Access string          `json:"access,omitempty"`
 	Target *Target         `json:"target,omitempty"`
 	// TargetVersion is set only with Target: the version of the target at which the
-	// control plane read the harness file of the target, and at which the machine
-	// composes the harness and works. It is the exact version that the read returned
-	// as resolved_at, never a name that can point to another version later, because
-	// the machine would then compose a file that the control plane did not read: 1 to
-	// 255 letters, digits and the characters ._/-, a generic grammar, because a target
-	// in another system has another kind of version.
+	// control plane checked for a harness file, the resolved_at of the read at the path
+	// of the harness file, whether the read returned the file or found: false. The
+	// machine works at this version, and reads the harness file at it when the read
+	// returned the file. It is the exact version that the read returned, never a name
+	// that can point to another version later, because the machine would then compose a
+	// file that the control plane did not read: 1 to 255 letters, digits and the
+	// characters ._/-, a generic grammar, because a target in another system has
+	// another kind of version.
 	TargetVersion string       `json:"target_version,omitempty"`
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
 	RunSettings   *RunSettings `json:"run_settings,omitempty"`
@@ -48,10 +53,10 @@ type Documents struct {
 	// pointer, so that false is written.
 	HarnessHidden *bool `json:"harness_hidden,omitempty"`
 	// Harness is set only when the run composes a harness and the target has no
-	// harness file: the harness document of the workspace, in the form of qory.yaml,
-	// which the control plane takes from the settings of the workspace. If the target
-	// has a harness file, the machine reads that file at TargetVersion, and Harness is
-	// nil. When Harness is set, the machine composes it and does not read the harness
+	// harness file at TargetVersion, or the run has no target: the harness document of
+	// the workspace, in the form of qory.yaml, which the control plane takes from the
+	// settings of the workspace. If the target has a harness file at TargetVersion, the
+	// machine reads that file at TargetVersion, and Harness is nil. When Harness is set, the machine composes it and does not read the harness
 	// file of the target.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry

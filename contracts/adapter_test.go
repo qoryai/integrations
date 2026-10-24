@@ -211,6 +211,8 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"read-without-at.json":                                 {"read", "/ required at"},
 		"read-answer-content-nul.json":                         {"read-answer", "/content pattern"},
 		"read-answer-without-resolved-at.json":                 {"read-answer", "/ required resolved_at"},
+		"read-answer-content-and-not-found.json":               {"read-answer", "/content "},
+		"read-answer-without-content-or-found.json":            {"read-answer", "/ required content"},
 		"run-credential-access-admin.json":                     {"run-credential", "/access enum"},
 		"run-credential-purpose-other.json":                    {"run-credential", "/purpose enum"},
 		"run-credential-without-resources.json":                {"run-credential", "/resources minItems"},
@@ -414,6 +416,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 				}}}},
 		{"read", contracts.Read{Version: contracts.Version, Time: now, GrantRef: "G_1", ResourceRef: "R_1001", Path: "qory.yaml", At: "main"}},
 		{"read-answer", contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Content: "",
+			ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}},
+		{"read-answer", contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Found: new(bool),
 			ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_3", Changes: []contracts.Change{
 			{Kind: contracts.ChangeGrant, ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1", Status: "linked"},
@@ -1748,6 +1752,44 @@ func TestAReadAnswerHoldsItsByteLimit(t *testing.T) {
 	var fixture contracts.ReadAnswer
 	if err := json.Unmarshal(read(t, "fixtures/adapter/read-answer/at-a-fixed-version.json"), &fixture); err != nil || fixture.Check() != nil {
 		t.Errorf("read-answer/at-a-fixed-version.json breaks a rule: %v, %v", err, fixture.Check())
+	}
+}
+
+// TestAReadAnswerWithoutADocumentHasNoContent pins the answer with found: Check accepts
+// found false without content, and the fixture read-answer/no-document.json, and refuses
+// found true and content beside found; and the answer with found false marshals without
+// the member content, to a body read-answer.schema.json accepts.
+func TestAReadAnswerWithoutADocumentHasNoContent(t *testing.T) {
+	absent := contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Found: new(bool),
+		ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}
+	if err := absent.Check(); err != nil {
+		t.Errorf("found false without content is refused: %v", err)
+	}
+	b, err := json.Marshal(absent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(b, []byte(`"content"`)) {
+		t.Errorf("found false marshals to %s, with content", b)
+	}
+	if err := validate(compile(t, "read-answer.schema.json"), b); err != nil {
+		t.Errorf("found false marshals to %s, which the schema refuses: %v", b, err)
+	}
+	withContent := absent
+	withContent.Content = "harness:\n"
+	if withContent.Check() == nil {
+		t.Error("content beside found is accepted")
+	}
+	found := true
+	foundTrue := absent
+	foundTrue.Found = &found
+	if foundTrue.Check() == nil {
+		t.Error("found true is accepted")
+	}
+	var fixture contracts.ReadAnswer
+	if err := json.Unmarshal(read(t, "fixtures/adapter/read-answer/no-document.json"), &fixture); err != nil ||
+		fixture.Found == nil || fixture.Check() != nil {
+		t.Errorf("read-answer/no-document.json does not decode to found false: %v, %v", err, fixture.Check())
 	}
 }
 
