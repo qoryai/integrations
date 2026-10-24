@@ -25,7 +25,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   subscription token, and optional `key_prefixes`; and the `models` a new provider of
   this kind starts with.
 - `release.yml` attaches `description.json` to each release: the description that
-  `<program> describe` printed and that passed the `conformance.Description` check.
+  `<program> describe` prints and that passes the `conformance.Description` check.
   `checksums.txt` lists its SHA-256 beside the archives.
 
 ### Changed
