@@ -24,7 +24,7 @@ const MaxInputs = 768 << 10
 // a harness file of the target. The machine works at TargetVersion when it is set. A
 // run of the step explore has WorkItem. A run of the step prebuild has Access, Target,
 // ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
-// no WorkItem, RunSettings, Workflow, HarnessHidden or Harness.
+// no TargetVersion, WorkItem, RunSettings, Workflow, HarnessHidden or Harness.
 // RunSettings is set only for the step explore. Inputs is the step's input as the
 // control plane wrote it, whose shape belongs to the step's schema.
 type Documents struct {
@@ -33,15 +33,15 @@ type Documents struct {
 	Inputs json.RawMessage `json:"inputs"`
 	Access string          `json:"access,omitempty"`
 	Target *Target         `json:"target,omitempty"`
-	// TargetVersion is set only with Target: the version of the target at which the
-	// control plane checked for a harness file, the resolved_at of the read at the path
-	// of the harness file, whether the read returned the file or found: false. The
-	// machine works at this version, and reads the harness file at it when the read
-	// returned the file. It is the exact version that the read returned, never a name
-	// that can point to another version later, because the machine would then compose a
-	// file that the control plane did not read: 1 to 255 letters, digits and the
-	// characters ._/-, a generic grammar, because a target in another system has
-	// another kind of version.
+	// TargetVersion is set only with Target, and never for the step prebuild: the
+	// version of the target at which the control plane checked for a harness file, the
+	// resolved_at of the read at the path of the harness file, whether the read returned
+	// the file or found: false. The machine works at this version, and reads the harness
+	// file at it when the read returned the file. It is the exact version that the read
+	// returned, never a name that can point to another version later, because the
+	// machine would then compose a file that the control plane did not read: 1 to 255
+	// letters, digits and the characters ._/-, a generic grammar, because a target in
+	// another system has another kind of version.
 	TargetVersion string       `json:"target_version,omitempty"`
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
 	RunSettings   *RunSettings `json:"run_settings,omitempty"`

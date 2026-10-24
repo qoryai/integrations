@@ -103,7 +103,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-inputs-no-version.json":                          {"documents", "/inputs required version"},
 		"documents-prebuild-inputs-target.json":                     {"documents", "/inputs additionalProperties"},
 		"documents-prebuild-with-work-item.json":                    {"documents", "/ "},
-		"documents-prebuild-with-workflow.json":                     {"documents", "/ dependentRequired/workflow; /workflow "},
+		"documents-prebuild-with-workflow.json":                     {"documents", "/ dependentRequired/workflow; /workflow ; / required harness; / required target_version"},
 		"documents-explore-without-work-item.json":                  {"documents", "/ required work_item"},
 		"documents-prebuild-inputs-version-2.json":                  {"documents", "/inputs/version const"},
 		"documents-prebuild-inputs-without-environment-ref.json":    {"documents", "/inputs required environment_ref"},
@@ -172,6 +172,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-target-version-without-target.json":              {"documents", "/ dependentRequired/target_version"},
 		"documents-target-version-space.json":                       {"documents", "/target_version pattern"},
 		"documents-prebuild-with-harness.json":                      {"documents", "/harness "},
+		"documents-prebuild-with-target-version.json":               {"documents", "/target_version "},
 		"documents-workflow-without-harness-or-target-version.json": {"documents", "/ required harness; / required target_version"},
 		"documents-work-item-url-http.json":                         {"documents", "/work_item/url pattern"},
 	}
