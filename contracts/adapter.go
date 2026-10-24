@@ -608,6 +608,81 @@ type GrantEntry struct {
 	GrantRef     string `json:"grant_ref"`
 }
 
+// RunCredentialPath is the path of the call for a run's access credential,
+// run-credential.schema.json: the control plane sends it to the adapter's call_url
+// followed by this path, and signs this path, not the address.
+const RunCredentialPath = "run-credential"
+
+// RunCredentialTokenMaxBytes is the most bytes of UTF-8 a run credential's member token has.
+const RunCredentialTokenMaxBytes = 16384
+
+// RunCredential is the body of the call with the path [RunCredentialPath],
+// run-credential.schema.json: a credential for one run under the grant GrantRef,
+// covering Resources, 1 to 64 resource refs, with Access "read" or "write" and Purpose
+// "harness" or "work".
+type RunCredential struct {
+	Version   int      `json:"version"`
+	Time      string   `json:"time"`
+	GrantRef  string   `json:"grant_ref"`
+	Resources []string `json:"resources"`
+	Access    string   `json:"access"`
+	Purpose   string   `json:"purpose"`
+}
+
+// RunCredentialAnswer is the body of the adapter's answer to the call with the path
+// [RunCredentialPath], run-credential-answer.schema.json.
+type RunCredentialAnswer struct {
+	Version    int        `json:"version"`
+	Revision   int        `json:"revision"`
+	Credential Credential `json:"credential"`
+}
+
+// Credential is the Forager contract's credential document as a run credential answer
+// narrows it: Version is 1, Token is required, no apply item has a member token, every host is
+// exact, and it has no placeholders. ExpiresAt is RFC 3339; empty, the credential does
+// not expire.
+type Credential struct {
+	Version   int               `json:"version"`
+	Token     string            `json:"token"`
+	ExpiresAt string            `json:"expires_at,omitempty"`
+	Apply     []CredentialApply `json:"apply"`
+}
+
+// CredentialApply is one item of a credential's apply: where the access token goes. Scheme is
+// "bearer", "basic" with Username, or "header" with Header; Paths empty means every path.
+type CredentialApply struct {
+	Hosts    []string `json:"hosts"`
+	Scheme   string   `json:"scheme"`
+	Username string   `json:"username,omitempty"`
+	Header   string   `json:"header,omitempty"`
+	Paths    []string `json:"paths,omitempty"`
+}
+
+// Check reports the first rule of run-credential-answer.schema.json that the answer
+// breaks and that the schema does not express: the member token is 1 to
+// [RunCredentialTokenMaxBytes] bytes of UTF-8, counted in bytes, with no NUL, carriage
+// return or line feed and no space or tab at its start or its end; and expires_at, when
+// set, is later than callTime, the time of the call the answer is bound to. The message
+// never contains the access token.
+func (a RunCredentialAnswer) Check(callTime time.Time) error {
+	t := a.Credential.Token
+	if len(t) < 1 || len(t) > RunCredentialTokenMaxBytes || !utf8.ValidString(t) || strings.ContainsAny(t, "\x00\r\n") ||
+		strings.TrimLeft(t, " \t") != t || strings.TrimRight(t, " \t") != t {
+		return fmt.Errorf("the member token is not 1 to %d bytes of UTF-8 without a NUL, a carriage return or a line feed, and without a space or a tab at its start or its end", RunCredentialTokenMaxBytes)
+	}
+	if a.Credential.ExpiresAt == "" {
+		return nil
+	}
+	exp, err := time.Parse(time.RFC3339, a.Credential.ExpiresAt)
+	if err != nil {
+		return fmt.Errorf("expires_at %q is not RFC 3339", a.Credential.ExpiresAt)
+	}
+	if !exp.After(callTime) {
+		return fmt.Errorf("expires_at %q is not later than the call's time %s", a.Credential.ExpiresAt, FormatTime(callTime))
+	}
+	return nil
+}
+
 // ResolvePath is the path of the call that resolves addresses, resolve.schema.json: the
 // control plane sends it to the adapter's call_url followed by this path, and signs this
 // path, not the address.

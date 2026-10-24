@@ -78,8 +78,9 @@
 // start-up body: each call is a POST, a [Call], signed with the control plane's server
 // key over [CallDomain], and the adapter signs its answer, a [CallAnswer], with its
 // access key over [CallAnswerDomain], bound to the call's signature. The calls are
-// [Resolve], with the path [ResolvePath], which the adapter answers with
-// [ResolveAnswer], and [Read], with the path [ReadPath], which it answers with
+// [RunCredential], with the path [RunCredentialPath], which the adapter answers with
+// [RunCredentialAnswer]; [Resolve], with the path [ResolvePath], which it answers with
+// [ResolveAnswer]; and [Read], with the path [ReadPath], which it answers with
 // [ReadAnswer].
 //
 // The provisioner contract holds the requests with which a node pool's starter, the

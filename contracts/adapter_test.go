@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 
 	"github.com/qoryai/forager/accesskey"
+	foragercontracts "github.com/qoryai/forager/contracts"
 	"github.com/qoryai/integrations/contracts"
 	"github.com/qoryai/integrations/internal/rawjson"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -45,6 +46,8 @@ var adapterSchemas = []string{
 	"resolve-answer.schema.json",
 	"read.schema.json",
 	"read-answer.schema.json",
+	"run-credential.schema.json",
+	"run-credential-answer.schema.json",
 }
 
 // compile compiles a schema of the contract, or fails the test.
@@ -208,6 +211,22 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"read-without-at.json":                                 {"read", "/ required at"},
 		"read-answer-content-nul.json":                         {"read-answer", "/content pattern"},
 		"read-answer-without-resolved-at.json":                 {"read-answer", "/ required resolved_at"},
+		"run-credential-access-admin.json":                     {"run-credential", "/access enum"},
+		"run-credential-purpose-other.json":                    {"run-credential", "/purpose enum"},
+		"run-credential-without-resources.json":                {"run-credential", "/resources minItems"},
+		"run-credential-without-purpose.json":                  {"run-credential", "/ required purpose"},
+		"run-credential-answer-without-token.json":             {"run-credential-answer", "/credential required token"},
+		"run-credential-answer-without-nested-version.json":    {"run-credential-answer", "/credential required version"},
+		"run-credential-answer-apply-token.json":               {"run-credential-answer", "/credential/apply/0/token "},
+		"run-credential-answer-host-star-dot.json":             {"run-credential-answer", "/credential/apply/0/hosts/0 "},
+		"run-credential-answer-placeholders.json":              {"run-credential-answer", "/credential/placeholders "},
+		"run-credential-answer-token-line-feed.json":           {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-carriage-return.json":     {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-nul.json":                 {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-leading-space.json":       {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-trailing-tab.json":        {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-16385.json":               {"run-credential-answer", "/credential/token maxLength"},
+		"run-credential-answer-expires-at-without-zone.json":   {"run-credential-answer", "/credential/expires_at format"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -382,6 +401,17 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Address: "https://code.example.com/acme/harness", GrantRef: "G_1", ResourceRef: "R_1001"},
 			{Address: "reader@code.example.com:acme/tools", Covered: &noItems},
 		}}},
+		{"run-credential", contracts.RunCredential{Version: contracts.Version, Time: now, GrantRef: "G_1", Resources: []string{"R_1001"},
+			Access: "read", Purpose: "harness"}},
+		{"run-credential-answer", contracts.RunCredentialAnswer{Version: contracts.Version, Revision: contracts.Revision,
+			Credential: contracts.Credential{Version: 1, Token: "fixture-access-token",
+				Apply: []contracts.CredentialApply{{Hosts: []string{"code.example.com"}, Scheme: "bearer"}}}}},
+		{"run-credential-answer", contracts.RunCredentialAnswer{Version: contracts.Version, Revision: contracts.Revision,
+			Credential: contracts.Credential{Version: 1, Token: "fixture-access-token", ExpiresAt: "2026-10-15T13:00:00Z",
+				Apply: []contracts.CredentialApply{
+					{Hosts: []string{"code.example.com"}, Scheme: "basic", Username: "x-access", Paths: []string{"/acme/*"}},
+					{Hosts: []string{"api.code.example.com"}, Scheme: "header", Header: "X-Access"},
+				}}}},
 		{"read", contracts.Read{Version: contracts.Version, Time: now, GrantRef: "G_1", ResourceRef: "R_1001", Path: "qory.yaml", At: "main"}},
 		{"read-answer", contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Content: "",
 			ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}},
@@ -1209,7 +1239,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
 		"connections-disconnect", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
-		"resolve-answer", "read", "read-answer"} {
+		"resolve-answer", "read", "read-answer", "run-credential", "run-credential-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
@@ -1718,5 +1748,97 @@ func TestAReadAnswerHoldsItsByteLimit(t *testing.T) {
 	var fixture contracts.ReadAnswer
 	if err := json.Unmarshal(read(t, "fixtures/adapter/read-answer/at-a-fixed-version.json"), &fixture); err != nil || fixture.Check() != nil {
 		t.Errorf("read-answer/at-a-fixed-version.json breaks a rule: %v, %v", err, fixture.Check())
+	}
+}
+
+// TestARunCredentialAnswerIsForagersCredentialNarrowed pins that each accepted run
+// credential answer's credential, version 1 included, is a document Forager's
+// credential.schema.json accepts, so the narrowing only takes away; that the answer
+// without the credential's version is refused, as Forager refuses it; and that the call
+// fixtures have the path's members as RunCredential decodes them.
+func TestARunCredentialAnswerIsForagersCredentialNarrowed(t *testing.T) {
+	forager, err := foragercontracts.Compile("credential.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files(t, "fixtures/adapter/run-credential-answer") {
+		var doc struct {
+			Credential json.RawMessage `json:"credential"`
+		}
+		if err := json.Unmarshal(read(t, f), &doc); err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(forager, doc.Credential); err != nil {
+			t.Errorf("%s: Forager's credential.schema.json refuses the credential: %v", f, err)
+		}
+		var a contracts.RunCredentialAnswer
+		if err := json.Unmarshal(read(t, f), &a); err != nil || a.Credential.Version != 1 {
+			t.Errorf("%s: the credential's version is %d, %v", f, a.Credential.Version, err)
+		}
+	}
+	if validate(forager, []byte(`{"token":"x","apply":[{"hosts":["code.example.com"],"scheme":"bearer"}]}`)) == nil {
+		t.Error("Forager's credential.schema.json accepts a credential without its version")
+	}
+	if contracts.RunCredentialPath != "run-credential" {
+		t.Errorf("RunCredentialPath is %q", contracts.RunCredentialPath)
+	}
+}
+
+// TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee pins RunCredentialAnswer.Check:
+// a token of more than 16384 bytes, which the schema accepts when it has at most 16384
+// characters, is refused, and one of exactly 16384 bytes accepted; a token with a NUL, a
+// carriage return or a line feed, or a space or a tab at an edge, is refused; expires_at
+// is refused when it is not later than the call's time, and accepted when later or
+// absent; and no message contains the token.
+func TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
+	call := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
+	answer := func(token, expires string) contracts.RunCredentialAnswer {
+		return contracts.RunCredentialAnswer{Version: contracts.Version, Revision: contracts.Revision,
+			Credential: contracts.Credential{Version: 1, Token: token, ExpiresAt: expires,
+				Apply: []contracts.CredentialApply{{Hosts: []string{"code.example.com"}, Scheme: "bearer"}}}}
+	}
+	long := strings.Repeat("\u00e9", 8193)
+	b, err := json.Marshal(answer(long, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(compile(t, "run-credential-answer.schema.json"), b); err != nil {
+		t.Errorf("a token of 8193 characters and 16386 bytes is refused by the schema: %v", err)
+	}
+	for what, c := range map[string]struct {
+		a       contracts.RunCredentialAnswer
+		refused bool
+	}{
+		"a token of 16386 bytes":            {answer(long, ""), true},
+		"a token of 16384 bytes":            {answer(strings.Repeat("x", contracts.RunCredentialTokenMaxBytes), ""), false},
+		"an empty token":                    {answer("", ""), true},
+		"a token with a NUL":                {answer("token-value\x00", ""), true},
+		"a token with a carriage return":    {answer("token\rvalue", ""), true},
+		"a token with a line feed":          {answer("token\nvalue", ""), true},
+		"a token with a space at its start": {answer(" token-value", ""), true},
+		"a token with a tab at its end":     {answer("token-value\t", ""), true},
+		"a token with a space inside":       {answer("token value", ""), false},
+		"expires_at at the call's time":     {answer("token-value", "2026-10-15T12:00:00Z"), true},
+		"expires_at before the call's time": {answer("token-value", "2026-10-15T13:00:00+02:00"), true},
+		"expires_at after the call's time":  {answer("token-value", "2026-10-15T12:00:01Z"), false},
+		"expires_at in another zone, later": {answer("token-value", "2026-10-15T14:30:00+02:00"), false},
+		"no expires_at":                     {answer("token-value", ""), false},
+	} {
+		err := c.a.Check(call)
+		if c.refused && err == nil {
+			t.Errorf("an answer with %s is accepted", what)
+		}
+		if !c.refused && err != nil {
+			t.Errorf("an answer with %s is refused: %v", what, err)
+		}
+		if err != nil && strings.Contains(err.Error(), "token-value") {
+			t.Errorf("the refusal of %s quotes the token: %v", what, err)
+		}
+	}
+	for _, f := range files(t, "fixtures/adapter/run-credential-answer") {
+		var a contracts.RunCredentialAnswer
+		if err := json.Unmarshal(read(t, f), &a); err != nil || a.Check(call) != nil {
+			t.Errorf("%s breaks a rule: %v, %v", f, err, a.Check(call))
+		}
 	}
 }
