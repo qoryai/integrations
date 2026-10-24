@@ -12,37 +12,48 @@ const MaxInputs = 768 << 10
 // Documents is the run's documents, run/v1 documents.schema.json: one object, the
 // documents member of Forager's run answer, which the machine receives, signed, in the
 // 201 of the run code's redemption. Forager passes it on unread. Step, Domain and
-// Inputs are set for every run. Access is set exactly when Target is, and Stack
-// exactly when Workflow and HarnessHidden are. StackReference is set exactly when
-// Stack is a stack name. A run of the step explore has WorkItem. A run of the step
-// prebuild has Access, Target, ImageDestination and exactly one of
-// EnvironmentDestination and EnvironmentImage, and no WorkItem, RunSettings, Stack,
-// StackReference, Workflow or HarnessHidden.
+// Inputs are set for every run. Access is set exactly when Target is, and
+// TargetVersion only when Target is. Workflow is set exactly when HarnessHidden is,
+// and a run with Workflow has Harness, TargetVersion, or both.
+// When the run composes a harness, the harness comes from one of two places: if the
+// target has a harness file, the machine reads that file at TargetVersion; if not, the
+// run documents contain Harness. A run of the step explore has WorkItem. A run of the
+// step prebuild has Access, Target, ImageDestination and exactly one of
+// EnvironmentDestination and EnvironmentImage, and no WorkItem, RunSettings, Workflow,
+// HarnessHidden or Harness.
 // RunSettings is set only for the step explore. Inputs is the step's input as the
 // control plane wrote it, whose shape belongs to the step's schema.
 type Documents struct {
-	Step        string          `json:"step"`
-	Domain      string          `json:"domain"`
-	Inputs      json.RawMessage `json:"inputs"`
-	Access      string          `json:"access,omitempty"`
-	Target      *Target         `json:"target,omitempty"`
-	WorkItem    *WorkItem       `json:"work_item,omitempty"`
-	RunSettings *RunSettings    `json:"run_settings,omitempty"`
-	// Stack is the stack that the run uses: a stack name, such as core, which is the
-	// name of a stack in the operator's list of stacks, with StackReference then set to
-	// the address of that stack, or a stack reference, url#ref:path, which is where the
-	// stack lives, such as https://code.example.com/team/stacks#main:core.
-	Stack string `json:"stack,omitempty"`
-	// StackReference is set exactly when Stack is a stack name: the address of the
-	// stack whose name Stack is set to, a stack reference, url#ref:path, such as
-	// https://code.example.com/team/stacks#main:core. The control plane sets it from
-	// the operator's list of stacks, and the machine fetches the stack from it.
-	StackReference string `json:"stack_reference,omitempty"`
-	Workflow       string `json:"workflow,omitempty"`
-	// HarnessHidden is set exactly when Stack is: when true, the text that comes from
-	// the harness of the stack is hidden in the run, and when false, that text is
-	// shown. A pointer, so that false is written.
+	Step   string          `json:"step"`
+	Domain string          `json:"domain"`
+	Inputs json.RawMessage `json:"inputs"`
+	Access string          `json:"access,omitempty"`
+	Target *Target         `json:"target,omitempty"`
+	// TargetVersion is set only with Target: the version of the target at which the
+	// control plane read the harness file of the target, and at which the machine
+	// composes the harness and works. It is the exact version that the read returned
+	// as resolved_at, never a name that can point to another version later, because
+	// the machine would then compose a file that the control plane did not read: 1 to
+	// 255 letters, digits and the characters ._/-, a generic grammar, because a target
+	// in another system has another kind of version.
+	TargetVersion string       `json:"target_version,omitempty"`
+	WorkItem      *WorkItem    `json:"work_item,omitempty"`
+	RunSettings   *RunSettings `json:"run_settings,omitempty"`
+	// Workflow is set exactly when HarnessHidden is: the workflow of the harness that
+	// the run starts, invoked as its command, such as hello, which the job invokes as
+	// /hello.
+	Workflow string `json:"workflow,omitempty"`
+	// HarnessHidden is set exactly when Workflow is: when true, the text that comes
+	// from the harness is hidden in the run, and when false, that text is shown. A
+	// pointer, so that false is written.
 	HarnessHidden *bool `json:"harness_hidden,omitempty"`
+	// Harness is set only when the run composes a harness and the target has no
+	// harness file: the harness document of the workspace, in the form of qory.yaml,
+	// which the control plane takes from the settings of the workspace. If the target
+	// has a harness file, the machine reads that file at TargetVersion, and Harness is
+	// nil. When Harness is set, the machine composes it and does not read the harness
+	// file of the target.
+	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
 	// start from, such as registry.example.com/targets/0123456789abcdef. The target
@@ -70,6 +81,121 @@ type Documents struct {
 	// environment image. A run of the step prebuild has exactly one of
 	// EnvironmentDestination and EnvironmentImage.
 	EnvironmentImage string `json:"environment_image,omitempty"`
+}
+
+// HarnessDocument is the run's harness, documents.schema.json: the harness document
+// of the workspace in the form of qory.yaml,
+// https://qory.dev/contracts/harness/v1/config.schema.json, with exactly one member,
+// the harness section. Every source is a remote source. A source of the form {path},
+// a module given by name alone, link, the machine keys and every other member of
+// qory.yaml are refused.
+type HarnessDocument struct {
+	Harness HarnessSection `json:"harness"`
+}
+
+// HarnessSection is the harness section of a [HarnessDocument]: the stack the harness
+// extends, the modules appended to it, the bindings of roles, the extensions, and a
+// name and a description. Extends is required.
+type HarnessSection struct {
+	// Name is the name of the harness.
+	Name string `json:"name,omitempty"`
+	// Description is a description of the harness. An empty description is not
+	// written.
+	Description string `json:"description,omitempty"`
+	// Extends is the stack the harness extends.
+	Extends HarnessBase `json:"extends"`
+	// Modules are the modules appended to the stack, in order.
+	Modules []HarnessModule `json:"modules,omitempty"`
+	// Bind maps <kind>/<role> to the name of the entry of that kind that fills the
+	// role.
+	Bind map[string]string `json:"bind,omitempty"`
+	// Extensions are values that qory copies into the report and does not read, by
+	// key, each a JSON value of any shape. Empty extensions are not written.
+	Extensions map[string]json.RawMessage `json:"extensions,omitempty"`
+}
+
+// HarnessBase is a remote source of a stack, the extends of a [HarnessSection]: Git and
+// Ref, with exactly one of Path, the folder of the stack inside the remote source, and
+// Stack, the name of a stack the remote source exports.
+type HarnessBase struct {
+	// Git is the address of the remote source.
+	Git string `json:"git"`
+	// Ref is the version of the remote source.
+	Ref   string `json:"ref"`
+	Path  string `json:"path,omitempty"`
+	Stack string `json:"stack,omitempty"`
+}
+
+// HarnessModule is a module appended to the stack of a [HarnessSection]: a remote
+// source, with an optional name, exclude or only, and variant.
+type HarnessModule struct {
+	// Name is the name of the module, which the manifest of the module must declare.
+	Name   string        `json:"name,omitempty"`
+	Source HarnessSource `json:"source"`
+	// Exclude is what of the module the compose leaves out. Not with Only.
+	Exclude *HarnessSelection `json:"exclude,omitempty"`
+	// Only is the only things of the module the compose takes. Not with Exclude.
+	Only    *HarnessSelection `json:"only,omitempty"`
+	Variant string            `json:"variant,omitempty"`
+}
+
+// HarnessSource is a remote source of a module, the source of a [HarnessModule]: Git
+// and Ref, with exactly one of Path, the folder of the module inside the remote
+// source, and Module, the name of a module the remote source exports.
+type HarnessSource struct {
+	// Git is the address of the remote source.
+	Git string `json:"git"`
+	// Ref is the version of the remote source.
+	Ref    string `json:"ref"`
+	Path   string `json:"path,omitempty"`
+	Module string `json:"module,omitempty"`
+}
+
+// HarnessSelection is parts of a module, by kind, the exclude or only of a
+// [HarnessModule]: the names of some entries of each kind listed, Instructions true for
+// the instructions, and Settings and Env for the settings and the variables.
+type HarnessSelection struct {
+	Skills       []string     `json:"skills,omitempty"`
+	Agents       []string     `json:"agents,omitempty"`
+	Commands     []string     `json:"commands,omitempty"`
+	OutputStyles []string     `json:"output-styles,omitempty"`
+	Hooks        []string     `json:"hooks,omitempty"`
+	MCP          []string     `json:"mcp,omitempty"`
+	Files        []string     `json:"files,omitempty"`
+	Instructions bool         `json:"instructions,omitempty"`
+	Settings     *HarnessPart `json:"settings,omitempty"`
+	Env          *HarnessPart `json:"env,omitempty"`
+}
+
+// HarnessPart is a merged part of a [HarnessSelection]: in JSON, true for all of it,
+// or the names of some of it. All is true for the form true, and Names is set for the
+// other form.
+type HarnessPart struct {
+	All   bool
+	Names []string
+}
+
+// MarshalJSON writes p as true when All is set, and as its names otherwise.
+func (p HarnessPart) MarshalJSON() ([]byte, error) {
+	if p.All {
+		return []byte("true"), nil
+	}
+	return json.Marshal(p.Names)
+}
+
+// UnmarshalJSON reads true, or an array of names.
+func (p *HarnessPart) UnmarshalJSON(b []byte) error {
+	b = bytes.TrimSpace(b)
+	if string(b) == "true" {
+		*p = HarnessPart{All: true}
+		return nil
+	}
+	var names []string
+	if err := json.Unmarshal(b, &names); err != nil {
+		return err
+	}
+	*p = HarnessPart{Names: names}
+	return nil
 }
 
 // WorkItem is the work item a run is for, the run's work_item,
