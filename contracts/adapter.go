@@ -679,8 +679,8 @@ func (a ReadAnswer) Check() error {
 	return nil
 }
 
-// Refusal is the body of the control plane's refusal of an adapter's request,
-// refusal.schema.json.
+// Refusal is the body of the control plane's refusal of an adapter's request, and of an
+// adapter's refusal of a call of the control plane, refusal.schema.json.
 type Refusal struct {
 	Error string `json:"error"`
 }
