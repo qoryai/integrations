@@ -698,7 +698,9 @@ type Resolve struct {
 
 // ResolveAnswer is the body of the adapter's answer to the call with the path
 // [ResolvePath], resolve-answer.schema.json: one result for each address of the call, in
-// the call's order.
+// the call's order. The control plane uses a result only under a grant that the run may
+// use, as resolve-answer.schema.json states, and treats every other result as covered:
+// false.
 type ResolveAnswer struct {
 	Version  int        `json:"version"`
 	Revision int        `json:"revision"`
