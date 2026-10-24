@@ -1842,3 +1842,42 @@ func TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
 		}
 	}
 }
+
+// TestAConnectFlowOnALiveConnectionHasTheSameShape pins that a connect pass and a linked
+// connect return for a live connection, which adds or replaces the grant of one external
+// account, are accepted by their schemas with the members of a pending connection's:
+// connect-pass/payload-live-connection.json and connect-return/linked-live-connection.json,
+// with the same connection_id and nonce. Whether the connection is pending or live, and
+// whether another organisation's connection holds the grant, are the control plane's and
+// the adapter's checks, which connect-return.schema.json states and no schema expresses.
+func TestAConnectFlowOnALiveConnectionHasTheSameShape(t *testing.T) {
+	var p contracts.ConnectPass
+	var r contracts.ConnectReturn
+	if err := json.Unmarshal(read(t, "fixtures/adapter/connect-pass/payload-live-connection.json"), &p); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/connect-return/linked-live-connection.json"), &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.ConnectionID != p.ConnectionID || r.Nonce != p.Nonce || r.Outcome != "linked" {
+		t.Errorf("the live connection's return does not answer its pass: %+v, %+v", p, r)
+	}
+	for schema, f := range map[string]string{
+		"connect-pass.schema.json":   "fixtures/adapter/connect-pass/payload-live-connection.json",
+		"connect-return.schema.json": "fixtures/adapter/connect-return/linked-live-connection.json",
+	} {
+		if err := validate(compile(t, schema), read(t, f)); err != nil {
+			t.Errorf("%s: %v", f, err)
+		}
+	}
+	whole, err := contracts.Document("connect-return.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	description, _ := whole.(map[string]any)["description"].(string)
+	for _, want := range []string{"pending or live", "grant_taken"} {
+		if !strings.Contains(description, want) {
+			t.Errorf("connect-return.schema.json's description does not say %q", want)
+		}
+	}
+}
