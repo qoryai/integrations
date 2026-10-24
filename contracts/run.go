@@ -23,16 +23,18 @@ const MaxInputs = 768 << 10
 // returned found: false; or TargetVersion is empty, because the run has no target or the
 // control plane read no harness file of the target. When Harness is set, the machine
 // composes Harness instead of the harness section of the harness file of the target. Of
-// that file, the machine applies the worktree section and the tiers of the harness
-// section. It reads none of the other machine keys of that file and none of its git and
-// env sections, so the harness file of the target does not set how the run starts. The
-// run's runtime, model, effort and tiers come from the run settings, and a tier that the
-// run settings set replaces the tier of the file. The machine works at TargetVersion
-// when it is set. A run of the step explore has WorkItem. A run of the step prebuild has
-// Access, Target, ImageDestination and exactly one of EnvironmentDestination and
-// EnvironmentImage, and no TargetVersion, WorkItem, RunSettings, Workflow, HarnessHidden
-// or Harness. RunSettings is set only for the step explore. Inputs is the step's input
-// as the control plane wrote it, whose shape belongs to the step's schema.
+// that file, the machine applies the qory version that the file requires, the worktree
+// section, and the tiers of the harness section. If the machine's qory version does not
+// meet that requirement, the run stops. It reads none of the other machine keys of that
+// file and none of its git and env sections, so the harness file of the target does not
+// set how the run starts. The run's runtime, model and effort come from the run
+// settings. A tier comes from the run settings if they set it, and otherwise from the
+// file. The machine works at TargetVersion when it is set. A run of the step explore has
+// WorkItem. A run of the step prebuild has Access, Target, ImageDestination and exactly
+// one of EnvironmentDestination and EnvironmentImage, and no TargetVersion, WorkItem,
+// RunSettings, Workflow, HarnessHidden or Harness. RunSettings is set only for the step
+// explore. Inputs is the step's input as the control plane wrote it, whose shape belongs
+// to the step's schema.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -69,11 +71,13 @@ type Documents struct {
 	// whose harness section has extends, a base, the machine composes that file at
 	// TargetVersion, and Harness is nil. When Harness is set, the machine composes
 	// Harness instead of the harness section of the harness file of the target. Of that
-	// file, the machine applies the worktree section and the tiers of the harness
-	// section. It reads none of the other machine keys of that file and none of its git
-	// and env sections, so the harness file of the target does not set how the run
-	// starts. The run's runtime, model, effort and tiers come from the run settings, and
-	// a tier that the run settings set replaces the tier of the file.
+	// file, the machine applies the qory version that the file requires, the worktree
+	// section, and the tiers of the harness section. If the machine's qory version does
+	// not meet that requirement, the run stops. It reads none of the other machine keys
+	// of that file and none of its git and env sections, so the harness file of the
+	// target does not set how the run starts. The run's runtime, model and effort come
+	// from the run settings. A tier comes from the run settings if they set it, and
+	// otherwise from the file.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
