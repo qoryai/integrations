@@ -15,15 +15,16 @@ const MaxInputs = 768 << 10
 // Inputs are set for every run. Access is set exactly when Target is, and
 // TargetVersion only when Target is. Workflow is set exactly when HarnessHidden is,
 // and a run with Workflow has Harness, TargetVersion, or both.
-// When the run composes a harness, the harness comes from one of two places: if the
-// target has a harness file at TargetVersion, the machine reads that file at
-// TargetVersion; if the target has no harness file at TargetVersion, or the run has no
-// target, the run documents contain Harness, and the machine composes Harness and does
-// not read a harness file of the target. The machine works at TargetVersion when it is
-// set. A run of the step explore has WorkItem. A run of the
-// step prebuild has Access, Target, ImageDestination and exactly one of
-// EnvironmentDestination and EnvironmentImage, and no WorkItem, RunSettings, Workflow,
-// HarnessHidden or Harness.
+// When the run composes a harness, the harness comes from one of two places. If
+// TargetVersion is set and the read of the harness file of the target returned the
+// file, the machine reads that file at TargetVersion. If TargetVersion is set and that
+// read returned found: false, or if TargetVersion is empty, because the run has no
+// target or the control plane read no harness file of the target, the run documents
+// contain Harness. When Harness is set, the machine composes Harness and does not read
+// a harness file of the target. The machine works at TargetVersion when it is set. A
+// run of the step explore has WorkItem. A run of the step prebuild has Access, Target,
+// ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
+// no WorkItem, RunSettings, Workflow, HarnessHidden or Harness.
 // RunSettings is set only for the step explore. Inputs is the step's input as the
 // control plane wrote it, whose shape belongs to the step's schema.
 type Documents struct {
@@ -52,12 +53,14 @@ type Documents struct {
 	// from the harness is hidden in the run, and when false, that text is shown. A
 	// pointer, so that false is written.
 	HarnessHidden *bool `json:"harness_hidden,omitempty"`
-	// Harness is set only when the run composes a harness and the target has no
-	// harness file at TargetVersion, or the run has no target: the harness document of
-	// the workspace, in the form of qory.yaml, which the control plane takes from the
-	// settings of the workspace. If the target has a harness file at TargetVersion, the
-	// machine reads that file at TargetVersion, and Harness is nil. When Harness is set, the machine composes it and does not read the harness
-	// file of the target.
+	// Harness is set only when the run composes a harness, and either TargetVersion is
+	// set and the read of the harness file of the target returned found: false, or
+	// TargetVersion is empty, because the run has no target or the control plane read
+	// no harness file of the target. It is the harness document of the workspace, in
+	// the form of qory.yaml, which the control plane takes from the settings of the
+	// workspace. If TargetVersion is set and that read returned the file, the machine
+	// reads that file at TargetVersion, and Harness is nil. When Harness is set, the
+	// machine composes it and does not read a harness file of the target.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
