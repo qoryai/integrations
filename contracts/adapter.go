@@ -700,7 +700,10 @@ type Resolve struct {
 // [ResolvePath], resolve-answer.schema.json: one result for each address of the call, in
 // the call's order. The control plane uses a result only under a grant that the run may
 // use, as resolve-answer.schema.json states, and treats every other result as covered:
-// false.
+// false. Under an assignment, it sends a [RunCredential] only when the adapter's
+// credential_scope is resource, with Resources set to the assigned source's resource
+// alone; when credential_scope is grant, it reads the assigned source only with a
+// [Read].
 type ResolveAnswer struct {
 	Version  int        `json:"version"`
 	Revision int        `json:"revision"`

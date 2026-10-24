@@ -85,7 +85,10 @@
 // plane uses a resolve result, and sends a [RunCredential] or a [Read], only under a
 // grant that the run may use: a grant of a live connection of the run's organisation,
 // or, only to read a harness source, a grant whose organisation assigned that source
-// to the run's organisation. resolve-answer.schema.json states the rule.
+// to the run's organisation. Under an assignment, it sends a [RunCredential] only when
+// the adapter's credential_scope is resource, with Resources set to the assigned
+// source's resource alone; when credential_scope is grant, it reads the assigned
+// source only with a [Read]. resolve-answer.schema.json states the rule.
 //
 // The provisioner contract holds the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its
