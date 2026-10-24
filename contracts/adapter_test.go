@@ -12,6 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"crypto/hpke"
+	"encoding/hex"
+
 	"github.com/qoryai/forager/accesskey"
 	"github.com/qoryai/integrations/contracts"
 	"github.com/qoryai/integrations/internal/rawjson"
@@ -33,6 +36,11 @@ var adapterSchemas = []string{
 	"connect-return.schema.json",
 	"setup-pass.schema.json",
 	"refusal.schema.json",
+	"adapter-secrets.schema.json",
+	"adapter-secrets-answer.schema.json",
+	"adapter-secrets-plaintext.schema.json",
+	"grant.schema.json",
+	"grants.schema.json",
 }
 
 // compile compiles a schema of the contract, or fails the test.
@@ -168,6 +176,19 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-call-url-http.json":                           {"adapter", "/call_url pattern"},
 		"adapter-call-url-query.json":                          {"adapter", "/call_url pattern"},
 		"adapter-call-url-without-final-slash.json":            {"adapter", "/call_url pattern"},
+		"adapter-description-secrets-twice.json":               {"adapter", "/description/roles/source/secrets uniqueItems"},
+		"grant-without-pass-nonce.json":                        {"grant", "/ required pass_nonce"},
+		"grant-pass-nonce-21-characters.json":                  {"grant", "/pass_nonce pattern"},
+		"grants-without-revision.json":                         {"grants", "/ required revision"},
+		"changes-grant-status-taken-in.json":                   {"changes", "/changes/0/status enum"},
+		"changes-grant-without-connection-id.json":             {"changes", "/changes/0 required connection_id"},
+		"adapter-secrets-value-in-clear.json":                  {"adapter-secrets", "/sealed additionalProperties"},
+		"adapter-secrets-without-server-key.json":              {"adapter-secrets", "/sealed required server_key"},
+		"adapter-secrets-answer-suite-chacha20.json":           {"adapter-secrets-answer", "/sealed/suite const"},
+		"adapter-secrets-answer-enc-31-bytes.json":             {"adapter-secrets-answer", "/sealed/enc pattern"},
+		"adapter-secrets-plaintext-17-secrets.json":            {"adapter-secrets-plaintext", "/secrets maxItems"},
+		"adapter-secrets-plaintext-name-upper-case.json":       {"adapter-secrets-plaintext", "/secrets/0/name pattern"},
+		"adapter-secrets-plaintext-empty-value.json":           {"adapter-secrets-plaintext", "/secrets/0/value minLength"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -324,6 +345,22 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			CallURL: "https://adapter.example.com/calls/", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
 			Description: read(t, "fixtures/example-tracker.json")}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
+		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
+		{"adapter-secrets", contracts.AdapterSecrets{Version: contracts.Version, Time: now, Sealed: contracts.SealedToServer{
+			Suite: contracts.SealSuite, ServerKey: "rcFAEfgtHFbZVqpPnXPYhYNhpgYEhSXg0Ixjjcdd2Mc", Enc: strings.Repeat("A", 43), CT: strings.Repeat("A", 22)}}},
+		{"adapter-secrets-answer", contracts.AdapterSecretsAnswer{Version: contracts.Version, Revision: contracts.Revision,
+			Sealed: contracts.SealedToAccessKey{Suite: contracts.SealSuite, AccessKeyID: "ak_f1xt0re000000000", Enc: strings.Repeat("A", 43), CT: strings.Repeat("A", 22)}}},
+		{"adapter-secrets-plaintext", contracts.AdapterSecretsPlaintext{Version: contracts.Version}},
+		{"adapter-secrets-plaintext", contracts.AdapterSecretsPlaintext{Version: contracts.Version,
+			Secrets: []contracts.SecretEntry{{Name: "signing-key", Value: "a value"}}}},
+		{"grant", contracts.Grant{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1",
+			PassNonce: "AAECAwQFBgcICQoLDA0ODw"}},
+		{"grants", contracts.Grants{Version: contracts.Version, Revision: contracts.Revision}},
+		{"grants", contracts.Grants{Version: contracts.Version, Revision: contracts.Revision,
+			Grants: []contracts.GrantEntry{{ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1"}}}},
+		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_3", Changes: []contracts.Change{
+			{Kind: contracts.ChangeGrant, ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1", Status: "linked"},
+		}}},
 	}
 	for _, c := range values {
 		b, err := json.Marshal(c.v)
@@ -1144,7 +1181,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		}
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
-		"connections-disconnect", "connect-pass", "connect-return", "setup-pass"} {
+		"connections-disconnect", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
@@ -1366,5 +1403,179 @@ func TestACallVerifiesOverItsDomainAlone(t *testing.T) {
 	if serverPin.Verify(contracts.CallAnswer{Status: changes.Status, CallSignature: s.Headers[accesskey.HeaderSignature],
 		Body: []byte(changes.Body)}.Message(), changes.Headers[accesskey.HeaderSignature]) {
 		t.Error("the signed answer of the change feed verifies as an answer to a call")
+	}
+}
+
+// openSealed opens a sealed value of the fixtures with the X25519 key of an access key or
+// a server key, under info and aad, as RFC 9180 base mode with the suite SealSuite.
+func openSealed(t *testing.T, key *accesskey.Key, enc, ct string, info, aad []byte) ([]byte, error) {
+	t.Helper()
+	priv, err := hpke.NewDHKEMPrivateKey(key.X25519())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, errE := base64.RawURLEncoding.Strict().DecodeString(enc)
+	c, errC := base64.RawURLEncoding.Strict().DecodeString(ct)
+	if errE != nil || errC != nil {
+		t.Fatalf("enc or ct is not strict base64url: %v, %v", errE, errC)
+	}
+	r, err := hpke.NewRecipient(e, priv, hpke.HKDFSHA256(), hpke.AES256GCM(), info)
+	if err != nil {
+		return nil, err
+	}
+	return r.Open(aad, c)
+}
+
+// TestTheSealedSecretsOpen pins the known answer of fixtures/adapter/signed/adapter-secrets.json:
+// SecretsUploadInfo, SecretsInfo and SecretsAAD build its info and aad; the upload of
+// adapter-secrets/upload.json opens with the fixture server key to its plaintext, and the
+// delivery of adapter-secrets-answer/delivery.json with the fixture access key; the
+// plaintext is adapter-secrets-plaintext/two-secrets.json and keeps every rule; and
+// neither opens with the info of the other direction, with the aad of another adapter,
+// or with the other recipient's key.
+func TestTheSealedSecretsOpen(t *testing.T) {
+	access, id, _, server := fixtureKeys(t)
+	var kat struct {
+		AdapterID    string `json:"adapter_id"`
+		AccessKeyID  string `json:"access_key_id"`
+		ServerKey    string `json:"server_key"`
+		Plaintext    string `json:"plaintext"`
+		UploadInfo   string `json:"upload_info"`
+		DeliveryInfo string `json:"delivery_info"`
+		AAD          string `json:"aad"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/adapter-secrets.json"), &kat); err != nil {
+		t.Fatal(err)
+	}
+	if kat.AccessKeyID != id || kat.ServerKey != server.PublicKey().String() || kat.AdapterID != "na_f1xt0re000000000" {
+		t.Fatalf("adapter-secrets.json is not for the keys of keys.json: %+v", kat)
+	}
+	uploadInfo := contracts.SecretsUploadInfo(kat.ServerKey)
+	deliveryInfo := contracts.SecretsInfo(kat.AccessKeyID)
+	aad := contracts.SecretsAAD(kat.AdapterID, kat.AccessKeyID)
+	for name, c := range map[string]struct {
+		got  []byte
+		want string
+	}{"upload_info": {uploadInfo, kat.UploadInfo}, "delivery_info": {deliveryInfo, kat.DeliveryInfo}, "aad": {aad, kat.AAD}} {
+		if hex.EncodeToString(c.got) != c.want {
+			t.Errorf("adapter-secrets.json: %s is %s, and the Go builder writes %x", name, c.want, c.got)
+		}
+	}
+	var upload contracts.AdapterSecrets
+	if err := json.Unmarshal(read(t, "fixtures/adapter/adapter-secrets/upload.json"), &upload); err != nil {
+		t.Fatal(err)
+	}
+	var delivery contracts.AdapterSecretsAnswer
+	if err := json.Unmarshal(read(t, "fixtures/adapter/adapter-secrets-answer/delivery.json"), &delivery); err != nil {
+		t.Fatal(err)
+	}
+	if upload.Sealed.ServerKey != kat.ServerKey || delivery.Sealed.AccessKeyID != kat.AccessKeyID {
+		t.Errorf("the envelopes are not sealed to the keys of keys.json: %+v, %+v", upload.Sealed, delivery.Sealed)
+	}
+	u, err := openSealed(t, server, upload.Sealed.Enc, upload.Sealed.CT, uploadInfo, aad)
+	if err != nil || string(u) != kat.Plaintext {
+		t.Errorf("the upload does not open with the server key to the plaintext: %q, %v", u, err)
+	}
+	d, err := openSealed(t, access, delivery.Sealed.Enc, delivery.Sealed.CT, deliveryInfo, aad)
+	if err != nil || string(d) != kat.Plaintext {
+		t.Errorf("the delivery does not open with the access key to the plaintext: %q, %v", d, err)
+	}
+	var fixture bytes.Buffer
+	if err := json.Compact(&fixture, read(t, "fixtures/adapter/adapter-secrets-plaintext/two-secrets.json")); err != nil || fixture.String() != kat.Plaintext {
+		t.Error("the plaintext is not adapter-secrets-plaintext/two-secrets.json")
+	}
+	if err := validate(compile(t, "adapter-secrets-plaintext.schema.json"), []byte(kat.Plaintext)); err != nil {
+		t.Errorf("the plaintext: %v", err)
+	}
+	var p contracts.AdapterSecretsPlaintext
+	if err := json.Unmarshal([]byte(kat.Plaintext), &p); err != nil || p.Check() != nil || len(p.Secrets) != 2 {
+		t.Errorf("the plaintext breaks a rule: %v, %v", err, p.Check())
+	}
+	another := contracts.SecretsAAD("na_f1xt0re000000001", kat.AccessKeyID)
+	for what, err := range map[string]error{
+		"the upload with the delivery's info":   second(openSealed(t, server, upload.Sealed.Enc, upload.Sealed.CT, deliveryInfo, aad)),
+		"the delivery with the upload's info":   second(openSealed(t, access, delivery.Sealed.Enc, delivery.Sealed.CT, uploadInfo, aad)),
+		"the upload with another adapter id":    second(openSealed(t, server, upload.Sealed.Enc, upload.Sealed.CT, uploadInfo, another)),
+		"the delivery with another adapter id":  second(openSealed(t, access, delivery.Sealed.Enc, delivery.Sealed.CT, deliveryInfo, another)),
+		"the upload with the access key":        second(openSealed(t, access, upload.Sealed.Enc, upload.Sealed.CT, uploadInfo, aad)),
+		"the delivery with the server key":      second(openSealed(t, server, delivery.Sealed.Enc, delivery.Sealed.CT, deliveryInfo, aad)),
+		"the delivery's ct with the upload enc": second(openSealed(t, access, upload.Sealed.Enc, delivery.Sealed.CT, deliveryInfo, aad)),
+	} {
+		if err == nil {
+			t.Errorf("%s opens", what)
+		}
+	}
+}
+
+// second returns the second of two values.
+func second[A, B any](_ A, b B) B { return b }
+
+// TestTheSignedSecretsAnswerVerifies pins the signed read of the adapter's secrets: the
+// GET verifies under the fixture access key, and its 200 verifies under a pin of the
+// fixture server key, bound to the GET's signature, with adapter-secrets-answer/delivery.json,
+// compact, as its body.
+func TestTheSignedSecretsAnswerVerifies(t *testing.T) {
+	access, id, instance, server := fixtureKeys(t)
+	get, s := request(t, "fixtures/adapter/signed/get-adapter-secrets.json")
+	if get.Method != "GET" || get.Target != "/v1/adapter/secrets" || get.AccessKeyID != id || get.InstanceID != instance || get.Body != nil {
+		t.Errorf("get-adapter-secrets.json is not a GET of /v1/adapter/secrets as the fixture key: %+v", s)
+	}
+	if !access.PublicKey().VerifyRequest(get, s.Headers[accesskey.HeaderSignature]) {
+		t.Error("get-adapter-secrets.json: the signature does not verify")
+	}
+	var doc struct {
+		Status  int               `json:"status"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/answer-adapter-secrets.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	pin := accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}
+	a := accesskey.Answer{Status: doc.Status, RequestSignature: s.Headers[accesskey.HeaderSignature], Body: []byte(doc.Body)}
+	if doc.Status != 200 || !pin.VerifyAnswer(a, doc.Headers[accesskey.HeaderSignature]) {
+		t.Error("answer-adapter-secrets.json: the signature does not verify as a 200 to get-adapter-secrets.json")
+	}
+	var want bytes.Buffer
+	if err := json.Compact(&want, read(t, "fixtures/adapter/adapter-secrets-answer/delivery.json")); err != nil || want.String() != doc.Body {
+		t.Error("answer-adapter-secrets.json: the body is not adapter-secrets-answer/delivery.json")
+	}
+}
+
+// TestASecretsPlaintextHoldsTheRulesTheSchemaCannotSee pins AdapterSecretsPlaintext.Check:
+// it refuses a name twice, an empty value, a value of more than 16384 bytes of UTF-8,
+// which the schema accepts when it has at most 16384 characters, and a value with a NUL,
+// and accepts a value of exactly 16384 bytes; and no message contains a value.
+func TestASecretsPlaintextHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
+	long := strings.Repeat("\u00e9", 8193)
+	schema := compile(t, "adapter-secrets-plaintext.schema.json")
+	b, err := json.Marshal(contracts.AdapterSecretsPlaintext{Version: contracts.Version, Secrets: []contracts.SecretEntry{{Name: "signing-key", Value: long}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(schema, b); err != nil {
+		t.Errorf("a value of 8193 characters and 16386 bytes is refused by the schema: %v", err)
+	}
+	for what, c := range map[string]struct {
+		secrets []contracts.SecretEntry
+		refused bool
+	}{
+		"a name twice":       {[]contracts.SecretEntry{{Name: "a", Value: "value-one"}, {Name: "a", Value: "value-two"}}, true},
+		"an empty value":     {[]contracts.SecretEntry{{Name: "a", Value: ""}}, true},
+		"16386 bytes":        {[]contracts.SecretEntry{{Name: "a", Value: long}}, true},
+		"a NUL":              {[]contracts.SecretEntry{{Name: "a", Value: "value-one\x00"}}, true},
+		"16384 bytes":        {[]contracts.SecretEntry{{Name: "a", Value: strings.Repeat("x", contracts.SecretValueMaxBytes)}}, false},
+		"two names, no NULs": {[]contracts.SecretEntry{{Name: "a", Value: "value-one"}, {Name: "b", Value: "value-two"}}, false},
+	} {
+		err := contracts.AdapterSecretsPlaintext{Version: contracts.Version, Secrets: c.secrets}.Check()
+		if c.refused && err == nil {
+			t.Errorf("a plaintext with %s is accepted", what)
+		}
+		if !c.refused && err != nil {
+			t.Errorf("a plaintext with %s is refused: %v", what, err)
+		}
+		if err != nil && (strings.Contains(err.Error(), "value-") || strings.Contains(err.Error(), "\u00e9")) {
+			t.Errorf("the refusal of %s quotes a value: %v", what, err)
+		}
 	}
 }

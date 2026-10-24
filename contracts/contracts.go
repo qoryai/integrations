@@ -10,8 +10,10 @@
 // The contract also holds the requests an adapter, the program that reads a source of
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
 // start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
-// and [ConnectionsDisconnect], the change feed [Changes] it reads back, the [Refusal] of
-// a request, the [ConnectPass] a person brings when they connect the source, the
+// and [ConnectionsDisconnect], the change feed [Changes] it reads back, the secrets it
+// stores in the control plane, [AdapterSecrets], sealed to the server key, and reads
+// back sealed to its access key, [AdapterSecretsAnswer], the [Grant] it reports for a
+// connection and the control plane's copy of them, [Grants], the [Refusal] of a request, the [ConnectPass] a person brings when they connect the source, the
 // [ConnectReturn] the adapter sends the person back with, and the [SetupPass] an
 // instance admin brings when they set the adapter up at its source. Each type marshals
 // to the document its schema accepts.

@@ -3,6 +3,7 @@ package contracts
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Version is the document format of integration/v1 and provisioner/v1: every request
@@ -341,18 +343,22 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 const (
 	ChangeWorkItem   = "work_item"
 	ChangeCollection = "collection"
+	ChangeGrant      = "grant"
 	ChangeSync       = "sync"
 )
 
 // Change is one entry of the change feed, of the kind Kind names. A work_item entry has
 // WorkItemID, Ref, Status "taken_in" or "undone", and URL; a collection entry has
-// CollectionRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for
-// the adapter's declared default. It marshals with the members of its kind alone.
+// CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
+// GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
+// adapter's declared default. It marshals with the members of its kind alone.
 type Change struct {
 	Kind          string `json:"kind"`
 	WorkItemID    string `json:"work_item_id,omitempty"`
 	Ref           string `json:"ref,omitempty"`
 	CollectionRef string `json:"collection_ref,omitempty"`
+	ConnectionID  string `json:"connection_id,omitempty"`
+	GrantRef      string `json:"grant_ref,omitempty"`
 	Status        string `json:"status,omitempty"`
 	URL           string `json:"url,omitempty"`
 	Interval      *int   `json:"interval,omitempty"`
@@ -376,6 +382,13 @@ func (c Change) MarshalJSON() ([]byte, error) {
 			CollectionRef string `json:"collection_ref"`
 			Status        string `json:"status"`
 		}{c.Kind, c.CollectionRef, c.Status})
+	case ChangeGrant:
+		return json.Marshal(struct {
+			Kind         string `json:"kind"`
+			ConnectionID string `json:"connection_id"`
+			GrantRef     string `json:"grant_ref"`
+			Status       string `json:"status"`
+		}{c.Kind, c.ConnectionID, c.GrantRef, c.Status})
 	case ChangeSync:
 		return json.Marshal(struct {
 			Kind     string `json:"kind"`
@@ -414,6 +427,185 @@ type ConnectReturn struct {
 	Outcome      string `json:"outcome"`
 	Reason       string `json:"reason,omitempty"`
 	ExpiresAt    string `json:"expires_at"`
+}
+
+// SealSuite is the suite of a sealed value on the wire: RFC 9180 base mode with
+// DHKEM(X25519, HKDF-SHA256), HKDF-SHA256 and AES-256-GCM, the suite of the Forager
+// contract's secrets answer.
+const SealSuite = "x25519-sha256-aes256gcm"
+
+// The ids of the suite's three parts, as RFC 9180 numbers them and as info contains
+// them.
+const (
+	SealKEMID  = 0x0020
+	SealKDFID  = 0x0001
+	SealAEADID = 0x0002
+)
+
+// SecretsInfoDomain starts the HPKE info of the secrets the control plane delivers to
+// an adapter, sealed to its access key, [SecretsInfo].
+const SecretsInfoDomain = "qory adapter secrets v1"
+
+// SecretsUploadInfoDomain starts the HPKE info of the secrets an adapter uploads, sealed
+// to the control plane's server key, [SecretsUploadInfo]. It is not
+// [SecretsInfoDomain], so an upload never opens as a delivery, nor a delivery as an
+// upload.
+const SecretsUploadInfoDomain = "qory adapter secrets upload v1"
+
+// SecretValueMaxBytes is the most bytes of UTF-8 a secret's value has.
+const SecretValueMaxBytes = 16384
+
+// SecretsMax is the most secrets an adapter stores in the control plane.
+const SecretsMax = 16
+
+// SecretsInfo returns the HPKE info of a delivery of secrets to the access key
+// accessKeyID: [SecretsInfoDomain], a zero byte, the suite's three ids as u16
+// big-endian, and lp(access key id), lp being a u16 big-endian length, then the bytes.
+func SecretsInfo(accessKeyID string) []byte { return info(SecretsInfoDomain, accessKeyID) }
+
+// SecretsUploadInfo returns the HPKE info of an upload of secrets sealed to the server
+// key serverKey, as adapter-secrets.schema.json writes it in server_key:
+// [SecretsUploadInfoDomain], a zero byte, the suite's three ids as u16 big-endian, and
+// lp(server key).
+func SecretsUploadInfo(serverKey string) []byte {
+	return info(SecretsUploadInfoDomain, serverKey)
+}
+
+// SecretsAAD returns the associated data of a sealing of secrets, in both directions:
+// lp(adapter id) and lp(access key id). It has no run id and no run configuration
+// digest: the secrets belong to the adapter, not to a run.
+func SecretsAAD(adapterID, accessKeyID string) []byte {
+	return lp(lp(nil, adapterID), accessKeyID)
+}
+
+// info is a domain, a zero byte, the suite's three ids as u16 big-endian, and lp(id).
+func info(domain, id string) []byte {
+	b := append([]byte(domain), 0)
+	for _, x := range []uint16{SealKEMID, SealKDFID, SealAEADID} {
+		b = binary.BigEndian.AppendUint16(b, x)
+	}
+	return lp(b, id)
+}
+
+// lp appends a u16 big-endian length, then the bytes. Every value it is given is bounded
+// by a pattern of the contract far below 65536 bytes.
+func lp(b []byte, s string) []byte {
+	b = binary.BigEndian.AppendUint16(b, uint16(len(s)))
+	return append(b, s...)
+}
+
+// AdapterSecrets is the body of POST /v1/adapter/secrets, adapter-secrets.schema.json:
+// the adapter's secrets, [AdapterSecretsPlaintext], sealed to the control plane's server
+// key.
+type AdapterSecrets struct {
+	Version int            `json:"version"`
+	Time    string         `json:"time"`
+	Sealed  SealedToServer `json:"sealed"`
+}
+
+// SealedToServer is a value sealed to the control plane's server key ServerKey, an
+// Ed25519 public key in base64url: Enc, the ephemeral key, and CT, the ciphertext and
+// its tag, each in base64url without padding.
+type SealedToServer struct {
+	Suite     string `json:"suite"`
+	ServerKey string `json:"server_key"`
+	Enc       string `json:"enc"`
+	CT        string `json:"ct"`
+}
+
+// AdapterSecretsAnswer is the body of the answer to GET /v1/adapter/secrets,
+// adapter-secrets-answer.schema.json: the adapter's secrets, [AdapterSecretsPlaintext],
+// sealed to the access key the request verified under.
+type AdapterSecretsAnswer struct {
+	Version  int               `json:"version"`
+	Revision int               `json:"revision"`
+	Sealed   SealedToAccessKey `json:"sealed"`
+}
+
+// SealedToAccessKey is a value sealed to the access key AccessKeyID: Enc, the ephemeral
+// key, and CT, the ciphertext and its tag, each in base64url without padding.
+type SealedToAccessKey struct {
+	Suite       string `json:"suite"`
+	AccessKeyID string `json:"access_key_id"`
+	Enc         string `json:"enc"`
+	CT          string `json:"ct"`
+}
+
+// AdapterSecretsPlaintext is what an adapter's secrets are sealed as,
+// adapter-secrets-plaintext.schema.json. A nil Secrets marshals as an empty list.
+type AdapterSecretsPlaintext struct {
+	Version int           `json:"version"`
+	Secrets []SecretEntry `json:"secrets"`
+}
+
+// SecretEntry is one secret: its name, as the source role's secrets list it, and its
+// value.
+type SecretEntry struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// MarshalJSON writes the plaintext, a nil Secrets as an empty list.
+func (p AdapterSecretsPlaintext) MarshalJSON() ([]byte, error) {
+	type plain AdapterSecretsPlaintext
+	if p.Secrets == nil {
+		p.Secrets = []SecretEntry{}
+	}
+	return json.Marshal(plain(p))
+}
+
+// Check reports the first rule of adapter-secrets-plaintext.schema.json that the
+// plaintext breaks and that the schema does not express: each name appears once, and
+// each value is 1 to [SecretValueMaxBytes] bytes of UTF-8 without a NUL. The message
+// names the secret and never contains a value.
+func (p AdapterSecretsPlaintext) Check() error {
+	seen := map[string]bool{}
+	for _, e := range p.Secrets {
+		if seen[e.Name] {
+			return fmt.Errorf("the secret %q appears twice", e.Name)
+		}
+		seen[e.Name] = true
+		if len(e.Value) < 1 || len(e.Value) > SecretValueMaxBytes || !utf8.ValidString(e.Value) || strings.ContainsRune(e.Value, 0) {
+			return fmt.Errorf("the value of the secret %q is not 1 to %d bytes of UTF-8 without a NUL", e.Name, SecretValueMaxBytes)
+		}
+	}
+	return nil
+}
+
+// Grant is the body of POST /v1/grants, grant.schema.json: one grant of the connection
+// ConnectionID, the access the source grants for one external account, by the adapter's
+// ref GrantRef, linked under the connect pass whose nonce is PassNonce.
+type Grant struct {
+	Version      int    `json:"version"`
+	Time         string `json:"time"`
+	ConnectionID string `json:"connection_id"`
+	GrantRef     string `json:"grant_ref"`
+	PassNonce    string `json:"pass_nonce"`
+}
+
+// Grants is the body of the answer to GET /v1/grants, grants.schema.json: the control
+// plane's copy of the grants of the adapter's connections. A nil Grants marshals as an
+// empty list.
+type Grants struct {
+	Version  int          `json:"version"`
+	Revision int          `json:"revision"`
+	Grants   []GrantEntry `json:"grants"`
+}
+
+// MarshalJSON writes the document, a nil Grants as an empty list.
+func (g Grants) MarshalJSON() ([]byte, error) {
+	type plain Grants
+	if g.Grants == nil {
+		g.Grants = []GrantEntry{}
+	}
+	return json.Marshal(plain(g))
+}
+
+// GrantEntry is one grant of the control plane's copy: the connection that holds it and
+// the grant's ref.
+type GrantEntry struct {
+	ConnectionID string `json:"connection_id"`
+	GrantRef     string `json:"grant_ref"`
 }
 
 // Refusal is the body of the control plane's refusal of an adapter's request,

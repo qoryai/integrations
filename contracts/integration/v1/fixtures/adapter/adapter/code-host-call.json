@@ -29,7 +29,8 @@
         "access": "In Example Tracker, open Settings, then Connected adapters, to change which projects the adapter reads.",
         "disconnect": "In Example Tracker, open Settings, then Connected adapters, and remove the adapter.",
         "collection_noun": {"one": "project", "other": "projects"},
-        "items": false
+        "items": false,
+        "secrets": ["event-secret", "signing-key"]
       }
     }
   }
