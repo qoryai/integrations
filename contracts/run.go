@@ -27,11 +27,12 @@ const MaxInputs = 768 << 10
 // section, and the tiers of the harness section. If the machine's qory version does not
 // meet that requirement, the run stops. It reads none of the other machine keys of that
 // file and none of its git and env sections, so the harness file of the target does not
-// set how the run starts. The run's runtime, model and effort come from the run
-// settings. A tier comes from the run settings if they set it, and otherwise from the
-// file. The machine works at TargetVersion when it is set. A run of the step explore has
-// WorkItem. A run of the step prebuild has Access, Target, ImageDestination and exactly
-// one of EnvironmentDestination and EnvironmentImage, and no TargetVersion, WorkItem,
+// set how the run starts. The run's runtime comes from the run settings. The model, the
+// effort and each tier come from the run settings if they set it, then from the qory
+// configuration of the machine, and otherwise, for a tier only, from the file. The
+// machine works at TargetVersion when it is set. A run of the step explore has WorkItem.
+// A run of the step prebuild has Access, Target, ImageDestination and exactly one of
+// EnvironmentDestination and EnvironmentImage, and no TargetVersion, WorkItem,
 // RunSettings, Workflow, HarnessHidden or Harness. RunSettings is set only for the step
 // explore. Inputs is the step's input as the control plane wrote it, whose shape belongs
 // to the step's schema.
@@ -75,9 +76,10 @@ type Documents struct {
 	// section, and the tiers of the harness section. If the machine's qory version does
 	// not meet that requirement, the run stops. It reads none of the other machine keys
 	// of that file and none of its git and env sections, so the harness file of the
-	// target does not set how the run starts. The run's runtime, model and effort come
-	// from the run settings. A tier comes from the run settings if they set it, and
-	// otherwise from the file.
+	// target does not set how the run starts. The run's runtime comes from the run
+	// settings. The model, the effort and each tier come from the run settings if they
+	// set it, then from the qory configuration of the machine, and otherwise, for a tier
+	// only, from the file.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
