@@ -1,0 +1,6 @@
+{
+  "error": {
+    "kind": "other",
+    "message": "The request exceeded\u0000 a limit at the vendor."
+  }
+}

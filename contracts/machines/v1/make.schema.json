@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/make.schema.json",
+  "title": "Make",
+  "description": "The request of the command make. A machine adapter is a program that makes and deletes machines at one vendor, such as a cloud. The provisioner, the starter of the provisioner contract, https://qory.dev/contracts/provisioner/v1/, runs the adapter to make a machine for each dispatch, and to delete the machine once it stops. With make, the adapter makes one machine at the vendor for the dispatch in key, in the node pool in pool, of the size in size, and passes start_data to the machine. One key makes at most one machine. A second make with the same key makes no machine, and its answer is the id of the machine that the first make with that key made. start_data contains a run code, so it travels only in this request on standard input, never in an argument, and the adapter never writes it to a log. The command line is `<adapter> make --settings FILE`, where FILE is the path of the adapter's settings, whose content each adapter defines. The adapter reads this request as one JSON document on standard input. On success it writes one JSON answer on standard output, make-answer.schema.json, and exits with status 0. On failure it writes error.schema.json on standard output and exits with status 1. The adapter refuses a request with another version, or with a member this schema does not define, as a failure of kind defect.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "key",
+    "pool",
+    "size",
+    "start_data"
+  ],
+  "properties": {
+    "version": {
+      "description": "The request format: 1. The adapter refuses another version, as a failure of kind defect.",
+      "const": 1
+    },
+    "key": {
+      "description": "The dispatch the machine is for, the provisioner contract's dispatch_id. One key makes at most one machine.",
+      "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/dispatch_id"
+    },
+    "pool": {
+      "description": "The node pool the machine is for, the provisioner contract's pool_id.",
+      "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/pool_id"
+    },
+    "size": {
+      "description": "The size of the machine, a name the adapter maps to a machine of the vendor: a lower-case ASCII letter, then lower-case ASCII letters, digits and hyphens, 1 to 64 characters in all. It has the form of machine in the provisioner contract's claim answer, https://qory.dev/contracts/provisioner/v1/claim-answer.schema.json. A make with a size that the adapter's settings do not contain fails with kind defect, because a retry fails the same way.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "start_data": {
+      "description": "The data the machine starts with, in standard base64 with padding, RFC 4648 section 4: at most 16384 bytes once decoded. So the value has at most 21848 characters, and a value of 21845 characters or more ends in ==. The adapter passes the data to the machine unread. The data contains a run code, so it travels only on standard input, never in an argument, and the adapter never writes it to a log.",
+      "type": "string",
+      "maxLength": 21848,
+      "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+      "if": {
+        "minLength": 21845
+      },
+      "then": {
+        "pattern": "==$"
+      }
+    }
+  }
+}

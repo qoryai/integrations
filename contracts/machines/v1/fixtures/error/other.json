@@ -1,0 +1,6 @@
+{
+  "error": {
+    "kind": "other",
+    "message": "The call to the vendor returned status 500."
+  }
+}

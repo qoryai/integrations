@@ -7,6 +7,32 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ## [Unreleased]
 
+### Upgrading
+
+- `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
+  `integration-conformance` and a check against an integration contract schema refuse
+  values they accepted before: a malformed URI or date in an integration document, such
+  as the `created_at` `2026-02-30T00:00:00Z`, and a `pattern` in a description's
+  `settings` that is not a valid regular expression.
+- The module requires Go 1.27.3 or later (`go 1.27.3` in `go.mod`), because Forager does.
+  An integration that requires this module builds with Go 1.27.3 or later. `go.yml` sets
+  `GOTOOLCHAIN` to `go1.27.3+auto`, because its image has Go 1.27.2.
+
+### Added
+
+- A description can declare the role `model_provider`. The role lists the provider's
+  APIs in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
+  subscription token, and optional `key_prefixes`; and the `models` a new provider of
+  this kind starts with.
+- `release.yml` attaches `description.json` to each release: the description that
+  `<program> describe` prints and that passes the `conformance.Description` check.
+  `checksums.txt` lists its SHA-256 beside the archives.
+
+### Changed
+
+- The module requires Forager at its main commit b6ac9f0
+  (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
+
 ## [0.3.0] - 2026-10-12
 
 ### Upgrading

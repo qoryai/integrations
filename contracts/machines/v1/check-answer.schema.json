@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/check-answer.schema.json",
+  "title": "Check answer",
+  "description": "The answer of the command check, on standard output: the empty object, once the adapter has shown that its rights at the vendor and its settings work. The adapter made no machine for it. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

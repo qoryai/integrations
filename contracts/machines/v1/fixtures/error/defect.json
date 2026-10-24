@@ -1,0 +1,6 @@
+{
+  "error": {
+    "kind": "defect",
+    "message": "Unknown command: start."
+  }
+}

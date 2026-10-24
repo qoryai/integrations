@@ -119,6 +119,8 @@ Every integration publishes releases the same way, so any of them installs by on
 - Attach `<program>_X.Y.Z_<os>_<arch>.tar.gz` for `linux` and `darwin`, `amd64` and
   `arm64`, with the program at the archive's root.
 - Attach `checksums.txt` with the SHA-256 of each archive.
+- Attach `description.json`, what `<program> describe` prints, and list its SHA-256 in
+  `checksums.txt` too.
 - `<program> describe` reports `"program_version": "X.Y.Z"`.
 
 `release.yml` does all of this for a Go integration.
@@ -160,7 +162,7 @@ module the integration's `go.mod` requires.
 ## Development
 
 ```sh
-mise install        # Go 1.27.1
+mise install        # Go 1.27.3
 go test ./...
 ```
 

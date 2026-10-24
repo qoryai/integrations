@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/machines/v1/log-answer.schema.json",
+  "title": "Log answer",
+  "description": "The answer of the command log, on standard output: the console text of the machine in the request's id. JSON escaping can make the answer larger than the text: a line feed is written as 2 bytes. So the adapter keeps the last part of the text such that the text is at most 768 KiB as UTF-8 and the answer, as written, is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "log"
+  ],
+  "properties": {
+    "log": {
+      "description": "The machine's console text, at most 768 KiB as UTF-8: the last part of the text when the whole text is larger. The text contains no U+0000. This schema checks the bound in characters, at most 786432.",
+      "type": "string",
+      "maxLength": 786432,
+      "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/text"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "machines": [
+    {
+      "id": "machine-7f3a9c21",
+      "key": "dp_8w3k0q9t2v7m4r6x",
+      "state": "running",
+      "started": "2026-10-15T12:01:05Z"
+    },
+    {
+      "id": "machine-0b9d2e44",
+      "key": "dp_0123456789abcdef",
+      "state": "starting",
+      "started": "2026-10-15T12:04:30Z"
+    },
+    {
+      "id": "machine-5c1e8a07",
+      "key": "dp_1123456789abcdef",
+      "state": "stopped",
+      "started": "2026-10-15T11:40:00Z"
+    },
+    {
+      "id": "machine-9e2f4b16",
+      "key": "dp_2123456789abcdef",
+      "state": "deleting",
+      "started": "2026-10-15T11:20:00Z"
+    }
+  ]
+}
