@@ -72,6 +72,11 @@
 // a workspace. forager/accesskey is the reference signer; an adapter may sign to this
 // text itself.
 //
+// The control plane also calls an adapter, at the call_url the adapter declares in its
+// start-up body: each call is a POST, a [Call], signed with the control plane's server
+// key over [CallDomain], and the adapter signs its answer, a [CallAnswer], with its
+// access key over [CallAnswerDomain], bound to the call's signature.
+//
 // The provisioner contract holds the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its
 // [ClaimAnswer], whose run code and gateway URL it passes to the machine it creates,

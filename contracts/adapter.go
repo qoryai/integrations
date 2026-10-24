@@ -1,8 +1,14 @@
 package contracts
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 )
 
@@ -35,6 +41,67 @@ const SetupDomain = "qory-setup-ed25519-v1"
 // pass's.
 const ConnectReturnDomain = "qory-connect-return-ed25519-v1"
 
+// CallDomain is the first line of the message a call's signature covers, [Call.Message]:
+// the control plane signs a call to the adapter with its server key over it. It keeps a
+// call's signature from verifying as a request's, an answer's, a pass's or a connect
+// return's.
+const CallDomain = "qory-call-ed25519-v1"
+
+// CallAnswerDomain is the first line of the message the signature of an answer to a call
+// covers, [CallAnswer.Message]: the adapter signs it with its access key. It keeps that
+// signature from verifying as a request's, an answer's, a call's or a connect return's.
+const CallAnswerDomain = "qory-call-answer-ed25519-v1"
+
+// HeaderAdapterID is the header of a call that contains the adapter id the control plane
+// enrolled the adapter as, na_ and 16 characters.
+const HeaderAdapterID = "X-Qory-Adapter-Id"
+
+// ErrCallMethod is the error of a call whose method is not POST, the one method a call
+// has.
+var ErrCallMethod = errors.New("a call is a POST, and no other method")
+
+// Call is one call of the control plane to the adapter, as its signature covers it. The
+// message is six lines joined by a line feed, with none after the last: [CallDomain], the
+// adapter id, the instance id, the method in upper case, the call's path as its schema
+// states it, such as resolve, and the raw body.
+type Call struct {
+	AdapterID  string
+	InstanceID string
+	Method     string
+	Path       string
+	Body       []byte
+}
+
+// Message returns the bytes the call's signature covers, or [ErrCallMethod] for a method
+// other than POST.
+func (c Call) Message() ([]byte, error) {
+	method := strings.ToUpper(c.Method)
+	if method != http.MethodPost {
+		return nil, ErrCallMethod
+	}
+	var b bytes.Buffer
+	b.WriteString(CallDomain + "\n" + c.AdapterID + "\n" + c.InstanceID + "\n" + method + "\n" + c.Path + "\n")
+	b.Write(c.Body)
+	return b.Bytes(), nil
+}
+
+// CallAnswer is the adapter's answer to a call, as its signature covers it: four lines
+// joined by a line feed, with none after the last: [CallAnswerDomain], the status as three
+// decimal digits, the call's X-Qory-Signature-Ed25519 exactly as sent, and the lower-case
+// hex SHA-256 of the body. The third line binds the answer to the call it answers.
+type CallAnswer struct {
+	Status        int
+	CallSignature string
+	Body          []byte
+}
+
+// Message returns the four lines the answer's signature covers.
+func (a CallAnswer) Message() []byte {
+	sum := sha256.Sum256(a.Body)
+	return []byte(CallAnswerDomain + "\n" + fmt.Sprintf("%03d", a.Status) + "\n" + a.CallSignature + "\n" +
+		hex.EncodeToString(sum[:]))
+}
+
 // ConnectPassMaxLength is the most characters a connect pass has, whole.
 const ConnectPassMaxLength = 1024
 
@@ -56,15 +123,18 @@ func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 // Adapter is the body of POST /v1/adapter, adapter.schema.json, which an adapter sends
 // each time it starts, and again once it is set up at its source. SetupURL is set only
 // while the adapter is not set up at its source; empty, the start-up has no setup_url,
-// and the control plane shows no setup step. Description is the document `<program>
-// describe` prints for the adapter's program, description.schema.json, sent whole: the
-// same JSON document, which json.Marshal writes compacted and with <, > and & escaped. A
-// nil Description marshals as null, which adapter.schema.json refuses.
+// and the control plane shows no setup step. CallURL is the base address at which the
+// control plane calls the adapter, whose path ends with /; empty, the start-up has no
+// call_url, and the control plane makes no call to the adapter. Description is the
+// document `<program> describe` prints for the adapter's program, description.schema.json,
+// sent whole: the same JSON document, which json.Marshal writes compacted and with <, >
+// and & escaped. A nil Description marshals as null, which adapter.schema.json refuses.
 type Adapter struct {
 	Version     int             `json:"version"`
 	Time        string          `json:"time"`
 	ConnectURL  string          `json:"connect_url"`
 	SetupURL    string          `json:"setup_url,omitempty"`
+	CallURL     string          `json:"call_url,omitempty"`
 	Sync        Sync            `json:"sync"`
 	Description json.RawMessage `json:"description"`
 }

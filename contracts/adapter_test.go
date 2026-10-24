@@ -165,6 +165,9 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-setup-url-bare-state.json":                    {"adapter", "/setup_url "},
 		"adapter-setup-url-state-first.json":                   {"adapter", "/setup_url "},
 		"adapter-setup-url-state-percent-encoded.json":         {"adapter", "/setup_url "},
+		"adapter-call-url-http.json":                           {"adapter", "/call_url pattern"},
+		"adapter-call-url-query.json":                          {"adapter", "/call_url pattern"},
+		"adapter-call-url-without-final-slash.json":            {"adapter", "/call_url pattern"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -316,6 +319,9 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			Nonce: "EBESExQVFhcYGRobHB0eHw", ExpiresAt: now}},
 		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
 			SetupURL: "https://adapter.example.com/setup", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
+			Description: read(t, "fixtures/example-tracker.json")}},
+		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
+			CallURL: "https://adapter.example.com/calls/", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
 			Description: read(t, "fixtures/example-tracker.json")}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 	}
@@ -649,8 +655,8 @@ func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
 }
 
 // fixtureKeys are the keys of fixtures/adapter/signed/keys.json: the access key that
-// signs the requests, and the server key that signs the answer, the connect pass and the
-// setup pass.
+// signs the requests and the answer to a call, and the server key that signs the answer,
+// the connect pass, the setup pass and the call.
 func fixtureKeys(t *testing.T) (access *accesskey.Key, id, instance string, server *accesskey.Key) {
 	t.Helper()
 	var doc struct {
@@ -1144,5 +1150,221 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 				t.Errorf("%s: %v", f, err)
 			}
 		}
+	}
+}
+
+// TestACallURLIsRefusedForItsOneFault pins the reason of each invalid start-up fixture
+// whose call_url breaks one of its two patterns, which the refusal does not tell apart:
+// the same document is accepted once the one fault is fixed. It also pins that the
+// start-up fixture with a call_url decodes into Adapter with CallURL set, and that an
+// Adapter without a CallURL marshals no call_url member.
+func TestACallURLIsRefusedForItsOneFault(t *testing.T) {
+	schema := compile(t, "adapter.schema.json")
+	for name, fix := range map[string][2]string{
+		"adapter-call-url-http.json":                {"http://", "https://"},
+		"adapter-call-url-query.json":               {"/calls/?site=main/", "/calls/"},
+		"adapter-call-url-without-final-slash.json": {"/calls\"", "/calls/\""},
+	} {
+		b := read(t, "fixtures/adapter/invalid/"+name)
+		if validate(schema, b) == nil {
+			t.Errorf("%s is accepted", name)
+		}
+		fixed := bytes.Replace(b, []byte(fix[0]), []byte(fix[1]), 1)
+		if bytes.Equal(fixed, b) {
+			t.Errorf("%s holds no %q", name, fix[0])
+		}
+		if err := validate(schema, fixed); err != nil {
+			t.Errorf("%s with %q for %q is refused: %v", name, fix[1], fix[0], err)
+		}
+	}
+	var a contracts.Adapter
+	if err := json.Unmarshal(read(t, "fixtures/adapter/adapter/code-host-call.json"), &a); err != nil {
+		t.Fatal(err)
+	}
+	if a.CallURL != "https://code-adapter.example.com/calls/" {
+		t.Errorf("code-host-call.json decodes call_url as %q", a.CallURL)
+	}
+	a.CallURL = ""
+	b, err := json.Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(b, []byte(`"call_url"`)) {
+		t.Errorf("an adapter without a call URL marshals to %s, with a call_url member", b)
+	}
+}
+
+// signedCall is the signed call of fixtures/adapter/signed/call.json.
+type signedCall struct {
+	Method  string            `json:"method"`
+	Path    string            `json:"path"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+}
+
+// readCall reads the signed call of fixtures/adapter/signed/call.json as Call, and its
+// signature.
+func readCall(t *testing.T) (contracts.Call, string, signedCall) {
+	t.Helper()
+	var s signedCall
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/call.json"), &s); err != nil {
+		t.Fatal(err)
+	}
+	c := contracts.Call{AdapterID: s.Headers[contracts.HeaderAdapterID], InstanceID: s.Headers[accesskey.HeaderInstanceID],
+		Method: s.Method, Path: s.Path, Body: []byte(s.Body)}
+	return c, s.Headers[accesskey.HeaderSignature], s
+}
+
+// callMessage returns the message of a call, or fails the test.
+func callMessage(t *testing.T, c contracts.Call) []byte {
+	t.Helper()
+	m, err := c.Message()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+// TestTheSignedCallVerifies pins the signed call of fixtures/adapter/signed: a POST to
+// the call_url of code-host-call.json followed by its path, for the adapter id and the
+// instance id of the fixtures, whose body's time is its moment, verifies under a pin of
+// the fixture server key, beside another key as after a rotation, and fails with one
+// byte of its body, its adapter id, its instance id or its path changed, under a pin
+// without the server key, and as a GET.
+func TestTheSignedCallVerifies(t *testing.T) {
+	access, _, instance, server := fixtureKeys(t)
+	c, sig, s := readCall(t)
+	var startup contracts.Adapter
+	if err := json.Unmarshal(read(t, "fixtures/adapter/adapter/code-host-call.json"), &startup); err != nil {
+		t.Fatal(err)
+	}
+	if c.Method != "POST" || s.URL != startup.CallURL+c.Path || c.AdapterID != "na_f1xt0re000000000" || c.InstanceID != instance ||
+		s.Headers["Content-Type"] != "application/json" || s.Headers["X-Qory-Contract-Version"] != strconv.Itoa(contracts.Revision) {
+		t.Errorf("call.json is not a POST to the call_url of code-host-call.json for the fixture adapter: %+v", s)
+	}
+	var body struct {
+		Time string `json:"time"`
+	}
+	if err := json.Unmarshal(c.Body, &body); err != nil || body.Time != "2026-10-15T12:00:00Z" {
+		t.Errorf("call.json: the body's time is %q, %v", body.Time, err)
+	}
+	pin := accesskey.Pin{
+		{Alg: "ed25519", PublicKey: access.PublicKey().String()},
+		{Alg: "ed25519", PublicKey: server.PublicKey().String()},
+	}
+	if !pin.Verify(callMessage(t, c), sig) {
+		t.Error("call.json: the signature does not verify under the server key")
+	}
+	for what, changed := range map[string]contracts.Call{
+		"a byte of its body":  {AdapterID: c.AdapterID, InstanceID: c.InstanceID, Method: c.Method, Path: c.Path, Body: bytes.Replace(c.Body, []byte("acme"), []byte("acmE"), 1)},
+		"its adapter id":      {AdapterID: "na_f1xt0re000000001", InstanceID: c.InstanceID, Method: c.Method, Path: c.Path, Body: c.Body},
+		"its instance id":     {AdapterID: c.AdapterID, InstanceID: "i_another", Method: c.Method, Path: c.Path, Body: c.Body},
+		"its path":            {AdapterID: c.AdapterID, InstanceID: c.InstanceID, Method: c.Method, Path: "read", Body: c.Body},
+		"its address as path": {AdapterID: c.AdapterID, InstanceID: c.InstanceID, Method: c.Method, Path: "/calls/resolve", Body: c.Body},
+	} {
+		if pin.Verify(callMessage(t, changed), sig) {
+			t.Errorf("call.json verifies with %s changed", what)
+		}
+	}
+	if (accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}).Verify(callMessage(t, c), sig) {
+		t.Error("call.json verifies under a pin without the server key")
+	}
+	get := c
+	get.Method = "GET"
+	if _, err := get.Message(); err != contracts.ErrCallMethod {
+		t.Errorf("a GET call has a message, %v", err)
+	}
+}
+
+// TestTheSignedCallAnswerVerifies pins the answer of fixtures/adapter/signed to the
+// signed call: a 200 bound to the call's signature verifies under the fixture access
+// key's public half over CallAnswerDomain, and fails bound to another call, with another
+// status, with one byte of its body changed, and under the server key.
+func TestTheSignedCallAnswerVerifies(t *testing.T) {
+	access, _, _, server := fixtureKeys(t)
+	_, callSig, _ := readCall(t)
+	var doc struct {
+		Status  int               `json:"status"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/call-answer.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	sig := doc.Headers[accesskey.HeaderSignature]
+	pin := accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}
+	a := contracts.CallAnswer{Status: doc.Status, CallSignature: callSig, Body: []byte(doc.Body)}
+	if doc.Status != 200 || !pin.Verify(a.Message(), sig) {
+		t.Error("call-answer.json: the signature does not verify as a 200 to call.json")
+	}
+	for what, changed := range map[string]contracts.CallAnswer{
+		"bound to another call": {Status: a.Status, CallSignature: strings.Repeat("A", 86), Body: a.Body},
+		"with another status":   {Status: 201, CallSignature: a.CallSignature, Body: a.Body},
+		"with a byte changed":   {Status: a.Status, CallSignature: a.CallSignature, Body: bytes.Replace(a.Body, []byte("G_1"), []byte("G_2"), 1)},
+	} {
+		if pin.Verify(changed.Message(), sig) {
+			t.Errorf("call-answer.json verifies %s", what)
+		}
+	}
+	if (accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}).Verify(a.Message(), sig) {
+		t.Error("call-answer.json verifies under the server key")
+	}
+}
+
+// TestACallVerifiesOverItsDomainAlone pins that a call's signature verifies only as a
+// call, and an answer to a call only as such an answer: the signed call does not verify
+// as a request of the same fields, as an answer bound to it, or as a pass or a connect
+// return of its body; the signed answer to it does not verify as accesskey's Answer; and
+// neither the signed GET of the change feed nor its signed answer verifies as a call or
+// as an answer to a call.
+func TestACallVerifiesOverItsDomainAlone(t *testing.T) {
+	access, _, _, server := fixtureKeys(t)
+	serverPin := accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}
+	accessPin := accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}
+	c, sig, _ := readCall(t)
+	asRequest, err := accesskey.Request{AccessKeyID: c.AdapterID, InstanceID: c.InstanceID, Method: c.Method, Target: c.Path, Body: c.Body}.Message()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for what, m := range map[string][]byte{
+		"a request":        asRequest,
+		"an answer":        accesskey.Answer{Status: 200, RequestSignature: sig, Body: c.Body}.Message(),
+		"a connect pass":   append([]byte(contracts.ConnectDomain+"\n"), c.Body...),
+		"a setup pass":     append([]byte(contracts.SetupDomain+"\n"), c.Body...),
+		"a connect return": append([]byte(contracts.ConnectReturnDomain+"\n"), c.Body...),
+	} {
+		if serverPin.Verify(m, sig) {
+			t.Errorf("the signed call verifies as %s", what)
+		}
+	}
+	var answer struct {
+		Status  int               `json:"status"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/call-answer.json"), &answer); err != nil {
+		t.Fatal(err)
+	}
+	if accessPin.Verify(accesskey.Answer{Status: answer.Status, RequestSignature: sig, Body: []byte(answer.Body)}.Message(),
+		answer.Headers[accesskey.HeaderSignature]) {
+		t.Error("the signed answer to the call verifies as accesskey's Answer")
+	}
+	get, s := request(t, "fixtures/adapter/signed/get-changes.json")
+	asCall := contracts.Call{AdapterID: get.AccessKeyID, InstanceID: get.InstanceID, Method: "POST", Path: get.Target, Body: []byte(get.Timestamp)}
+	if accessPin.Verify(callMessage(t, asCall), s.Headers[accesskey.HeaderSignature]) {
+		t.Error("the signed GET of the change feed verifies as a call")
+	}
+	var changes struct {
+		Status  int               `json:"status"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/answer-changes.json"), &changes); err != nil {
+		t.Fatal(err)
+	}
+	if serverPin.Verify(contracts.CallAnswer{Status: changes.Status, CallSignature: s.Headers[accesskey.HeaderSignature],
+		Body: []byte(changes.Body)}.Message(), changes.Headers[accesskey.HeaderSignature]) {
+		t.Error("the signed answer of the change feed verifies as an answer to a call")
 	}
 }
