@@ -18,10 +18,12 @@ name: Release an integration
 #
 # It builds the program from ./cmd/<program> for Linux and macOS, amd64 and arm64, with
 # its version set to the tag's, and publishes <program>_<version>_<os>_<arch>.tar.gz with
-# the program at the archive's root, and checksums.txt, the SHA-256 of each archive. The
-# release's body is the version's section of CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD": a
-# tag without one publishes nothing. Neither does a program whose describe fails or prints
-# a description that fails conformance.Description: the release builds
+# the program at the archive's root; description.json, the description that describe
+# prints and that conformance.Description accepts; and checksums.txt, the SHA-256 of each
+# archive and of description.json. The release's body is the version's section of
+# CHANGELOG.md, "## [X.Y.Z] - YYYY-MM-DD": a tag without one publishes nothing. Neither
+# does a program whose describe fails or prints a description that fails
+# conformance.Description: the release builds
 # github.com/qoryai/integrations/cmd/integration-conformance within the integration's Go
 # module, with the version of this module its go.mod requires, and runs it on what
 # describe prints. A go.mod that does not require github.com/qoryai/integrations, or
@@ -108,11 +110,17 @@ jobs:
               files: [$files]
           checksum:
             name_template: checksums.txt
+            extra_files:
+              - glob: $RUNNER_TEMP/description.json
+                name_template: description.json
           changelog:
             use: github
             sort: asc
           release:
             prerelease: auto
+            extra_files:
+              - glob: $RUNNER_TEMP/description.json
+                name_template: description.json
           EOF
 
       - name: Describe the program
