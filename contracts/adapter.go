@@ -170,15 +170,17 @@ func (s SourceCollections) MarshalJSON() ([]byte, error) {
 	return json.Marshal(plain(s))
 }
 
-// Collection is a place at the source that items are listed from. EnvironmentRef is an
-// id of the collection's environment definition, as the adapter reads it: it changes
-// whenever that definition changes; empty, the collection has none. Items points to false
-// while the collection has no items; nil, the collection has items whenever its source
-// does.
+// Collection is a place at the source that items are listed from. GrantRef is the
+// grant_ref of the grant under the same connection that covers the collection, as the
+// adapter reports it in a [Grant]. EnvironmentRef is an id of the collection's
+// environment definition, as the adapter reads it: it changes whenever that definition
+// changes; empty, the collection has none. Items points to false while the collection
+// has no items; nil, the collection has items whenever its source does.
 type Collection struct {
 	Ref            string  `json:"ref"`
 	URL            string  `json:"url"`
 	Title          string  `json:"title"`
+	GrantRef       string  `json:"grant_ref"`
 	Target         *Target `json:"target,omitempty"`
 	EnvironmentRef string  `json:"environment_ref,omitempty"`
 	Items          *bool   `json:"items,omitempty"`
@@ -573,14 +575,23 @@ func (p AdapterSecretsPlaintext) Check() error {
 }
 
 // Grant is the body of POST /v1/grants, grant.schema.json: one grant of the connection
-// ConnectionID, the access the source grants for one external account, by the adapter's
-// ref GrantRef, linked under the connect pass whose nonce is PassNonce.
+// ConnectionID, the access the source grants for the external account Account, by the
+// adapter's ref GrantRef, linked under the connect pass whose nonce is PassNonce.
 type Grant struct {
-	Version      int    `json:"version"`
-	Time         string `json:"time"`
-	ConnectionID string `json:"connection_id"`
-	GrantRef     string `json:"grant_ref"`
-	PassNonce    string `json:"pass_nonce"`
+	Version      int     `json:"version"`
+	Time         string  `json:"time"`
+	ConnectionID string  `json:"connection_id"`
+	GrantRef     string  `json:"grant_ref"`
+	Account      Account `json:"account"`
+	PassNonce    string  `json:"pass_nonce"`
+}
+
+// Account is the external account of a [Grant] at the source: Ref, its id at the
+// source, 1 to 200 characters, and Title, its display name, one line of 1 to 1024
+// characters.
+type Account struct {
+	Ref   string `json:"ref"`
+	Title string `json:"title"`
 }
 
 // Grants is the body of the answer to GET /v1/grants, grants.schema.json: the control
