@@ -16,39 +16,40 @@ const MaxInputs = 768 << 10
 // when Target is. Workflow is set exactly when HarnessHidden is, and a run with Workflow
 // has Harness, TargetVersion, or both. When the run composes a harness, the harness
 // comes from one of two places. If TargetVersion is set and the read of the harness file
-// of the target returned a file whose harness section has extends, a base, the machine
-// composes that file at TargetVersion, and Harness is nil. The run documents contain
-// Harness in three cases: TargetVersion is set and the read returned a file whose
-// harness section is absent or has no extends; TargetVersion is set and the read
-// returned found: false; or TargetVersion is empty, because the run has no target or the
-// control plane read no harness file of the target. When Harness is set, the machine
-// composes Harness instead of the harness section of the harness file of the target. Of
-// that file, the machine applies the qory version that the file requires, the worktree
-// section, and the tiers of the harness section, as the doc of [RunSettings.Tiers]
-// states. If the machine's qory version does not meet that requirement, the run stops.
-// It reads none of the other machine keys of that file and none of its git and env
-// sections, so the harness file of the target does not set how the run starts. The
-// machine works at TargetVersion when it is set. A run of the step explore has WorkItem.
-// A run of the step prebuild has Access, Target, ImageDestination and exactly one of
-// EnvironmentDestination and EnvironmentImage, and no TargetVersion, WorkItem,
-// RunSettings, Workflow, HarnessHidden or Harness. RunSettings is set only for the step
-// explore. Inputs is the step's input as the control plane wrote it, whose shape belongs
-// to the step's schema.
+// of the target returned a file whose harness section extends a stack or defines one,
+// the machine composes that file at TargetVersion, and Harness is nil. A harness section
+// extends a stack when it has extends, a base, and defines one when it has no extends
+// and has modules. The run documents contain Harness in three cases: TargetVersion is
+// set and the read returned a file whose harness section is absent or has neither
+// extends nor modules; TargetVersion is set and the read returned found: false; or
+// TargetVersion is empty, because the run has no target or the control plane read no
+// harness file of the target. When Harness is set, the machine composes Harness instead
+// of the harness section of the harness file of the target. Of that file, the machine
+// applies the qory version that the file requires, the worktree section, and the tiers
+// of the harness section, as the doc of [RunSettings.Tiers] states. If the machine's
+// qory version does not meet that requirement, the run stops. It reads none of the other
+// machine keys of that file and none of its git and env sections, so the harness file of
+// the target does not set how the run starts. The machine works at TargetVersion when it
+// is set. A run of the step explore has WorkItem. A run of the step prebuild has Access,
+// Target, ImageDestination and exactly one of EnvironmentDestination and
+// EnvironmentImage, and no TargetVersion, WorkItem, RunSettings, Workflow, HarnessHidden
+// or Harness. RunSettings is set only for the step explore. Inputs is the step's input
+// as the control plane wrote it, whose shape belongs to the step's schema.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
 	Inputs json.RawMessage `json:"inputs"`
 	Access string          `json:"access,omitempty"`
 	Target *Target         `json:"target,omitempty"`
-	// TargetVersion is set only with Target, and never for the step prebuild: the
-	// version of the target at which the control plane checked for a harness file, the
-	// resolved_at of the read at the path of the harness file, whether the read returned
-	// the file or found: false. The machine works at this version, and composes the
-	// harness file at it when the read returned a file whose harness section has
-	// extends. It is the exact version that the read returned, never a name that can
-	// point to another version later, because the machine would then compose a file that
-	// the control plane did not read: 1 to 255 letters, digits and the characters ._/-,
-	// a generic grammar, because a target in another system has another kind of version.
+	// TargetVersion is set only with Target, and never for the step prebuild: the version
+	// of the target at which the control plane checked for a harness file, the resolved_at
+	// of the read at the path of the harness file, whether the read returned the file or
+	// found: false. The machine works at this version, and composes the harness file at it
+	// when the read returned a file whose harness section has extends or modules. It is the
+	// exact version that the read returned, never a name that can point to another version
+	// later, because the machine would then compose a file that the control plane did not
+	// read: 1 to 255 letters, digits and the characters ._/-, a generic grammar, because a
+	// target in another system has another kind of version.
 	TargetVersion string       `json:"target_version,omitempty"`
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
 	RunSettings   *RunSettings `json:"run_settings,omitempty"`
@@ -62,20 +63,20 @@ type Documents struct {
 	HarnessHidden *bool `json:"harness_hidden,omitempty"`
 	// Harness is set only when the run composes a harness, in one of three cases:
 	// TargetVersion is set and the read returned a harness file of the target whose
-	// harness section is absent or has no extends; TargetVersion is set and the read
-	// returned found: false; or TargetVersion is empty, because the run has no target or
-	// the control plane read no harness file of the target. It is the harness document
-	// of the workspace, in the form of qory.yaml, which the control plane takes from the
-	// settings of the workspace. If TargetVersion is set and the read returned a file
-	// whose harness section has extends, a base, the machine composes that file at
-	// TargetVersion, and Harness is nil. When Harness is set, the machine composes
-	// Harness instead of the harness section of the harness file of the target. Of that
-	// file, the machine applies the qory version that the file requires, the worktree
-	// section, and the tiers of the harness section, as the doc of [RunSettings.Tiers]
-	// states. If the machine's qory version does not meet that requirement, the run
-	// stops. It reads none of the other machine keys of that file and none of its git
-	// and env sections, so the harness file of the target does not set how the run
-	// starts.
+	// harness section is absent or has neither extends nor modules; TargetVersion is set
+	// and the read returned found: false; or TargetVersion is empty, because the run has
+	// no target or the control plane read no harness file of the target. It is the
+	// harness document of the workspace, in the form of qory.yaml, which the control
+	// plane takes from the settings of the workspace. If TargetVersion is set and the
+	// read returned a file whose harness section has extends or modules, the machine
+	// composes that file at TargetVersion, and Harness is nil. When Harness is set, the
+	// machine composes Harness instead of the harness section of the harness file of the
+	// target. Of that file, the machine applies the qory version that the file requires,
+	// the worktree section, and the tiers of the harness section, as the doc of
+	// [RunSettings.Tiers] states. If the machine's qory version does not meet that
+	// requirement, the run stops. It reads none of the other machine keys of that file
+	// and none of its git and env sections, so the harness file of the target does not
+	// set how the run starts.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
@@ -121,8 +122,9 @@ type HarnessDocument struct {
 // stack or defines one. A section with Extends appends Modules to that stack, the
 // base, and takes the workflows of the base, so it has no Workflows. A section without
 // Extends defines a stack: it requires Modules, at least 1, and may have Workflows, in
-// which the stack declares the access level of each of its workflows. Either kind may
-// have Bind, Extensions, Name and Description.
+// which the stack declares the access level of each of its workflows. A section that
+// defines a stack, without Extends, takes no target: the run composes it for
+// run_settings.runtime. Either kind may have Bind, Extensions, Name and Description.
 type HarnessSection struct {
 	// Name is the name of the harness.
 	Name string `json:"name,omitempty"`

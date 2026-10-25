@@ -47,8 +47,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   send `account`, `{ref, title}`: `ref` is the external account's id at the source, and
   `title` is its display name, one line. In each collection of
   `POST /v1/source-collections`, send `grant_ref`, the grant under the same connection
-  that covers the collection. In Go, `Grant.Account`, `Account` and `Collection.GrantRef`
-  are added.
+  that covers the collection. List a collection only after the control plane accepts the
+  report of its grant: the control plane refuses a part that contains a `grant_ref` its
+  copy of grants does not have under that connection, `400 invalid_request`. In Go,
+  `Grant.Account`, `Account` and `Collection.GrantRef` are added.
 - If an adapter ends one grant of a connection, as when one external account withdraws
   the access it gave at the source, send `POST /v1/grants/end` with `connection_id` and
   `grant_ref`, instead of `POST /v1/connections/disconnect`, which ends the whole
@@ -139,10 +141,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `run_settings`, `workflow`, `harness_hidden`, `harness`, `image_destination`,
   `environment_destination` and `environment_image` by step. `target_version` is the exact
   version at which the control plane checked for the harness file of the target.
-  `harness` is present when that file is absent, has no `extends`, or was not read, and
-  the machine then composes `harness`. The registry host of `image_destination`,
-  `environment_destination` and `environment_image` is lower case only, and a Docker Hub
-  host is refused.
+  `harness` is present when that file is absent, when its `harness` section has neither
+  `extends` nor `modules`, or when the file was not read, and the machine then composes
+  `harness`. The registry host of `image_destination`, `environment_destination` and
+  `environment_image` is lower case only, and a Docker Hub host is refused.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
   `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
