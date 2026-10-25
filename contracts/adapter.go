@@ -618,8 +618,9 @@ const RunCredentialTokenMaxBytes = 16384
 
 // RunCredential is the body of the call with the path [RunCredentialPath],
 // run-credential.schema.json: a credential for one run under the grant GrantRef,
-// covering Resources, 1 to 64 resource refs, with Access "read" or "write" and Purpose
-// "harness" or "work".
+// covering Resources, with Access "read" or "write" and Purpose "harness" or "work".
+// Resources has 1 to 64 resource refs for Purpose "harness", and exactly one, the
+// resource of the run's target, for Purpose "work".
 type RunCredential struct {
 	Version   int      `json:"version"`
 	Time      string   `json:"time"`
