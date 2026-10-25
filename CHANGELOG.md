@@ -14,16 +14,127 @@ change what an existing reader or program relies on, and notes it under Upgradin
   values they accepted before: a malformed URI or date in an integration document, such
   as the `created_at` `2026-02-30T00:00:00Z`, and a `pattern` in a description's
   `settings` that is not a valid regular expression.
+- `conformance.Description` and `integration-conformance` refuse a description that goes
+  past a limit of `description.schema.json`, and `release.yml` publishes nothing for one:
+  more than 262144 bytes, bytes that are not UTF-8, a `\u` escape of a lone surrogate, an
+  object that repeats a member, a string or member name of more than 16384 bytes, more
+  than 4096 JSON values, more than 64 levels of nesting, or an array or object with more
+  than 1024 entries.
+- Add each host in the `credential` role's `hosts` to `egress_hosts`.
+  `conformance.Description` refuses a credential host without an equal entry there, so a
+  description of 0.3.0 with a `credential` role and no `egress_hosts` fails the check.
+  `conformance.Description` also refuses a credential host with `*.` in front.
 - The module requires Go 1.27.3 or later (`go 1.27.3` in `go.mod`), because Forager does.
   An integration that requires this module builds with Go 1.27.3 or later. `go.yml` sets
   `GOTOOLCHAIN` to `go1.27.3+auto`, because its image has Go 1.27.2.
+- Run documents have no `stack` and no `stack_reference`, members that this module had
+  after 0.3.0 and before this release. A reader takes the harness from the harness file
+  of the target at `target_version`, or from `harness`, as Added describes.
+- An adapter written to the adapter contract as this module had it after 0.3.0 accepts
+  change feed entries of the kind `grant`, because `changes.schema.json` refuses an entry
+  of a kind it does not list. After it mints a linked connect return, the adapter reports
+  the grant with `POST /v1/grants`. It reads `GET /v1/grants` when it starts, follows the
+  `grant` entries, and matches its state to that copy. It accepts a connect pass for a
+  live connection, which adds or replaces the grant of one external account.
 
 ### Added
 
-- A description can declare the role `model_provider`. The role lists the provider's
-  APIs in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
-  subscription token, and optional `key_prefixes`; and the `models` a new provider of
-  this kind starts with.
+- A description can declare the role `model_provider`. The role lists the provider's APIs
+  in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
+  subscription access token, and optional `key_prefixes`; and the `models` a new provider
+  of this kind starts with.
+- A description in the data form has no `program_version`: it is a file that no program
+  prints, its one role is `model_provider`, and its settings have no member `writeOnly`.
+  `descriptions/` contains the data descriptions of five model providers, and the `name`
+  of each is its file name without `.json`.
+- A description can list `egress_hosts`, every host that runs of the integration reach:
+  each entry is an exact lower-case host, or `{"setting": "<name>"}` for the host of the
+  URL in a string setting that is not a secret. Each host of the `credential` role and of
+  the `source` role's `apply` items has an equal entry, and so does each `model_provider`
+  API endpoint: its host, or its setting. A single label, a localhost name, a loopback,
+  link-local or `0.0.0.0/8` IPv4 address, and a number other than a canonical IPv4 address
+  are refused.
+- A description can declare the role `source`, the adapter that reads a source of work,
+  such as a tracker: its catalogue line in `description`; its `program`, which takes the
+  enrol command `<program> access-key enrol --secret-file FILE <server> <code>`; `setup`,
+  the command that prepares the source side; `start`, the command that runs the program;
+  the lines `connect`, `access` and `disconnect`; and the optional `item_noun`,
+  `collection_noun`, `items: false`, `secrets`, `credential_scope` and `apply`. `secrets`
+  lists the names of 1 to 16 secrets that the adapter stores in the control plane.
+  `credential_scope` is `resource` or `grant`, how far one run credential reaches, and
+  absent means `resource`. `apply` has 1 to 16 apply items in the shape of Forager's
+  apply, for the run's work credential; a path may contain `{target.path}` once, right
+  after a `/`, which the control plane fills with the path of the run's target.
+- The adapter contract in `contracts/integration/v1`, revision 1: the signed requests that
+  a source adapter sends the control plane, `POST /v1/adapter` at start-up,
+  `POST /v1/source-collections`, `POST /v1/source-items`,
+  `POST /v1/source-items/comments`, `POST /v1/sources/disconnect` and
+  `POST /v1/connections/disconnect`, and the change feed `GET /v1/work-items/changes`,
+  with the entry kinds `work_item`, `collection`, `grant` and `sync`. The adapter signs
+  each request with its access key as `github.com/qoryai/forager/accesskey` signs one,
+  sends the revision in `X-Qory-Contract-Version`, and checks each signed answer under a
+  server key it pinned at enrolment. `refusal.schema.json` lists the refusals.
+- A connect pass and a setup pass, signed by the control plane, send a person to the
+  adapter's `connect_url` or `setup_url`, and a connect return, signed by the adapter,
+  sends the person back. A connect pass may be for a live connection, to add or replace
+  the grant of one external account.
+- Grants: a connection has one grant per external account at the source. The adapter
+  reports one grant with `POST /v1/grants`, with `connection_id`, `grant_ref` and
+  `pass_nonce`, and the grant is added only when the control plane accepts the report.
+  `GET /v1/grants` returns the control plane's copy of grants, and the adapter matches its
+  state to that copy.
+- Adapter secrets: the adapter uploads up to 16 values with `POST /v1/adapter/secrets`,
+  each at most 16384 bytes, sealed with HPKE `x25519-sha256-aes256gcm` to a pinned server
+  key, and `GET /v1/adapter/secrets` returns them sealed to the adapter's access key.
+- Calls: when the adapter declares `call_url` in its start-up body, the control plane
+  calls it with a `POST` signed with its server key over `qory-call-ed25519-v1`, and the
+  adapter signs its answer with its access key over `qory-call-answer-ed25519-v1`, bound
+  to the call's signature. `resolve` maps 1 to 64 addresses each to a `grant_ref` and a
+  `resource_ref`, or to `covered: false`. `read` returns the text of one document of a
+  resource at one version, at most 262144 bytes, or `found: false`, with the exact version
+  read in `resolved_at`. `run-credential` returns an access credential for one run: for
+  the purpose `harness`, with read access under one grant; for the purpose `work`, for the
+  one resource of the run's target collection, with read or write access, inside the work
+  credential entry built from the source role's `apply`.
+- The provisioner contract, `contracts/provisioner/v1`, revision 1: the requests with
+  which a node pool's starter claims a request for one machine, `POST /v1/pools/claim`;
+  reports that it created the machine, `POST /v1/dispatches/<dispatch_id>/dispatched`;
+  releases the dispatch before that, `POST /v1/dispatches/<dispatch_id>/release`; and
+  uploads the log of the machine, `POST /v1/dispatches/<dispatch_id>/machine-log`. The
+  starter signs them with the pool's access key. The claim answer has the dispatch, its
+  `lease_until`, the run code that the machine redeems and the gateway URL that the run
+  code is bound to.
+- The machines contract, `contracts/machines/v1`: a machine adapter makes and deletes
+  machines at one vendor, and the provisioner runs it as
+  `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`
+  and `delete`. Each command reads one JSON request on standard input and writes one
+  answer of at most 1 MiB on standard output, or writes an error and exits with status 1.
+  A second `make` with the same `key` makes no machine.
+- The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
+  the step `explore`, and `result.schema.json`, the run's final response, which the
+  control plane reads from the result text of the last `dev.qory.runtime.result` event.
+- The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
+  receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
+  present for every run, and `access`, `target`, `target_version`, `work_item`,
+  `run_settings`, `workflow`, `harness_hidden`, `harness`, `image_destination`,
+  `environment_destination` and `environment_image` by step. `target_version` is the exact
+  version at which the control plane read the harness file of the target. `harness` is
+  present when that file is absent, has no `extends`, or was not read, and the machine
+  then composes `harness`. The registry host of `image_destination`,
+  `environment_destination` and `environment_image` is lower case only, and a Docker Hub
+  host is refused.
+- Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
+  and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
+  `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that
+  refers to another embedded schema, or to a schema of the Forager contract, compiles with
+  nothing fetched. Go types such as `Adapter`, `Grant`, `RunCredential`, `Claim`,
+  `Documents` and `MachinesMake` marshal to the documents that their schemas accept.
+  `CheckDescription`, `CheckModelProvider` and `CheckEgressHosts`
+  check the rules of a description that its schema states only in words.
+- `conformance.Description` also checks a description's `model_provider` role and
+  `egress_hosts`, and refuses an API `auth` of the scheme `header` whose header
+  conformance reserves, as `conformance.Credential` refuses one in an `apply` entry.
+  `conformance.DataDescription` checks a data description by the same rules.
 - `release.yml` attaches `description.json` to each release: the description that
   `<program> describe` prints and that passes the `conformance.Description` check.
   `checksums.txt` lists its SHA-256 beside the archives.
@@ -32,6 +143,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 - The module requires Forager at its main commit b6ac9f0
   (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
+- The contract states that `domains` applies only to where work comes from: a credential
+  of the `credential` role reaches a run in a workspace of any domain.
 
 ## [0.3.0] - 2026-10-12
 
