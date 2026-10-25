@@ -385,6 +385,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			CallURL: "https://adapter.example.com/calls/", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
 			Description: read(t, "fixtures/example-tracker.json")}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
+		{"refusal", contracts.Refusal{Error: "grant_taken"}},
 		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
 		{"adapter-secrets", contracts.AdapterSecrets{Version: contracts.Version, Time: now, Sealed: contracts.SealedToServer{
 			Suite: contracts.SealSuite, ServerKey: "rcFAEfgtHFbZVqpPnXPYhYNhpgYEhSXg0Ixjjcdd2Mc", Enc: strings.Repeat("A", 43), CT: strings.Repeat("A", 22)}}},
