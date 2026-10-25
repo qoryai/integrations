@@ -141,10 +141,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `run_settings`, `workflow`, `harness_hidden`, `harness`, `image_destination`,
   `environment_destination` and `environment_image` by step. `target_version` is the exact
   version at which the control plane checked for the harness file of the target.
-  `harness` is present when that file is absent, when its `harness` section has neither
-  `extends` nor `modules`, or when the file was not read, and the machine then composes
-  `harness`. The registry host of `image_destination`, `environment_destination` and
-  `environment_image` is lower case only, and a Docker Hub host is refused.
+  `harness` is present when that file is absent, when its `harness` section has no
+  `extends` and lists no module, or when the file was not read, and the machine then
+  composes `harness`. The registry host of `image_destination`,
+  `environment_destination` and `environment_image` is lower case only, and a Docker Hub
+  host is refused.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
   `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
