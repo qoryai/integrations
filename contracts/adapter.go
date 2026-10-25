@@ -1,9 +1,17 @@
 package contracts
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Version is the document format of integration/v1 and provisioner/v1: every request
@@ -35,6 +43,67 @@ const SetupDomain = "qory-setup-ed25519-v1"
 // pass's.
 const ConnectReturnDomain = "qory-connect-return-ed25519-v1"
 
+// CallDomain is the first line of the message a call's signature covers, [Call.Message]:
+// the control plane signs a call to the adapter with its server key over it. It keeps a
+// call's signature from verifying as a request's, an answer's, a pass's or a connect
+// return's.
+const CallDomain = "qory-call-ed25519-v1"
+
+// CallAnswerDomain is the first line of the message the signature of an answer to a call
+// covers, [CallAnswer.Message]: the adapter signs it with its access key. It keeps that
+// signature from verifying as a request's, an answer's, a call's or a connect return's.
+const CallAnswerDomain = "qory-call-answer-ed25519-v1"
+
+// HeaderAdapterID is the header of a call that contains the adapter id the control plane
+// enrolled the adapter as, na_ and 16 characters.
+const HeaderAdapterID = "X-Qory-Adapter-Id"
+
+// ErrCallMethod is the error of a call whose method is not POST, the one method a call
+// has.
+var ErrCallMethod = errors.New("a call is a POST, and no other method")
+
+// Call is one call of the control plane to the adapter, as its signature covers it. The
+// message is six lines joined by a line feed, with none after the last: [CallDomain], the
+// adapter id, the instance id, the method in upper case, the call's path as its schema
+// states it, such as resolve, and the raw body.
+type Call struct {
+	AdapterID  string
+	InstanceID string
+	Method     string
+	Path       string
+	Body       []byte
+}
+
+// Message returns the bytes the call's signature covers, or [ErrCallMethod] for a method
+// other than POST.
+func (c Call) Message() ([]byte, error) {
+	method := strings.ToUpper(c.Method)
+	if method != http.MethodPost {
+		return nil, ErrCallMethod
+	}
+	var b bytes.Buffer
+	b.WriteString(CallDomain + "\n" + c.AdapterID + "\n" + c.InstanceID + "\n" + method + "\n" + c.Path + "\n")
+	b.Write(c.Body)
+	return b.Bytes(), nil
+}
+
+// CallAnswer is the adapter's answer to a call, as its signature covers it: four lines
+// joined by a line feed, with none after the last: [CallAnswerDomain], the status as three
+// decimal digits, the call's X-Qory-Signature-Ed25519 exactly as sent, and the lower-case
+// hex SHA-256 of the body. The third line binds the answer to the call it answers.
+type CallAnswer struct {
+	Status        int
+	CallSignature string
+	Body          []byte
+}
+
+// Message returns the four lines the answer's signature covers.
+func (a CallAnswer) Message() []byte {
+	sum := sha256.Sum256(a.Body)
+	return []byte(CallAnswerDomain + "\n" + fmt.Sprintf("%03d", a.Status) + "\n" + a.CallSignature + "\n" +
+		hex.EncodeToString(sum[:]))
+}
+
 // ConnectPassMaxLength is the most characters a connect pass has, whole.
 const ConnectPassMaxLength = 1024
 
@@ -56,15 +125,18 @@ func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 // Adapter is the body of POST /v1/adapter, adapter.schema.json, which an adapter sends
 // each time it starts, and again once it is set up at its source. SetupURL is set only
 // while the adapter is not set up at its source; empty, the start-up has no setup_url,
-// and the control plane shows no setup step. Description is the document `<program>
-// describe` prints for the adapter's program, description.schema.json, sent whole: the
-// same JSON document, which json.Marshal writes compacted and with <, > and & escaped. A
-// nil Description marshals as null, which adapter.schema.json refuses.
+// and the control plane shows no setup step. CallURL is the base address at which the
+// control plane calls the adapter, whose path ends with /; empty, the start-up has no
+// call_url, and the control plane makes no call to the adapter. Description is the
+// document `<program> describe` prints for the adapter's program, description.schema.json,
+// sent whole: the same JSON document, which json.Marshal writes compacted and with <, >
+// and & escaped. A nil Description marshals as null, which adapter.schema.json refuses.
 type Adapter struct {
 	Version     int             `json:"version"`
 	Time        string          `json:"time"`
 	ConnectURL  string          `json:"connect_url"`
 	SetupURL    string          `json:"setup_url,omitempty"`
+	CallURL     string          `json:"call_url,omitempty"`
 	Sync        Sync            `json:"sync"`
 	Description json.RawMessage `json:"description"`
 }
@@ -271,18 +343,22 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 const (
 	ChangeWorkItem   = "work_item"
 	ChangeCollection = "collection"
+	ChangeGrant      = "grant"
 	ChangeSync       = "sync"
 )
 
 // Change is one entry of the change feed, of the kind Kind names. A work_item entry has
 // WorkItemID, Ref, Status "taken_in" or "undone", and URL; a collection entry has
-// CollectionRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for
-// the adapter's declared default. It marshals with the members of its kind alone.
+// CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
+// GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
+// adapter's declared default. It marshals with the members of its kind alone.
 type Change struct {
 	Kind          string `json:"kind"`
 	WorkItemID    string `json:"work_item_id,omitempty"`
 	Ref           string `json:"ref,omitempty"`
 	CollectionRef string `json:"collection_ref,omitempty"`
+	ConnectionID  string `json:"connection_id,omitempty"`
+	GrantRef      string `json:"grant_ref,omitempty"`
 	Status        string `json:"status,omitempty"`
 	URL           string `json:"url,omitempty"`
 	Interval      *int   `json:"interval,omitempty"`
@@ -306,6 +382,13 @@ func (c Change) MarshalJSON() ([]byte, error) {
 			CollectionRef string `json:"collection_ref"`
 			Status        string `json:"status"`
 		}{c.Kind, c.CollectionRef, c.Status})
+	case ChangeGrant:
+		return json.Marshal(struct {
+			Kind         string `json:"kind"`
+			ConnectionID string `json:"connection_id"`
+			GrantRef     string `json:"grant_ref"`
+			Status       string `json:"status"`
+		}{c.Kind, c.ConnectionID, c.GrantRef, c.Status})
 	case ChangeSync:
 		return json.Marshal(struct {
 			Kind     string `json:"kind"`
@@ -346,8 +429,379 @@ type ConnectReturn struct {
 	ExpiresAt    string `json:"expires_at"`
 }
 
-// Refusal is the body of the control plane's refusal of an adapter's request,
-// refusal.schema.json.
+// SealSuite is the suite of a sealed value on the wire: RFC 9180 base mode with
+// DHKEM(X25519, HKDF-SHA256), HKDF-SHA256 and AES-256-GCM, the suite of the Forager
+// contract's secrets answer.
+const SealSuite = "x25519-sha256-aes256gcm"
+
+// The ids of the suite's three parts, as RFC 9180 numbers them and as info contains
+// them.
+const (
+	SealKEMID  = 0x0020
+	SealKDFID  = 0x0001
+	SealAEADID = 0x0002
+)
+
+// SecretsInfoDomain starts the HPKE info of the secrets the control plane delivers to
+// an adapter, sealed to its access key, [SecretsInfo].
+const SecretsInfoDomain = "qory adapter secrets v1"
+
+// SecretsUploadInfoDomain starts the HPKE info of the secrets an adapter uploads, sealed
+// to the control plane's server key, [SecretsUploadInfo]. It is not
+// [SecretsInfoDomain], so an upload never opens as a delivery, nor a delivery as an
+// upload.
+const SecretsUploadInfoDomain = "qory adapter secrets upload v1"
+
+// SecretValueMaxBytes is the most bytes of UTF-8 a secret's value has.
+const SecretValueMaxBytes = 16384
+
+// SecretsMax is the most secrets an adapter stores in the control plane.
+const SecretsMax = 16
+
+// SecretsInfo returns the HPKE info of a delivery of secrets to the access key
+// accessKeyID: [SecretsInfoDomain], a zero byte, the suite's three ids as u16
+// big-endian, and lp(access key id), lp being a u16 big-endian length, then the bytes.
+func SecretsInfo(accessKeyID string) []byte { return info(SecretsInfoDomain, accessKeyID) }
+
+// SecretsUploadInfo returns the HPKE info of an upload of secrets sealed to the server
+// key serverKey, as adapter-secrets.schema.json writes it in server_key:
+// [SecretsUploadInfoDomain], a zero byte, the suite's three ids as u16 big-endian, and
+// lp(server key).
+func SecretsUploadInfo(serverKey string) []byte {
+	return info(SecretsUploadInfoDomain, serverKey)
+}
+
+// SecretsAAD returns the associated data of a sealing of secrets, in both directions:
+// lp(adapter id) and lp(access key id). It has no run id and no run configuration
+// digest: the secrets belong to the adapter, not to a run.
+func SecretsAAD(adapterID, accessKeyID string) []byte {
+	return lp(lp(nil, adapterID), accessKeyID)
+}
+
+// info is a domain, a zero byte, the suite's three ids as u16 big-endian, and lp(id).
+func info(domain, id string) []byte {
+	b := append([]byte(domain), 0)
+	for _, x := range []uint16{SealKEMID, SealKDFID, SealAEADID} {
+		b = binary.BigEndian.AppendUint16(b, x)
+	}
+	return lp(b, id)
+}
+
+// lp appends a u16 big-endian length, then the bytes. Every value it is given is bounded
+// by a pattern of the contract far below 65536 bytes.
+func lp(b []byte, s string) []byte {
+	b = binary.BigEndian.AppendUint16(b, uint16(len(s)))
+	return append(b, s...)
+}
+
+// AdapterSecrets is the body of POST /v1/adapter/secrets, adapter-secrets.schema.json:
+// the adapter's secrets, [AdapterSecretsPlaintext], sealed to the control plane's server
+// key.
+type AdapterSecrets struct {
+	Version int            `json:"version"`
+	Time    string         `json:"time"`
+	Sealed  SealedToServer `json:"sealed"`
+}
+
+// SealedToServer is a value sealed to the control plane's server key ServerKey, an
+// Ed25519 public key in base64url: Enc, the ephemeral key, and CT, the ciphertext and
+// its tag, each in base64url without padding.
+type SealedToServer struct {
+	Suite     string `json:"suite"`
+	ServerKey string `json:"server_key"`
+	Enc       string `json:"enc"`
+	CT        string `json:"ct"`
+}
+
+// AdapterSecretsAnswer is the body of the answer to GET /v1/adapter/secrets,
+// adapter-secrets-answer.schema.json: the adapter's secrets, [AdapterSecretsPlaintext],
+// sealed to the access key the request verified under.
+type AdapterSecretsAnswer struct {
+	Version  int               `json:"version"`
+	Revision int               `json:"revision"`
+	Sealed   SealedToAccessKey `json:"sealed"`
+}
+
+// SealedToAccessKey is a value sealed to the access key AccessKeyID: Enc, the ephemeral
+// key, and CT, the ciphertext and its tag, each in base64url without padding.
+type SealedToAccessKey struct {
+	Suite       string `json:"suite"`
+	AccessKeyID string `json:"access_key_id"`
+	Enc         string `json:"enc"`
+	CT          string `json:"ct"`
+}
+
+// AdapterSecretsPlaintext is what an adapter's secrets are sealed as,
+// adapter-secrets-plaintext.schema.json. A nil Secrets marshals as an empty list.
+type AdapterSecretsPlaintext struct {
+	Version int           `json:"version"`
+	Secrets []SecretEntry `json:"secrets"`
+}
+
+// SecretEntry is one secret: its name, as the source role's secrets list it, and its
+// value.
+type SecretEntry struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// MarshalJSON writes the plaintext, a nil Secrets as an empty list.
+func (p AdapterSecretsPlaintext) MarshalJSON() ([]byte, error) {
+	type plain AdapterSecretsPlaintext
+	if p.Secrets == nil {
+		p.Secrets = []SecretEntry{}
+	}
+	return json.Marshal(plain(p))
+}
+
+// Check reports the first rule of adapter-secrets-plaintext.schema.json that the
+// plaintext breaks and that the schema does not express: each name appears once, and
+// each value is 1 to [SecretValueMaxBytes] bytes of UTF-8 without a NUL. The message
+// names the secret and never contains a value.
+func (p AdapterSecretsPlaintext) Check() error {
+	seen := map[string]bool{}
+	for _, e := range p.Secrets {
+		if seen[e.Name] {
+			return fmt.Errorf("the secret %q appears twice", e.Name)
+		}
+		seen[e.Name] = true
+		if len(e.Value) < 1 || len(e.Value) > SecretValueMaxBytes || !utf8.ValidString(e.Value) || strings.ContainsRune(e.Value, 0) {
+			return fmt.Errorf("the value of the secret %q is not 1 to %d bytes of UTF-8 without a NUL", e.Name, SecretValueMaxBytes)
+		}
+	}
+	return nil
+}
+
+// Grant is the body of POST /v1/grants, grant.schema.json: one grant of the connection
+// ConnectionID, the access the source grants for one external account, by the adapter's
+// ref GrantRef, linked under the connect pass whose nonce is PassNonce.
+type Grant struct {
+	Version      int    `json:"version"`
+	Time         string `json:"time"`
+	ConnectionID string `json:"connection_id"`
+	GrantRef     string `json:"grant_ref"`
+	PassNonce    string `json:"pass_nonce"`
+}
+
+// Grants is the body of the answer to GET /v1/grants, grants.schema.json: the control
+// plane's copy of the grants of the adapter's connections. A nil Grants marshals as an
+// empty list.
+type Grants struct {
+	Version  int          `json:"version"`
+	Revision int          `json:"revision"`
+	Grants   []GrantEntry `json:"grants"`
+}
+
+// MarshalJSON writes the document, a nil Grants as an empty list.
+func (g Grants) MarshalJSON() ([]byte, error) {
+	type plain Grants
+	if g.Grants == nil {
+		g.Grants = []GrantEntry{}
+	}
+	return json.Marshal(plain(g))
+}
+
+// GrantEntry is one grant of the control plane's copy: the connection that holds it and
+// the grant's ref.
+type GrantEntry struct {
+	ConnectionID string `json:"connection_id"`
+	GrantRef     string `json:"grant_ref"`
+}
+
+// RunCredentialPath is the path of the call for a run's access credential,
+// run-credential.schema.json: the control plane sends it to the adapter's call_url
+// followed by this path, and signs this path, not the address.
+const RunCredentialPath = "run-credential"
+
+// RunCredentialTokenMaxBytes is the most bytes of UTF-8 a run credential's member token has.
+const RunCredentialTokenMaxBytes = 16384
+
+// RunCredential is the body of the call with the path [RunCredentialPath],
+// run-credential.schema.json: a credential for one run covering Resources, with
+// Access "read" or "write" and Purpose "harness" or "work". Access is "read" for
+// Purpose "harness". run-credential.schema.json states the runs for which the control
+// plane uses a harness credential. GrantRef is set for Purpose "harness" and empty for
+// Purpose "work". ConnectionID is set for Purpose
+// "work" and empty for Purpose "harness": it is the connection of the run's target
+// collection, as the control plane holds it for the run's organisation, a live
+// connection of that organisation when the call is sent. For a work call, the adapter
+// checks that the collection is a live collection under ConnectionID in its state, and
+// does not look the connection up from the ref; it uses only a grant that the control
+// plane's copy of grants, [Grants], has under ConnectionID, that covers the collection
+// and allows Access, and never a grant of another connection. It never uses a grant
+// that it keeps only while it sends that grant's report again.
+// Resources has 1 to 64 resource refs for Purpose "harness", each as the adapter
+// answered it to a resolve call. For Purpose "work", it has exactly one: the ref of the
+// collection of the run's target, as the adapter listed it, which for a target from an
+// item is the item's collection.
+type RunCredential struct {
+	Version      int      `json:"version"`
+	Time         string   `json:"time"`
+	GrantRef     string   `json:"grant_ref,omitempty"`
+	ConnectionID string   `json:"connection_id,omitempty"`
+	Resources    []string `json:"resources"`
+	Access       string   `json:"access"`
+	Purpose      string   `json:"purpose"`
+}
+
+// RunCredentialAnswer is the body of the adapter's answer to the call with the path
+// [RunCredentialPath], run-credential-answer.schema.json.
+type RunCredentialAnswer struct {
+	Version    int        `json:"version"`
+	Revision   int        `json:"revision"`
+	Credential Credential `json:"credential"`
+}
+
+// Credential is the Forager contract's credential document as a run credential answer
+// narrows it: Version is 1, Token is required, no apply item has a member token, every host is
+// exact, and it has no placeholders. ExpiresAt is RFC 3339; empty, the credential does
+// not expire.
+type Credential struct {
+	Version   int               `json:"version"`
+	Token     string            `json:"token"`
+	ExpiresAt string            `json:"expires_at,omitempty"`
+	Apply     []CredentialApply `json:"apply"`
+}
+
+// CredentialApply is one item of a credential's apply: where the access token goes. Scheme is
+// "bearer", "basic" with Username, or "header" with Header; Paths empty means every path.
+type CredentialApply struct {
+	Hosts    []string `json:"hosts"`
+	Scheme   string   `json:"scheme"`
+	Username string   `json:"username,omitempty"`
+	Header   string   `json:"header,omitempty"`
+	Paths    []string `json:"paths,omitempty"`
+}
+
+// Check reports the first rule of run-credential-answer.schema.json that the answer
+// breaks and that the schema does not express: the member token is 1 to
+// [RunCredentialTokenMaxBytes] bytes of UTF-8, counted in bytes, with no NUL, carriage
+// return or line feed and no space or tab at its start or its end; and expires_at, when
+// set, is later than callTime, the time of the call the answer is bound to. The message
+// never contains the access token.
+func (a RunCredentialAnswer) Check(callTime time.Time) error {
+	t := a.Credential.Token
+	if len(t) < 1 || len(t) > RunCredentialTokenMaxBytes || !utf8.ValidString(t) || strings.ContainsAny(t, "\x00\r\n") ||
+		strings.TrimLeft(t, " \t") != t || strings.TrimRight(t, " \t") != t {
+		return fmt.Errorf("the member token is not 1 to %d bytes of UTF-8 without a NUL, a carriage return or a line feed, and without a space or a tab at its start or its end", RunCredentialTokenMaxBytes)
+	}
+	if a.Credential.ExpiresAt == "" {
+		return nil
+	}
+	exp, err := time.Parse(time.RFC3339, a.Credential.ExpiresAt)
+	if err != nil {
+		return fmt.Errorf("expires_at %q is not RFC 3339", a.Credential.ExpiresAt)
+	}
+	if !exp.After(callTime) {
+		return fmt.Errorf("expires_at %q is not later than the call's time %s", a.Credential.ExpiresAt, FormatTime(callTime))
+	}
+	return nil
+}
+
+// ResolvePath is the path of the call that resolves addresses, resolve.schema.json: the
+// control plane sends it to the adapter's call_url followed by this path, and signs this
+// path, not the address.
+const ResolvePath = "resolve"
+
+// Resolve is the body of the call with the path [ResolvePath], resolve.schema.json: the
+// addresses, 1 to 64, each as the document the control plane read it from writes it.
+type Resolve struct {
+	Version   int      `json:"version"`
+	Time      string   `json:"time"`
+	Addresses []string `json:"addresses"`
+}
+
+// ResolveAnswer is the body of the adapter's answer to the call with the path
+// [ResolvePath], resolve-answer.schema.json: one result for each address of the call, in
+// the call's order. The control plane uses a result only under a grant that the run may
+// use, as resolve-answer.schema.json states, and treats every other result as covered:
+// false. Under an assignment, it sends a [RunCredential] only when the adapter's
+// credential_scope is resource, with Resources set to the assigned source's resource
+// alone; when credential_scope is grant, it reads the assigned source only with a
+// [Read].
+type ResolveAnswer struct {
+	Version  int        `json:"version"`
+	Revision int        `json:"revision"`
+	Results  []Resolved `json:"results"`
+}
+
+// Resolved is the result for one address: GrantRef and ResourceRef, the grant and the
+// resource at the source that cover it, with Covered nil; or Covered pointing to false,
+// with neither ref, when no grant the adapter holds covers the address.
+type Resolved struct {
+	Address     string `json:"address"`
+	GrantRef    string `json:"grant_ref,omitempty"`
+	ResourceRef string `json:"resource_ref,omitempty"`
+	Covered     *bool  `json:"covered,omitempty"`
+}
+
+// ReadPath is the path of the call that reads a document at a version, read.schema.json:
+// the control plane sends it to the adapter's call_url followed by this path, and signs
+// this path, not the address.
+const ReadPath = "read"
+
+// ReadContentMaxBytes is the most bytes of UTF-8 a read answer's content has.
+const ReadContentMaxBytes = 262144
+
+// Read is the body of the call with the path [ReadPath], read.schema.json: the document
+// at Path in the resource ResourceRef, read under the grant GrantRef, at the version At.
+type Read struct {
+	Version     int    `json:"version"`
+	Time        string `json:"time"`
+	GrantRef    string `json:"grant_ref"`
+	ResourceRef string `json:"resource_ref"`
+	Path        string `json:"path"`
+	At          string `json:"at"`
+}
+
+// ReadAnswer is the body of the adapter's answer to the call with the path [ReadPath],
+// read-answer.schema.json: Content, the document's text, with Found nil; or Found
+// pointing to false, with no Content, when the resource has no document at the path.
+// In both, ResolvedAt is the version of the resource at which the adapter read the
+// document, or at which the resource has no document, and it never changes.
+type ReadAnswer struct {
+	Version    int    `json:"version"`
+	Revision   int    `json:"revision"`
+	Content    string `json:"content"`
+	Found      *bool  `json:"found,omitempty"`
+	ResolvedAt string `json:"resolved_at"`
+}
+
+// MarshalJSON writes the answer: with Found set, without the member content; otherwise
+// with content, an empty Content included.
+func (a ReadAnswer) MarshalJSON() ([]byte, error) {
+	if a.Found == nil {
+		type plain ReadAnswer
+		return json.Marshal(plain(a))
+	}
+	return json.Marshal(struct {
+		Version    int    `json:"version"`
+		Revision   int    `json:"revision"`
+		Found      *bool  `json:"found"`
+		ResolvedAt string `json:"resolved_at"`
+	}{a.Version, a.Revision, a.Found, a.ResolvedAt})
+}
+
+// Check reports the first rule of read-answer.schema.json that the answer breaks and
+// that the schema does not express for a decoded value: with Found set, Found is false
+// and Content is empty; with Found nil, the content is UTF-8 of at most
+// [ReadContentMaxBytes] bytes without a NUL, counted in bytes, where the schema counts
+// characters.
+func (a ReadAnswer) Check() error {
+	if a.Found != nil {
+		if *a.Found || a.Content != "" {
+			return errors.New("found is set, and it is not false or content is not empty")
+		}
+		return nil
+	}
+	if len(a.Content) > ReadContentMaxBytes || !utf8.ValidString(a.Content) || strings.ContainsRune(a.Content, 0) {
+		return fmt.Errorf("the content is not UTF-8 of at most %d bytes without a NUL", ReadContentMaxBytes)
+	}
+	return nil
+}
+
+// Refusal is the body of the control plane's refusal of an adapter's request, and of an
+// adapter's refusal of a call of the control plane, refusal.schema.json.
 type Refusal struct {
 	Error string `json:"error"`
 }

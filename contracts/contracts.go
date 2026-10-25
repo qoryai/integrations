@@ -10,8 +10,10 @@
 // The contract also holds the requests an adapter, the program that reads a source of
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
 // start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
-// and [ConnectionsDisconnect], the change feed [Changes] it reads back, the [Refusal] of
-// a request, the [ConnectPass] a person brings when they connect the source, the
+// and [ConnectionsDisconnect], the change feed [Changes] it reads back, the secrets it
+// stores in the control plane, [AdapterSecrets], sealed to the server key, and reads
+// back sealed to its access key, [AdapterSecretsAnswer], the [Grant] it reports for a
+// connection and the control plane's copy of them, [Grants], the [Refusal] of a request, the [ConnectPass] a person brings when they connect the source, the
 // [ConnectReturn] the adapter sends the person back with, and the [SetupPass] an
 // instance admin brings when they set the adapter up at its source. Each type marshals
 // to the document its schema accepts.
@@ -48,9 +50,11 @@
 // X-Qory-Instance-Id that is absent or outside its pattern, is refused 400 bad_request,
 // and only those are. A retry is a new request: the adapter builds it again, a POST with
 // a time and a GET with an X-Qory-Timestamp later than those of the request it retries,
-// and signs it again. A request sent again unchanged has a signature the control plane
-// has seen, and is refused, 401; an adapter never takes that 401 as its access key being
-// revoked. Every answer to a verified request is signed as accesskey's Answer is, and
+// and signs it again. Each GET an instance sends has an X-Qory-Timestamp later than
+// that of the previous GET it sent, so no two GETs of one instance have the same
+// signature, and an answer bound to one GET verifies for no other. A request sent again
+// unchanged has a signature the control plane has seen, and is refused, 401; an adapter
+// never takes that 401 as its access key being revoked. Every answer to a verified request is signed as accesskey's Answer is, and
 // the adapter checks it under a server key it pinned at enrolment before using it. A 401
 // is always unsigned. A 413, 415 or 400 bad_request may be unsigned, because the control
 // plane may decide them before it verifies the request's signature. Every other answer
@@ -71,6 +75,26 @@
 // reaches the adapter only through a connection, and no request names an organisation or
 // a workspace. forager/accesskey is the reference signer; an adapter may sign to this
 // text itself.
+//
+// The control plane also calls an adapter, at the call_url the adapter declares in its
+// start-up body: each call is a POST, a [Call], signed with the control plane's server
+// key over [CallDomain], and the adapter signs its answer, a [CallAnswer], with its
+// access key over [CallAnswerDomain], bound to the call's signature. The calls are
+// [RunCredential], with the path [RunCredentialPath], which the adapter answers with
+// [RunCredentialAnswer]; [Resolve], with the path [ResolvePath], which it answers with
+// [ResolveAnswer]; and [Read], with the path [ReadPath], which it answers with
+// [ReadAnswer]. The adapter has one access key for every organisation, so the control
+// plane uses a resolve result, and sends a [Read] or a [RunCredential] whose Purpose is
+// "harness", only under a grant that the run may use: a grant of a live connection of
+// the run's organisation, or, only to read a harness source, a grant whose
+// organisation assigned that source to the run's organisation. It sends a
+// [RunCredential] whose Purpose is "work" with no grant and with the ConnectionID of
+// the run's target collection, a live connection of the run's organisation when the
+// call is sent, and the adapter uses only a grant that the control plane's copy of
+// grants, [Grants], has under that connection. Under an assignment, it sends a [RunCredential] only when
+// the adapter's credential_scope is resource, with Resources set to the assigned
+// source's resource alone; when credential_scope is grant, it reads the assigned
+// source only with a [Read]. resolve-answer.schema.json states the rule.
 //
 // The provisioner contract holds the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its

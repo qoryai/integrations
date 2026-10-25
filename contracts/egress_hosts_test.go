@@ -132,6 +132,23 @@ func tracker(settings, hosts, egress string) string {
 	return doc + "}"
 }
 
+// source is a description in the program form with a source role, with the source
+// role's apply and the egress_hosts member put in; an empty egress leaves the member
+// out.
+func source(apply, egress string) string {
+	doc := `{"version": 1, "name": "example-tracker", "title": "Example Tracker", "program_version": "0.1.0", "settings": {"type": "object"},
+ "roles": {"source": {"description": "Reads the open items of Example Tracker projects into the control plane.", "program": "qory-example-server",
+ "setup": {"command": "qory-example-server setup", "help": "Asks for the address of the Example Tracker site and registers the adapter with it."},
+ "start": "qory-example-server serve --secret-file /etc/qory-example-server/secret",
+ "connect": "Example Tracker asks you to sign in and to choose the projects the adapter may read.",
+ "access": "In Example Tracker, open Settings, then Connected adapters, to change which projects the adapter reads.",
+ "disconnect": "In Example Tracker, open Settings, then Connected adapters, and remove the adapter.", "apply": ` + apply + `}}`
+	if egress != "" {
+		doc += `, "egress_hosts": ` + egress
+	}
+	return doc + "}"
+}
+
 // withEgress is a description with the egress_hosts member put in at its end.
 func withEgress(doc, egress string) string {
 	return strings.TrimSuffix(doc, "}") + `, "egress_hosts": ` + egress + "}"
@@ -155,6 +172,9 @@ func TestCheckEgressHostsHoldsTheRulesTheSchemaDoesNotCheck(t *testing.T) {
 	setting := func(i int, name string) string {
 		return fmt.Sprintf(`the endpoint of model_provider apis[%d] is the setting %q, and egress_hosts has no entry {"setting": %q}; an API endpoint that is a setting has an egress_hosts entry with the same setting`, i, name, name)
 	}
+	applyHost := func(i int, host string) string {
+		return fmt.Sprintf(`add %q to egress_hosts: the host %q of source apply[%d] has no equal entry there, and each host of an apply item needs one`, host, host, i)
+	}
 	two := `{"version": 1, "name": "acme-models", "title": "Acme models", "settings": {"type": "object", "properties": {"url": {"type": "string"}}},
  "roles": {"model_provider": {"apis": [{"format": "anthropic-messages", "endpoint": "https://api.acme.example/anthropic", "auth": {"scheme": "bearer"}},
  {"format": "openai-chat", "endpoint": {"setting": "url"}, "auth": {"scheme": "bearer"}}], "models": []}}}`
@@ -177,6 +197,11 @@ func TestCheckEgressHostsHoldsTheRulesTheSchemaDoesNotCheck(t *testing.T) {
 		{"an endpoint setting and an entry with another setting",
 			withEgress(gateway(`{"type": "object", "properties": {"url": {"type": "string"}, "files": {"type": "string"}}}`, one), `[{"setting": "files"}]`),
 			setting(0, "url")},
+		{"a source apply host and no egress_hosts", source(`[{"hosts": ["api.example.com"], "scheme": "bearer"}]`, ""), applyHost(0, "api.example.com")},
+		{"a source apply host with no equal entry", source(`[{"hosts": ["api.example.com"], "scheme": "bearer"}, {"hosts": ["api.example.com", "files.example.com"], "scheme": "header", "header": "X-Api-Key"}]`, `["api.example.com"]`),
+			applyHost(1, "files.example.com")},
+		{"an entry and a source apply host under it", source(`[{"hosts": ["api.example.com"], "scheme": "bearer"}]`, `["example.com"]`), applyHost(0, "api.example.com")},
+		{"a source apply host that is an IPv6 address", source(`[{"hosts": ["2001:db8::1"], "scheme": "bearer"}]`, `["api.example.com"]`), applyHost(0, "2001:db8::1")},
 		{"an entry whose setting does not exist", tracker(object, `["tracker.acme.example"]`, `["tracker.acme.example", {"setting": "mirror"}]`),
 			`the setting "mirror" of an egress_hosts entry is not a property of settings`},
 		{"an entry whose setting is not a string", tracker(`{"type": "object", "properties": {"mirror": {"type": "integer"}}}`, `["tracker.acme.example"]`, `["tracker.acme.example", {"setting": "mirror"}]`),
@@ -198,6 +223,7 @@ func TestCheckEgressHostsHoldsTheRulesTheSchemaDoesNotCheck(t *testing.T) {
 	for _, tc := range []struct{ name, doc string }{
 		{"an equal entry for each credential host", tracker(object, `["api.acme.example", "eu.files.acme.example"]`, `["eu.files.acme.example", "api.acme.example"]`)},
 		{"an exact entry and an equal IPv4 address", tracker(object, `["10.0.0.1"]`, `["10.0.0.1"]`)},
+		{"an equal entry for each source apply host", source(`[{"hosts": ["api.example.com", "10.0.0.5"], "scheme": "bearer", "paths": ["/projects/{target.path}/*"]}, {"hosts": ["files.example.com"], "scheme": "basic", "username": "qory"}]`, `["files.example.com", "10.0.0.5", "api.example.com"]`)},
 		{"an equal entry and an API endpoint with a port and a path", withEgress(static("https://api.acme.example:8443/v1"), `["api.acme.example"]`)},
 		{"two APIs, an equal entry and a setting entry", withEgress(two, `["api.acme.example", {"setting": "url"}]`)},
 		{"an endpoint setting and an entry with the same setting", withEgress(gateway(url, one), `[{"setting": "url"}]`)},

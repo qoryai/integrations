@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/integration/v1/adapter.schema.json",
   "title": "Adapter start-up",
-  "description": "The body of the signed POST /v1/adapter, application/json, that an adapter sends each time it starts, and again once it is set up at its source: where a person is sent to connect the source, where an instance admin is sent to set the adapter up at its source while it is not, how often the adapter pulls changes from the source, and the description its program prints. On success the control plane answers a signed 204 with no body. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
+  "description": "The body of the signed POST /v1/adapter, application/json, that an adapter sends each time it starts, and again once it is set up at its source: where a person is sent to connect the source, where an instance admin is sent to set the adapter up at its source while it is not, where the control plane calls the adapter, how often the adapter pulls changes from the source, and the description its program prints. On success the control plane answers a signed 204 with no body. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "time", "connect_url", "sync", "description"],
@@ -25,6 +25,13 @@
         {"$ref": "definitions.schema.json#/$defs/url"},
         {"not": {"pattern": "#"}},
         {"not": {"pattern": "^[^?#]*\\?(?:[^&#]*&)*(?:s|%73)(?:t|%74)(?:a|%61)(?:t|%74)(?:e|%65)(?:[=&#]|$)"}}
+      ]
+    },
+    "call_url": {
+      "description": "The base address at which the control plane calls the adapter (definitions.schema.json): an https URL with no query and no fragment, whose path ends with /. The control plane sends each call as a POST to call_url followed by the call's path, which the call's schema states. The adapter declares it when it serves calls. The control plane takes it from the latest start-up: absent, the control plane makes no call to the adapter.",
+      "allOf": [
+        {"$ref": "definitions.schema.json#/$defs/url"},
+        {"pattern": "^[^?#]*/$"}
       ]
     },
     "sync": {

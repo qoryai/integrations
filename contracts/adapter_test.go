@@ -12,7 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"crypto/hpke"
+	"encoding/hex"
+
 	"github.com/qoryai/forager/accesskey"
+	foragercontracts "github.com/qoryai/forager/contracts"
 	"github.com/qoryai/integrations/contracts"
 	"github.com/qoryai/integrations/internal/rawjson"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -33,6 +37,17 @@ var adapterSchemas = []string{
 	"connect-return.schema.json",
 	"setup-pass.schema.json",
 	"refusal.schema.json",
+	"adapter-secrets.schema.json",
+	"adapter-secrets-answer.schema.json",
+	"adapter-secrets-plaintext.schema.json",
+	"grant.schema.json",
+	"grants.schema.json",
+	"resolve.schema.json",
+	"resolve-answer.schema.json",
+	"read.schema.json",
+	"read-answer.schema.json",
+	"run-credential.schema.json",
+	"run-credential-answer.schema.json",
 }
 
 // compile compiles a schema of the contract, or fails the test.
@@ -165,6 +180,61 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-setup-url-bare-state.json":                    {"adapter", "/setup_url "},
 		"adapter-setup-url-state-first.json":                   {"adapter", "/setup_url "},
 		"adapter-setup-url-state-percent-encoded.json":         {"adapter", "/setup_url "},
+		"adapter-call-url-http.json":                           {"adapter", "/call_url pattern"},
+		"adapter-call-url-query.json":                          {"adapter", "/call_url pattern"},
+		"adapter-call-url-without-final-slash.json":            {"adapter", "/call_url pattern"},
+		"adapter-description-secrets-twice.json":               {"adapter", "/description/roles/source/secrets uniqueItems"},
+		"grant-without-pass-nonce.json":                        {"grant", "/ required pass_nonce"},
+		"grant-pass-nonce-21-characters.json":                  {"grant", "/pass_nonce pattern"},
+		"grants-without-revision.json":                         {"grants", "/ required revision"},
+		"changes-grant-status-taken-in.json":                   {"changes", "/changes/0/status enum"},
+		"changes-grant-without-connection-id.json":             {"changes", "/changes/0 required connection_id"},
+		"adapter-secrets-value-in-clear.json":                  {"adapter-secrets", "/sealed additionalProperties"},
+		"adapter-secrets-without-server-key.json":              {"adapter-secrets", "/sealed required server_key"},
+		"adapter-secrets-answer-suite-chacha20.json":           {"adapter-secrets-answer", "/sealed/suite const"},
+		"adapter-secrets-answer-enc-31-bytes.json":             {"adapter-secrets-answer", "/sealed/enc pattern"},
+		"adapter-secrets-plaintext-17-secrets.json":            {"adapter-secrets-plaintext", "/secrets maxItems"},
+		"adapter-secrets-plaintext-name-upper-case.json":       {"adapter-secrets-plaintext", "/secrets/0/name pattern"},
+		"adapter-secrets-plaintext-empty-value.json":           {"adapter-secrets-plaintext", "/secrets/0/value minLength"},
+		"resolve-65-addresses.json":                            {"resolve", "/addresses maxItems"},
+		"resolve-without-addresses.json":                       {"resolve", "/addresses minItems"},
+		"resolve-address-space.json":                           {"resolve", "/addresses/0 pattern"},
+		"resolve-address-twice.json":                           {"resolve", "/addresses uniqueItems"},
+		"resolve-answer-covered-true.json":                     {"resolve-answer", "/results/1/covered const"},
+		"resolve-answer-not-covered-with-grant-ref.json":       {"resolve-answer", "/results/1/grant_ref "},
+		"resolve-answer-without-resource-ref.json":             {"resolve-answer", "/results/0 required resource_ref"},
+		"resolve-answer-without-revision.json":                 {"resolve-answer", "/ required revision"},
+		"read-path-leading-slash.json":                         {"read", "/path pattern"},
+		"read-path-dot-dot.json":                               {"read", "/path pattern"},
+		"read-path-empty-part.json":                            {"read", "/path pattern"},
+		"read-at-space.json":                                   {"read", "/at pattern"},
+		"read-without-at.json":                                 {"read", "/ required at"},
+		"read-answer-content-nul.json":                         {"read-answer", "/content pattern"},
+		"read-answer-without-resolved-at.json":                 {"read-answer", "/ required resolved_at"},
+		"read-answer-content-and-not-found.json":               {"read-answer", "/content "},
+		"read-answer-without-content-or-found.json":            {"read-answer", "/ required content"},
+		"run-credential-access-admin.json":                     {"run-credential", "/access enum"},
+		"run-credential-purpose-other.json":                    {"run-credential", "/purpose enum"},
+		"run-credential-without-resources.json":                {"run-credential", "/resources minItems; /resources minItems"},
+		"run-credential-work-two-resources.json":               {"run-credential", "/resources maxItems"},
+		"run-credential-without-purpose.json":                  {"run-credential", "/ required purpose"},
+		"run-credential-work-with-grant-ref.json":              {"run-credential", "/ "},
+		"run-credential-harness-without-grant-ref.json":        {"run-credential", "/ required grant_ref"},
+		"run-credential-work-without-connection-id.json":       {"run-credential", "/ required connection_id"},
+		"run-credential-harness-with-connection-id.json":       {"run-credential", "/ "},
+		"run-credential-harness-write.json":                    {"run-credential", "/access const"},
+		"run-credential-answer-without-token.json":             {"run-credential-answer", "/credential required token"},
+		"run-credential-answer-without-nested-version.json":    {"run-credential-answer", "/credential required version"},
+		"run-credential-answer-apply-token.json":               {"run-credential-answer", "/credential/apply/0/token "},
+		"run-credential-answer-host-star-dot.json":             {"run-credential-answer", "/credential/apply/0/hosts/0 "},
+		"run-credential-answer-placeholders.json":              {"run-credential-answer", "/credential/placeholders "},
+		"run-credential-answer-token-line-feed.json":           {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-carriage-return.json":     {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-nul.json":                 {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-leading-space.json":       {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-trailing-tab.json":        {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-16385.json":               {"run-credential-answer", "/credential/token maxLength"},
+		"run-credential-answer-expires-at-without-zone.json":   {"run-credential-answer", "/credential/expires_at format"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -317,7 +387,50 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
 			SetupURL: "https://adapter.example.com/setup", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
 			Description: read(t, "fixtures/example-tracker.json")}},
+		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
+			CallURL: "https://adapter.example.com/calls/", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
+			Description: read(t, "fixtures/example-tracker.json")}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
+		{"refusal", contracts.Refusal{Error: "grant_taken"}},
+		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
+		{"adapter-secrets", contracts.AdapterSecrets{Version: contracts.Version, Time: now, Sealed: contracts.SealedToServer{
+			Suite: contracts.SealSuite, ServerKey: "rcFAEfgtHFbZVqpPnXPYhYNhpgYEhSXg0Ixjjcdd2Mc", Enc: strings.Repeat("A", 43), CT: strings.Repeat("A", 22)}}},
+		{"adapter-secrets-answer", contracts.AdapterSecretsAnswer{Version: contracts.Version, Revision: contracts.Revision,
+			Sealed: contracts.SealedToAccessKey{Suite: contracts.SealSuite, AccessKeyID: "ak_f1xt0re000000000", Enc: strings.Repeat("A", 43), CT: strings.Repeat("A", 22)}}},
+		{"adapter-secrets-plaintext", contracts.AdapterSecretsPlaintext{Version: contracts.Version}},
+		{"adapter-secrets-plaintext", contracts.AdapterSecretsPlaintext{Version: contracts.Version,
+			Secrets: []contracts.SecretEntry{{Name: "signing-key", Value: "a value"}}}},
+		{"grant", contracts.Grant{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1",
+			PassNonce: "AAECAwQFBgcICQoLDA0ODw"}},
+		{"grants", contracts.Grants{Version: contracts.Version, Revision: contracts.Revision}},
+		{"grants", contracts.Grants{Version: contracts.Version, Revision: contracts.Revision,
+			Grants: []contracts.GrantEntry{{ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1"}}}},
+		{"resolve", contracts.Resolve{Version: contracts.Version, Time: now, Addresses: []string{"https://code.example.com/acme/harness"}}},
+		{"resolve-answer", contracts.ResolveAnswer{Version: contracts.Version, Revision: contracts.Revision, Results: []contracts.Resolved{
+			{Address: "https://code.example.com/acme/harness", GrantRef: "G_1", ResourceRef: "R_1001"},
+			{Address: "reader@code.example.com:acme/tools", Covered: &noItems},
+		}}},
+		{"run-credential", contracts.RunCredential{Version: contracts.Version, Time: now, GrantRef: "G_1", Resources: []string{"R_1001"},
+			Access: "read", Purpose: "harness"}},
+		{"run-credential", contracts.RunCredential{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef",
+			Resources: []string{"C_2001"}, Access: "write", Purpose: "work"}},
+		{"run-credential-answer", contracts.RunCredentialAnswer{Version: contracts.Version, Revision: contracts.Revision,
+			Credential: contracts.Credential{Version: 1, Token: "fixture-access-token",
+				Apply: []contracts.CredentialApply{{Hosts: []string{"code.example.com"}, Scheme: "bearer"}}}}},
+		{"run-credential-answer", contracts.RunCredentialAnswer{Version: contracts.Version, Revision: contracts.Revision,
+			Credential: contracts.Credential{Version: 1, Token: "fixture-access-token", ExpiresAt: "2026-10-15T13:00:00Z",
+				Apply: []contracts.CredentialApply{
+					{Hosts: []string{"code.example.com"}, Scheme: "basic", Username: "x-access", Paths: []string{"/acme/*"}},
+					{Hosts: []string{"api.code.example.com"}, Scheme: "header", Header: "X-Access"},
+				}}}},
+		{"read", contracts.Read{Version: contracts.Version, Time: now, GrantRef: "G_1", ResourceRef: "R_1001", Path: "qory.yaml", At: "main"}},
+		{"read-answer", contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Content: "",
+			ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}},
+		{"read-answer", contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Found: new(bool),
+			ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}},
+		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_3", Changes: []contracts.Change{
+			{Kind: contracts.ChangeGrant, ConnectionID: "ac_0123456789abcdef", GrantRef: "G_1", Status: "linked"},
+		}}},
 	}
 	for _, c := range values {
 		b, err := json.Marshal(c.v)
@@ -649,8 +762,8 @@ func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
 }
 
 // fixtureKeys are the keys of fixtures/adapter/signed/keys.json: the access key that
-// signs the requests, and the server key that signs the answer, the connect pass and the
-// setup pass.
+// signs the requests and the answer to a call, and the server key that signs the answer,
+// the connect pass, the setup pass and the call.
 func fixtureKeys(t *testing.T) (access *accesskey.Key, id, instance string, server *accesskey.Key) {
 	t.Helper()
 	var doc struct {
@@ -1138,11 +1251,685 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		}
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
-		"connections-disconnect", "connect-pass", "connect-return", "setup-pass"} {
+		"connections-disconnect", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
+		"resolve-answer", "read", "read-answer", "run-credential", "run-credential-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
 			}
+		}
+	}
+}
+
+// TestACallURLIsRefusedForItsOneFault pins the reason of each invalid start-up fixture
+// whose call_url breaks one of its two patterns, which the refusal does not tell apart:
+// the same document is accepted once the one fault is fixed. It also pins that the
+// start-up fixture with a call_url decodes into Adapter with CallURL set, and that an
+// Adapter without a CallURL marshals no call_url member.
+func TestACallURLIsRefusedForItsOneFault(t *testing.T) {
+	schema := compile(t, "adapter.schema.json")
+	for name, fix := range map[string][2]string{
+		"adapter-call-url-http.json":                {"http://", "https://"},
+		"adapter-call-url-query.json":               {"/calls/?site=main/", "/calls/"},
+		"adapter-call-url-without-final-slash.json": {"/calls\"", "/calls/\""},
+	} {
+		b := read(t, "fixtures/adapter/invalid/"+name)
+		if validate(schema, b) == nil {
+			t.Errorf("%s is accepted", name)
+		}
+		fixed := bytes.Replace(b, []byte(fix[0]), []byte(fix[1]), 1)
+		if bytes.Equal(fixed, b) {
+			t.Errorf("%s holds no %q", name, fix[0])
+		}
+		if err := validate(schema, fixed); err != nil {
+			t.Errorf("%s with %q for %q is refused: %v", name, fix[1], fix[0], err)
+		}
+	}
+	var a contracts.Adapter
+	if err := json.Unmarshal(read(t, "fixtures/adapter/adapter/code-host-call.json"), &a); err != nil {
+		t.Fatal(err)
+	}
+	if a.CallURL != "https://code-adapter.example.com/calls/" {
+		t.Errorf("code-host-call.json decodes call_url as %q", a.CallURL)
+	}
+	a.CallURL = ""
+	b, err := json.Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(b, []byte(`"call_url"`)) {
+		t.Errorf("an adapter without a call URL marshals to %s, with a call_url member", b)
+	}
+}
+
+// signedCall is the signed call of fixtures/adapter/signed/call.json.
+type signedCall struct {
+	Method  string            `json:"method"`
+	Path    string            `json:"path"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+}
+
+// readCall reads the signed call of fixtures/adapter/signed/call.json as Call, and its
+// signature.
+func readCall(t *testing.T) (contracts.Call, string, signedCall) {
+	t.Helper()
+	var s signedCall
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/call.json"), &s); err != nil {
+		t.Fatal(err)
+	}
+	c := contracts.Call{AdapterID: s.Headers[contracts.HeaderAdapterID], InstanceID: s.Headers[accesskey.HeaderInstanceID],
+		Method: s.Method, Path: s.Path, Body: []byte(s.Body)}
+	return c, s.Headers[accesskey.HeaderSignature], s
+}
+
+// callMessage returns the message of a call, or fails the test.
+func callMessage(t *testing.T, c contracts.Call) []byte {
+	t.Helper()
+	m, err := c.Message()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+// TestTheSignedCallVerifies pins the signed call of fixtures/adapter/signed: a POST to
+// the call_url of code-host-call.json followed by its path, for the adapter id and the
+// instance id of the fixtures, whose body's time is its moment, verifies under a pin of
+// the fixture server key, beside another key as after a rotation, and fails with one
+// byte of its body, its adapter id, its instance id or its path changed, under a pin
+// without the server key, and as a GET.
+func TestTheSignedCallVerifies(t *testing.T) {
+	access, _, instance, server := fixtureKeys(t)
+	c, sig, s := readCall(t)
+	var startup contracts.Adapter
+	if err := json.Unmarshal(read(t, "fixtures/adapter/adapter/code-host-call.json"), &startup); err != nil {
+		t.Fatal(err)
+	}
+	if c.Method != "POST" || s.URL != startup.CallURL+c.Path || c.AdapterID != "na_f1xt0re000000000" || c.InstanceID != instance ||
+		s.Headers["Content-Type"] != "application/json" || s.Headers["X-Qory-Contract-Version"] != strconv.Itoa(contracts.Revision) {
+		t.Errorf("call.json is not a POST to the call_url of code-host-call.json for the fixture adapter: %+v", s)
+	}
+	var body struct {
+		Time string `json:"time"`
+	}
+	if err := json.Unmarshal(c.Body, &body); err != nil || body.Time != "2026-10-15T12:00:00Z" {
+		t.Errorf("call.json: the body's time is %q, %v", body.Time, err)
+	}
+	pin := accesskey.Pin{
+		{Alg: "ed25519", PublicKey: access.PublicKey().String()},
+		{Alg: "ed25519", PublicKey: server.PublicKey().String()},
+	}
+	if !pin.Verify(callMessage(t, c), sig) {
+		t.Error("call.json: the signature does not verify under the server key")
+	}
+	for what, changed := range map[string]contracts.Call{
+		"a byte of its body":  {AdapterID: c.AdapterID, InstanceID: c.InstanceID, Method: c.Method, Path: c.Path, Body: bytes.Replace(c.Body, []byte("acme"), []byte("acmE"), 1)},
+		"its adapter id":      {AdapterID: "na_f1xt0re000000001", InstanceID: c.InstanceID, Method: c.Method, Path: c.Path, Body: c.Body},
+		"its instance id":     {AdapterID: c.AdapterID, InstanceID: "i_another", Method: c.Method, Path: c.Path, Body: c.Body},
+		"its path":            {AdapterID: c.AdapterID, InstanceID: c.InstanceID, Method: c.Method, Path: "read", Body: c.Body},
+		"its address as path": {AdapterID: c.AdapterID, InstanceID: c.InstanceID, Method: c.Method, Path: "/calls/resolve", Body: c.Body},
+	} {
+		if pin.Verify(callMessage(t, changed), sig) {
+			t.Errorf("call.json verifies with %s changed", what)
+		}
+	}
+	if (accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}).Verify(callMessage(t, c), sig) {
+		t.Error("call.json verifies under a pin without the server key")
+	}
+	get := c
+	get.Method = "GET"
+	if _, err := get.Message(); err != contracts.ErrCallMethod {
+		t.Errorf("a GET call has a message, %v", err)
+	}
+}
+
+// TestTheSignedCallAnswerVerifies pins the answer of fixtures/adapter/signed to the
+// signed call: a 200 bound to the call's signature verifies under the fixture access
+// key's public half over CallAnswerDomain, and fails bound to another call, with another
+// status, with one byte of its body changed, and under the server key.
+func TestTheSignedCallAnswerVerifies(t *testing.T) {
+	access, _, _, server := fixtureKeys(t)
+	_, callSig, _ := readCall(t)
+	var doc struct {
+		Status  int               `json:"status"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/call-answer.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	sig := doc.Headers[accesskey.HeaderSignature]
+	pin := accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}
+	a := contracts.CallAnswer{Status: doc.Status, CallSignature: callSig, Body: []byte(doc.Body)}
+	if doc.Status != 200 || !pin.Verify(a.Message(), sig) {
+		t.Error("call-answer.json: the signature does not verify as a 200 to call.json")
+	}
+	for what, changed := range map[string]contracts.CallAnswer{
+		"bound to another call": {Status: a.Status, CallSignature: strings.Repeat("A", 86), Body: a.Body},
+		"with another status":   {Status: 201, CallSignature: a.CallSignature, Body: a.Body},
+		"with a byte changed":   {Status: a.Status, CallSignature: a.CallSignature, Body: bytes.Replace(a.Body, []byte("G_1"), []byte("G_2"), 1)},
+	} {
+		if pin.Verify(changed.Message(), sig) {
+			t.Errorf("call-answer.json verifies %s", what)
+		}
+	}
+	if (accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}).Verify(a.Message(), sig) {
+		t.Error("call-answer.json verifies under the server key")
+	}
+}
+
+// TestACallVerifiesOverItsDomainAlone pins that a call's signature verifies only as a
+// call, and an answer to a call only as such an answer: the signed call does not verify
+// as a request of the same fields, as an answer bound to it, or as a pass or a connect
+// return of its body; the signed answer to it does not verify as accesskey's Answer; and
+// neither the signed GET of the change feed nor its signed answer verifies as a call or
+// as an answer to a call.
+func TestACallVerifiesOverItsDomainAlone(t *testing.T) {
+	access, _, _, server := fixtureKeys(t)
+	serverPin := accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}
+	accessPin := accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}
+	c, sig, _ := readCall(t)
+	asRequest, err := accesskey.Request{AccessKeyID: c.AdapterID, InstanceID: c.InstanceID, Method: c.Method, Target: c.Path, Body: c.Body}.Message()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for what, m := range map[string][]byte{
+		"a request":        asRequest,
+		"an answer":        accesskey.Answer{Status: 200, RequestSignature: sig, Body: c.Body}.Message(),
+		"a connect pass":   append([]byte(contracts.ConnectDomain+"\n"), c.Body...),
+		"a setup pass":     append([]byte(contracts.SetupDomain+"\n"), c.Body...),
+		"a connect return": append([]byte(contracts.ConnectReturnDomain+"\n"), c.Body...),
+	} {
+		if serverPin.Verify(m, sig) {
+			t.Errorf("the signed call verifies as %s", what)
+		}
+	}
+	var answer struct {
+		Status  int               `json:"status"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/call-answer.json"), &answer); err != nil {
+		t.Fatal(err)
+	}
+	if accessPin.Verify(accesskey.Answer{Status: answer.Status, RequestSignature: sig, Body: []byte(answer.Body)}.Message(),
+		answer.Headers[accesskey.HeaderSignature]) {
+		t.Error("the signed answer to the call verifies as accesskey's Answer")
+	}
+	get, s := request(t, "fixtures/adapter/signed/get-changes.json")
+	asCall := contracts.Call{AdapterID: get.AccessKeyID, InstanceID: get.InstanceID, Method: "POST", Path: get.Target, Body: []byte(get.Timestamp)}
+	if accessPin.Verify(callMessage(t, asCall), s.Headers[accesskey.HeaderSignature]) {
+		t.Error("the signed GET of the change feed verifies as a call")
+	}
+	var changes struct {
+		Status  int               `json:"status"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/answer-changes.json"), &changes); err != nil {
+		t.Fatal(err)
+	}
+	if serverPin.Verify(contracts.CallAnswer{Status: changes.Status, CallSignature: s.Headers[accesskey.HeaderSignature],
+		Body: []byte(changes.Body)}.Message(), changes.Headers[accesskey.HeaderSignature]) {
+		t.Error("the signed answer of the change feed verifies as an answer to a call")
+	}
+}
+
+// openSealed opens a sealed value of the fixtures with the X25519 key of an access key or
+// a server key, under info and aad, as RFC 9180 base mode with the suite SealSuite.
+func openSealed(t *testing.T, key *accesskey.Key, enc, ct string, info, aad []byte) ([]byte, error) {
+	t.Helper()
+	priv, err := hpke.NewDHKEMPrivateKey(key.X25519())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, errE := base64.RawURLEncoding.Strict().DecodeString(enc)
+	c, errC := base64.RawURLEncoding.Strict().DecodeString(ct)
+	if errE != nil || errC != nil {
+		t.Fatalf("enc or ct is not strict base64url: %v, %v", errE, errC)
+	}
+	r, err := hpke.NewRecipient(e, priv, hpke.HKDFSHA256(), hpke.AES256GCM(), info)
+	if err != nil {
+		return nil, err
+	}
+	return r.Open(aad, c)
+}
+
+// TestTheSealedSecretsOpen pins the known answer of fixtures/adapter/signed/adapter-secrets.json:
+// SecretsUploadInfo, SecretsInfo and SecretsAAD build its info and aad; the upload of
+// adapter-secrets/upload.json opens with the fixture server key to its plaintext, and the
+// delivery of adapter-secrets-answer/delivery.json with the fixture access key; the
+// plaintext is adapter-secrets-plaintext/two-secrets.json and keeps every rule; and
+// neither opens with the info of the other direction, with the aad of another adapter,
+// or with the other recipient's key.
+func TestTheSealedSecretsOpen(t *testing.T) {
+	access, id, _, server := fixtureKeys(t)
+	var kat struct {
+		AdapterID    string `json:"adapter_id"`
+		AccessKeyID  string `json:"access_key_id"`
+		ServerKey    string `json:"server_key"`
+		Plaintext    string `json:"plaintext"`
+		UploadInfo   string `json:"upload_info"`
+		DeliveryInfo string `json:"delivery_info"`
+		AAD          string `json:"aad"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/adapter-secrets.json"), &kat); err != nil {
+		t.Fatal(err)
+	}
+	if kat.AccessKeyID != id || kat.ServerKey != server.PublicKey().String() || kat.AdapterID != "na_f1xt0re000000000" {
+		t.Fatalf("adapter-secrets.json is not for the keys of keys.json: %+v", kat)
+	}
+	uploadInfo := contracts.SecretsUploadInfo(kat.ServerKey)
+	deliveryInfo := contracts.SecretsInfo(kat.AccessKeyID)
+	aad := contracts.SecretsAAD(kat.AdapterID, kat.AccessKeyID)
+	for name, c := range map[string]struct {
+		got  []byte
+		want string
+	}{"upload_info": {uploadInfo, kat.UploadInfo}, "delivery_info": {deliveryInfo, kat.DeliveryInfo}, "aad": {aad, kat.AAD}} {
+		if hex.EncodeToString(c.got) != c.want {
+			t.Errorf("adapter-secrets.json: %s is %s, and the Go builder writes %x", name, c.want, c.got)
+		}
+	}
+	var upload contracts.AdapterSecrets
+	if err := json.Unmarshal(read(t, "fixtures/adapter/adapter-secrets/upload.json"), &upload); err != nil {
+		t.Fatal(err)
+	}
+	var delivery contracts.AdapterSecretsAnswer
+	if err := json.Unmarshal(read(t, "fixtures/adapter/adapter-secrets-answer/delivery.json"), &delivery); err != nil {
+		t.Fatal(err)
+	}
+	if upload.Sealed.ServerKey != kat.ServerKey || delivery.Sealed.AccessKeyID != kat.AccessKeyID {
+		t.Errorf("the envelopes are not sealed to the keys of keys.json: %+v, %+v", upload.Sealed, delivery.Sealed)
+	}
+	u, err := openSealed(t, server, upload.Sealed.Enc, upload.Sealed.CT, uploadInfo, aad)
+	if err != nil || string(u) != kat.Plaintext {
+		t.Errorf("the upload does not open with the server key to the plaintext: %q, %v", u, err)
+	}
+	d, err := openSealed(t, access, delivery.Sealed.Enc, delivery.Sealed.CT, deliveryInfo, aad)
+	if err != nil || string(d) != kat.Plaintext {
+		t.Errorf("the delivery does not open with the access key to the plaintext: %q, %v", d, err)
+	}
+	var fixture bytes.Buffer
+	if err := json.Compact(&fixture, read(t, "fixtures/adapter/adapter-secrets-plaintext/two-secrets.json")); err != nil || fixture.String() != kat.Plaintext {
+		t.Error("the plaintext is not adapter-secrets-plaintext/two-secrets.json")
+	}
+	if err := validate(compile(t, "adapter-secrets-plaintext.schema.json"), []byte(kat.Plaintext)); err != nil {
+		t.Errorf("the plaintext: %v", err)
+	}
+	var p contracts.AdapterSecretsPlaintext
+	if err := json.Unmarshal([]byte(kat.Plaintext), &p); err != nil || p.Check() != nil || len(p.Secrets) != 2 {
+		t.Errorf("the plaintext breaks a rule: %v, %v", err, p.Check())
+	}
+	another := contracts.SecretsAAD("na_f1xt0re000000001", kat.AccessKeyID)
+	for what, err := range map[string]error{
+		"the upload with the delivery's info":   second(openSealed(t, server, upload.Sealed.Enc, upload.Sealed.CT, deliveryInfo, aad)),
+		"the delivery with the upload's info":   second(openSealed(t, access, delivery.Sealed.Enc, delivery.Sealed.CT, uploadInfo, aad)),
+		"the upload with another adapter id":    second(openSealed(t, server, upload.Sealed.Enc, upload.Sealed.CT, uploadInfo, another)),
+		"the delivery with another adapter id":  second(openSealed(t, access, delivery.Sealed.Enc, delivery.Sealed.CT, deliveryInfo, another)),
+		"the upload with the access key":        second(openSealed(t, access, upload.Sealed.Enc, upload.Sealed.CT, uploadInfo, aad)),
+		"the delivery with the server key":      second(openSealed(t, server, delivery.Sealed.Enc, delivery.Sealed.CT, deliveryInfo, aad)),
+		"the delivery's ct with the upload enc": second(openSealed(t, access, upload.Sealed.Enc, delivery.Sealed.CT, deliveryInfo, aad)),
+	} {
+		if err == nil {
+			t.Errorf("%s opens", what)
+		}
+	}
+}
+
+// second returns the second of two values.
+func second[A, B any](_ A, b B) B { return b }
+
+// TestTheSignedSecretsAnswerVerifies pins the signed read of the adapter's secrets: the
+// GET verifies under the fixture access key, and its 200 verifies under a pin of the
+// fixture server key, bound to the GET's signature, with adapter-secrets-answer/delivery.json,
+// compact, as its body.
+func TestTheSignedSecretsAnswerVerifies(t *testing.T) {
+	access, id, instance, server := fixtureKeys(t)
+	get, s := request(t, "fixtures/adapter/signed/get-adapter-secrets.json")
+	if get.Method != "GET" || get.Target != "/v1/adapter/secrets" || get.AccessKeyID != id || get.InstanceID != instance || get.Body != nil {
+		t.Errorf("get-adapter-secrets.json is not a GET of /v1/adapter/secrets as the fixture key: %+v", s)
+	}
+	if !access.PublicKey().VerifyRequest(get, s.Headers[accesskey.HeaderSignature]) {
+		t.Error("get-adapter-secrets.json: the signature does not verify")
+	}
+	var doc struct {
+		Status  int               `json:"status"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/answer-adapter-secrets.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	pin := accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}
+	a := accesskey.Answer{Status: doc.Status, RequestSignature: s.Headers[accesskey.HeaderSignature], Body: []byte(doc.Body)}
+	if doc.Status != 200 || !pin.VerifyAnswer(a, doc.Headers[accesskey.HeaderSignature]) {
+		t.Error("answer-adapter-secrets.json: the signature does not verify as a 200 to get-adapter-secrets.json")
+	}
+	var want bytes.Buffer
+	if err := json.Compact(&want, read(t, "fixtures/adapter/adapter-secrets-answer/delivery.json")); err != nil || want.String() != doc.Body {
+		t.Error("answer-adapter-secrets.json: the body is not adapter-secrets-answer/delivery.json")
+	}
+}
+
+// TestASecretsPlaintextHoldsTheRulesTheSchemaCannotSee pins AdapterSecretsPlaintext.Check:
+// it refuses a name twice, an empty value, a value of more than 16384 bytes of UTF-8,
+// which the schema accepts when it has at most 16384 characters, and a value with a NUL,
+// and accepts a value of exactly 16384 bytes; and no message contains a value.
+func TestASecretsPlaintextHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
+	long := strings.Repeat("\u00e9", 8193)
+	schema := compile(t, "adapter-secrets-plaintext.schema.json")
+	b, err := json.Marshal(contracts.AdapterSecretsPlaintext{Version: contracts.Version, Secrets: []contracts.SecretEntry{{Name: "signing-key", Value: long}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(schema, b); err != nil {
+		t.Errorf("a value of 8193 characters and 16386 bytes is refused by the schema: %v", err)
+	}
+	for what, c := range map[string]struct {
+		secrets []contracts.SecretEntry
+		refused bool
+	}{
+		"a name twice":       {[]contracts.SecretEntry{{Name: "a", Value: "value-one"}, {Name: "a", Value: "value-two"}}, true},
+		"an empty value":     {[]contracts.SecretEntry{{Name: "a", Value: ""}}, true},
+		"16386 bytes":        {[]contracts.SecretEntry{{Name: "a", Value: long}}, true},
+		"a NUL":              {[]contracts.SecretEntry{{Name: "a", Value: "value-one\x00"}}, true},
+		"16384 bytes":        {[]contracts.SecretEntry{{Name: "a", Value: strings.Repeat("x", contracts.SecretValueMaxBytes)}}, false},
+		"two names, no NULs": {[]contracts.SecretEntry{{Name: "a", Value: "value-one"}, {Name: "b", Value: "value-two"}}, false},
+	} {
+		err := contracts.AdapterSecretsPlaintext{Version: contracts.Version, Secrets: c.secrets}.Check()
+		if c.refused && err == nil {
+			t.Errorf("a plaintext with %s is accepted", what)
+		}
+		if !c.refused && err != nil {
+			t.Errorf("a plaintext with %s is refused: %v", what, err)
+		}
+		if err != nil && (strings.Contains(err.Error(), "value-") || strings.Contains(err.Error(), "\u00e9")) {
+			t.Errorf("the refusal of %s quotes a value: %v", what, err)
+		}
+	}
+}
+
+// TestTheSignedCallIsAResolveCall pins that the signed call of fixtures/adapter/signed has
+// the path ResolvePath and a body resolve.schema.json accepts, resolve/two-addresses.json
+// compact, and that its signed answer has a body resolve-answer.schema.json accepts,
+// resolve-answer/one-covered.json compact, with one result for each address of the
+// call, in its order, which decodes into ResolveAnswer.
+func TestTheSignedCallIsAResolveCall(t *testing.T) {
+	c, _, _ := readCall(t)
+	if c.Path != contracts.ResolvePath {
+		t.Errorf("call.json has the path %q, want %q", c.Path, contracts.ResolvePath)
+	}
+	if err := validate(compile(t, "resolve.schema.json"), c.Body); err != nil {
+		t.Errorf("call.json: the body: %v", err)
+	}
+	var doc struct {
+		Body string `json:"body"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/signed/call-answer.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(compile(t, "resolve-answer.schema.json"), []byte(doc.Body)); err != nil {
+		t.Errorf("call-answer.json: the body: %v", err)
+	}
+	for name, body := range map[string]string{"resolve/two-addresses.json": string(c.Body), "resolve-answer/one-covered.json": doc.Body} {
+		var want bytes.Buffer
+		if err := json.Compact(&want, read(t, "fixtures/adapter/"+name)); err != nil || want.String() != body {
+			t.Errorf("the signed body is not %s", name)
+		}
+	}
+	var call contracts.Resolve
+	var answer contracts.ResolveAnswer
+	if err := json.Unmarshal(c.Body, &call); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(doc.Body), &answer); err != nil {
+		t.Fatal(err)
+	}
+	if len(answer.Results) != len(call.Addresses) {
+		t.Fatalf("the answer has %d results for %d addresses", len(answer.Results), len(call.Addresses))
+	}
+	for i, r := range answer.Results {
+		if r.Address != call.Addresses[i] {
+			t.Errorf("result %d is for %q, want %q", i, r.Address, call.Addresses[i])
+		}
+	}
+	if answer.Results[0].Covered != nil || answer.Results[0].ResourceRef == "" || answer.Results[1].Covered == nil || *answer.Results[1].Covered ||
+		answer.Results[1].GrantRef != "" {
+		t.Errorf("the answer decodes to %+v", answer.Results)
+	}
+}
+
+// TestAReadPathIsRelativeAndHasNoDotParts pins which paths read.schema.json accepts: one
+// or more parts joined by /, with no / at the start or the end, no empty part, and no
+// part that is . or .., while a part that starts with a dot, or has three dots, is a name.
+func TestAReadPathIsRelativeAndHasNoDotParts(t *testing.T) {
+	schema := compile(t, "read.schema.json")
+	body := read(t, "fixtures/adapter/read/at-a-name.json")
+	if !bytes.Contains(body, []byte(`"path": "qory.yaml"`)) {
+		t.Fatal("read/at-a-name.json has no path qory.yaml")
+	}
+	for p, refused := range map[string]bool{
+		"qory.yaml":          false,
+		"docs/setup.md":      false,
+		".config/qory.yaml":  false,
+		"docs/.../notes.txt": false,
+		"docs/..a/b":         false,
+		"/qory.yaml":         true,
+		"docs/":              true,
+		"docs//setup.md":     true,
+		".":                  true,
+		"..":                 true,
+		"docs/./setup.md":    true,
+		"docs/../qory.yaml":  true,
+		"docs/..":            true,
+	} {
+		err := validate(schema, bytes.Replace(body, []byte(`"path": "qory.yaml"`), []byte(`"path": "`+p+`"`), 1))
+		if refused && err == nil {
+			t.Errorf("a read of the path %q is accepted", p)
+		}
+		if !refused && err != nil {
+			t.Errorf("a read of the path %q is refused: %v", p, err)
+		}
+	}
+}
+
+// TestAReadAnswerHoldsItsByteLimit pins ReadAnswer.Check: content of more than 262144
+// bytes of UTF-8 is refused, though the schema accepts it when it has at most 262144
+// characters; content of exactly 262144 bytes is accepted; and so is the fixture answer,
+// which read-answer.schema.json accepts.
+func TestAReadAnswerHoldsItsByteLimit(t *testing.T) {
+	schema := compile(t, "read-answer.schema.json")
+	long := contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Content: strings.Repeat("\u00e9", 131073),
+		ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}
+	b, err := json.Marshal(long)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(schema, b); err != nil {
+		t.Errorf("content of 131073 characters and 262146 bytes is refused by the schema: %v", err)
+	}
+	if long.Check() == nil {
+		t.Error("content of 262146 bytes is accepted")
+	}
+	exact := long
+	exact.Content = strings.Repeat("x", contracts.ReadContentMaxBytes)
+	if err := exact.Check(); err != nil {
+		t.Errorf("content of 262144 bytes is refused: %v", err)
+	}
+	var fixture contracts.ReadAnswer
+	if err := json.Unmarshal(read(t, "fixtures/adapter/read-answer/at-a-fixed-version.json"), &fixture); err != nil || fixture.Check() != nil {
+		t.Errorf("read-answer/at-a-fixed-version.json breaks a rule: %v, %v", err, fixture.Check())
+	}
+}
+
+// TestAReadAnswerWithoutADocumentHasNoContent pins the answer with found: Check accepts
+// found false without content, and the fixture read-answer/no-document.json, and refuses
+// found true and content beside found; and the answer with found false marshals without
+// the member content, to a body read-answer.schema.json accepts.
+func TestAReadAnswerWithoutADocumentHasNoContent(t *testing.T) {
+	absent := contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Found: new(bool),
+		ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}
+	if err := absent.Check(); err != nil {
+		t.Errorf("found false without content is refused: %v", err)
+	}
+	b, err := json.Marshal(absent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(b, []byte(`"content"`)) {
+		t.Errorf("found false marshals to %s, with content", b)
+	}
+	if err := validate(compile(t, "read-answer.schema.json"), b); err != nil {
+		t.Errorf("found false marshals to %s, which the schema refuses: %v", b, err)
+	}
+	withContent := absent
+	withContent.Content = "harness:\n"
+	if withContent.Check() == nil {
+		t.Error("content beside found is accepted")
+	}
+	found := true
+	foundTrue := absent
+	foundTrue.Found = &found
+	if foundTrue.Check() == nil {
+		t.Error("found true is accepted")
+	}
+	var fixture contracts.ReadAnswer
+	if err := json.Unmarshal(read(t, "fixtures/adapter/read-answer/no-document.json"), &fixture); err != nil ||
+		fixture.Found == nil || fixture.Check() != nil {
+		t.Errorf("read-answer/no-document.json does not decode to found false: %v, %v", err, fixture.Check())
+	}
+}
+
+// TestARunCredentialAnswerIsForagersCredentialNarrowed pins that each accepted run
+// credential answer's credential, version 1 included, is a document Forager's
+// credential.schema.json accepts, so the narrowing only takes away; that the answer
+// without the credential's version is refused, as Forager refuses it; and that the call
+// fixtures have the path's members as RunCredential decodes them.
+func TestARunCredentialAnswerIsForagersCredentialNarrowed(t *testing.T) {
+	forager, err := foragercontracts.Compile("credential.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files(t, "fixtures/adapter/run-credential-answer") {
+		var doc struct {
+			Credential json.RawMessage `json:"credential"`
+		}
+		if err := json.Unmarshal(read(t, f), &doc); err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(forager, doc.Credential); err != nil {
+			t.Errorf("%s: Forager's credential.schema.json refuses the credential: %v", f, err)
+		}
+		var a contracts.RunCredentialAnswer
+		if err := json.Unmarshal(read(t, f), &a); err != nil || a.Credential.Version != 1 {
+			t.Errorf("%s: the credential's version is %d, %v", f, a.Credential.Version, err)
+		}
+	}
+	if validate(forager, []byte(`{"token":"x","apply":[{"hosts":["code.example.com"],"scheme":"bearer"}]}`)) == nil {
+		t.Error("Forager's credential.schema.json accepts a credential without its version")
+	}
+	if contracts.RunCredentialPath != "run-credential" {
+		t.Errorf("RunCredentialPath is %q", contracts.RunCredentialPath)
+	}
+}
+
+// TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee pins RunCredentialAnswer.Check:
+// a token of more than 16384 bytes, which the schema accepts when it has at most 16384
+// characters, is refused, and one of exactly 16384 bytes accepted; a token with a NUL, a
+// carriage return or a line feed, or a space or a tab at an edge, is refused; expires_at
+// is refused when it is not later than the call's time, and accepted when later or
+// absent; and no message contains the token.
+func TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
+	call := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
+	answer := func(token, expires string) contracts.RunCredentialAnswer {
+		return contracts.RunCredentialAnswer{Version: contracts.Version, Revision: contracts.Revision,
+			Credential: contracts.Credential{Version: 1, Token: token, ExpiresAt: expires,
+				Apply: []contracts.CredentialApply{{Hosts: []string{"code.example.com"}, Scheme: "bearer"}}}}
+	}
+	long := strings.Repeat("\u00e9", 8193)
+	b, err := json.Marshal(answer(long, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(compile(t, "run-credential-answer.schema.json"), b); err != nil {
+		t.Errorf("a token of 8193 characters and 16386 bytes is refused by the schema: %v", err)
+	}
+	for what, c := range map[string]struct {
+		a       contracts.RunCredentialAnswer
+		refused bool
+	}{
+		"a token of 16386 bytes":            {answer(long, ""), true},
+		"a token of 16384 bytes":            {answer(strings.Repeat("x", contracts.RunCredentialTokenMaxBytes), ""), false},
+		"an empty token":                    {answer("", ""), true},
+		"a token with a NUL":                {answer("token-value\x00", ""), true},
+		"a token with a carriage return":    {answer("token\rvalue", ""), true},
+		"a token with a line feed":          {answer("token\nvalue", ""), true},
+		"a token with a space at its start": {answer(" token-value", ""), true},
+		"a token with a tab at its end":     {answer("token-value\t", ""), true},
+		"a token with a space inside":       {answer("token value", ""), false},
+		"expires_at at the call's time":     {answer("token-value", "2026-10-15T12:00:00Z"), true},
+		"expires_at before the call's time": {answer("token-value", "2026-10-15T13:00:00+02:00"), true},
+		"expires_at after the call's time":  {answer("token-value", "2026-10-15T12:00:01Z"), false},
+		"expires_at in another zone, later": {answer("token-value", "2026-10-15T14:30:00+02:00"), false},
+		"no expires_at":                     {answer("token-value", ""), false},
+	} {
+		err := c.a.Check(call)
+		if c.refused && err == nil {
+			t.Errorf("an answer with %s is accepted", what)
+		}
+		if !c.refused && err != nil {
+			t.Errorf("an answer with %s is refused: %v", what, err)
+		}
+		if err != nil && strings.Contains(err.Error(), "token-value") {
+			t.Errorf("the refusal of %s quotes the token: %v", what, err)
+		}
+	}
+	for _, f := range files(t, "fixtures/adapter/run-credential-answer") {
+		var a contracts.RunCredentialAnswer
+		if err := json.Unmarshal(read(t, f), &a); err != nil || a.Check(call) != nil {
+			t.Errorf("%s breaks a rule: %v, %v", f, err, a.Check(call))
+		}
+	}
+}
+
+// TestAConnectFlowOnALiveConnectionHasTheSameShape pins that a connect pass and a linked
+// connect return for a live connection, after which a grant report adds or replaces the
+// grant of one external account, are accepted by their schemas with the members of a
+// pending connection's: connect-pass/payload-live-connection.json and
+// connect-return/linked-live-connection.json, with the same connection_id and nonce.
+// Whether the connection is pending or live, and whether the grant is already linked to
+// another live connection, are the control plane's and the adapter's checks, which
+// connect-return.schema.json states and no schema expresses.
+func TestAConnectFlowOnALiveConnectionHasTheSameShape(t *testing.T) {
+	var p contracts.ConnectPass
+	var r contracts.ConnectReturn
+	if err := json.Unmarshal(read(t, "fixtures/adapter/connect-pass/payload-live-connection.json"), &p); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(read(t, "fixtures/adapter/connect-return/linked-live-connection.json"), &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.ConnectionID != p.ConnectionID || r.Nonce != p.Nonce || r.Outcome != "linked" {
+		t.Errorf("the live connection's return does not answer its pass: %+v, %+v", p, r)
+	}
+	for schema, f := range map[string]string{
+		"connect-pass.schema.json":   "fixtures/adapter/connect-pass/payload-live-connection.json",
+		"connect-return.schema.json": "fixtures/adapter/connect-return/linked-live-connection.json",
+	} {
+		if err := validate(compile(t, schema), read(t, f)); err != nil {
+			t.Errorf("%s: %v", f, err)
+		}
+	}
+	whole, err := contracts.Document("connect-return.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	description, _ := whole.(map[string]any)["description"].(string)
+	for _, want := range []string{"pending or live", "grant_taken"} {
+		if !strings.Contains(description, want) {
+			t.Errorf("connect-return.schema.json's description does not say %q", want)
 		}
 	}
 }

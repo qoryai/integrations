@@ -96,81 +96,85 @@ func TestRunFixturesValidate(t *testing.T) {
 // the run contract fails its schema for the reason in its name, and for no other.
 func TestInvalidRunFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"documents-without-step.json":                                {"documents", "/ required step"},
-		"documents-without-domain.json":                              {"documents", "/ required domain"},
-		"documents-without-inputs.json":                              {"documents", "/ required inputs"},
-		"documents-undefined-member.json":                            {"documents", "/ additionalProperties"},
-		"documents-inputs-no-version.json":                           {"documents", "/inputs required version"},
-		"documents-prebuild-inputs-target.json":                      {"documents", "/inputs additionalProperties"},
-		"documents-prebuild-with-work-item.json":                     {"documents", "/ "},
-		"documents-prebuild-with-stack.json":                         {"documents", "/ dependentRequired/stack; /stack ; / required stack_reference"},
-		"documents-prebuild-with-workflow.json":                      {"documents", "/ dependentRequired/workflow; /workflow "},
-		"documents-explore-without-work-item.json":                   {"documents", "/ required work_item"},
-		"documents-prebuild-inputs-version-2.json":                   {"documents", "/inputs/version const"},
-		"documents-prebuild-inputs-without-environment-ref.json":     {"documents", "/inputs required environment_ref"},
-		"documents-prebuild-inputs-environment-ref-empty.json":       {"documents", "/inputs/environment_ref minLength"},
-		"documents-prebuild-inputs-environment-ref-201.json":         {"documents", "/inputs/environment_ref maxLength"},
-		"documents-run-settings-prebuild.json":                       {"documents", "/step const"},
-		"documents-run-settings-effort-without-model.json":           {"documents", "/run_settings dependentRequired/effort"},
-		"documents-run-settings-tiers-without-model.json":            {"documents", "/run_settings dependentRequired/tiers"},
-		"documents-run-settings-model-without-provider-models.json":  {"documents", "/run_settings dependentRequired/model"},
-		"documents-run-settings-provider-models-without-model.json":  {"documents", "/run_settings dependentRequired/provider_models"},
-		"documents-run-settings-unknown-tier.json":                   {"documents", "/run_settings/tiers additionalProperties"},
-		"documents-run-settings-undefined-member.json":               {"documents", "/run_settings additionalProperties"},
-		"documents-run-settings-tier-without-model.json":             {"documents", "/run_settings/tiers/thinking required model"},
-		"documents-run-settings-effort-empty.json":                   {"documents", "/run_settings/provider_models/0/effort minItems"},
-		"documents-run-settings-time-limit-minutes-14.json":          {"documents", "/run_settings/time_limit_minutes minimum"},
-		"documents-run-settings-time-limit-minutes-1441.json":        {"documents", "/run_settings/time_limit_minutes maximum"},
-		"documents-access-without-target.json":                       {"documents", "/ dependentRequired/access"},
-		"documents-target-without-access.json":                       {"documents", "/ dependentRequired/target"},
-		"documents-prebuild-without-target.json":                     {"documents", "/ required access,target"},
-		"documents-domain-upper-case.json":                           {"documents", "/domain pattern"},
-		"documents-stack-without-workflow.json":                      {"documents", "/ dependentRequired/stack"},
-		"documents-workflow-without-stack.json":                      {"documents", "/ dependentRequired/workflow"},
-		"documents-stack-upper-case.json":                            {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-starts-with-digit.json":                     {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-65-characters.json":                         {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-object.json":                                {"documents", "/stack type"},
-		"documents-stack-reference-without-path.json":                {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-reference-query.json":                       {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-reference-user-information.json":            {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-reference-http.json":                        {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-reference-ref-dot-dot.json":                 {"documents", "/stack pattern; /stack "},
-		"documents-stack-reference-ref-starts-with-hyphen.json":      {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-reference-ref-colon.json":                   {"documents", "/stack pattern; /stack pattern"},
-		"documents-stack-reference-path-dot-dot.json":                {"documents", "/stack pattern; /stack "},
-		"documents-stack-reference-ref-256-characters.json":          {"documents", "/stack pattern; /stack "},
-		"documents-stack-reference-path-256-characters.json":         {"documents", "/stack pattern; /stack "},
-		"documents-stack-without-harness-hidden.json":                {"documents", "/ dependentRequired/stack"},
-		"documents-harness-hidden-without-stack.json":                {"documents", "/ dependentRequired/harness_hidden"},
-		"documents-stack-name-without-stack-reference-member.json":   {"documents", "/ required stack_reference"},
-		"documents-stack-reference-with-stack-reference-member.json": {"documents", "/stack_reference "},
-		"documents-stack-reference-member-without-stack.json":        {"documents", "/stack_reference "},
-		"documents-prebuild-with-stack-reference-member.json":        {"documents", "/stack_reference "},
-		"documents-stack-reference-member-http.json":                 {"documents", "/stack_reference pattern"},
-		"documents-stack-reference-member-user-information.json":     {"documents", "/stack_reference pattern"},
-		"documents-prebuild-with-harness-hidden.json":                {"documents", "/ dependentRequired/harness_hidden; /harness_hidden "},
-		"documents-harness-hidden-string.json":                       {"documents", "/harness_hidden type"},
-		"documents-access-admin.json":                                {"documents", "/access enum"},
-		"documents-prebuild-without-image-destination.json":          {"documents", "/ required image_destination"},
-		"documents-explore-with-image-destination.json":              {"documents", "/image_destination ; /step const"},
-		"documents-image-destination-tag.json":                       {"documents", "/image_destination pattern"},
-		"documents-image-destination-digest.json":                    {"documents", "/image_destination pattern"},
-		"documents-image-destination-path-upper-case.json":           {"documents", "/image_destination pattern"},
-		"documents-image-destination-scheme.json":                    {"documents", "/image_destination pattern"},
-		"documents-image-destination-256-characters.json":            {"documents", "/image_destination maxLength"},
-		"documents-image-destination-host-without-dot.json":          {"documents", "/image_destination pattern"},
-		"documents-image-destination-without-path.json":              {"documents", "/image_destination pattern"},
-		"documents-prebuild-with-both-environment-members.json":      {"documents", "/ oneOf"},
-		"documents-prebuild-without-environment-members.json":        {"documents", "/ required environment_destination; / required environment_image"},
-		"documents-explore-with-environment-destination.json":        {"documents", "/environment_destination "},
-		"documents-explore-with-environment-image.json":              {"documents", "/environment_image "},
-		"documents-environment-image-tag.json":                       {"documents", "/environment_image pattern"},
-		"documents-environment-image-without-host.json":              {"documents", "/environment_image pattern"},
-		"documents-environment-image-upper-case-hex.json":            {"documents", "/environment_image pattern"},
-		"documents-environment-destination-digest.json":              {"documents", "/environment_destination pattern"},
-		"documents-environment-destination-docker-hub.json":          {"documents", "/environment_destination "},
-		"documents-work-item-url-http.json":                          {"documents", "/work_item/url pattern"},
+		"documents-without-step.json":                               {"documents", "/ required step"},
+		"documents-without-domain.json":                             {"documents", "/ required domain"},
+		"documents-without-inputs.json":                             {"documents", "/ required inputs"},
+		"documents-undefined-member.json":                           {"documents", "/ additionalProperties"},
+		"documents-inputs-no-version.json":                          {"documents", "/inputs required version"},
+		"documents-prebuild-inputs-target.json":                     {"documents", "/inputs additionalProperties"},
+		"documents-prebuild-with-work-item.json":                    {"documents", "/ "},
+		"documents-prebuild-with-workflow.json":                     {"documents", "/ dependentRequired/workflow; /workflow ; / required harness; / required target_version"},
+		"documents-explore-without-work-item.json":                  {"documents", "/ required work_item"},
+		"documents-prebuild-inputs-version-2.json":                  {"documents", "/inputs/version const"},
+		"documents-prebuild-inputs-without-environment-ref.json":    {"documents", "/inputs required environment_ref"},
+		"documents-prebuild-inputs-environment-ref-empty.json":      {"documents", "/inputs/environment_ref minLength"},
+		"documents-prebuild-inputs-environment-ref-201.json":        {"documents", "/inputs/environment_ref maxLength"},
+		"documents-run-settings-prebuild.json":                      {"documents", "/step const"},
+		"documents-run-settings-effort-without-model.json":          {"documents", "/run_settings dependentRequired/effort"},
+		"documents-run-settings-tiers-without-model.json":           {"documents", "/run_settings dependentRequired/tiers"},
+		"documents-run-settings-model-without-provider-models.json": {"documents", "/run_settings dependentRequired/model"},
+		"documents-run-settings-provider-models-without-model.json": {"documents", "/run_settings dependentRequired/provider_models"},
+		"documents-run-settings-unknown-tier.json":                  {"documents", "/run_settings/tiers additionalProperties"},
+		"documents-run-settings-undefined-member.json":              {"documents", "/run_settings additionalProperties"},
+		"documents-run-settings-tier-without-model.json":            {"documents", "/run_settings/tiers/thinking required model"},
+		"documents-run-settings-effort-empty.json":                  {"documents", "/run_settings/provider_models/0/effort minItems"},
+		"documents-run-settings-time-limit-minutes-14.json":         {"documents", "/run_settings/time_limit_minutes minimum"},
+		"documents-run-settings-time-limit-minutes-1441.json":       {"documents", "/run_settings/time_limit_minutes maximum"},
+		"documents-access-without-target.json":                      {"documents", "/ dependentRequired/access"},
+		"documents-target-without-access.json":                      {"documents", "/ dependentRequired/target"},
+		"documents-prebuild-without-target.json":                    {"documents", "/ required access,target"},
+		"documents-domain-upper-case.json":                          {"documents", "/domain pattern"},
+		"documents-workflow-without-harness-hidden.json":            {"documents", "/ dependentRequired/workflow"},
+		"documents-harness-hidden-without-workflow.json":            {"documents", "/ dependentRequired/harness_hidden"},
+		"documents-prebuild-with-harness-hidden.json":               {"documents", "/ dependentRequired/harness_hidden; /harness_hidden "},
+		"documents-harness-hidden-string.json":                      {"documents", "/harness_hidden type"},
+		"documents-access-admin.json":                               {"documents", "/access enum"},
+		"documents-prebuild-without-image-destination.json":         {"documents", "/ required image_destination"},
+		"documents-explore-with-image-destination.json":             {"documents", "/image_destination ; /step const"},
+		"documents-image-destination-tag.json":                      {"documents", "/image_destination pattern"},
+		"documents-image-destination-digest.json":                   {"documents", "/image_destination pattern"},
+		"documents-image-destination-path-upper-case.json":          {"documents", "/image_destination pattern"},
+		"documents-image-destination-scheme.json":                   {"documents", "/image_destination pattern"},
+		"documents-image-destination-256-characters.json":           {"documents", "/image_destination maxLength"},
+		"documents-image-destination-host-without-dot.json":         {"documents", "/image_destination pattern"},
+		"documents-image-destination-without-path.json":             {"documents", "/image_destination pattern"},
+		"documents-prebuild-with-both-environment-members.json":     {"documents", "/ oneOf"},
+		"documents-prebuild-without-environment-members.json":       {"documents", "/ required environment_destination; / required environment_image"},
+		"documents-explore-with-environment-destination.json":       {"documents", "/environment_destination "},
+		"documents-explore-with-environment-image.json":             {"documents", "/environment_image "},
+		"documents-environment-image-tag.json":                      {"documents", "/environment_image pattern"},
+		"documents-environment-image-without-host.json":             {"documents", "/environment_image pattern"},
+		"documents-environment-image-upper-case-hex.json":           {"documents", "/environment_image pattern"},
+		"documents-environment-destination-digest.json":             {"documents", "/environment_destination pattern"},
+		"documents-environment-destination-docker-hub.json":         {"documents", "/environment_destination "},
+		"documents-harness-without-extends.json":                    {"documents", "/harness/harness required extends"},
+		"documents-harness-path-source.json":                        {"documents", "/harness/harness/modules/0/source required git,ref"},
+		"documents-harness-extends-path-stack.json":                 {"documents", "/harness/harness/extends required git,ref; /harness/harness/extends "},
+		"documents-harness-module-name-only.json":                   {"documents", "/harness/harness/modules/0 required source"},
+		"documents-harness-extends-path-and-stack.json":             {"documents", "/harness/harness/extends "},
+		"documents-harness-module-path-and-module.json":             {"documents", "/harness/harness/modules/0/source "},
+		"documents-harness-module-link.json":                        {"documents", "/harness/harness/modules/0 additionalProperties"},
+		"documents-harness-machine-key-runtime.json":                {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-machine-key-model.json":                  {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-machine-key-effort.json":                 {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-machine-key-tiers.json":                  {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-machine-key-force.json":                  {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-machine-key-update.json":                 {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-machine-key-home.json":                   {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-machine-key-links.json":                  {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-machine-key-launch.json":                 {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-member-git.json":                         {"documents", "/harness additionalProperties"},
+		"documents-harness-member-env.json":                         {"documents", "/harness additionalProperties"},
+		"documents-harness-member-worktree.json":                    {"documents", "/harness additionalProperties"},
+		"documents-harness-member-exports.json":                     {"documents", "/harness additionalProperties"},
+		"documents-harness-member-target.json":                      {"documents", "/harness additionalProperties"},
+		"documents-harness-section-target.json":                     {"documents", "/harness/harness additionalProperties"},
+		"documents-target-version-without-target.json":              {"documents", "/ dependentRequired/target_version"},
+		"documents-target-version-space.json":                       {"documents", "/target_version pattern"},
+		"documents-prebuild-with-harness.json":                      {"documents", "/harness "},
+		"documents-prebuild-with-target-version.json":               {"documents", "/target_version "},
+		"documents-workflow-without-harness-or-target-version.json": {"documents", "/ required harness; / required target_version"},
+		"documents-work-item-url-http.json":                         {"documents", "/work_item/url pattern"},
 	}
 	got := runFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -197,16 +201,15 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestAPrebuildIsRefusedForItsStackStackReferenceOrWorkflowAlone pins that the invalid run documents
-// of the step prebuild that have stack, stack_reference, workflow or harness_hidden are
+// TestAPrebuildIsRefusedForItsWorkflowHarnessHiddenOrHarnessAlone pins that the invalid
+// run documents of the step prebuild that have workflow, harness_hidden or harness are
 // refused for that member alone: the same documents without it are accepted.
-func TestAPrebuildIsRefusedForItsStackStackReferenceOrWorkflowAlone(t *testing.T) {
+func TestAPrebuildIsRefusedForItsWorkflowHarnessHiddenOrHarnessAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	for _, c := range []struct{ fixture, member string }{
-		{"documents-prebuild-with-stack.json", "stack"},
 		{"documents-prebuild-with-workflow.json", "workflow"},
 		{"documents-prebuild-with-harness-hidden.json", "harness_hidden"},
-		{"documents-prebuild-with-stack-reference-member.json", "stack_reference"},
+		{"documents-prebuild-with-harness.json", "harness"},
 	} {
 		doc, err := contracts.RunDocument(path.Join("fixtures/invalid", c.fixture))
 		if err != nil {
@@ -220,6 +223,69 @@ func TestAPrebuildIsRefusedForItsStackStackReferenceOrWorkflowAlone(t *testing.T
 		delete(documents, c.member)
 		if err := schema.Validate(documents); err != nil {
 			t.Errorf("%s without %s is refused: %v", c.fixture, c.member, err)
+		}
+	}
+}
+
+// TestAHarnessIsRefusedForItsHarnessAlone pins that each invalid fixture whose name
+// starts with documents-harness-, other than documents-harness-hidden-, is refused for
+// its harness and for nothing else: the same documents with the harness of
+// documents/explore-harness.json are accepted.
+func TestAHarnessIsRefusedForItsHarnessAlone(t *testing.T) {
+	schema := compileRun(t, runSchema("documents"))
+	valid, err := contracts.RunDocument("fixtures/documents/explore-harness.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	harness := valid.(map[string]any)["harness"]
+	n := 0
+	for _, f := range runFiles(t, "fixtures/invalid") {
+		name := path.Base(f)
+		if !strings.HasPrefix(name, "documents-harness-") || strings.HasPrefix(name, "documents-harness-hidden-") {
+			continue
+		}
+		n++
+		doc, err := contracts.RunDocument(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		documents, ok := doc.(map[string]any)
+		if !ok || documents["harness"] == nil {
+			t.Errorf("%s are not run documents with harness", f)
+			continue
+		}
+		if schema.Validate(documents) == nil {
+			t.Errorf("%s is accepted", f)
+		}
+		documents["harness"] = harness
+		if err := schema.Validate(documents); err != nil {
+			t.Errorf("%s with the harness of documents/explore-harness.json is refused: %v", f, err)
+		}
+	}
+	if n == 0 {
+		t.Error("fixtures/invalid contains no run documents with a refused harness")
+	}
+}
+
+// TestATargetVersionHasItsGrammar pins the target_version of documents.schema.json: 1
+// to 255 letters, digits and the characters ._/-, and nothing else.
+func TestATargetVersionHasItsGrammar(t *testing.T) {
+	schema := compileRun(t, runSchema("documents/target_version"))
+	for _, v := range []string{
+		"0123456789abcdef0123456789abcdef01234567",
+		strings.Repeat("0a", 32),
+		"v1.2.0",
+		"release/2026-10_a",
+		"7",
+		strings.Repeat("r", 255),
+	} {
+		if err := schema.Validate(v); err != nil {
+			t.Errorf("%s is refused: %v", v, err)
+		}
+	}
+	for _, v := range []string{"", strings.Repeat("r", 256), "release 1", "a:b", "a@b", "a~1", "a#b"} {
+		if err := schema.Validate(v); err == nil {
+			t.Errorf("%q is accepted", v)
 		}
 	}
 }
@@ -297,78 +363,6 @@ func TestAnImageDestinationIsAnOCIName(t *testing.T) {
 	}
 	if r := strings.Join(leaves(v), "; "); r != "/step const" {
 		t.Errorf("the documents of the step review with image_destination are refused for %q, want %q", r, "/step const")
-	}
-}
-
-// TestAStackReferenceHasItsEdges pins the edges of the stack reference of
-// documents.schema.json, url#ref:path: each row pairs a refused value with an
-// accepted value close to it, a value refused by a rule of allOf is refused by that
-// rule alone, and any other refused value is refused by no rule of allOf.
-func TestAStackReferenceHasItsEdges(t *testing.T) {
-	schema := compileRun(t, runSchema("documents/stack"))
-	const url = "https://code.example.com/team/stacks"
-	long := "https://code.example.com/" + strings.Repeat("s", 2048-len("https://code.example.com/"))
-	for _, c := range []struct {
-		accepted, refused string
-		// rule is the index in the allOf of stack_reference of the one rule that
-		// refuses the value, or -1 when the pattern refuses it.
-		rule int
-	}{
-		{url + "#main:core", url + "#main", -1},
-		{url + "#main:core", url + "#main:", -1},
-		{url + "#main:.", url + "#main:./", -1},
-		{url + "#main:core", "http://code.example.com/team/stacks#main:core", -1},
-		{url + "#main:core", url + "?at=main#main:core", -1},
-		{url + "#main:core", "https://alex@code.example.com/team/stacks#main:core", -1},
-		{url + "#main:core", "https://#main:core", -1},
-		{"https://code.example.com#main:core", "https://code.example.com#main#next:core", -1},
-		{"https://code.example.com:8443/team/stacks#main:core", "https://code.example.com:65536/team/stacks#main:core", -1},
-		{"https://[::1]:8443/stacks#main:core", "https://[::1]ab/stacks#main:core", -1},
-		{"https://ex%c3%a9mple.com/s#main:core", "https://ex%41mple.com/s#main:core", -1},
-		{"https://ex%25mple.com/s#main:core", "https://ex%7Fmple.com/s#main:core", -1},
-		{"https://ex%c3%a9mple.com/s#main:core", "https://ex%00mple.com/s#main:core", -1},
-		{"https://ex%25mple.com/s#main:core", "https://ex%2fmple.com/s#main:core", -1},
-		{url + "#0123456789abcdef0123456789abcdef01234567:.", url + "#:core", -1},
-		{url + "#_main:core", url + "#-main:core", -1},
-		{url + "#.main:core", url + "#/main:core", -1},
-		{url + "#team/main:core", url + "#team//main:core", -1},
-		{url + "#team/main:core", url + "#team/main/:core", -1},
-		{url + "#team-main:core", url + "#team:main:core", -1},
-		{url + "#main.next:core", url + "#main..next:core", 1},
-		{url + "#" + strings.Repeat("r", 255) + ":core", url + "#" + strings.Repeat("r", 256) + ":core", 0},
-		{url + "#main:stacks/core", url + "#main:stacks//core", -1},
-		{url + "#main:stacks/core", url + "#main:/stacks/core", -1},
-		{url + "#main:stacks/core", url + "#main:stacks/core/", -1},
-		{url + "#main:stacks/...", url + "#main:stacks/..", 3},
-		{url + "#main:stacks..core", url + "#main:../core", 3},
-		{url + "#main:" + strings.Repeat("p", 255), url + "#main:" + strings.Repeat("p", 256), 2},
-		{long + "#" + strings.Repeat("r", 255) + ":" + strings.Repeat("p", 255),
-			long + "s#" + strings.Repeat("r", 255) + ":" + strings.Repeat("p", 255), -2},
-	} {
-		if err := schema.Validate(c.accepted); err != nil {
-			t.Errorf("%s is refused: %v", c.accepted, err)
-		}
-		v, ok := schema.Validate(c.refused).(*jsonschema.ValidationError)
-		if !ok {
-			t.Errorf("%s is accepted", c.refused)
-			continue
-		}
-		var rules []string
-		for _, l := range leafErrors(v) {
-			if l.ErrorKind.KeywordPath() == nil {
-				rules = append(rules, l.SchemaURL)
-			}
-		}
-		want := map[int]string{-1: "", -2: ""}[c.rule]
-		if c.rule >= 0 {
-			want = fmt.Sprintf("%s/documents.schema.json#/$defs/stack_reference/allOf/%d", contracts.RunBase, c.rule)
-		}
-		if strings.Join(rules, "; ") != want {
-			t.Errorf("%s is refused by the rules %q, want %q", c.refused, rules, want)
-		}
-	}
-	if n := len(long + "#" + strings.Repeat("r", 255) + ":" + strings.Repeat("p", 255)); n != 2560 {
-		t.Errorf("the longest accepted reference has %d characters, want 2560", n)
 	}
 }
 
@@ -518,6 +512,28 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	ads := &contracts.Target{System: "ads.example.com", Path: "accounts/1234"}
 	item := contracts.WorkItem{ID: "wi_1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
 	hidden, shown := true, false
+	const source = "https://code.example.com/team/harness"
+	harness := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
+		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0", Stack: "marketing"},
+	}}
+	bare := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
+		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0"},
+		Modules: []contracts.HarnessModule{{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0"}}},
+	}}
+	full := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
+		Name: "campaigns", Description: "The harness of the campaign work.",
+		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0", Path: "stacks/marketing"},
+		Modules: []contracts.HarnessModule{
+			{Name: "budgets", Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0", Module: "budgets"},
+				Exclude: &contracts.HarnessSelection{Skills: []string{"spend"}, Instructions: true,
+					Settings: &contracts.HarnessPart{All: true}}},
+			{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0", Path: "modules/reports"},
+				Only:    &contracts.HarnessSelection{OutputStyles: []string{"brief"}, Env: &contracts.HarnessPart{Names: []string{"REPORT_DIR"}}},
+				Variant: "weekly"},
+		},
+		Bind:       map[string]string{"agents/coder": "writer"},
+		Extensions: map[string]json.RawMessage{"team": json.RawMessage(`{"size":3}`)},
+	}}
 	values := []struct {
 		schema string
 		v      any
@@ -541,13 +557,18 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 			EnvironmentImage: "registry.example.com/environments/0123456789abcdef@sha256:" + strings.Repeat("3f", 32)}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
 			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item}},
+		{"documents/harness", harness},
+		{"documents/harness", full},
+		{"documents/harness", bare},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
-			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, Stack: "core",
-			StackReference: "https://code.example.com/team/stacks#main:core", Workflow: "hello",
+			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: target,
+			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, Workflow: "hello",
 			HarnessHidden: &hidden}},
-		{"documents", contracts.Documents{Step: "explore", Domain: "software",
-			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item,
-			Stack: "https://code.example.com/team/stacks#main:core", Workflow: "hello", HarnessHidden: &shown}},
+		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
+			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: ads, WorkItem: &item,
+			Workflow: "hello", HarnessHidden: &shown, Harness: harness}},
+		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
+			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, Harness: full}},
 	}
 	for _, c := range values {
 		b, err := json.Marshal(c.v)
@@ -761,13 +782,13 @@ func TestProviderModelsHaveAtMost256Entries(t *testing.T) {
 	}
 }
 
-// TestTheRunDocumentsReadIntoTheirGoTypes pins that the target, work_item and
-// run_settings of each run documents fixture read into their Go types and
-// are written back as the fixture's bytes, compacted, that a fixture without
-// target has no access either, and that StackReference is set exactly when Stack is
-// a stack name.
+// TestTheRunDocumentsReadIntoTheirGoTypes pins that the target, work_item,
+// run_settings and harness of each run documents fixture read into their Go types and
+// are written back as the fixture's bytes, compacted, that a fixture without target has
+// no access and no target_version either, and that a fixture with workflow has harness
+// or target_version.
 func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
-	n, named := 0, 0
+	n, harnesses := 0, 0
 	for _, f := range runFiles(t, "fixtures/documents") {
 		b, err := fs.ReadFile(contracts.RunFS, f)
 		if err != nil {
@@ -778,25 +799,27 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 			t.Fatal(err)
 		}
 		if _, ok := members["target"]; !ok {
-			if _, ok := members["access"]; ok {
-				t.Errorf("%s has access and no target", f)
+			for _, m := range []string{"access", "target_version"} {
+				if _, ok := members[m]; ok {
+					t.Errorf("%s has %s and no target", f, m)
+				}
 			}
 		}
 		var d contracts.Documents
 		if err := json.Unmarshal(b, &d); err != nil {
 			t.Fatalf("%s: %v", f, err)
 		}
-		name := d.Stack != "" && !strings.HasPrefix(d.Stack, "https://")
-		if name != (d.StackReference != "") {
-			t.Errorf("%s has the stack %q and the stack_reference %q", f, d.Stack, d.StackReference)
+		if d.Workflow != "" && d.Harness == nil && d.TargetVersion == "" {
+			t.Errorf("%s has workflow, and neither harness nor target_version", f)
 		}
-		if name {
-			named++
+		if d.Harness != nil {
+			harnesses++
 		}
 		for name, v := range map[string]any{
 			"target":       &contracts.Target{},
 			"work_item":    &contracts.WorkItem{},
 			"run_settings": &contracts.RunSettings{},
+			"harness":      &contracts.HarnessDocument{},
 		} {
 			raw, ok := members[name]
 			if !ok {
@@ -820,10 +843,38 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 		}
 	}
 	if n == 0 {
-		t.Error("fixtures/documents has no target, work_item or run_settings")
+		t.Error("fixtures/documents has no target, work_item, run_settings or harness")
 	}
-	if named == 0 {
-		t.Error("fixtures/documents has no stack name with stack_reference")
+	if harnesses == 0 {
+		t.Error("fixtures/documents has no harness")
+	}
+}
+
+// TestAHarnessPartKeepsItsForm pins that a merged part of a harness selection is read
+// from true or from an array of names, and written back in the same form.
+func TestAHarnessPartKeepsItsForm(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		want contracts.HarnessPart
+	}{
+		{`true`, contracts.HarnessPart{All: true}},
+		{`["permissions","model"]`, contracts.HarnessPart{Names: []string{"permissions", "model"}}},
+	} {
+		var p contracts.HarnessPart
+		if err := json.Unmarshal([]byte(c.in), &p); err != nil {
+			t.Errorf("%s: %v", c.in, err)
+			continue
+		}
+		if !reflect.DeepEqual(p, c.want) {
+			t.Errorf("%s reads as %+v, want %+v", c.in, p, c.want)
+		}
+		out, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(out) != c.in {
+			t.Errorf("%s is written back as %s", c.in, out)
+		}
 	}
 }
 

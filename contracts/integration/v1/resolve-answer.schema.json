@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/integration/v1/resolve-answer.schema.json",
+  "title": "Resolve answer",
+  "description": "The body of the adapter's signed 200 answer to the call with the path resolve (resolve.schema.json), application/json: one result for each address of the call, in the call's order. The control plane refuses an answer whose results do not name the call's addresses one for one, in that order, as the schema cannot say. The answer is signed with the adapter's access key, bound to the call's signature, as definitions.schema.json describes an answer to a call, and names the revision it was built for in revision. The adapter has one access key for every organisation, and no call but a call with the path run-credential whose purpose is work contains a connection_id, so a resolve result can contain a grant_ref of a connection of another organisation. The control plane uses a resolve result only under a grant that the run may use: a grant of a live connection of the run's organisation; or, only to read a harness source and only with access read, a grant whose organisation assigned that source to the run's organisation, at that version and at that path or export. Under an assignment, the control plane sends a call with the path run-credential only when the credential_scope of the adapter's description is resource, which it also is when absent (description.schema.json), and with resources set to the resource_ref of the assigned source alone; when credential_scope is grant, the control plane sends no call with the path run-credential under an assignment, and reads the assigned source only with the call with the path read. A harness source is a remote source that the run's harness extends or takes a module from, whether that harness is the harness file of the target or the harness member of the run documents (run/v1 documents.schema.json). An assignment never covers a call with the path run-credential whose purpose is work or whose access is write: work access comes only from a grant of a live connection of the run's organisation. The control plane treats every other resolve result as covered: false, so nothing that a run of one organisation receives shows that another organisation holds a grant for that address. The control plane sends a call with the path read, and a call with the path run-credential whose purpose is harness, only under a grant that the run may use, and sends a call with the path run-credential whose purpose is work only with the connection_id of the run's target collection, which is a live connection of the run's organisation when the call is sent. The control plane refuses a member this schema does not define.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "revision", "results"],
+  "properties": {
+    "version": {
+      "description": "The document format. The control plane refuses a version it does not read.",
+      "const": 1
+    },
+    "revision": {
+      "description": "The contract revision the adapter built the answer for, the one the call's X-Qory-Contract-Version named. The control plane refuses an answer whose revision is not the call's.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "results": {
+      "description": "One result for each address of the call, in the call's order.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/result"}
+    }
+  },
+  "$defs": {
+    "result": {
+      "description": "The result for one address: grant_ref and resource_ref, the grant and the resource at the source that cover it; or covered: false, when the adapter cannot read the address or no grant it holds covers it, and then neither ref.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address"],
+      "properties": {
+        "address": {"description": "The address, exactly as the call wrote it.", "$ref": "resolve.schema.json#/$defs/address"},
+        "grant_ref": {"description": "The grant that covers the address, as the adapter reported it (grant.schema.json).", "$ref": "definitions.schema.json#/$defs/ref"},
+        "resource_ref": {"description": "The adapter's ref to the resource at the address, stable for that resource. The control plane compares it and stores it, and never reads meaning into it.", "$ref": "definitions.schema.json#/$defs/ref"},
+        "covered": {"description": "false: no grant the adapter holds covers the address.", "const": false}
+      },
+      "if": {"required": ["covered"]},
+      "then": {"properties": {"grant_ref": false, "resource_ref": false}},
+      "else": {"required": ["grant_ref", "resource_ref"]}
+    }
+  }
+}
