@@ -617,8 +617,11 @@ const RunCredentialPath = "run-credential"
 const RunCredentialTokenMaxBytes = 16384
 
 // RunCredential is the body of the call with the path [RunCredentialPath],
-// run-credential.schema.json: a credential for one run under the grant GrantRef,
-// covering Resources, with Access "read" or "write" and Purpose "harness" or "work".
+// run-credential.schema.json: a credential for one run covering Resources, with
+// Access "read" or "write" and Purpose "harness" or "work". GrantRef is set for
+// Purpose "harness" and empty for Purpose "work"; for a work call, the adapter uses a
+// grant of the connection of the live collection whose ref is the one resource, the
+// grant that covers that collection, and never a grant of another connection.
 // Resources has 1 to 64 resource refs for Purpose "harness", each as the adapter
 // answered it to a resolve call. For Purpose "work", it has exactly one: the ref of the
 // collection of the run's target, as the adapter listed it, which for a target from an
@@ -626,7 +629,7 @@ const RunCredentialTokenMaxBytes = 16384
 type RunCredential struct {
 	Version   int      `json:"version"`
 	Time      string   `json:"time"`
-	GrantRef  string   `json:"grant_ref"`
+	GrantRef  string   `json:"grant_ref,omitempty"`
 	Resources []string `json:"resources"`
 	Access    string   `json:"access"`
 	Purpose   string   `json:"purpose"`
