@@ -24,17 +24,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `conformance.Description` refuses a credential host without an equal entry there, so a
   description of 0.3.0 with a `credential` role and no `egress_hosts` fails the check.
   `conformance.Description` also refuses a credential host with `*.` in front, and a
-  credential host that an `egress_hosts` entry cannot be, such as `localhost` or a
-  single label.
+  credential host that an `egress_hosts` entry cannot be, such as `localhost` or a single
+  label.
 - The module requires Go 1.27.3 or later (`go 1.27.3` in `go.mod`), because Forager does.
   An integration that requires this module builds with Go 1.27.3 or later. `go.yml` sets
   `GOTOOLCHAIN` to `go1.27.3+auto`, because its image has Go 1.27.2.
 - Run documents have no top-level `stack` and no `stack_reference`, members that this
   module had after 0.3.0 and before this release. A reader takes the harness from the
   harness file of the target at `target_version`, or from `harness`, as Added describes.
-  A run with `workflow` has `harness`, `target_version` or both. In Go,
-  `Documents.Stack` and `Documents.StackReference` are removed, and
-  `Documents.TargetVersion` and `Documents.Harness` are added.
+  A run with `workflow` has `harness`, `target_version` or both. In Go, `Documents.Stack`
+  and `Documents.StackReference` are removed, and `Documents.TargetVersion` and
+  `Documents.Harness` are added.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, change
   the adapter in three ways. Accept change feed entries of the kind `grant`, because
   `changes.schema.json` refuses an entry of a kind it does not list. After the adapter
