@@ -42,6 +42,23 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `GET /v1/grants` when the adapter starts, follow the `grant` entries, and match the
   adapter's state to that copy. Accept a connect pass for a live connection, which adds
   or replaces the grant of one external account.
+- If an adapter follows the adapter contract as this module had it after 0.3.0, add two
+  members, because the schemas require them. In each grant report, `POST /v1/grants`,
+  send `account`, `{ref, title}`: `ref` is the external account's id at the source, and
+  `title` is its display name, one line. In each collection of
+  `POST /v1/source-collections`, send `grant_ref`, the grant under the same connection
+  that covers the collection. List a collection only after the control plane accepts the
+  report of its grant: the control plane refuses a part that contains a `grant_ref` its
+  copy of grants does not have under that connection, `400 invalid_request`. In Go,
+  `Grant.Account`, `Account` and `Collection.GrantRef` are added.
+- If an adapter ends one grant of a connection, as when one external account withdraws
+  the access it gave at the source, send `POST /v1/grants/end` with `connection_id` and
+  `grant_ref`, instead of `POST /v1/connections/disconnect`, which ends the whole
+  connection. The control plane ends that grant and the collections whose `grant_ref` in
+  the latest listing that contains them is that grant's, and the connection stays. It
+  refuses a `grant_ref` its copy of grants does not have under that connection,
+  `409 grant_unknown`, which the adapter takes as the grant ended. In Go, `GrantEnd` is
+  added.
 
 ### Added
 
@@ -74,21 +91,38 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The adapter contract in `contracts/integration/v1`, revision 1: the signed requests that
   a source adapter sends the control plane, `POST /v1/adapter` at start-up,
   `POST /v1/source-collections`, `POST /v1/source-items`,
-  `POST /v1/source-items/comments`, `POST /v1/sources/disconnect` and
-  `POST /v1/connections/disconnect`, and the change feed `GET /v1/work-items/changes`,
-  with the entry kinds `work_item`, `collection`, `grant` and `sync`. The adapter signs
-  each request with its access key as `github.com/qoryai/forager/accesskey` signs one,
-  sends the revision in `X-Qory-Contract-Version`, and checks each signed answer under a
-  server key it pinned at enrolment. `refusal.schema.json` lists the refusals.
+  `POST /v1/source-items/comments`, `POST /v1/sources/disconnect`,
+  `POST /v1/connections/disconnect` and `POST /v1/grants/end`, and the change feed
+  `GET /v1/work-items/changes`, with the entry kinds `work_item`, `collection`, `grant`
+  and `sync`. The adapter signs each request with its access key as
+  `github.com/qoryai/forager/accesskey` signs one, sends the revision in
+  `X-Qory-Contract-Version`, and checks each signed answer under a server key it pinned at
+  enrolment. `refusal.schema.json` lists the refusals.
 - A connect pass and a setup pass, signed by the control plane, send a person to the
   adapter's `connect_url` or `setup_url`, and a connect return, signed by the adapter,
   sends the person back. A connect pass may be for a live connection, to add or replace
   the grant of one external account.
 - Grants: a connection has one grant per external account at the source. The adapter
-  reports one grant with `POST /v1/grants`, with `connection_id`, `grant_ref` and
-  `pass_nonce`, and the grant is added only when the control plane accepts the report.
-  `GET /v1/grants` returns the control plane's copy of grants, and the adapter matches its
-  state to that copy.
+  reports one grant with `POST /v1/grants`, with `connection_id`, `grant_ref`, `account`
+  and `pass_nonce`, and the grant is added only when the control plane accepts the report.
+  `account` is `{ref, title}`, both required: `ref` is the external account's id at the
+  source, and `title` is its display name, one line. `GET /v1/grants` returns the control
+  plane's copy of grants, and the adapter matches its state to that copy.
+- Each collection in a part of `POST /v1/source-collections` requires `grant_ref`, the
+  grant under the same connection that covers the collection. The control plane refuses a
+  part that contains a `grant_ref` that its copy of grants does not have under
+  `connection_id`, `400 invalid_request`, after the checks for `connection_unknown`,
+  `connection_ended` and `connection_suspended`.
+- Grant end: the adapter reports that the source no longer covers one grant with
+  `POST /v1/grants/end`, with `version`, `time`, `connection_id` and `grant_ref`. The
+  control plane ends that grant and the collections whose `grant_ref` in the latest
+  listing that contains them is that grant's, and the connection stays. In this order,
+  the control plane refuses a request that the access key may not make, `403 forbidden`;
+  a `connection_id` that it does not hold for this adapter, or a pending connection,
+  `403 connection_unknown`; a connection that ended, `409 connection_ended`; and a
+  `grant_ref` that its copy of grants does not have under `connection_id`,
+  `409 grant_unknown`. On success the control plane returns a signed 204 with no body. For
+  a suspended connection, the control plane returns the signed 204 and ends the grant.
 - Adapter secrets: the adapter uploads up to 16 values with `POST /v1/adapter/secrets`,
   each at most 16384 bytes, sealed with HPKE `x25519-sha256-aes256gcm` to a pinned server
   key, and `GET /v1/adapter/secrets` returns them sealed to the adapter's access key.
@@ -125,10 +159,21 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `run_settings`, `workflow`, `harness_hidden`, `harness`, `image_destination`,
   `environment_destination` and `environment_image` by step. `target_version` is the exact
   version at which the control plane checked for the harness file of the target.
-  `harness` is present when that file is absent, has no `extends`, or was not read, and
-  the machine then composes `harness`. The registry host of `image_destination`,
+  `harness` is present when that file is absent, when its `harness` section has no
+  `extends` and lists no module, or when the file was not read, and the machine then
+  composes `harness`. The registry host of `image_destination`,
   `environment_destination` and `environment_image` is lower case only, and a Docker Hub
   host is refused.
+- The `harness` section of the run documents extends a stack or defines one. A section
+  without `extends` defines a stack: it requires `modules`, at least one, and may contain
+  `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
+  `workflows` in `qory-stack.yaml`, so the stack declares the access level of each of its
+  workflows. A section that defines a stack, without `extends`, takes no target: the
+  machine composes it for `run_settings.runtime`, or, when the run documents have no
+  `run_settings`, for the default runtime of the machine. A section with `extends` takes
+  the workflows of its base, and the schema rejects `workflows` in it. In Go,
+  `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
+  `HarnessSection.Workflows` and `HarnessWorkflow` are added.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that
