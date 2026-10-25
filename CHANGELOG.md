@@ -49,6 +49,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/source-collections`, send `grant_ref`, the grant under the same connection
   that covers the collection. In Go, `Grant.Account`, `Account` and `Collection.GrantRef`
   are added.
+- If an adapter ends one grant of a connection, as when one external account withdraws
+  the access it gave at the source, send `POST /v1/grants/end` with `connection_id` and
+  `grant_ref`, instead of `POST /v1/connections/disconnect`, which ends the whole
+  connection. The control plane ends that grant and the collections whose `grant_ref` is
+  that grant's, and the connection stays. It refuses a `grant_ref` its copy of grants does
+  not have under that connection, `409 grant_unknown`, which the adapter takes as the
+  grant ended. In Go, `GrantEnd` is added.
 
 ### Added
 

@@ -594,6 +594,17 @@ type Account struct {
 	Title string `json:"title"`
 }
 
+// GrantEnd is the body of POST /v1/grants/end, grant-end.schema.json: the source no
+// longer covers the grant GrantRef of the connection ConnectionID. The control plane
+// ends that grant and the collections whose grant_ref is GrantRef, and the connection
+// stays.
+type GrantEnd struct {
+	Version      int    `json:"version"`
+	Time         string `json:"time"`
+	ConnectionID string `json:"connection_id"`
+	GrantRef     string `json:"grant_ref"`
+}
+
 // Grants is the body of the answer to GET /v1/grants, grants.schema.json: the control
 // plane's copy of the grants of the adapter's connections. A nil Grants marshals as an
 // empty list.
