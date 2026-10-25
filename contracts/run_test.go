@@ -147,7 +147,10 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-environment-image-upper-case-hex.json":           {"documents", "/environment_image pattern"},
 		"documents-environment-destination-digest.json":             {"documents", "/environment_destination pattern"},
 		"documents-environment-destination-docker-hub.json":         {"documents", "/environment_destination "},
-		"documents-harness-without-extends.json":                    {"documents", "/harness/harness required extends"},
+		"documents-harness-without-extends-or-modules.json":         {"documents", "/harness/harness required modules"},
+		"documents-harness-extends-and-workflows.json":              {"documents", "/harness/harness/workflows "},
+		"documents-harness-workflow-access-admin.json":              {"documents", "/harness/harness/workflows/hello/access enum"},
+		"documents-harness-workflow-time-limit-zero.json":           {"documents", "/harness/harness/workflows/hello/time_limit "},
 		"documents-harness-path-source.json":                        {"documents", "/harness/harness/modules/0/source required git,ref"},
 		"documents-harness-extends-path-stack.json":                 {"documents", "/harness/harness/extends required git,ref; /harness/harness/extends "},
 		"documents-harness-module-name-only.json":                   {"documents", "/harness/harness/modules/0 required source"},
@@ -514,15 +517,15 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	hidden, shown := true, false
 	const source = "https://code.example.com/team/harness"
 	harness := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
-		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0", Stack: "marketing"},
+		Extends: &contracts.HarnessBase{Git: source, Ref: "v2.4.0", Stack: "marketing"},
 	}}
 	bare := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
-		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0"},
+		Extends: &contracts.HarnessBase{Git: source, Ref: "v2.4.0"},
 		Modules: []contracts.HarnessModule{{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0"}}},
 	}}
 	full := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
 		Name: "campaigns", Description: "The harness of the campaign work.",
-		Extends: contracts.HarnessBase{Git: source, Ref: "v2.4.0", Path: "stacks/marketing"},
+		Extends: &contracts.HarnessBase{Git: source, Ref: "v2.4.0", Path: "stacks/marketing"},
 		Modules: []contracts.HarnessModule{
 			{Name: "budgets", Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0", Module: "budgets"},
 				Exclude: &contracts.HarnessSelection{Skills: []string{"spend"}, Instructions: true,
@@ -533,6 +536,16 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 		},
 		Bind:       map[string]string{"agents/coder": "writer"},
 		Extensions: map[string]json.RawMessage{"team": json.RawMessage(`{"size":3}`)},
+	}}
+	defined := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
+		Modules: []contracts.HarnessModule{{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0", Module: "budgets"}}},
+		Workflows: map[string]contracts.HarnessWorkflow{
+			"hello":  {Access: "write", TimeLimit: "45m"},
+			"review": {},
+		},
+	}}
+	definedBare := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
+		Modules: []contracts.HarnessModule{{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0"}}},
 	}}
 	values := []struct {
 		schema string
@@ -560,6 +573,8 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 		{"documents/harness", harness},
 		{"documents/harness", full},
 		{"documents/harness", bare},
+		{"documents/harness", defined},
+		{"documents/harness", definedBare},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: target,
 			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, Workflow: "hello",

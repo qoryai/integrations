@@ -109,25 +109,32 @@ type Documents struct {
 // HarnessDocument is the run's harness, documents.schema.json: the harness document
 // of the workspace in the form of qory.yaml,
 // https://qory.dev/contracts/harness/v1/config.schema.json, with exactly one member,
-// the harness section. Every source is a remote source. A source of the form {path},
+// the harness section, which extends a stack or defines one. Every source is a remote
+// source. A source of the form {path},
 // a module given by name alone, link, the machine keys and every other member of
 // qory.yaml are refused.
 type HarnessDocument struct {
 	Harness HarnessSection `json:"harness"`
 }
 
-// HarnessSection is the harness section of a [HarnessDocument]: the stack the harness
-// extends, the modules appended to it, the bindings of roles, the extensions, and a
-// name and a description. Extends is required.
+// HarnessSection is the harness section of a [HarnessDocument]. A section extends a
+// stack or defines one. A section with Extends appends Modules to that stack, the
+// base, and takes the workflows of the base, so it has no Workflows. A section without
+// Extends defines a stack: it requires Modules, at least 1, and may have Workflows, in
+// which the stack declares the access level of each of its workflows. Either kind may
+// have Bind, Extensions, Name and Description.
 type HarnessSection struct {
 	// Name is the name of the harness.
 	Name string `json:"name,omitempty"`
 	// Description is a description of the harness. An empty description is not
 	// written.
 	Description string `json:"description,omitempty"`
-	// Extends is the stack the harness extends.
-	Extends HarnessBase `json:"extends"`
-	// Modules are the modules appended to the stack, in order.
+	// Extends is the stack the harness extends, the base, and nil when the section
+	// defines a stack.
+	Extends *HarnessBase `json:"extends,omitempty"`
+	// Modules are the modules, in order: appended to the base when Extends is set, and
+	// the modules of the stack the section defines when it is nil, where at least 1 is
+	// required.
 	Modules []HarnessModule `json:"modules,omitempty"`
 	// Bind maps <kind>/<role> to the name of the entry of that kind that fills the
 	// role.
@@ -135,6 +142,24 @@ type HarnessSection struct {
 	// Extensions are values that qory copies into the report and does not read, by
 	// key, each a JSON value of any shape. Empty extensions are not written.
 	Extensions map[string]json.RawMessage `json:"extensions,omitempty"`
+	// Workflows are the settings of each workflow of the stack the section defines, by
+	// the workflow's name, as workflows in qory-stack.yaml has them: a lower-case
+	// letter, then up to 63 lower-case letters, digits and hyphens. Only without
+	// Extends: a section with Extends takes the workflows of its base.
+	Workflows map[string]HarnessWorkflow `json:"workflows,omitempty"`
+}
+
+// HarnessWorkflow is the settings of one workflow of a stack that a [HarnessSection]
+// defines.
+type HarnessWorkflow struct {
+	// Access is the access level the workflow declares for what a run of it works on,
+	// "read" or "write", and empty for read.
+	Access string `json:"access,omitempty"`
+	// TimeLimit is how long a run of the workflow may run, counted from the run's open,
+	// as a Go duration above zero, such as 7h or 45m, and empty when the workflow sets
+	// none. The run's run_settings.time_limit_minutes, when the control plane sets it,
+	// applies instead.
+	TimeLimit string `json:"time_limit,omitempty"`
 }
 
 // HarnessBase is a remote source of a stack, the extends of a [HarnessSection]: Git and
