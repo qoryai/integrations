@@ -89,8 +89,9 @@
 // the run's organisation, or, only to read a harness source, a grant whose
 // organisation assigned that source to the run's organisation. It sends a
 // [RunCredential] whose Purpose is "work" with no grant and with the ConnectionID of
-// the run's target collection, a connection of the run's organisation, and the adapter
-// uses only a grant of that connection. Under an assignment, it sends a [RunCredential] only when
+// the run's target collection, a live connection of the run's organisation when the
+// call is sent, and the adapter uses only a grant that the control plane's copy of
+// grants, [Grants], has under that connection. Under an assignment, it sends a [RunCredential] only when
 // the adapter's credential_scope is resource, with Resources set to the assigned
 // source's resource alone; when credential_scope is grant, it reads the assigned
 // source only with a [Read]. resolve-answer.schema.json states the rule.

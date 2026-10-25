@@ -621,11 +621,13 @@ const RunCredentialTokenMaxBytes = 16384
 // Access "read" or "write" and Purpose "harness" or "work". GrantRef is set for
 // Purpose "harness" and empty for Purpose "work". ConnectionID is set for Purpose
 // "work" and empty for Purpose "harness": it is the connection of the run's target
-// collection, as the control plane holds it for the run's organisation. For a work
-// call, the adapter checks that the collection is a live collection under ConnectionID
-// in its state, and does not look the connection up from the ref; it uses only a grant
-// of that connection that covers the collection and allows Access, and never a grant
-// of another connection.
+// collection, as the control plane holds it for the run's organisation, a live
+// connection of that organisation when the call is sent. For a work call, the adapter
+// checks that the collection is a live collection under ConnectionID in its state, and
+// does not look the connection up from the ref; it uses only a grant that the control
+// plane's copy of grants, [Grants], has under ConnectionID, that covers the collection
+// and allows Access, and never a grant of another connection. It never uses a grant
+// that it keeps only while it sends that grant's report again.
 // Resources has 1 to 64 resource refs for Purpose "harness", each as the adapter
 // answered it to a resolve call. For Purpose "work", it has exactly one: the ref of the
 // collection of the run's target, as the adapter listed it, which for a target from an
