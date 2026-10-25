@@ -118,12 +118,12 @@ func CheckModelProvider(doc any) error {
 // CheckEgressHosts reports the first rule of egress_hosts of description.schema.json
 // that a description breaks and that the schema does not express: the setting of each
 // setting entry is a property of settings whose type is string and that is not marked
-// writeOnly; each host in roles.credential.hosts, and the host of each
-// roles.model_provider.apis endpoint that is a URL, has an equal entry; and an API
-// endpoint that is a setting has an entry with the same setting. doc is the
-// description as a schema validates it, after the schema accepts it. A description
-// with no credential hosts and no model_provider APIs keeps every rule without
-// egress_hosts.
+// writeOnly; each host in roles.credential.hosts, each host of the items of
+// roles.source.apply, and the host of each roles.model_provider.apis endpoint that is a
+// URL, has an equal entry; and an API endpoint that is a setting has an entry with the
+// same setting. doc is the description as a schema validates it, after the schema
+// accepts it. A description with no credential hosts, no source apply items and no
+// model_provider APIs keeps every rule without egress_hosts.
 func CheckEgressHosts(doc any) error {
 	d, _ := doc.(map[string]any)
 	entries, _ := d["egress_hosts"].([]any)
@@ -156,6 +156,18 @@ func CheckEgressHosts(doc any) error {
 		host, _ := h.(string)
 		if !slices.Contains(hosts, host) {
 			return fmt.Errorf("add %q to egress_hosts: the credential host %q has no equal entry there, and each host in a role's hosts needs one", host, host)
+		}
+	}
+	source, _ := roles["source"].(map[string]any)
+	apply, _ := source["apply"].([]any)
+	for i, a := range apply {
+		item, _ := a.(map[string]any)
+		itemHosts, _ := item["hosts"].([]any)
+		for _, h := range itemHosts {
+			host, _ := h.(string)
+			if !slices.Contains(hosts, host) {
+				return fmt.Errorf("add %q to egress_hosts: the host %q of source apply[%d] has no equal entry there, and each host of an apply item needs one", host, host, i)
+			}
 		}
 	}
 	provider, _ := roles["model_provider"].(map[string]any)
