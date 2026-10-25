@@ -129,6 +129,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   the machine then composes `harness`. The registry host of `image_destination`,
   `environment_destination` and `environment_image` is lower case only, and a Docker Hub
   host is refused.
+- The `harness` section of the run documents extends a stack or defines one. A section
+  without `extends` defines a stack: it requires `modules`, at least one, and may contain
+  `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
+  `workflows` in `qory-stack.yaml`, so the stack declares the access level of each of its
+  workflows. A section with `extends` takes the workflows of its base and refuses
+  `workflows`. In Go, `HarnessSection.Extends` is a pointer, nil for a section that
+  defines a stack, and `HarnessSection.Workflows` and `HarnessWorkflow` are added.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that
