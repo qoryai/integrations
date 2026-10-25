@@ -119,7 +119,7 @@
               "enum": ["resource", "grant"]
             },
             "apply": {
-              "description": "The apply items of the run's work credential from this adapter: where and how the run's proxy sets the credential's value, 1 to 16 items, each in the shape of Forager's apply in run-configuration.schema.json, with each path a template ($defs.apply). At a run's claim, the control plane writes one work credential entry in the run configuration for Forager, with these items as its apply and {target.path} in each path filled with the path of the run's target (definitions.schema.json, $defs.target). That entry is the most the run's work credential from this adapter reaches: the answer to the call with the path run-credential may narrow it and never widen it (run-credential-answer.schema.json). Each host of each item has an equal entry in egress_hosts, so the control plane allows that host for the run. Absent, the control plane writes no work credential entry from this adapter in the run configuration.",
+              "description": "The apply items of the run's work credential from this adapter: where and how the run's proxy sets the credential's value, 1 to 16 items, each in the shape of Forager's apply in run-configuration.schema.json, with each path a template ($defs.apply). At a run's claim, the control plane writes one work credential entry in the run configuration for Forager, with these items as its apply and {target.path} in each path filled with the path of the run's target (definitions.schema.json, $defs.target). That entry is the most the run's work credential from this adapter reaches: the answer to a call with the path run-credential whose purpose is work may narrow it and never widen it (run-credential-answer.schema.json). Each host of each item has an equal entry in egress_hosts, so the control plane allows that host for the run. Absent, the control plane writes no work credential entry from this adapter in the run configuration.",
               "type": "array",
               "minItems": 1,
               "maxItems": 16,
@@ -232,7 +232,7 @@
     "no_secret": {"description": "A value of a data description's settings: it has no member writeOnly, and no value inside it has one, at any depth.", "properties": {"writeOnly": false}, "additionalProperties": {"$ref": "#/$defs/no_secret"}, "items": {"$ref": "#/$defs/no_secret"}},
     "host": {"description": "A host: lower-case labels joined by dots, each label 1 to 63 lower-case letters, digits and hyphens that starts and ends with a letter or a digit, with no *. in front.", "type": "string", "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"},
     "apply": {
-      "description": "One apply item of the source role: the members, limits and rules of Forager's apply in run-configuration.schema.json, with each path a template. Each item that the control plane fills from it is a valid Forager apply item.",
+      "description": "One apply item of the source role: the members, limits and rules of Forager's apply in run-configuration.schema.json, with each path a template. The control plane fills each template of the item and leaves out a filled path that equals an earlier filled path of the same item, so each item that the control plane fills from it is a valid Forager apply item.",
       "type": "object",
       "additionalProperties": false,
       "required": ["hosts", "scheme"],
@@ -242,12 +242,12 @@
         "username": {"description": "The username for basic, and only with basic: 1 or more characters, with no colon and no white space.", "type": "string", "minLength": 1, "pattern": "^[^:\\s]+$"},
         "header": {"description": "The header name for header, and only with header: 1 to 64 characters of an HTTP header name.", "type": "string", "maxLength": 64, "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"},
         "paths": {
-          "description": "The path templates of those hosts that the value is set on, 1 to 32, none twice. A template is a path in Forager's path grammar, ^/[^*?#\\s]*\\*?$, that contains the placeholder {target.path} at most once and no other { or }. At a run's claim, the control plane puts the path of the run's target in place of {target.path}. Before it fills any template, the control plane refuses a target path that contains .., //, *, ?, # or white space, so each filled path is also in Forager's path grammar. A template without {target.path} is a path that the control plane copies unchanged. Absent means every path of those hosts.",
+          "description": "The path templates of those hosts that the value is set on, 1 to 32, none twice. A template is a path in Forager's path grammar, ^/[^*?#\\s]*\\*?$, with no space character and no { or } other than in the placeholder {target.path}, which it contains at most once. A space character is a character below U+0021, U+007F, U+FEFF, or a character with the Unicode property White_Space: U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. In a template, a / comes right before {target.path}, and after it the template ends or continues with a /, so a filled template covers only the target's path and paths under it: /projects/{target.path}/* is a template, and /projects/{target.path}* is not, since for the target path acme it would also cover /projects/acme-other. At a run's claim, the control plane puts the path of the run's target in place of {target.path}. Before it fills any template, the control plane refuses a target path that contains .., //, *, ?, # or a space character, so each filled path is also in Forager's path grammar. A template without {target.path} is a path that the control plane copies unchanged. Two templates of an item can fill to the same path, such as /projects/{target.path} and /projects/acme for the target path acme; the control plane leaves out a filled path that equals an earlier filled path of the same item, so the item's filled paths are the same set with no path twice. Absent means every path of those hosts.",
           "type": "array",
           "minItems": 1,
           "maxItems": 32,
           "uniqueItems": true,
-          "items": {"type": "string", "pattern": "^/[^*?#\\s{}]*(\\{target\\.path\\}[^*?#\\s{}]*)?\\*?$"}
+          "items": {"type": "string", "pattern": "^/(?:[^*?#{}\\x00-\\x20\\x7f\\x85\\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*\\*?|(?:[^*?#{}\\x00-\\x20\\x7f\\x85\\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*/)?\\{target\\.path\\}(?:/[^*?#{}\\x00-\\x20\\x7f\\x85\\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*\\*?)?)$"}
         }
       },
       "allOf": [
@@ -256,7 +256,7 @@
       ]
     },
     "apply_host": {
-      "description": "A host of an apply item, in the grammar of Forager's credential_host in run-configuration.schema.json: a lower-case DNS name whose last label starts with a letter, an IPv4 address of four decimal parts with no leading zero, or an IPv6 address of lower-case hex groups with no leading zero, without brackets or a zone, at most 253 characters. Each apply host also has an equal entry in egress_hosts, and egress_hosts has no IPv6 address, so an IPv6 apply host is refused.",
+      "description": "A host of an apply item, in the grammar of Forager's credential_host in run-configuration.schema.json: a lower-case DNS name whose last label starts with a letter, an IPv4 address of four decimal parts with no leading zero, or an IPv6 address of lower-case hex groups with no leading zero, without brackets or a zone, at most 253 characters. Each apply host also has an equal entry in egress_hosts, and egress_hosts has no IPv6 address, so the check that each apply host has an equal entry in egress_hosts refuses an IPv6 apply host.",
       "type": "string",
       "maxLength": 253,
       "anyOf": [

@@ -124,6 +124,7 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		"fixtures/invalid/description-source-apply-username-with-bearer.json":              "/roles/source/apply/0 ",
 		"fixtures/invalid/description-source-apply-path-two-placeholders.json":             "/roles/source/apply/0/paths/0 pattern",
 		"fixtures/invalid/description-source-apply-path-star-before-placeholder.json":      "/roles/source/apply/0/paths/0 pattern",
+		"fixtures/invalid/description-source-apply-path-star-after-placeholder.json":       "/roles/source/apply/0/paths/0 pattern",
 		"fixtures/invalid/description-settings-enum-1025-entries.json":                     "/settings/properties/level/enum maxItems",
 		"fixtures/invalid/description-settings-properties-1025-members.json":               "/settings/properties maxProperties",
 		"fixtures/invalid/description-string-16385-characters.json":                        "/description maxLength",

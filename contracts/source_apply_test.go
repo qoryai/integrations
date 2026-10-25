@@ -3,6 +3,7 @@ package contracts_test
 import (
 	"bytes"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -41,9 +42,10 @@ func TestASourceApplyItemIsRefusedForTheRuleInItsName(t *testing.T) {
 }
 
 // TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar pins the pattern of a
-// source apply path template: it accepts a path in Forager's path grammar with
-// {target.path} at most once and no other { or }, and each accepted template, filled
-// with a target path that has no .., //, *, ?, # or white space, is in that grammar
+// source apply path template: it accepts a path in Forager's path grammar with no
+// space character, {target.path} at most once and no other { or }, a / right before
+// {target.path}, and after it the end or a /; and each accepted template, filled with
+// a target path that has no .., //, *, ?, # or space character, is in that grammar
 // too.
 func TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar(t *testing.T) {
 	schema := compile(t, "description.schema.json#/$defs/apply/properties/paths/items")
@@ -56,10 +58,27 @@ func TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar(t *testing.T) {
 		{"/user", true},
 		{"/projects/{target.path}", true},
 		{"/projects/{target.path}/*", true},
-		{"/projects/{target.path}*", true},
+		{"/projects/{target.path}/", true},
 		{"/{target.path}", true},
-		{"/{target.path}.json", true},
+		{"/{target.path}/*", true},
 		{"/v1/{target.path}/files/*", true},
+		{"/a{b", false},
+		{"/a}b", false},
+		{"/projects/{target.path}*", false},
+		{"/projects/{target.path}-*", false},
+		{"/projects/{target.path}.json", false},
+		{"/projects{target.path}", false},
+		{"/projects/x{target.path}/*", false},
+		{"/a\tb", false},
+		{"/a\x7fb", false},
+		{"/a\u0085b", false},
+		{"/a\u00a0b", false},
+		{"/a\u1680b", false},
+		{"/a\u2009b", false},
+		{"/a\u2028b", false},
+		{"/a\u202fb", false},
+		{"/a\u3000b", false},
+		{"/a\ufeffb", false},
 		{"", false},
 		{"{target.path}", false},
 		{"projects/{target.path}", false},
@@ -95,6 +114,61 @@ func TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar(t *testing.T) {
 			if !foragerPath.MatchString(filled) {
 				t.Errorf("the template %q filled with %q is %q, which is not in Forager's path grammar", tc.template, target, filled)
 			}
+		}
+	}
+}
+
+// foragerPaths is a copy of the paths member of Forager's apply in
+// run-configuration.schema.json at Forager 76d6638, which the forager module this
+// module requires does not contain yet.
+const foragerPaths = `{"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "pattern": "^/[^*?#\\s]*\\*?$"}}`
+
+// TestFilledPathsLeaveOutAPathTheyAlreadyHave pins why the control plane leaves out a
+// filled path that equals an earlier filled path of the same item: two templates that
+// the schema accepts, none twice, can fill to the same path, and the filled paths with
+// that path left out are valid as Forager's apply paths, in its grammar and none twice.
+func TestFilledPathsLeaveOutAPathTheyAlreadyHave(t *testing.T) {
+	templates := compile(t, "description.schema.json#/$defs/apply/properties/paths")
+	c := jsonschema.NewCompiler()
+	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(foragerPaths))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.AddResource("forager-paths.json", doc); err != nil {
+		t.Fatal(err)
+	}
+	forager, err := c.Compile("forager-paths.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		paths  []any
+		target string
+		want   []any
+	}{
+		{[]any{"/projects/{target.path}", "/projects/acme"}, "acme", []any{"/projects/acme"}},
+		{[]any{"/{target.path}/a", "/a/{target.path}"}, "a", []any{"/a/a"}},
+		{[]any{"/projects/{target.path}", "/projects/{target.path}/*", "/user"}, "acme/widgets", []any{"/projects/acme/widgets", "/projects/acme/widgets/*", "/user"}},
+	} {
+		if err := templates.Validate(tc.paths); err != nil {
+			t.Errorf("%v: the schema refuses the templates: %v", tc.paths, err)
+		}
+		var filled, kept []any
+		for _, p := range tc.paths {
+			f := strings.Replace(p.(string), "{target.path}", tc.target, 1)
+			filled = append(filled, f)
+			if !slices.Contains(kept, any(f)) {
+				kept = append(kept, f)
+			}
+		}
+		if !slices.Equal(kept, tc.want) {
+			t.Errorf("%v filled with %q: %v, want %v", tc.paths, tc.target, kept, tc.want)
+		}
+		if err := forager.Validate(kept); err != nil {
+			t.Errorf("%v filled with %q, with each repeated path left out, is %v, which Forager refuses: %v", tc.paths, tc.target, kept, err)
+		}
+		if len(kept) < len(filled) && forager.Validate(filled) == nil {
+			t.Errorf("%v filled with %q is %v, and Forager accepts it with a path twice", tc.paths, tc.target, filled)
 		}
 	}
 }
