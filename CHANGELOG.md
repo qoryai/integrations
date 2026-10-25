@@ -23,19 +23,25 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - Add each host in the `credential` role's `hosts` to `egress_hosts`.
   `conformance.Description` refuses a credential host without an equal entry there, so a
   description of 0.3.0 with a `credential` role and no `egress_hosts` fails the check.
-  `conformance.Description` also refuses a credential host with `*.` in front.
+  `conformance.Description` also refuses a credential host with `*.` in front, and a
+  credential host that an `egress_hosts` entry cannot be, such as `localhost` or a
+  single label.
 - The module requires Go 1.27.3 or later (`go 1.27.3` in `go.mod`), because Forager does.
   An integration that requires this module builds with Go 1.27.3 or later. `go.yml` sets
   `GOTOOLCHAIN` to `go1.27.3+auto`, because its image has Go 1.27.2.
-- Run documents have no `stack` and no `stack_reference`, members that this module had
-  after 0.3.0 and before this release. A reader takes the harness from the harness file
-  of the target at `target_version`, or from `harness`, as Added describes.
-- An adapter written to the adapter contract as this module had it after 0.3.0 accepts
-  change feed entries of the kind `grant`, because `changes.schema.json` refuses an entry
-  of a kind it does not list. After it mints a linked connect return, the adapter reports
-  the grant with `POST /v1/grants`. It reads `GET /v1/grants` when it starts, follows the
-  `grant` entries, and matches its state to that copy. It accepts a connect pass for a
-  live connection, which adds or replaces the grant of one external account.
+- Run documents have no top-level `stack` and no `stack_reference`, members that this
+  module had after 0.3.0 and before this release. A reader takes the harness from the
+  harness file of the target at `target_version`, or from `harness`, as Added describes.
+  A run with `workflow` has `harness`, `target_version` or both. In Go,
+  `Documents.Stack` and `Documents.StackReference` are removed, and
+  `Documents.TargetVersion` and `Documents.Harness` are added.
+- If an adapter follows the adapter contract as this module had it after 0.3.0, change
+  the adapter in three ways. Accept change feed entries of the kind `grant`, because
+  `changes.schema.json` refuses an entry of a kind it does not list. After the adapter
+  mints a linked connect return, report the grant with `POST /v1/grants`, read
+  `GET /v1/grants` when the adapter starts, follow the `grant` entries, and match the
+  adapter's state to that copy. Accept a connect pass for a live connection, which adds
+  or replaces the grant of one external account.
 
 ### Added
 
@@ -118,9 +124,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   present for every run, and `access`, `target`, `target_version`, `work_item`,
   `run_settings`, `workflow`, `harness_hidden`, `harness`, `image_destination`,
   `environment_destination` and `environment_image` by step. `target_version` is the exact
-  version at which the control plane read the harness file of the target. `harness` is
-  present when that file is absent, has no `extends`, or was not read, and the machine
-  then composes `harness`. The registry host of `image_destination`,
+  version at which the control plane checked for the harness file of the target.
+  `harness` is present when that file is absent, has no `extends`, or was not read, and
+  the machine then composes `harness`. The registry host of `image_destination`,
   `environment_destination` and `environment_image` is lower case only, and a Docker Hub
   host is refused.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
@@ -129,8 +135,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   refers to another embedded schema, or to a schema of the Forager contract, compiles with
   nothing fetched. Go types such as `Adapter`, `Grant`, `RunCredential`, `Claim`,
   `Documents` and `MachinesMake` marshal to the documents that their schemas accept.
-  `CheckDescription`, `CheckModelProvider` and `CheckEgressHosts`
-  check the rules of a description that its schema states only in words.
+  `CheckDescription`, `CheckModelProvider` and `CheckEgressHosts` check the rules of a
+  description that its schema states only in words.
 - `conformance.Description` also checks a description's `model_provider` role and
   `egress_hosts`, and refuses an API `auth` of the scheme `header` whose header
   conformance reserves, as `conformance.Credential` refuses one in an `apply` entry.
