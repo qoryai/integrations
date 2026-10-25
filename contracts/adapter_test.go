@@ -222,6 +222,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"run-credential-harness-without-grant-ref.json":        {"run-credential", "/ required grant_ref"},
 		"run-credential-work-without-connection-id.json":       {"run-credential", "/ required connection_id"},
 		"run-credential-harness-with-connection-id.json":       {"run-credential", "/ "},
+		"run-credential-harness-write.json":                    {"run-credential", "/access const"},
 		"run-credential-answer-without-token.json":             {"run-credential-answer", "/credential required token"},
 		"run-credential-answer-without-nested-version.json":    {"run-credential-answer", "/credential required version"},
 		"run-credential-answer-apply-token.json":               {"run-credential-answer", "/credential/apply/0/token "},

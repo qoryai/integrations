@@ -618,8 +618,12 @@ const RunCredentialTokenMaxBytes = 16384
 
 // RunCredential is the body of the call with the path [RunCredentialPath],
 // run-credential.schema.json: a credential for one run covering Resources, with
-// Access "read" or "write" and Purpose "harness" or "work". GrantRef is set for
-// Purpose "harness" and empty for Purpose "work". ConnectionID is set for Purpose
+// Access "read" or "write" and Purpose "harness" or "work". Access is "read" for
+// Purpose "harness", and the control plane uses a harness credential only for runs
+// that may use GrantRef, each at "read": a grant of a live connection of the run's
+// organisation, or, only to read a harness source, a grant whose organisation assigned
+// that source to the run's organisation. GrantRef is set for Purpose "harness" and
+// empty for Purpose "work". ConnectionID is set for Purpose
 // "work" and empty for Purpose "harness": it is the connection of the run's target
 // collection, as the control plane holds it for the run's organisation, a live
 // connection of that organisation when the call is sent. For a work call, the adapter
