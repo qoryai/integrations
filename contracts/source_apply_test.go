@@ -63,17 +63,17 @@ func TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar(t *testing.T) {
 		{"/{target.path}/*", true},
 		{"/v1/{target.path}/files/*", true},
 		{"/repos/{target.path}", true},
-		{"/{target.path}.git/*", true},
-		{"/{target.path}.git", true},
-		{"/{target.path}.git/", true},
+		{"/files/{target.path}.v2/*", true},
+		{"/{target.path}.v2", true},
+		{"/{target.path}.v2/", true},
 		{"/projects/{target.path}.json", true},
 		{"/projects/{target.path}-v2/files/*", true},
 		{"/a{b", false},
 		{"/a}b", false},
 		{"/projects/{target.path}*", false},
 		{"/projects/{target.path}-*", false},
-		{"/{target.path}.git*", false},
-		{"/{target.path}.git{x}", false},
+		{"/{target.path}.v2*", false},
+		{"/{target.path}.v2{x}", false},
 		{"/projects{target.path}", false},
 		{"/projects/x{target.path}/*", false},
 		{"/a\tb", false},
@@ -116,7 +116,7 @@ func TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar(t *testing.T) {
 		if !foragerPath.MatchString(tc.template) {
 			t.Errorf("the template %q is not in Forager's path grammar", tc.template)
 		}
-		for _, target := range []string{"acme", "acme/widgets", "acme/widgets.v2", "owner/name", "a-b_c~d", "{x}"} {
+		for _, target := range []string{"acme", "acme/widgets", "acme/widgets.v2", "acme/reports", "a-b_c~d", "{x}"} {
 			filled := strings.Replace(tc.template, "{target.path}", target, 1)
 			if !foragerPath.MatchString(filled) {
 				t.Errorf("the template %q filled with %q is %q, which is not in Forager's path grammar", tc.template, target, filled)
