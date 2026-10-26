@@ -87,10 +87,12 @@
 // [ResolveAnswer]; [Read], with the path [ReadPath], which it answers with
 // [ReadAnswer]; and [ReadPublic], with the path [ReadPublicPath], which it answers with
 // [ReadAnswer] too. The adapter has one access key for every organisation, so the control
-// plane uses a resolve result, and sends a [Read] or a [RunCredential] whose Purpose is
-// "harness", only under a grant that the run may use: a grant of a live connection of
-// the run's organisation, or, only to read a harness source, a grant whose
-// organisation assigned that source to the run's organisation. It sends a
+// plane uses a resolve result only under a grant that the run may use, or, for a result
+// with Public set, without a grant and only to send a [ReadPublic]; it sends a [Read] or
+// a [RunCredential] whose Purpose is "harness" only under a grant that the run may
+// use: a grant of a live connection of the run's organisation, or, only to read a
+// harness source, a grant whose organisation assigned that source to the run's
+// organisation. It sends a
 // [RunCredential] whose Purpose is "work" with no grant and with the ConnectionID of
 // the run's target collection, a live connection of the run's organisation when the
 // call is sent, and the adapter uses only a grant that the control plane's copy of

@@ -736,8 +736,10 @@ type Resolve struct {
 // ResolveAnswer is the body of the adapter's answer to the call with the path
 // [ResolvePath], resolve-answer.schema.json: one result for each address of the call, in
 // the call's order. The control plane uses a result only under a grant that the run may
-// use, as resolve-answer.schema.json states, and treats every other result as covered:
-// false. Under an assignment, it sends a [RunCredential] only when the adapter's
+// use, or, for a result with Public set, without a grant and only to send a
+// [ReadPublic], as resolve-answer.schema.json states. It treats every other result as
+// covered: false, or, when Public is set, as a result with Public set and no GrantRef.
+// Under an assignment, it sends a [RunCredential] only when the adapter's
 // credential_scope is resource, with Resources set to the assigned source's resource
 // alone; when credential_scope is grant, it reads the assigned source only with a
 // [Read]. It sends a [ReadPublic] only for a ResourceRef of a result with Public set,
@@ -750,14 +752,15 @@ type ResolveAnswer struct {
 }
 
 // Resolved is the result for one address: GrantRef and ResourceRef, the grant and the
-// resource at the source that cover it, with Covered nil, and Public true when the
-// source also shows that resource without a credential; Public true and ResourceRef,
-// with no GrantRef and Covered nil, when no grant the adapter holds covers the address
-// and the source shows the resource without a credential; or Covered pointing to false,
-// with neither ref and Public false, when the adapter cannot read the address, or no
-// grant it holds covers it and the resource is not public. The adapter sets Public from
-// the visibility of the resource as a request without a credential sees it, never from
-// a grant it holds; a resource that the source shows only to signed-in users is not
+// resource at the source that cover it, with Covered nil, and Public true or false;
+// Public true and ResourceRef, with no GrantRef and Covered nil, when no grant the
+// adapter holds covers the address and the source shows the resource without a
+// credential; or Covered pointing to false, with neither ref and Public false, when the
+// adapter cannot read the address, or no grant it holds covers it and it does not set
+// Public. Public is optional: an adapter sets it only if it serves a [ReadPublic], and
+// only for a resource that the source shows without a credential, decided from the
+// visibility of the resource as a request without a credential sees it, never from a
+// grant it holds; a resource that the source shows only to signed-in users is not
 // public.
 type Resolved struct {
 	Address     string `json:"address"`
