@@ -652,10 +652,10 @@ const RunCredentialTokenMaxBytes = 16384
 // plane's copy of grants, [Grants], has under ConnectionID, that covers the collection
 // and allows Access, and never a grant of another connection. It never uses a grant
 // that it keeps only while it sends that grant's report again.
-// Resources has 1 to 64 resource refs for Purpose "harness", each as the adapter
-// answered it to a resolve call. For Purpose "work", it has exactly one: the ref of the
-// collection of the run's target, as the adapter listed it, which for a target from an
-// item is the item's collection.
+// Resources has 1 to 64 resource refs for Purpose "harness", each the ResourceRef of a
+// [Resolved], as the adapter answered it, never its PublicRef. For Purpose "work", it
+// has exactly one: the ref of the collection of the run's target, as the adapter listed
+// it, which for a target from an item is the item's collection.
 type RunCredential struct {
 	Version      int      `json:"version"`
 	Time         string   `json:"time"`
