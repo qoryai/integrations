@@ -5,7 +5,8 @@
 //
 // The contract is what a program of an integration reports about itself: `<program>
 // describe` prints its description, description.schema.json, and a reader, `qory` or a
-// control plane, expands a declared integration from it.
+// control plane, expands a declared integration from it. [Guide] is the step-by-step
+// help of a description's source role.
 //
 // The contract also holds the requests an adapter, the program that reads a source of
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
@@ -83,8 +84,9 @@
 // access key over [CallAnswerDomain], bound to the call's signature. The calls are
 // [RunCredential], with the path [RunCredentialPath], which the adapter answers with
 // [RunCredentialAnswer]; [Resolve], with the path [ResolvePath], which it answers with
-// [ResolveAnswer]; and [Read], with the path [ReadPath], which it answers with
-// [ReadAnswer]. The adapter has one access key for every organisation, so the control
+// [ResolveAnswer]; [Read], with the path [ReadPath], which it answers with
+// [ReadAnswer]; and [ReadPublic], with the path [ReadPublicPath], which it answers with
+// [ReadAnswer] too. The adapter has one access key for every organisation, so the control
 // plane uses a resolve result, and sends a [Read] or a [RunCredential] whose Purpose is
 // "harness", only under a grant that the run may use: a grant of a live connection of
 // the run's organisation, or, only to read a harness source, a grant whose
@@ -95,7 +97,10 @@
 // grants, [Grants], has under that connection. Under an assignment, it sends a [RunCredential] only when
 // the adapter's credential_scope is resource, with Resources set to the assigned
 // source's resource alone; when credential_scope is grant, it reads the assigned
-// source only with a [Read]. resolve-answer.schema.json states the rule.
+// source only with a [Read]. It sends a [ReadPublic] only for a resource the adapter
+// answered with Public set in a [Resolved], under no grant, and never sends a
+// [RunCredential] for a resource that it reads with a [ReadPublic].
+// resolve-answer.schema.json states the rule.
 //
 // The provisioner contract holds the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its

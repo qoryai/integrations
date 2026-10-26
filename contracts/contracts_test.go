@@ -97,6 +97,12 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		"fixtures/invalid/description-source-arabic-letter-mark.json":                      "/roles/source/access pattern",
 		"fixtures/invalid/description-source-zero-width-space.json":                        "/roles/source/description pattern",
 		"fixtures/invalid/description-source-byte-order-mark.json":                         "/roles/source/setup/help pattern",
+		"fixtures/invalid/description-source-guide-steps-11.json":                          "/roles/source/guide/connect/steps maxItems",
+		"fixtures/invalid/description-source-guide-steps-empty.json":                       "/roles/source/guide/connect/steps minItems",
+		"fixtures/invalid/description-source-guide-no-steps.json":                          "/roles/source/guide/connect required steps",
+		"fixtures/invalid/description-source-guide-line-feed.json":                         "/roles/source/guide/setup/after pattern",
+		"fixtures/invalid/description-source-guide-301-characters.json":                    "/roles/source/guide/setup/steps/0 maxLength",
+		"fixtures/invalid/description-source-guide-undefined-member.json":                  "/roles/source/guide/setup additionalProperties",
 		"fixtures/invalid/description-source-item-noun-upper-case.json":                    "/roles/source/item_noun/one pattern",
 		"fixtures/invalid/description-source-item-noun-work-item.json":                     "/roles/source/item_noun/one ",
 		"fixtures/invalid/description-source-item-noun-work-items-hyphen.json":             "/roles/source/item_noun/other ",
@@ -211,6 +217,44 @@ func TestACollectionNounIsRefusedForWorkItem(t *testing.T) {
 			if err := schema.Validate(doc); (err == nil) != c.accept {
 				t.Errorf("%s, accepted %v, want %v: %v", name, err == nil, c.accept, err)
 			}
+		}
+	}
+}
+
+// TestAGuideMarshalsToItsSchema pins that the guide of example-source-guide.json decodes
+// into Guide and marshals back to the same document, and that a Guide with only
+// Connect, one step and no Before or After marshals to a guide the schema accepts.
+func TestAGuideMarshalsToItsSchema(t *testing.T) {
+	schema := compile(t, "description.schema.json#/properties/roles/properties/source/properties/guide")
+	var d struct {
+		Roles struct {
+			Source struct {
+				Guide json.RawMessage `json:"guide"`
+			} `json:"source"`
+		} `json:"roles"`
+	}
+	if err := json.Unmarshal(read(t, "fixtures/example-source-guide.json"), &d); err != nil {
+		t.Fatal(err)
+	}
+	var g contracts.Guide
+	if err := json.Unmarshal(d.Roles.Source.Guide, &g); err != nil {
+		t.Fatal(err)
+	}
+	got, err := json.Marshal(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want bytes.Buffer
+	if err := json.Compact(&want, d.Roles.Source.Guide); err != nil || !bytes.Equal(got, want.Bytes()) {
+		t.Errorf("the guide marshals back as %s, want %s", got, want.Bytes())
+	}
+	small, err := json.Marshal(contracts.Guide{Connect: &contracts.GuidePart{Steps: []string{"Sign in to Example Tracker."}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range [][]byte{got, small} {
+		if err := validate(schema, b); err != nil {
+			t.Errorf("the schema refuses the guide %s: %v", b, err)
 		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -46,6 +47,7 @@ var adapterSchemas = []string{
 	"resolve.schema.json",
 	"resolve-answer.schema.json",
 	"read.schema.json",
+	"read-public.schema.json",
 	"read-answer.schema.json",
 	"run-credential.schema.json",
 	"run-credential-answer.schema.json",
@@ -211,6 +213,11 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"resolve-answer-not-covered-with-grant-ref.json":       {"resolve-answer", "/results/1/grant_ref "},
 		"resolve-answer-without-resource-ref.json":             {"resolve-answer", "/results/0 required resource_ref"},
 		"resolve-answer-without-revision.json":                 {"resolve-answer", "/ required revision"},
+		"resolve-answer-public-false.json":                     {"resolve-answer", "/results/0/public const"},
+		"resolve-answer-public-without-resource-ref.json":      {"resolve-answer", "/results/0 required resource_ref"},
+		"resolve-answer-not-covered-public.json":               {"resolve-answer", "/results/0/public "},
+		"read-public-with-grant-ref.json":                      {"read-public", "/ additionalProperties"},
+		"read-public-without-path.json":                        {"read-public", "/ required path"},
 		"read-path-leading-slash.json":                         {"read", "/path pattern"},
 		"read-path-dot-dot.json":                               {"read", "/path pattern"},
 		"read-path-empty-part.json":                            {"read", "/path pattern"},
@@ -419,6 +426,10 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Address: "https://code.example.com/acme/harness", GrantRef: "G_1", ResourceRef: "R_1001"},
 			{Address: "reader@code.example.com:acme/tools", Covered: &noItems},
 		}}},
+		{"resolve-answer", contracts.ResolveAnswer{Version: contracts.Version, Revision: contracts.Revision, Results: []contracts.Resolved{
+			{Address: "https://code.example.com/acme/public-stack", ResourceRef: "R_2001", Public: true},
+			{Address: "https://code.example.com/acme/harness", GrantRef: "G_1", ResourceRef: "R_1001", Public: true},
+		}}},
 		{"run-credential", contracts.RunCredential{Version: contracts.Version, Time: now, GrantRef: "G_1", Resources: []string{"R_1001"},
 			Access: "read", Purpose: "harness"}},
 		{"run-credential", contracts.RunCredential{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef",
@@ -433,6 +444,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 					{Hosts: []string{"api.code.example.com"}, Scheme: "header", Header: "X-Access"},
 				}}}},
 		{"read", contracts.Read{Version: contracts.Version, Time: now, GrantRef: "G_1", ResourceRef: "R_1001", Path: "qory.yaml", At: "main"}},
+		{"read-public", contracts.ReadPublic{Version: contracts.Version, Time: now, ResourceRef: "R_2001", Path: "qory-stack.yaml", At: "main"}},
+		{"refusal", contracts.Refusal{Error: "resource_not_public"}},
 		{"read-answer", contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Content: "",
 			ResolvedAt: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4"}},
 		{"read-answer", contracts.ReadAnswer{Version: contracts.Version, Revision: contracts.Revision, Found: new(bool),
@@ -1261,7 +1274,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
 		"connections-disconnect", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
-		"resolve-answer", "read", "read-answer", "run-credential", "run-credential-answer"} {
+		"resolve-answer", "read", "read-public", "read-answer", "run-credential", "run-credential-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
@@ -1741,6 +1754,62 @@ func TestAReadPathIsRelativeAndHasNoDotParts(t *testing.T) {
 		if !refused && err != nil {
 			t.Errorf("a read of the path %q is refused: %v", p, err)
 		}
+	}
+}
+
+// TestAReadPublicIsAReadWithoutAGrant pins that ReadPublicPath is read-public, that
+// read-public.schema.json defines and requires the members of read.schema.json but
+// grant_ref, that its path accepts and refuses what the path of a read does, and that
+// read-public/at-a-name.json decodes into ReadPublic and marshals back to the same
+// document.
+func TestAReadPublicIsAReadWithoutAGrant(t *testing.T) {
+	if contracts.ReadPublicPath != "read-public" {
+		t.Errorf("ReadPublicPath is %q", contracts.ReadPublicPath)
+	}
+	members := func(name string) (props, required []string) {
+		root := node(t, name, "/properties")
+		for k := range root {
+			props = append(props, k)
+		}
+		doc, err := contracts.Document(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, r := range doc.(map[string]any)["required"].([]any) {
+			required = append(required, r.(string))
+		}
+		slices.Sort(props)
+		slices.Sort(required)
+		return props, required
+	}
+	readProps, readRequired := members("read.schema.json")
+	publicProps, publicRequired := members("read-public.schema.json")
+	without := func(l []string) []string {
+		return slices.DeleteFunc(slices.Clone(l), func(s string) bool { return s == "grant_ref" })
+	}
+	if !slices.Equal(publicProps, without(readProps)) || !slices.Equal(publicRequired, without(readRequired)) {
+		t.Errorf("read-public.schema.json defines %v and requires %v, want %v and %v", publicProps, publicRequired,
+			without(readProps), without(readRequired))
+	}
+	schema := compile(t, "read-public.schema.json")
+	body := read(t, "fixtures/adapter/read-public/at-a-name.json")
+	for p, refused := range map[string]bool{"docs/setup.md": false, "/qory.yaml": true, "docs/../qory.yaml": true} {
+		err := validate(schema, bytes.Replace(body, []byte(`"path": "qory-stack.yaml"`), []byte(`"path": "`+p+`"`), 1))
+		if refused != (err != nil) {
+			t.Errorf("a read-public of the path %q, refused %v, want %v", p, err != nil, refused)
+		}
+	}
+	var r contracts.ReadPublic
+	if err := json.Unmarshal(body, &r); err != nil {
+		t.Fatal(err)
+	}
+	got, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want bytes.Buffer
+	if err := json.Compact(&want, body); err != nil || !bytes.Equal(got, want.Bytes()) {
+		t.Errorf("read-public/at-a-name.json marshals back as %s, want %s", got, want.Bytes())
 	}
 }
 
