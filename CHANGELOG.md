@@ -153,6 +153,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
   the step `explore`, and `result.schema.json`, the run's final response, which the
   control plane reads from the result text of the last `dev.qory.runtime.result` event.
+  In the inputs, `ticket` is absent when the work item was not taken in from an item at
+  a source.
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,
