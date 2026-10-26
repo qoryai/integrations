@@ -99,8 +99,8 @@
 // grants, [Grants], has under that connection. Under an assignment, it sends a [RunCredential] only when
 // the adapter's credential_scope is resource, with Resources set to the assigned
 // source's resource alone; when credential_scope is grant, it reads the assigned
-// source only with a [Read]. It sends a [ReadPublic] only for a resource the adapter
-// answered with Public set in a [Resolved], under no grant, and never sends a
+// source only with a [Read]. It sends a [ReadPublic] only with ResourceRef set to the
+// PublicRef of a [Resolved] with Public set, under no grant, and never sends a
 // [RunCredential] for a resource that it reads with a [ReadPublic].
 // resolve-answer.schema.json states the rule.
 //

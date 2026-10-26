@@ -742,9 +742,10 @@ type Resolve struct {
 // Under an assignment, it sends a [RunCredential] only when the adapter's
 // credential_scope is resource, with Resources set to the assigned source's resource
 // alone; when credential_scope is grant, it reads the assigned source only with a
-// [Read]. It sends a [ReadPublic] only for a ResourceRef of a result with Public set,
-// and never sends a [RunCredential] for a resource that it reads with a [ReadPublic]:
-// reading a public resource gives the run no credential.
+// [Read]. It sends a [ReadPublic] only with ResourceRef set to the PublicRef of a
+// result with Public set, never with the ResourceRef of a covered result, and never
+// sends a [RunCredential] for a resource that it reads with a [ReadPublic]: reading a
+// public resource gives the run no credential.
 type ResolveAnswer struct {
 	Version  int        `json:"version"`
 	Revision int        `json:"revision"`
@@ -752,22 +753,26 @@ type ResolveAnswer struct {
 }
 
 // Resolved is the result for one address: GrantRef and ResourceRef, the grant and the
-// resource at the source that cover it, with Covered nil, and Public true or false;
-// Public true and ResourceRef, with no GrantRef and Covered nil, when no grant the
-// adapter holds covers the address and the source shows the resource without a
-// credential; or Covered pointing to false, with neither ref and Public false, when the
-// adapter cannot read the address, or no grant it holds covers it and it does not set
-// Public. Public is optional: an adapter sets it only if it serves a [ReadPublic], and
-// only for a resource that the source shows without a credential, decided from the
-// visibility of the resource as a request without a credential sees it, never from a
-// grant it holds; a resource that the source shows only to signed-in users is not
-// public.
+// resource at the source that cover it, with Covered nil, and Public true with
+// PublicRef, or Public false with no PublicRef; Public true, ResourceRef and PublicRef,
+// with no GrantRef and Covered nil, when no grant the adapter holds covers the address
+// and the source shows the resource without a credential; or Covered pointing to false,
+// with no ref and Public false, when the adapter cannot read the address, or no grant
+// it holds covers it and it does not set Public. Public is optional: an adapter sets it
+// only if it serves a [ReadPublic], and only for a resource that the source shows
+// without a credential, decided from the visibility of the resource as a request
+// without a credential sees it, never from a grant it holds; a resource that the source
+// shows only to signed-in users is not public.
 type Resolved struct {
 	Address     string `json:"address"`
 	GrantRef    string `json:"grant_ref,omitempty"`
 	ResourceRef string `json:"resource_ref,omitempty"`
 	Covered     *bool  `json:"covered,omitempty"`
 	Public      bool   `json:"public,omitempty"`
+	// PublicRef is the ref of the resource that a request without a credential, under no
+	// grant, can use: the ResourceRef the control plane sends in a [ReadPublic]. It is
+	// set exactly when Public is true, and may equal ResourceRef when GrantRef is empty.
+	PublicRef string `json:"public_ref,omitempty"`
 }
 
 // ReadPath is the path of the call that reads a document at a version, read.schema.json:
@@ -795,9 +800,9 @@ type Read struct {
 const ReadPublicPath = "read-public"
 
 // ReadPublic is the body of the call with the path [ReadPublicPath],
-// read-public.schema.json: the document at Path in the resource ResourceRef, which the
-// adapter answered with Public set in a [Resolved], at the version At, read under no
-// grant. The adapter reads it as a request without a credential reads it, and answers
+// read-public.schema.json: the document at Path in the resource ResourceRef, the
+// PublicRef of a [Resolved] with Public set, never the ResourceRef of a covered result,
+// at the version At, read under no grant. The adapter reads it as a request without a credential reads it, and answers
 // with a [ReadAnswer], or refuses, in this order: 403 resource_not_public, a resource
 // that no longer exists included; 404 version_not_found; 409 document_not_text; 503
 // source_unavailable, the source's rate limit included.
