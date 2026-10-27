@@ -102,6 +102,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   adapter's `connect_url` or `setup_url`, and a connect return, signed by the adapter,
   sends the person back. A connect pass may be for a live connection, to add or replace
   the grant of one external account.
+- A setup pass may contain `organisation_slug`, the slug of the instance's organisation
+  in the control plane: 1 to 40 lower-case letters, digits and hyphens, with no hyphen at
+  either end. An adapter may use it to suggest a name at its source, and accepts a pass
+  without it. In Go, `SetupPass.OrganisationSlug` is added.
 - Grants: a connection has one grant per external account at the source. The adapter
   reports one grant with `POST /v1/grants`, with `connection_id`, `grant_ref`, `account`
   and `pass_nonce`, and the grant is added only when the control plane accepts the report.
