@@ -28,6 +28,28 @@ const (
 	DescriptionMaxDepth = 64
 )
 
+// Guide is the guide of a description's source role, roles.source.guide in
+// description.schema.json: short step-by-step help for the set-up step, Setup, and for
+// the connect step, Connect, each nil when absent. The control plane shows each value
+// verbatim as plain text, never as Markdown or HTML. For each part, it shows Before,
+// then a first step that the control plane writes, then the adapter's Steps, numbered
+// after that first step, then After. The adapter's steps describe only the adapter's
+// system.
+type Guide struct {
+	Setup   *GuidePart `json:"setup,omitempty"`
+	Connect *GuidePart `json:"connect,omitempty"`
+}
+
+// GuidePart is the help for one step of a [Guide]: Before, a line shown above the
+// steps, and After, a line shown below them, each empty when absent; and Steps, 1 to 10
+// lines in the order a person takes them. Each value is a prose line of
+// description.schema.json, $defs.line: 1 to 300 characters on one line.
+type GuidePart struct {
+	Before string   `json:"before,omitempty"`
+	Steps  []string `json:"steps"`
+	After  string   `json:"after,omitempty"`
+}
+
 // CheckDescription reports the first rule of description.schema.json that a
 // description's raw bytes break and that no schema can express: the bytes are at most
 // [DescriptionMaxBytes] and are UTF-8; no string holds a \u escape of a lone surrogate;

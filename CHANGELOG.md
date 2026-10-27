@@ -136,6 +136,32 @@ change what an existing reader or program relies on, and notes it under Upgradin
   the purpose `harness`, with read access under one grant; for the purpose `work`, for the
   one resource of the run's target collection, with read or write access, inside the work
   credential entry built from the source role's `apply`.
+- A `resolve` result may contain `public: true`: the source shows the resource to anyone
+  without a credential. An adapter answers it only if it serves `read-public`. A public
+  result contains `resource_ref` and `public_ref`, and also `grant_ref` when a grant that
+  the adapter holds covers the resource too. `public_ref` is the ref of the resource that
+  a request without a credential can use, and may be equal to `resource_ref` in a result
+  without `grant_ref`. The adapter decides `public` from the visibility of the resource as
+  a request without a credential sees it, never from a grant it holds, and a resource that
+  the source shows only to signed-in users is not public. In Go, `Resolved.Public` and
+  `Resolved.PublicRef` are added.
+- The call `read-public` returns the text of one document of a public resource at one
+  version, under no grant, with the answer of `read`. Its body is the body of `read`
+  without `grant_ref`. In this order, the adapter refuses a resource that the source does
+  not show without a credential, a resource that no longer exists included,
+  `403 resource_not_public`; then `404 version_not_found`, `409 document_not_text` and
+  `503 source_unavailable`, which includes the source's rate limit. The control plane
+  sends `read-public` only with `resource_ref` set to the `public_ref` of a result with
+  `public: true`, never with the `resource_ref` of a covered result, and never sends
+  `run-credential` for a resource that it reads with `read-public`, so reading a public
+  resource gives the run no credential. In Go, `ReadPublic` and `ReadPublicPath` are
+  added.
+- The `source` role may contain `guide`, short step-by-step help for the set-up step,
+  `setup`, and the connect step, `connect`, each optional. Each part has 1 to 10 `steps`
+  and an optional `before` and `after`, each a prose line. The control plane shows the
+  guide as plain text. It shows a first step that the control plane writes, then the
+  adapter's steps, numbered after that first step, so the adapter's steps describe only
+  the adapter's system. In Go, `Guide` and `GuidePart` are added.
 - The provisioner contract, `contracts/provisioner/v1`, revision 1: the requests with
   which a node pool's starter claims a request for one machine, `POST /v1/pools/claim`;
   reports that it created the machine, `POST /v1/dispatches/<dispatch_id>/dispatched`;
@@ -153,6 +179,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
   the step `explore`, and `result.schema.json`, the run's final response, which the
   control plane reads from the result text of the last `dev.qory.runtime.result` event.
+  In the inputs, `ticket` is absent when the work item was not taken in from an item at
+  a source.
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,

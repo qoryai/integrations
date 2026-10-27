@@ -652,10 +652,10 @@ const RunCredentialTokenMaxBytes = 16384
 // plane's copy of grants, [Grants], has under ConnectionID, that covers the collection
 // and allows Access, and never a grant of another connection. It never uses a grant
 // that it keeps only while it sends that grant's report again.
-// Resources has 1 to 64 resource refs for Purpose "harness", each as the adapter
-// answered it to a resolve call. For Purpose "work", it has exactly one: the ref of the
-// collection of the run's target, as the adapter listed it, which for a target from an
-// item is the item's collection.
+// Resources has 1 to 64 resource refs for Purpose "harness", each the ResourceRef of a
+// [Resolved], as the adapter answered it, never its PublicRef. For Purpose "work", it
+// has exactly one: the ref of the collection of the run's target, as the adapter listed
+// it, which for a target from an item is the item's collection.
 type RunCredential struct {
 	Version      int      `json:"version"`
 	Time         string   `json:"time"`
@@ -736,11 +736,16 @@ type Resolve struct {
 // ResolveAnswer is the body of the adapter's answer to the call with the path
 // [ResolvePath], resolve-answer.schema.json: one result for each address of the call, in
 // the call's order. The control plane uses a result only under a grant that the run may
-// use, as resolve-answer.schema.json states, and treats every other result as covered:
-// false. Under an assignment, it sends a [RunCredential] only when the adapter's
+// use, or, for a result with Public set, without a grant and only to send a
+// [ReadPublic], as resolve-answer.schema.json states. It treats every other result as
+// covered: false, or, when Public is set, as a result with Public set and no GrantRef.
+// Under an assignment, it sends a [RunCredential] only when the adapter's
 // credential_scope is resource, with Resources set to the assigned source's resource
 // alone; when credential_scope is grant, it reads the assigned source only with a
-// [Read].
+// [Read]. It sends a [ReadPublic] only with ResourceRef set to the PublicRef of a
+// result with Public set, never with the ResourceRef of a covered result, and never
+// sends a [RunCredential] for a resource that it reads with a [ReadPublic]: reading a
+// public resource gives the run no credential.
 type ResolveAnswer struct {
 	Version  int        `json:"version"`
 	Revision int        `json:"revision"`
@@ -748,13 +753,26 @@ type ResolveAnswer struct {
 }
 
 // Resolved is the result for one address: GrantRef and ResourceRef, the grant and the
-// resource at the source that cover it, with Covered nil; or Covered pointing to false,
-// with neither ref, when no grant the adapter holds covers the address.
+// resource at the source that cover it, with Covered nil, and Public true with
+// PublicRef, or Public false with no PublicRef; Public true, ResourceRef and PublicRef,
+// with no GrantRef and Covered nil, when no grant the adapter holds covers the address
+// and the source shows the resource without a credential; or Covered pointing to false,
+// with no ref and Public false, when the adapter cannot read the address, or no grant
+// it holds covers it and it does not set Public. Public is optional: an adapter sets it
+// only if it serves a [ReadPublic], and only for a resource that the source shows
+// without a credential, decided from the visibility of the resource as a request
+// without a credential sees it, never from a grant it holds; a resource that the source
+// shows only to signed-in users is not public.
 type Resolved struct {
 	Address     string `json:"address"`
 	GrantRef    string `json:"grant_ref,omitempty"`
 	ResourceRef string `json:"resource_ref,omitempty"`
 	Covered     *bool  `json:"covered,omitempty"`
+	Public      bool   `json:"public,omitempty"`
+	// PublicRef is the ref of the resource that a request without a credential, under no
+	// grant, can use: the ResourceRef the control plane sends in a [ReadPublic]. It is
+	// set exactly when Public is true, and may equal ResourceRef when GrantRef is empty.
+	PublicRef string `json:"public_ref,omitempty"`
 }
 
 // ReadPath is the path of the call that reads a document at a version, read.schema.json:
@@ -776,9 +794,30 @@ type Read struct {
 	At          string `json:"at"`
 }
 
+// ReadPublicPath is the path of the call that reads a document of a public resource at
+// a version, under no grant, read-public.schema.json: the control plane sends it to the
+// adapter's call_url followed by this path, and signs this path, not the address.
+const ReadPublicPath = "read-public"
+
+// ReadPublic is the body of the call with the path [ReadPublicPath],
+// read-public.schema.json: the document at Path in the resource ResourceRef, the
+// PublicRef of a [Resolved] with Public set, never the ResourceRef of a covered result,
+// at the version At, read under no grant. The adapter reads it as a request without a credential reads it, and answers
+// with a [ReadAnswer], or refuses, in this order: 403 resource_not_public, a resource
+// that no longer exists included; 404 version_not_found; 409 document_not_text; 503
+// source_unavailable, the source's rate limit included.
+type ReadPublic struct {
+	Version     int    `json:"version"`
+	Time        string `json:"time"`
+	ResourceRef string `json:"resource_ref"`
+	Path        string `json:"path"`
+	At          string `json:"at"`
+}
+
 // ReadAnswer is the body of the adapter's answer to the call with the path [ReadPath],
-// read-answer.schema.json: Content, the document's text, with Found nil; or Found
-// pointing to false, with no Content, when the resource has no document at the path.
+// and to the call with the path [ReadPublicPath], read-answer.schema.json: Content, the
+// document's text, with Found nil; or Found pointing to false, with no Content, when the
+// resource has no document at the path.
 // In both, ResolvedAt is the version of the resource at which the adapter read the
 // document, or at which the resource has no document, and it never changes.
 type ReadAnswer struct {
