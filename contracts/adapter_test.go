@@ -176,6 +176,12 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"setup-pass-undefined-member.json":                     {"setup-pass", "/ additionalProperties"},
 		"setup-pass-version-2.json":                            {"setup-pass", "/version const"},
 		"setup-pass-adapter-id-connection-id.json":             {"setup-pass", "/adapter_id pattern"},
+		"setup-pass-organisation-slug-upper-case.json":         {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-underscore.json":         {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-leading-hyphen.json":     {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-trailing-hyphen.json":    {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-41-characters.json":      {"setup-pass", "/organisation_slug maxLength"},
+		"setup-pass-organisation-slug-empty.json":              {"setup-pass", "/organisation_slug pattern"},
 		"adapter-setup-url-fragment.json":                      {"adapter", "/setup_url "},
 		"adapter-setup-url-state.json":                         {"adapter", "/setup_url "},
 		"adapter-setup-url-and-state.json":                     {"adapter", "/setup_url "},
@@ -400,6 +406,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			Nonce: "AAECAwQFBgcICQoLDA0ODw", Outcome: "refused", Reason: "permission_missing", ExpiresAt: now}},
 		{"setup-pass", contracts.SetupPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
 			Nonce: "EBESExQVFhcYGRobHB0eHw", ExpiresAt: now}},
+		{"setup-pass", contracts.SetupPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
+			Nonce: "EBESExQVFhcYGRobHB0eHw", ExpiresAt: now, OrganisationSlug: "acme-org"}},
 		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
 			SetupURL: "https://adapter.example.com/setup", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
 			Description: read(t, "fixtures/example-tracker.json")}},
@@ -654,27 +662,55 @@ func TestASetupURLsStateCheckReadsTheQueryAlone(t *testing.T) {
 	}
 }
 
-// TestSetupPassRoundTrips decodes setup-pass/payload.json into SetupPass and pins that it
-// marshals back to the same bytes, compact, which setup-pass.schema.json accepts.
+// TestSetupPassRoundTrips decodes each setup pass payload fixture into SetupPass and pins
+// that it marshals back to the same bytes, compact, which setup-pass.schema.json accepts,
+// with OrganisationSlug set to the fixture's organisation_slug, or empty without one.
 func TestSetupPassRoundTrips(t *testing.T) {
-	const name = "fixtures/adapter/setup-pass/payload.json"
-	var p contracts.SetupPass
-	if err := json.Unmarshal(read(t, name), &p); err != nil {
-		t.Fatal(err)
+	for name, slug := range map[string]string{
+		"fixtures/adapter/setup-pass/payload.json":                "",
+		"fixtures/adapter/setup-pass/with-organisation-slug.json": "acme-org",
+	} {
+		var p contracts.SetupPass
+		if err := json.Unmarshal(read(t, name), &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.OrganisationSlug != slug {
+			t.Errorf("%s decodes organisation_slug as %q, want %q", name, p.OrganisationSlug, slug)
+		}
+		b, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var want bytes.Buffer
+		if err := json.Compact(&want, read(t, name)); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(b, want.Bytes()) {
+			t.Errorf("%s marshals back to %s, want %s", name, b, want.Bytes())
+		}
+		if err := validate(compile(t, "setup-pass.schema.json"), b); err != nil {
+			t.Errorf("%s marshals back to %s, which setup-pass.schema.json refuses: %v", name, b, err)
+		}
 	}
-	b, err := json.Marshal(p)
-	if err != nil {
-		t.Fatal(err)
+}
+
+// TestASetupPassAcceptsTheOrganisationSlugAlone pins that setup-pass.schema.json accepts
+// a payload with organisation_slug, and still refuses one with organisation_slug and a
+// member the schema does not define, as it refuses one without organisation_slug.
+func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
+	schema := compile(t, "setup-pass.schema.json")
+	b := read(t, "fixtures/adapter/setup-pass/with-organisation-slug.json")
+	if err := validate(schema, b); err != nil {
+		t.Errorf("a setup pass payload with organisation_slug is refused: %v", err)
 	}
-	var want bytes.Buffer
-	if err := json.Compact(&want, read(t, name)); err != nil {
-		t.Fatal(err)
+	extra := bytes.Replace(b, []byte(`"organisation_slug"`), []byte(`"organisation_name": "Acme", "organisation_slug"`), 1)
+	if bytes.Equal(extra, b) {
+		t.Fatal("with-organisation-slug.json contains no organisation_slug member")
 	}
-	if !bytes.Equal(b, want.Bytes()) {
-		t.Errorf("%s marshals back to %s, want %s", name, b, want.Bytes())
-	}
-	if err := validate(compile(t, "setup-pass.schema.json"), b); err != nil {
-		t.Errorf("%s marshals back to %s, which setup-pass.schema.json refuses: %v", name, b, err)
+	err := validate(schema, extra)
+	v, ok := err.(*jsonschema.ValidationError)
+	if !ok || strings.Join(leaves(v), "; ") != "/ additionalProperties" || !strings.Contains(err.Error(), "'organisation_name'") {
+		t.Errorf("a setup pass payload with organisation_slug and organisation_name is not refused for organisation_name alone: %v", err)
 	}
 }
 
@@ -1104,6 +1140,54 @@ func TestTheSetupPassVerifies(t *testing.T) {
 	}
 	if _, ok := verifySetupPass(t, doc.Pass, accesskey.Pin{{Alg: "ed25519", PublicKey: access.PublicKey().String()}}); ok {
 		t.Error("the setup pass verifies under a pin without the server key")
+	}
+}
+
+// TestTheSetupPassWithAnOrganisationSlugVerifies pins the setup pass with
+// organisation_slug of fixtures/adapter/signed: it verifies under a pin of the fixture
+// server key over SetupDomain, within SetupPassMaxLength, its payload is
+// setup-pass/with-organisation-slug.json, compact, and decodes with its
+// organisation_slug, and the same pass with one byte of its adapter_id changed is refused.
+func TestTheSetupPassWithAnOrganisationSlugVerifies(t *testing.T) {
+	_, _, _, server := fixtureKeys(t)
+	doc := readSignedPass(t, "fixtures/adapter/signed/setup-pass-organisation-slug.json")
+	pin := accesskey.Pin{{Alg: "ed25519", PublicKey: server.PublicKey().String()}}
+	if len(doc.Pass) > contracts.SetupPassMaxLength {
+		t.Errorf("the setup pass has %d characters, more than %d", len(doc.Pass), contracts.SetupPassMaxLength)
+	}
+	payload, ok := verifySetupPass(t, doc.Pass, pin)
+	if !ok || string(payload) != doc.Payload {
+		t.Errorf("the setup pass does not verify to its payload: %q", payload)
+	}
+	var fixture bytes.Buffer
+	if err := json.Compact(&fixture, read(t, "fixtures/adapter/setup-pass/with-organisation-slug.json")); err != nil ||
+		fixture.String() != doc.Payload {
+		t.Error("the setup pass's payload is not setup-pass/with-organisation-slug.json")
+	}
+	var p contracts.SetupPass
+	if err := json.Unmarshal(payload, &p); err != nil || p.AdapterID != "na_f1xt0re000000000" || p.OrganisationSlug != "acme-org" {
+		t.Errorf("the setup pass's payload: %+v, %v", p, err)
+	}
+	if _, ok := verifySetupPass(t, doc.Tampered, pin); ok {
+		t.Error("the setup pass with a payload byte changed verifies")
+	}
+	passPayload, passSig, _ := strings.Cut(doc.Pass, ".")
+	tamperedPayload, tamperedSig, _ := strings.Cut(doc.Tampered, ".")
+	a, errA := base64.RawURLEncoding.Strict().DecodeString(passPayload)
+	b, errB := base64.RawURLEncoding.Strict().DecodeString(tamperedPayload)
+	changed := 0
+	for i := range min(len(a), len(b)) {
+		if a[i] != b[i] {
+			changed++
+		}
+	}
+	var q contracts.SetupPass
+	if errA != nil || errB != nil || len(a) != len(b) || changed != 1 || tamperedSig != passSig ||
+		json.Unmarshal(b, &q) != nil || q.AdapterID == p.AdapterID || q.OrganisationSlug != p.OrganisationSlug {
+		t.Error("tampered is not the pass with one byte of its adapter_id changed")
+	}
+	if _, ok := verifySigned(t, doc.Pass, contracts.ConnectDomain, "setup-pass.schema.json", pin); ok {
+		t.Error("the setup pass verifies over the connect pass's domain")
 	}
 }
 

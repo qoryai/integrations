@@ -410,12 +410,15 @@ type ConnectPass struct {
 }
 
 // SetupPass is the payload of a setup pass, setup-pass.schema.json, which the control
-// plane signs with its server key over [SetupDomain].
+// plane signs with its server key over [SetupDomain]. OrganisationSlug is the slug of
+// the instance's organisation in the control plane, which an adapter may use to suggest
+// a name at its source; it is optional, and empty marshals no organisation_slug member.
 type SetupPass struct {
-	Version   int    `json:"version"`
-	AdapterID string `json:"adapter_id"`
-	Nonce     string `json:"nonce"`
-	ExpiresAt string `json:"expires_at"`
+	Version          int    `json:"version"`
+	AdapterID        string `json:"adapter_id"`
+	Nonce            string `json:"nonce"`
+	ExpiresAt        string `json:"expires_at"`
+	OrganisationSlug string `json:"organisation_slug,omitempty"`
 }
 
 // ConnectReturn is the payload of a connect return, connect-return.schema.json, which
