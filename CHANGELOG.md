@@ -166,6 +166,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   guide as plain text. It shows a first step that the control plane writes, then the
   adapter's steps, numbered after that first step, so the adapter's steps describe only
   the adapter's system. In Go, `Guide` and `GuidePart` are added.
+- The `source` role may contain `targets: true`: the adapter's collections can have a
+  target, a place where a run's changes go. An adapter with `targets` handles a
+  `run-credential` call with purpose `work` for any of its collections that has a target,
+  under the rules of `run-credential.schema.json`. This holds whatever source the run's
+  work item came from, and also when the work item came from no item at a source. The
+  control plane offers the collections of an adapter with `targets` as places for a run's
+  changes, and does not offer them when `targets` is absent. In both cases, the control
+  plane accepts the `target` of each collection in a listing
+  (`source-collections.schema.json`).
 - The provisioner contract, `contracts/provisioner/v1`, revision 1: the requests with
   which a node pool's starter claims a request for one machine, `POST /v1/pools/claim`;
   reports that it created the machine, `POST /v1/dispatches/<dispatch_id>/dispatched`;
