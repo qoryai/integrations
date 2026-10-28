@@ -125,6 +125,8 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		"fixtures/invalid/description-source-collection-noun-work-items-hyphen.json":       "/roles/source/collection_noun/other ",
 		"fixtures/invalid/description-source-items-true.json":                              "/roles/source/items const",
 		"fixtures/invalid/description-source-items-false-with-item-noun.json":              "/roles/source ",
+		"fixtures/invalid/description-source-targets-false.json":                           "/roles/source/targets const",
+		"fixtures/invalid/description-source-targets-string.json":                          "/roles/source/targets const",
 		"fixtures/invalid/description-source-apply-host-wildcard.json":                     "/roles/source/apply/0/hosts/0 pattern; /roles/source/apply/0/hosts/0 pattern; /roles/source/apply/0/hosts/0 pattern",
 		"fixtures/invalid/description-source-apply-header-without-header.json":             "/roles/source/apply/0 required header",
 		"fixtures/invalid/description-source-apply-username-with-bearer.json":              "/roles/source/apply/0 ",
