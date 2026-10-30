@@ -59,6 +59,7 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 		"version-2.json":                     {"diagnostics", "/version const"},
 		"events-without-events-omitted.json": {"diagnostics", "/ dependentRequired/events"},
 		"step-without-step-failed.json":      {"diagnostics", "/preparation/stopped "},
+		"two-dispatches.json":                {"diagnostics", "/dispatches maxItems"},
 		"without-run.json":                   {"diagnostics", "/ required run"},
 		"step-failed-without-step.json":      {"diagnostics", "/preparation/stopped required step"},
 	}

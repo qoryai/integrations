@@ -110,12 +110,12 @@
 // [ClaimAnswer], whose run code and gateway URL it passes to the machine it creates,
 // says it created the machine, [Dispatched], gives the dispatch back before
 // dispatched, [Release], or uploads the log of the machine it created for a dispatch,
-// or the error text of its attempt to create one, [MachineLog]. The starter signs them with the pool's access key, a key of the pool
-// kind enrolled for the node pool. They are signed, retried and refused with a
-// [Refusal] exactly as the integration contract's requests above, and the claim answer
-// names the revision it was built for, [ProvisionerRevision] here, in Revision, as
-// [Changes] does. The machine redeems the run code for the run key and the run's
-// documents.
+// or the error text of its attempt to create one, [MachineLog]. The starter signs
+// them with the pool's access key, a key of the pool kind enrolled for the node pool.
+// They are signed, retried and refused with a [Refusal] exactly as the integration
+// contract's requests above, and the claim answer names the revision it was built
+// for, [ProvisionerRevision] here, in Revision, as [Changes] does. The machine
+// redeems the run code for the run key and the run's documents.
 //
 // The run contract holds the run's documents, documents.schema.json: one object, whose
 // Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types. The object is the documents member of Forager's run answer: the machine
