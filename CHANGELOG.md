@@ -194,6 +194,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   control plane reads from the result text of the last `dev.qory.runtime.result` event.
   In the inputs, `ticket` is absent when the work item was not taken in from an item at
   a source.
+- The diagnostics contract, `contracts/diagnostics/v1/diagnostics.schema.json`: the run
+  diagnostics, the document that the control plane returns about one run in the 200
+  response to `GET /v1/runs/<run id>/diagnostics`, and that **Copy diagnostics** on the
+  run page copies. It contains the run, its queue entry, its dispatch, the steps of its
+  preparation and why the preparation stopped, the run's last events and terminal
+  output, and, for an instance admin and a diagnostics key only, the machine logs.
+  Secrets are left out, and variables appear by name only. Version 1 changes only by
+  adding members, so the schema accepts a member it does not define. In Go,
+  `DiagnosticsBase`, `DiagnosticsFS`, `CompileDiagnostics` and `DiagnosticsDocument` are
+  added.
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,
