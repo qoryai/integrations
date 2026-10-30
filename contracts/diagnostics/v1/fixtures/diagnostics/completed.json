@@ -119,5 +119,32 @@
   "log": {
     "text": "Reading the work item.\nDone.\n",
     "truncated": false
-  }
+  },
+  "leaked_secrets": [
+    {
+      "kind": "access_key",
+      "place": "step",
+      "step": 1,
+      "time": "2026-10-30T10:01:02Z",
+      "id": "ak_0123456789abcdef",
+      "message": "This key is compromised: it was printed into the output of step 1. Replace it.",
+      "value": "acme-example-secret-0001"
+    },
+    {
+      "kind": "run_key",
+      "place": "event",
+      "sequence": 3,
+      "time": "2026-10-30T10:15:42Z",
+      "message": "This key is compromised: it was printed into an event of the run. Replace it.",
+      "value": "acme-example-secret-0002"
+    },
+    {
+      "kind": "acme_api_key",
+      "place": "log",
+      "time": "2026-10-30T10:15:40Z",
+      "message": "This key is compromised: it was printed into the run's log. Replace it.",
+      "value": "acme-example-secret-0003"
+    }
+  ],
+  "leaked_secrets_omitted": 0
 }

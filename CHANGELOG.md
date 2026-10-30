@@ -200,8 +200,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   run page copies. It contains the run, its queue entry, its dispatch, the steps of its
   preparation and why the preparation stopped, the run's last events and terminal
   output, and, for an instance admin and a diagnostics key only, the machine logs.
-  Secrets are left out, and variables appear by name only. Version 1 changes only by
-  adding members, so the schema accepts a member it does not define. In Go,
+  Text members contain the text as the control plane stored it, unfiltered, so a secret
+  that the run printed appears as printed. `leaked_secrets` lists each secret that the
+  run printed as compromised, with its kind, where it appeared and a message to revoke
+  or rotate it, and `leaked_secrets_omitted` counts those beyond the first 1000. The
+  redacted fields of the run never appear, and variables appear by name only. Version 1
+  changes only by adding members, so the schema accepts a member it does not define. In
+  Go,
   `DiagnosticsBase`, `DiagnosticsFS`, `CompileDiagnostics` and `DiagnosticsDocument` are
   added.
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
