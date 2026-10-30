@@ -53,20 +53,22 @@ func TestDiagnosticsFixturesValidate(t *testing.T) {
 // name, and for no other.
 func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"unknown-cause.json":                    {"diagnostics", "/preparation/stopped/cause enum"},
-		"unknown-fixer.json":                    {"diagnostics", "/preparation/stopped/fixer enum"},
-		"run-id-prefix.json":                    {"diagnostics", "/run/id pattern"},
-		"version-2.json":                        {"diagnostics", "/version const"},
-		"events-without-events-omitted.json":    {"diagnostics", "/ dependentRequired/events"},
-		"step-without-step-failed.json":         {"diagnostics", "/preparation/stopped "},
-		"two-dispatches.json":                   {"diagnostics", "/dispatches maxItems"},
-		"without-run.json":                      {"diagnostics", "/ required run"},
-		"step-failed-without-step.json":         {"diagnostics", "/preparation/stopped required step"},
-		"without-leaked-secrets.json":           {"diagnostics", "/ required leaked_secrets"},
-		"leaked-secret-id-with-other-kind.json": {"diagnostics", "/leaked_secrets/0 "},
-		"leaked-secret-step-without-step.json":  {"diagnostics", "/leaked_secrets/0 required step"},
-		"leaked-secret-event-with-step.json":    {"diagnostics", "/leaked_secrets/0 "},
-		"leaked-secret-without-message.json":    {"diagnostics", "/leaked_secrets/0 required message"},
+		"unknown-cause.json":                                  {"diagnostics", "/preparation/stopped/cause enum"},
+		"unknown-fixer.json":                                  {"diagnostics", "/preparation/stopped/fixer enum"},
+		"run-id-prefix.json":                                  {"diagnostics", "/run/id pattern"},
+		"version-2.json":                                      {"diagnostics", "/version const"},
+		"events-without-events-omitted.json":                  {"diagnostics", "/ dependentRequired/events"},
+		"step-without-step-failed.json":                       {"diagnostics", "/preparation/stopped "},
+		"two-dispatches.json":                                 {"diagnostics", "/dispatches maxItems"},
+		"without-run.json":                                    {"diagnostics", "/ required run"},
+		"step-failed-without-step.json":                       {"diagnostics", "/preparation/stopped required step"},
+		"without-leaked-secrets.json":                         {"diagnostics", "/ required leaked_secrets"},
+		"leaked-secret-id-with-other-kind.json":               {"diagnostics", "/leaked_secrets/0 "},
+		"leaked-secret-step-without-step.json":                {"diagnostics", "/leaked_secrets/0 required step"},
+		"leaked-secret-event-with-step.json":                  {"diagnostics", "/leaked_secrets/0 "},
+		"leaked-secret-without-message.json":                  {"diagnostics", "/leaked_secrets/0 required message"},
+		"leaked-secret-machine-log-without-machine-logs.json": {"diagnostics", "/leaked_secrets/0 "},
+		"leaked-secret-access-key-with-run-id.json":           {"diagnostics", "/leaked_secrets/0/id pattern"},
 	}
 	got := treeFiles(t, contracts.DiagnosticsFS, "fixtures/invalid")
 	if len(got) != len(want) {

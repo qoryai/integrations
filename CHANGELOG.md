@@ -203,12 +203,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   Text members contain the text as the control plane stored it, unfiltered, so a secret
   that the run printed appears as printed. `leaked_secrets` lists each secret that the
   run printed as compromised, with its kind, where it appeared and a message to revoke
-  or rotate it, and `leaked_secrets_omitted` counts those beyond the first 1000. The
-  redacted fields of the run never appear, and variables appear by name only. Version 1
-  changes only by adding members, so the schema accepts a member it does not define. In
-  Go,
-  `DiagnosticsBase`, `DiagnosticsFS`, `CompileDiagnostics` and `DiagnosticsDocument` are
-  added.
+  or rotate it, and `leaked_secrets_omitted` counts those beyond the first 1000. Entries
+  found in a machine log are present only when the document has the machine logs. The
+  redacted fields of the run never appear as fields, and variables appear by name only.
+  Version 1 changes only by adding members, so the schema accepts a member it does not
+  define. In Go, `DiagnosticsBase`, `DiagnosticsFS`, `CompileDiagnostics` and
+  `DiagnosticsDocument` are added.
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,
