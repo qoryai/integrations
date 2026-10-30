@@ -140,7 +140,8 @@ type Release struct {
 
 // MachineLog is the body of POST /v1/dispatches/<dispatch_id>/machine-log,
 // machine-log.schema.json: the starter uploads the log of the machine it created for
-// the dispatch, from the machine's creation to its end. Log has no U+0000. JSON
+// the dispatch, from the machine's creation to its end, or, when it created no machine
+// for the dispatch, the error text of its attempt to create one. Log has no U+0000. JSON
 // escaping can make the body larger than Log, so the starter keeps the last part of the
 // log such that Log is at most 768 KiB as UTF-8 and the request body, as serialized and
 // sent, is at most 1 MiB, and sets Truncated when it cut anything. Before the upload,

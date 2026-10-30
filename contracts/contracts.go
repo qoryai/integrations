@@ -109,7 +109,7 @@
 // [ClaimAnswer], whose run code and gateway URL it passes to the machine it creates,
 // says it created the machine, [Dispatched], gives the dispatch back before
 // dispatched, [Release], or uploads the log of the machine it created for a dispatch,
-// [MachineLog]. The starter signs them with the pool's access key, a key of the pool
+// or the error text of its attempt to create one, [MachineLog]. The starter signs them with the pool's access key, a key of the pool
 // kind enrolled for the node pool. They are signed, retried and refused with a
 // [Refusal] exactly as the integration contract's requests above, and the claim answer
 // names the revision it was built for, [ProvisionerRevision] here, in Revision, as
