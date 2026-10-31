@@ -175,11 +175,17 @@ const (
 // repeats the delete call until that call returns gone, and then sends
 // [MachineEndGone]. The call may come any number of times, before or after the dispatch
 // ends, and is never refused 410 gone or 409 lease_expired, because a machine usually
-// ends after its dispatch. Every accepted call replaces the state, in the order the
-// starter sends the calls. MachineEndGone is final: a later call changes nothing and
-// still gets the signed 204 with no body. The call is optional for a starter. A signed
-// 403 or 404 ends the starter's attempts for the dispatch, so a control plane without
-// the route blocks no slot.
+// ends after its dispatch. The starter sends one call at a time for a dispatch: it sends
+// the next only after the answer to the one before, or after it gave that one up. The
+// control plane applies the calls in the order it receives them and compares no time,
+// and every accepted call replaces the state. MachineEndGone is final: a later call
+// changes nothing and still gets the signed 204 with no body. The call is optional for a
+// starter. A signed 403 or 404 ends the starter's attempts to send this call for the
+// dispatch; the delete calls go on. After any other failure, an unsigned answer among
+// them, the starter sends the call again for a limited time and then drops it, because
+// the call is optional. The starter counts a machine against its limit of machines only
+// until the delete call returns gone, whatever the answers to this call, so a control
+// plane without the route blocks no machine.
 type MachineEnd struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
