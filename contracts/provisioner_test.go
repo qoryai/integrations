@@ -21,6 +21,7 @@ var provisionerSchemas = []string{
 	"dispatched.schema.json",
 	"release.schema.json",
 	"machine-log.schema.json",
+	"machine-end.schema.json",
 	"refusal.schema.json",
 }
 
@@ -130,6 +131,10 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"machine-log-undefined-member.json":              {"machine-log", "/ additionalProperties"},
 		"machine-log-log-nul.json":                       {"machine-log", "/log pattern"},
 		"machine-log-version-2.json":                     {"machine-log", "/version const"},
+		"machine-end-without-state.json":                 {"machine-end", "/ required state"},
+		"machine-end-unknown-state.json":                 {"machine-end", "/state enum"},
+		"machine-end-undefined-member.json":              {"machine-end", "/ additionalProperties"},
+		"machine-end-version-2.json":                     {"machine-end", "/version const"},
 	}
 	got := provisionerFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -179,6 +184,10 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 			MaxLifetimeMinutes: 1470}},
 		{"machine-log", contracts.MachineLog{Version: contracts.Version, Time: now, Log: "machine created\n"}},
 		{"machine-log", contracts.MachineLog{Version: contracts.Version, Time: now, Log: "machine stopped\n", Truncated: true}},
+		{"machine-end", contracts.MachineEnd{Version: contracts.Version, Time: now, State: contracts.MachineEndDeleting}},
+		{"machine-end", contracts.MachineEnd{Version: contracts.Version, Time: now, State: contracts.MachineEndGone}},
+		{"machine-end", contracts.MachineEnd{Version: contracts.Version, Time: now, State: contracts.MachineEndDeleteFailed}},
+		{"refusal", contracts.Refusal{Error: "unavailable"}},
 		{"refusal", contracts.Refusal{Error: "machine_log_exists"}},
 		{"refusal", contracts.Refusal{Error: "machine_exists"}},
 		{"refusal", contracts.Refusal{Error: "lease_expired"}},
@@ -253,9 +262,9 @@ func TestAGatewayURLIsHostAndPort(t *testing.T) {
 	}
 }
 
-// TestTheNewMembersRoundTripTheirFixtures pins that each claim answer fixture, and each
-// other fixture with run_code or truncated, reads into its Go type and is written back
-// as the fixture's bytes, compacted.
+// TestTheNewMembersRoundTripTheirFixtures pins that each claim answer fixture, each
+// machine end fixture, and each other fixture with run_code or truncated, reads into its
+// Go type and is written back as the fixture's bytes, compacted.
 func TestTheNewMembersRoundTripTheirFixtures(t *testing.T) {
 	type fixture struct {
 		fixture string
@@ -264,6 +273,9 @@ func TestTheNewMembersRoundTripTheirFixtures(t *testing.T) {
 	var answers []fixture
 	for _, f := range provisionerFiles(t, "fixtures/claim-answer") {
 		answers = append(answers, fixture{f, &contracts.ClaimAnswer{}})
+	}
+	for _, f := range provisionerFiles(t, "fixtures/machine-end") {
+		answers = append(answers, fixture{f, &contracts.MachineEnd{}})
 	}
 	for _, c := range append(answers, []fixture{
 		{"fixtures/machine-log/whole.json", &contracts.MachineLog{}},

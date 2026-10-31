@@ -155,3 +155,33 @@ type MachineLog struct {
 	Log       string `json:"log"`
 	Truncated bool   `json:"truncated,omitempty"`
 }
+
+// The states of a [MachineEnd], machine-end.schema.json. MachineEndDeleting: the
+// starter's delete call was accepted, and the machine may still exist. MachineEndGone:
+// the machine adapter's delete call returned that no machine with the id exists at the
+// vendor, [MachineGone]. A missing entry in a list is no proof, because a vendor's list
+// can lag. MachineEndDeleteFailed: the delete call failed, and as far as the starter
+// knows the machine still exists.
+const (
+	MachineEndDeleting     = "deleting"
+	MachineEndGone         = "gone"
+	MachineEndDeleteFailed = "delete_failed"
+)
+
+// MachineEnd is the body of POST /v1/dispatches/<dispatch_id>/machine-end,
+// machine-end.schema.json: the starter reports the result of deleting the machine it
+// created for the dispatch. A dispatch for which it made no machine, or whose machine id
+// it never learned, gets no call. The starter sends the call after its delete call,
+// repeats the delete call until that call returns gone, and then sends
+// [MachineEndGone]. The call may come any number of times, before or after the dispatch
+// ends, and is never refused 410 gone or 409 lease_expired, because a machine usually
+// ends after its dispatch. Every accepted call replaces the state, in the order the
+// starter sends the calls. MachineEndGone is final: a later call changes nothing and
+// still gets the signed 204 with no body. The call is optional for a starter. A signed
+// 403 or 404 ends the starter's attempts for the dispatch, so a control plane without
+// the route blocks no slot.
+type MachineEnd struct {
+	Version int    `json:"version"`
+	Time    string `json:"time"`
+	State   string `json:"state"`
+}

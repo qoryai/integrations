@@ -178,11 +178,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The provisioner contract, `contracts/provisioner/v1`, revision 1: the requests with
   which a node pool's starter claims a request for one machine, `POST /v1/pools/claim`;
   reports that it created the machine, `POST /v1/dispatches/<dispatch_id>/dispatched`;
-  releases the dispatch before that, `POST /v1/dispatches/<dispatch_id>/release`; and
-  uploads the log of the machine, `POST /v1/dispatches/<dispatch_id>/machine-log`. The
-  starter signs them with the pool's access key. The claim answer has the dispatch, its
-  `lease_until`, the run code that the machine redeems and the gateway URL that the run
-  code is bound to.
+  releases the dispatch before that, `POST /v1/dispatches/<dispatch_id>/release`;
+  uploads the log of the machine, `POST /v1/dispatches/<dispatch_id>/machine-log`; and
+  reports the result of deleting the machine,
+  `POST /v1/dispatches/<dispatch_id>/machine-end`. The starter signs them with the pool's
+  access key. The claim answer has the dispatch, its `lease_until`, the run code that the
+  machine redeems and the gateway URL that the run code is bound to. A machine end has
+  the `state` `deleting`, `gone` or `delete_failed`, and a starter that never sends one
+  still works. A starter sends `gone` only when the machine adapter's delete call
+  returned that no machine with the id exists at the vendor. In Go, `MachineEnd`,
+  `MachineEndDeleting`, `MachineEndGone` and `MachineEndDeleteFailed` are added.
 - The machines contract, `contracts/machines/v1`: a machine adapter makes and deletes
   machines at one vendor, and the provisioner runs it as
   `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`
