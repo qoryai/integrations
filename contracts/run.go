@@ -170,9 +170,9 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 	for _, k := range slices.Sorted(maps.Keys(v.Bind)) {
 		switch {
 		case k != "agents" && k != "commands" && k != "skills":
-			return fmt.Errorf("the bind kind %q is not agents, commands or skills", k)
+			return fmt.Errorf("use agents, commands or skills as a bind kind, not %q", k)
 		case v.Bind[k] == nil:
-			return fmt.Errorf("the bind kind %q is null, and not an object of roles to names", k)
+			return fmt.Errorf("set the bind kind %q to an object of roles to names, not null", k)
 		}
 	}
 	*s = HarnessSection(v)

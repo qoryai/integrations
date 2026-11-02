@@ -883,9 +883,9 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 	for _, c := range []struct{ in, err string }{
 		{`{"bind":{"agents/writer":"copywriter"}}`, "bind"},
-		{`{"bind":{"hooks":{"x":"y"}}}`, `the bind kind "hooks" is not agents, commands or skills`},
-		{`{"bind":{"agents":null}}`, `the bind kind "agents" is null, and not an object of roles to names`},
-		{`{"bind":{"skills":{"review":"brand-review"},"agents":null}}`, `the bind kind "agents" is null, and not an object of roles to names`},
+		{`{"bind":{"hooks":{"x":"y"}}}`, `use agents, commands or skills as a bind kind, not "hooks"`},
+		{`{"bind":{"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
+		{`{"bind":{"skills":{"review":"brand-review"},"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
 	} {
 		var s contracts.HarnessSection
 		err := json.Unmarshal([]byte(c.in), &s)
