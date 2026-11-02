@@ -32,7 +32,7 @@
       ],
       "bind": {
         "agents": {
-          "developer": "team/dev"
+          "writer": "team/copywriter"
         }
       }
     }

@@ -32,10 +32,10 @@
       ],
       "bind": {
         "agents": {
-          "developer": "web-developer"
+          "writer": "copywriter"
         },
         "skills": {
-          "review": "code-review"
+          "review": "brand-review"
         }
       }
     }

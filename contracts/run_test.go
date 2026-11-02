@@ -175,7 +175,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-bind-flat.json":                          {"documents", "/harness/harness/bind additionalProperties"},
 		"documents-harness-bind-unknown-kind.json":                  {"documents", "/harness/harness/bind additionalProperties"},
 		"documents-harness-bind-list.json":                          {"documents", "/harness/harness/bind/agents/reviewer type"},
-		"documents-harness-bind-name-slash.json":                    {"documents", "/harness/harness/bind/agents/developer pattern"},
+		"documents-harness-bind-name-slash.json":                    {"documents", "/harness/harness/bind/agents/writer pattern"},
 		"documents-harness-bind-role-dot.json":                      {"documents", "/ pattern"},
 		"documents-target-version-without-target.json":              {"documents", "/ dependentRequired/target_version"},
 		"documents-target-version-space.json":                       {"documents", "/target_version pattern"},
@@ -539,7 +539,7 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 				Only:    &contracts.HarnessSelection{OutputStyles: []string{"brief"}, Env: &contracts.HarnessPart{Names: []string{"REPORT_DIR"}}},
 				Variant: "weekly"},
 		},
-		Bind:       map[string]map[string]string{"agents": {"developer": "web-developer"}, "skills": {"review": "code-review"}},
+		Bind:       map[string]map[string]string{"agents": {"writer": "copywriter"}, "skills": {"review": "brand-review"}},
 		Extensions: map[string]json.RawMessage{"team": json.RawMessage(`{"size":3}`)},
 	}}
 	defined := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
@@ -876,13 +876,37 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 	}
 }
 
-// TestAFlatBindFailsToRead pins that a bind in the flat form, <kind>/<role> to a name,
-// fails to read into a HarnessSection with an error.
-func TestAFlatBindFailsToRead(t *testing.T) {
-	var s contracts.HarnessSection
-	err := json.Unmarshal([]byte(`{"bind":{"agents/coder":"writer"}}`), &s)
-	if err == nil {
-		t.Errorf("a flat bind reads as %v, want an error", s.Bind)
+// TestABindTheSchemaRefusesFailsToRead pins that a bind in the flat form, <kind>/<role>
+// to a name, a bind with a kind other than agents, commands and skills, and a bind with
+// a kind whose value is null fail to read into a HarnessSection with an error, and that
+// a bind with each kind, or with empty objects, reads.
+func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
+	for _, c := range []struct{ in, err string }{
+		{`{"bind":{"agents/writer":"copywriter"}}`, "bind"},
+		{`{"bind":{"hooks":{"x":"y"}}}`, `the bind kind "hooks" is not agents, commands or skills`},
+		{`{"bind":{"agents":null}}`, `the bind kind "agents" is null, and not an object of roles to names`},
+		{`{"bind":{"skills":{"review":"brand-review"},"agents":null}}`, `the bind kind "agents" is null, and not an object of roles to names`},
+	} {
+		var s contracts.HarnessSection
+		err := json.Unmarshal([]byte(c.in), &s)
+		if err == nil {
+			t.Errorf("%s reads as %v, want an error", c.in, s.Bind)
+			continue
+		}
+		if !strings.Contains(err.Error(), c.err) {
+			t.Errorf("%s fails with %q, want an error with %q", c.in, err, c.err)
+		}
+	}
+	for _, in := range []string{
+		`{"bind":{"agents":{"writer":"copywriter"},"commands":{"publish":"post"},"skills":{"review":"brand-review"}}}`,
+		`{"bind":{"agents":{}}}`,
+		`{"bind":{}}`,
+		`{}`,
+	} {
+		var s contracts.HarnessSection
+		if err := json.Unmarshal([]byte(in), &s); err != nil {
+			t.Errorf("%s: %v", in, err)
+		}
 	}
 }
 

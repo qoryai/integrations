@@ -3,6 +3,9 @@ package contracts
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"maps"
+	"slices"
 )
 
 // MaxInputs is the most bytes the run's inputs has, serialized,
@@ -153,6 +156,27 @@ type HarnessSection struct {
 	// letter, then up to 63 lower-case letters, digits and hyphens. Only without
 	// Extends: a section with Extends takes the workflows of its base.
 	Workflows map[string]HarnessWorkflow `json:"workflows,omitempty"`
+}
+
+// UnmarshalJSON reads a harness section, and returns an error for a kind of Bind that
+// is not agents, commands or skills, or whose value is null: both fail
+// documents.schema.json.
+func (s *HarnessSection) UnmarshalJSON(b []byte) error {
+	type harnessSection HarnessSection
+	var v harnessSection
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	for _, k := range slices.Sorted(maps.Keys(v.Bind)) {
+		switch {
+		case k != "agents" && k != "commands" && k != "skills":
+			return fmt.Errorf("the bind kind %q is not agents, commands or skills", k)
+		case v.Bind[k] == nil:
+			return fmt.Errorf("the bind kind %q is null, and not an object of roles to names", k)
+		}
+	}
+	*s = HarnessSection(v)
+	return nil
 }
 
 // HarnessWorkflow is the settings of one workflow of a stack that a [HarnessSection]

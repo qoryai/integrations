@@ -31,7 +31,7 @@
         }
       ],
       "bind": {
-        "agents/coder": "writer"
+        "agents/writer": "copywriter"
       }
     }
   },
