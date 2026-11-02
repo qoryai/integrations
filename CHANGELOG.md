@@ -234,7 +234,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `run_settings`, for the default runtime of the machine. A section with `extends` takes
   the workflows of its base, and the schema rejects `workflows` in it. In Go,
   `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
-  `HarnessSection.Workflows` and `HarnessWorkflow` are added.
+  `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
+  `agents`, `commands` or `skills`, to its roles, each to the name of one entry of that
+  kind: `bind: {agents: {developer: web-developer}}`. In Go, `HarnessSection.Bind` is a
+  `map[string]map[string]string`.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that

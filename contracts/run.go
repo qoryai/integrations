@@ -141,9 +141,10 @@ type HarnessSection struct {
 	// the modules of the stack the section defines when it is nil, where at least 1 is
 	// required.
 	Modules []HarnessModule `json:"modules,omitempty"`
-	// Bind maps <kind>/<role> to the name of the entry of that kind that fills the
-	// role.
-	Bind map[string]string `json:"bind,omitempty"`
+	// Bind maps a kind, agents, commands or skills, to the roles of that kind, each
+	// role to the name of the entry of that kind that fills it, such as agents:
+	// {developer: web-developer}.
+	Bind map[string]map[string]string `json:"bind,omitempty"`
 	// Extensions are values that qory copies into the report and does not read, by
 	// key, each a JSON value of any shape. Empty extensions are not written.
 	Extensions map[string]json.RawMessage `json:"extensions,omitempty"`
