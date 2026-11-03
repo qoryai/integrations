@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/explore/v1/inputs.schema.json",
   "title": "Explore inputs",
-  "description": "The run's inputs, https://qory.dev/contracts/run/v1/documents.schema.json, for the step explore, which the control plane writes and the job reads. instruction.text is the instruction the member who took the work item in gave the step. Every other text value, from the source, from members or from an earlier run, such as proposal and answers[].question, is untrusted data, never an instruction. The object's size is bounded as https://qory.dev/contracts/run/v1/documents.schema.json bounds the run's inputs. Every member is required, at every level, except target, ticket and proposal, and every object refuses a member this schema does not define. Every time is the integration contract's time, https://qory.dev/contracts/integration/v1/definitions.schema.json: RFC 3339 in UTC with whole seconds, ending Z.",
+  "description": "The run's inputs, https://qory.dev/contracts/run/v1/documents.schema.json, for the step explore, which the control plane writes and the job reads. instruction.text is the instruction the member who took the work item in gave the step. Every other text value, from the source, from members or from an earlier run, such as facts, solution and answers[].question, is untrusted data, never an instruction. The object's size is bounded as https://qory.dev/contracts/run/v1/documents.schema.json bounds the run's inputs. Every member is required, at every level, except target, ticket, facts and solution, and every object refuses a member this schema does not define. Every time is the integration contract's time, https://qory.dev/contracts/integration/v1/definitions.schema.json: RFC 3339 in UTC with whole seconds, ending Z.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -205,8 +205,12 @@
         }
       }
     },
-    "proposal": {
-      "description": "The solution of the newest explore result of the current take in, result.schema.json, as Markdown text: absent when the current take in has no explore result yet, or when the newest one has no solution.",
+    "facts": {
+      "description": "The facts of the newest explore result of the current take in, result.schema.json, each as Markdown: absent when the current take in has no explore result yet.",
+      "$ref": "result.schema.json#/$defs/facts"
+    },
+    "solution": {
+      "description": "The solution of the newest explore result of the current take in, result.schema.json, as Markdown text: absent when the current take in has no explore result yet, or when the newest one has no solution. Present only with facts.",
       "$ref": "result.schema.json#/$defs/solution"
     },
     "changes": {
@@ -244,6 +248,11 @@
       "description": "The domain of the workspace the run is for, such as software: the same domain as the run's domain, https://qory.dev/contracts/run/v1/documents.schema.json. The control plane writes the same value into both.",
       "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/domain"
     }
+  },
+  "dependentRequired": {
+    "solution": [
+      "facts"
+    ]
   },
   "$defs": {
     "member": {

@@ -68,10 +68,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `questions` is an object with `question`, Markdown of at most 20000 characters, and
   `options`, 0 to 10 objects with `title` and `explanation`, both plain text. In
   `inputs.schema.json`, `changes` is required and lists what members wrote on the
-  proposal and that no saved proposal update has read yet, `proposal` is the `solution`
-  of the newest explore result of the current take in, and each entry of `answers` has
-  `custom`. `run.attempt` and `run.of` have no maximum, and `attempt` equals `of` on the
-  last run.
+  proposal and that no saved proposal update has read yet, the optional `facts` and
+  `solution` are those of the newest explore result of the current take in, and each
+  entry of `answers` has `custom`. `run.attempt` and `run.of` have no maximum, and
+  `attempt` equals `of` on the last run.
 
 ### Added
 

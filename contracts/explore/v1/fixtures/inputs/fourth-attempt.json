@@ -59,7 +59,12 @@
       "at": "2026-10-17T10:06:00Z"
     }
   ],
-  "proposal": "## What this is\n\nOrder 4417 arrived nine days late, and the customer asks for a refund.\n\n## How to do it\n\nRefund the full amount and tell the customer.\n\n## Why this is the best\n\nThe late delivery policy covers a delivery this late.\n",
+  "facts": [
+    "Order 4417 is **nine days late**, against the delivery date on the order.",
+    "The customer asks for a refund of the full amount.",
+    "The [late delivery policy](https://help.example.com/policies/late-delivery) covers a delivery more than seven days late."
+  ],
+  "solution": "## What this is\n\nOrder 4417 arrived nine days late, and the customer asks for a refund.\n\n## How to do it\n\nRefund the full amount and tell the customer.\n\n## Why this is the best\n\nThe late delivery policy covers a delivery this late.\n",
   "changes": [
     {
       "text": "Say how many days the refund takes.",
