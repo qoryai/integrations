@@ -206,8 +206,8 @@
       }
     },
     "proposal": {
-      "description": "The newest proposal of the current take in, as Markdown text: absent when the current take in has no proposal.",
-      "$ref": "result.schema.json#/$defs/message"
+      "description": "The solution of the newest explore result of the current take in, result.schema.json, as Markdown text: absent when the current take in has no explore result yet, or when the newest one has no solution.",
+      "$ref": "result.schema.json#/$defs/solution"
     },
     "changes": {
       "description": "What members wrote on the proposal in the current take in and that no saved proposal update has read yet, oldest first: empty when there is none.",

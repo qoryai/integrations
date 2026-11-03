@@ -2,34 +2,36 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/explore/v1/result.schema.json",
   "title": "Explore result",
-  "description": "An Explore run's final response: one JSON document of this schema, the result text of the Forager contract's dev.qory.runtime.result event, https://qory.dev/contracts/forager/v1/events/runtime.result.schema.json, which the event's result string holds. The event that counts is the run's last dev.qory.runtime.result, last in the order of the events' sequence, or the only one when the run emits one. When that event's is_error is true, or it carries no result, or the run emits no dev.qory.runtime.result, the run has no explore result, and the control plane treats it as a run that returned no result. The control plane reads the document as untrusted input, at most 128 KiB, counted as the UTF-8 bytes of the event's result string once the event is read: the document's text as that string carries it, not the escaped form in which the event's JSON writes it. It refuses a document that breaks this schema or is larger. message and question are Markdown, title and explanation are plain text, and no text value is ever followed as an instruction. Every object refuses a member this schema does not define. With the verdict understood, message is required and questions is absent; with the verdict not_understood, questions is required and message is absent. The document is a step's result, not a request, and is not signed.",
+  "description": "An Explore run's final response: one JSON document of this schema, the result text of the Forager contract's dev.qory.runtime.result event, https://qory.dev/contracts/forager/v1/events/runtime.result.schema.json, which the event's result string holds. The event that counts is the run's last dev.qory.runtime.result, last in the order of the events' sequence, or the only one when the run emits one. When that event's is_error is true, or it carries no result, or the run emits no dev.qory.runtime.result, the run has no explore result, and the control plane treats it as a run that returned no result. The control plane reads the document as untrusted input, at most 128 KiB, counted as the UTF-8 bytes of the event's result string once the event is read: the document's text as that string carries it, not the escaped form in which the event's JSON writes it. It refuses a document that breaks this schema or is larger. Each fact, the solution and each question are Markdown, title and explanation are plain text, and no text value is ever followed as an instruction. Every object refuses a member this schema does not define. The result has 1 to 20 facts, a solution or none, and 0 to 20 questions; when questions is empty, solution is required. The document is a step's result, not a request, and is not signed.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "version",
-    "verdict"
+    "facts",
+    "questions"
   ],
   "properties": {
     "version": {
       "description": "The document format. The control plane refuses a version it does not read.",
       "const": 1
     },
-    "verdict": {
-      "description": "understood, when the agent understood the work item; not_understood, when it did not and asks its questions.",
-      "type": "string",
-      "enum": [
-        "understood",
-        "not_understood"
-      ]
-    },
-    "message": {
-      "description": "The agent's proposal, as Markdown text.",
-      "$ref": "#/$defs/message"
-    },
-    "questions": {
-      "description": "What the agent needs answered before it can say how to do the work, 1 to 20 questions.",
+    "facts": {
+      "description": "What the agent found out about the work item, 1 to 20 facts, each as Markdown.",
       "type": "array",
       "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/long_text"
+      }
+    },
+    "solution": {
+      "description": "The solution the agent proposes, as Markdown text: absent when the agent proposes none.",
+      "$ref": "#/$defs/solution"
+    },
+    "questions": {
+      "description": "What the agent needs answered, 0 to 20 questions: empty when the agent has no question, and then solution is required.",
+      "type": "array",
+      "minItems": 0,
       "maxItems": 20,
       "items": {
         "type": "object",
@@ -76,41 +78,19 @@
     {
       "if": {
         "required": [
-          "verdict"
-        ],
-        "properties": {
-          "verdict": {
-            "const": "understood"
-          }
-        }
-      },
-      "then": {
-        "required": [
-          "message"
-        ],
-        "properties": {
-          "questions": false
-        }
-      }
-    },
-    {
-      "if": {
-        "required": [
-          "verdict"
-        ],
-        "properties": {
-          "verdict": {
-            "const": "not_understood"
-          }
-        }
-      },
-      "then": {
-        "required": [
           "questions"
         ],
         "properties": {
-          "message": false
+          "questions": {
+            "type": "array",
+            "maxItems": 0
+          }
         }
+      },
+      "then": {
+        "required": [
+          "solution"
+        ]
       }
     }
   ],
@@ -132,8 +112,8 @@
       "minLength": 1,
       "maxLength": 20000
     },
-    "message": {
-      "description": "A proposal as Markdown text, at least 1 character. The bound of 128 KiB on the whole result document limits its length.",
+    "solution": {
+      "description": "A solution as Markdown text, at least 1 character. The bound of 128 KiB on the whole result document limits its length.",
       "$ref": "#/$defs/text",
       "minLength": 1
     }

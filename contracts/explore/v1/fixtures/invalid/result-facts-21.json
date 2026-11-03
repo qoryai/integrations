@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "facts": [
+    "Fact 1 about order 4417.",
+    "Fact 2 about order 4417.",
+    "Fact 3 about order 4417.",
+    "Fact 4 about order 4417.",
+    "Fact 5 about order 4417.",
+    "Fact 6 about order 4417.",
+    "Fact 7 about order 4417.",
+    "Fact 8 about order 4417.",
+    "Fact 9 about order 4417.",
+    "Fact 10 about order 4417.",
+    "Fact 11 about order 4417.",
+    "Fact 12 about order 4417.",
+    "Fact 13 about order 4417.",
+    "Fact 14 about order 4417.",
+    "Fact 15 about order 4417.",
+    "Fact 16 about order 4417.",
+    "Fact 17 about order 4417.",
+    "Fact 18 about order 4417.",
+    "Fact 19 about order 4417.",
+    "Fact 20 about order 4417.",
+    "Fact 21 about order 4417."
+  ],
+  "solution": "## What this is\n\nOrder 4417 arrived nine days late, and the customer asks for a refund.\n\n## What is in and out\n\n- In: refund the order and tell the customer.\n- Out: a change to the delivery terms.\n\n## How to do it\n\nRefund the full amount, then send this reply:\n\n```text\nWe have refunded order 4417 in full. The amount reaches your account within five days.\n```\n\n## Why this is the best\n\nThe [late delivery policy](https://help.example.com/policies/late-delivery) covers a delivery this late.\n\n## Alternatives\n\n- Store credit: the customer asked for the money back.\n",
+  "questions": []
+}

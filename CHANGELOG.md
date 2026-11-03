@@ -61,14 +61,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   added.
 - If a run or a reader follows the explore contract as this module had it after 0.3.0,
   change it, because `contracts/explore/v1` stays at revision 1 with a new shape. In
-  `result.schema.json`, `complexity`, `understanding`, `scope`, `approach` and
-  `knowledge` are removed. With the verdict `understood`, `message` is required: one
-  Markdown text. Each entry of `questions` is an object with `question`, Markdown of at
-  most 20000 characters, and `options`, 0 to 10 objects with `title` and `explanation`,
-  both plain text. In `inputs.schema.json`, `changes` is required and lists what members
-  wrote on the proposal and that no saved proposal update has read yet, `proposal` is the
-  newest proposal of the current take in, and each entry of `answers` has `custom`.
-  `run.attempt` and `run.of` have no maximum, and `attempt` equals `of` on the last run.
+  `result.schema.json`, `verdict`, `complexity`, `understanding`, `scope`, `approach`
+  and `knowledge` are removed. A result has `facts`, 1 to 20 Markdown texts of at most
+  20000 characters each; `solution`, one Markdown text, which is optional; and
+  `questions`, 0 to 20. When `questions` is empty, `solution` is required. Each entry of
+  `questions` is an object with `question`, Markdown of at most 20000 characters, and
+  `options`, 0 to 10 objects with `title` and `explanation`, both plain text. In
+  `inputs.schema.json`, `changes` is required and lists what members wrote on the
+  proposal and that no saved proposal update has read yet, `proposal` is the `solution`
+  of the newest explore result of the current take in, and each entry of `answers` has
+  `custom`. `run.attempt` and `run.of` have no maximum, and `attempt` equals `of` on the
+  last run.
 
 ### Added
 
