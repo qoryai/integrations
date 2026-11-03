@@ -133,10 +133,9 @@
       "maxLength": 20000
     },
     "message": {
-      "description": "A proposal as Markdown text, 1 to 131072 characters (128 KiB). In a result, the bound of 128 KiB on the whole document applies too.",
+      "description": "A proposal as Markdown text, at least 1 character. The bound of 128 KiB on the whole result document limits its length.",
       "$ref": "#/$defs/text",
-      "minLength": 1,
-      "maxLength": 131072
+      "minLength": 1
     }
   }
 }

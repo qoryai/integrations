@@ -63,13 +63,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   change it, because `contracts/explore/v1` stays at revision 1 with a new shape. In
   `result.schema.json`, `complexity`, `understanding`, `scope`, `approach` and
   `knowledge` are removed. With the verdict `understood`, `message` is required: one
-  Markdown text of at most 131072 characters. Each entry of `questions` is an object
-  with `question`, Markdown of at most 20000 characters, and `options`, 0 to 10 objects
-  with `title` and `explanation`, both plain text. In `inputs.schema.json`, `changes` is
-  required and lists what members wrote on the proposal and that no saved proposal
-  update has read yet, `proposal` is the newest proposal of the current take in, and
-  each entry of `answers` has `custom`. `run.attempt` and `run.of` have no maximum, and
-  `attempt` equals `of` on the last run.
+  Markdown text. Each entry of `questions` is an object with `question`, Markdown of at
+  most 20000 characters, and `options`, 0 to 10 objects with `title` and `explanation`,
+  both plain text. In `inputs.schema.json`, `changes` is required and lists what members
+  wrote on the proposal and that no saved proposal update has read yet, `proposal` is the
+  newest proposal of the current take in, and each entry of `answers` has `custom`.
+  `run.attempt` and `run.of` have no maximum, and `attempt` equals `of` on the last run.
 
 ### Added
 
