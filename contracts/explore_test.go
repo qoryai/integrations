@@ -33,7 +33,7 @@ func compileExplore(t *testing.T, name string) *jsonschema.Schema {
 
 // memberLeaves are a refusal's reasons as [leaves] writes them and, after a reason of
 // the keyword additionalProperties, the members the schema does not define, so that
-// a test compares which member a document adds.
+// a test can check which member a document adds.
 func memberLeaves(v *jsonschema.ValidationError) []string {
 	if len(v.Causes) == 0 {
 		r := leaves(v)[0]

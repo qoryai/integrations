@@ -66,8 +66,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   newest versions with `qory artifact pull`. An artifact is a named output of a work
   item, such as the proposal. The control plane stores each version of it, and each
   version is one or more files. In `inputs.schema.json`, `answers` and `run.of` are
-  removed, and `run.attempt` has no maximum. Members' answers are in the newest version
-  of the `questions` artifact.
+  removed: members' answers are in the newest version of the `questions` artifact.
+  `run.attempt` has no maximum.
 
 ### Added
 
