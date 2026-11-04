@@ -62,10 +62,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - If a run or a reader follows the explore contract as this module had it after 0.3.0,
   change it, because `contracts/explore/v1` stays at revision 1 with a new shape.
   `result.schema.json` is removed, because the run pushes its outputs, the proposal and
-  the questions, as artifacts. In `inputs.schema.json`, `answers` is removed, and
-  `changes` is required: what members wrote on the newest proposal of the current take
-  in, oldest first, each entry with `text`, `by` and `at`. `run.attempt` and `run.of`
-  have no maximum, and `attempt` equals `of` on the last run.
+  the questions, as artifacts. In `inputs.schema.json`, `answers` is removed.
+  `run.attempt` has no maximum, `run.of` is an integer from 1 instead of the constant 3,
+  and `attempt` equals `of` on the last run.
 
 ### Added
 

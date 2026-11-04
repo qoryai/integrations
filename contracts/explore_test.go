@@ -64,11 +64,10 @@ func TestInvalidExploreFixturesAreRefused(t *testing.T) {
 		"inputs-instruction-escape.json":       {"inputs", "/instruction/text pattern"},
 		"inputs-member-name-line-feed.json":    {"inputs", "/instruction/by/name pattern"},
 		"inputs-without-domain.json":           {"inputs", "/ required domain"},
-		"inputs-without-changes.json":          {"inputs", "/ required changes"},
-		"inputs-change-without-by.json":        {"inputs", "/changes/0 required by"},
 		"inputs-proposal.json":                 {"inputs", "/ additionalProperties"},
 		"inputs-answers.json":                  {"inputs", "/ additionalProperties"},
 		"inputs-facts.json":                    {"inputs", "/ additionalProperties"},
+		"inputs-changes.json":                  {"inputs", "/ additionalProperties"},
 	}
 	got := treeFiles(t, contracts.ExploreFS, "fixtures/invalid")
 	if len(got) != len(want) {

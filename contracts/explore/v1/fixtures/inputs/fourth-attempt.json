@@ -39,15 +39,6 @@
     }
   ],
   "comments_omitted": 12,
-  "changes": [
-    {
-      "text": "Say how many days the refund takes.",
-      "by": {
-        "name": "Sam Example"
-      },
-      "at": "2026-10-17T13:20:00Z"
-    }
-  ],
   "target": {
     "system": "tracker.example.com",
     "path": "customer-care"

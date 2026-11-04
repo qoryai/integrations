@@ -59,15 +59,6 @@
       "at": "2026-10-17T10:06:00Z"
     }
   ],
-  "changes": [
-    {
-      "text": "Offer a replacement first.",
-      "by": {
-        "name": "Sam Example"
-      },
-      "at": "2026-10-17T11:45:00Z"
-    }
-  ],
   "target": {
     "system": "tracker.example.com",
     "path": "customer-care"

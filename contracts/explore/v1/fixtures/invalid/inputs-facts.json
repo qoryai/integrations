@@ -44,15 +44,6 @@
     "The customer asks for a refund of the full amount.",
     "The [late delivery policy](https://help.example.com/policies/late-delivery) covers a delivery more than seven days late."
   ],
-  "changes": [
-    {
-      "text": "Offer a replacement first.",
-      "by": {
-        "name": "Sam Example"
-      },
-      "at": "2026-10-17T11:45:00Z"
-    }
-  ],
   "target": {
     "system": "tracker.example.com",
     "path": "customer-care"
