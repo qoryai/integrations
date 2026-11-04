@@ -245,7 +245,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
   `agents`, `commands` or `skills`, to its roles, each to the name of one entry of that
   kind: `bind: {agents: {developer: web-developer}}`. In Go, `HarnessSection.Bind` is a
-  `map[string]map[string]string`.
+  `map[string]map[string]string`, and decoding a `HarnessSection` returns an error for a
+  bind kind other than `agents`, `commands` or `skills`, or one whose value is null.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that
