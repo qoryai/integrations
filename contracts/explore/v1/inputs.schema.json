@@ -49,17 +49,11 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "attempt",
-        "of"
+        "attempt"
       ],
       "properties": {
         "attempt": {
           "description": "The run's number, from 1, counted within the current take in: taking the work item in again starts again at 1.",
-          "type": "integer",
-          "minimum": 1
-        },
-        "of": {
-          "description": "How many runs the take in has at this run: attempt equals of on the last run.",
           "type": "integer",
           "minimum": 1
         }

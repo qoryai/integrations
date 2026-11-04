@@ -6,8 +6,7 @@
     "url": "https://control.example.com/work-items/wi_8kx2mq4vt9ab3c5d"
   },
   "run": {
-    "attempt": 4,
-    "of": 4
+    "attempt": 12
   },
   "ticket": {
     "external_ref": "TRK-77",
