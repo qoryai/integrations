@@ -62,10 +62,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - If a run or a reader follows the explore contract as this module had it after 0.3.0,
   change it, because `contracts/explore/v1` stays at revision 1 with a new shape.
   `result.schema.json` is removed, because the run pushes its outputs, the proposal and
-  the questions, as artifacts with `qory artifact push`, and reads them with
-  `qory artifact pull`. An artifact is a document that the control plane stores, with
-  each of its versions. In `inputs.schema.json`, `answers` and `run.of` are removed, and
-  `run.attempt` has no maximum.
+  the questions, as artifacts with `qory artifact push`, and the next run reads their
+  newest versions with `qory artifact pull`. An artifact is a named output of a work
+  item, such as the proposal. The control plane stores each version of it, and each
+  version is one or more files. In `inputs.schema.json`, `answers` and `run.of` are
+  removed, and `run.attempt` has no maximum. Members' answers are in the newest version
+  of the `questions` artifact.
 
 ### Added
 

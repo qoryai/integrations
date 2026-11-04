@@ -45,7 +45,7 @@
       }
     },
     "run": {
-      "description": "Which run this is within the current take in of the work item.",
+      "description": "The run's place within the current take in of the work item, as attempt counts it.",
       "type": "object",
       "additionalProperties": false,
       "required": [
