@@ -123,9 +123,9 @@
 // receives it, signed, in the 201 of the run code's redemption, and Forager passes it
 // on unread. It is a document, not a request.
 //
-// The explore contract holds the document of the step explore: inputs.schema.json, the
-// shape of the run's inputs for that step, run/v1 documents.schema.json. It is a
-// document of a step, not a request, and is not signed.
+// The explore contract contains one schema, inputs.schema.json, which defines the
+// inputs member of the run's documents, run/v1 documents.schema.json, for the step
+// explore. The inputs are a document of a step, not a request, and are not signed.
 //
 // The machines contract holds the protocol of a machine adapter, a program that makes
 // and deletes machines at one vendor, which the provisioner runs as `<adapter>
