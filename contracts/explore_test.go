@@ -289,13 +289,13 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 			members++
 			doc := read()
 			delete(objectAt(doc, where), member)
-			if len(where) == 0 && member == "ticket" {
-				objectAt(doc, where)["comments"] = []any{}
-				objectAt(doc, where)["comments_omitted"] = json.Number("0")
-			}
 			want := location + " required " + member
 			if len(where) == 0 && (member == "target" || member == "ticket") {
 				want = "accepted"
+				if member == "ticket" {
+					objectAt(doc, where)["comments"] = []any{}
+					objectAt(doc, where)["comments_omitted"] = json.Number("0")
+				}
 			}
 			if got := refusal(doc); got != want {
 				t.Errorf("%s without %s in %s: %s, want %s", fixture, member, location, got, want)
