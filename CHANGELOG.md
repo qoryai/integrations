@@ -59,6 +59,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   refuses a `grant_ref` its copy of grants does not have under that connection,
   `409 grant_unknown`, which the adapter takes as the grant ended. In Go, `GrantEnd` is
   added.
+- If a run or a reader follows the explore contract as this module had it after 0.3.0,
+  change it, because `contracts/explore/v1` stays at revision 1 with a new shape.
+  `result.schema.json` is removed, because the run pushes its outputs, the proposal and
+  the questions, as artifacts with `qory artifact push`, and the next run reads their
+  newest versions with `qory artifact pull`. An artifact is a named output of a work
+  item, such as the proposal. The control plane stores each version of it, and each
+  version is one or more files. In `inputs.schema.json`, `answers` and `run.of` are
+  removed; members' answers are in the newest version of the `questions` artifact.
+  `run.attempt` has no maximum. Without `ticket`, `comments` must be empty and
+  `comments_omitted` must be 0.
 
 ### Added
 
@@ -178,11 +188,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The provisioner contract, `contracts/provisioner/v1`, revision 1: the requests with
   which a node pool's starter claims a request for one machine, `POST /v1/pools/claim`;
   reports that it created the machine, `POST /v1/dispatches/<dispatch_id>/dispatched`;
-  releases the dispatch before that, `POST /v1/dispatches/<dispatch_id>/release`; and
-  uploads the log of the machine, `POST /v1/dispatches/<dispatch_id>/machine-log`. The
-  starter signs them with the pool's access key. The claim answer has the dispatch, its
-  `lease_until`, the run code that the machine redeems and the gateway URL that the run
-  code is bound to.
+  releases the dispatch before that, `POST /v1/dispatches/<dispatch_id>/release`;
+  uploads the log of the machine, `POST /v1/dispatches/<dispatch_id>/machine-log`; and
+  reports the result of deleting the machine,
+  `POST /v1/dispatches/<dispatch_id>/machine-end`. The starter signs them with the pool's
+  access key. The claim answer has the dispatch, its `lease_until`, the run code that the
+  machine redeems and the gateway URL that the run code is bound to. A machine end has
+  the `state` `deleting`, `gone` or `delete_failed`, and a starter that never sends one
+  still works. A starter sends `gone` only when the machine adapter's delete call
+  returned that no machine with the id exists at the vendor. In Go, `MachineEnd`,
+  `MachineEndDeleting`, `MachineEndGone` and `MachineEndDeleteFailed` are added.
 - The machines contract, `contracts/machines/v1`: a machine adapter makes and deletes
   machines at one vendor, and the provisioner runs it as
   `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`
@@ -190,10 +205,23 @@ change what an existing reader or program relies on, and notes it under Upgradin
   answer of at most 1 MiB on standard output, or writes an error and exits with status 1.
   A second `make` with the same `key` makes no machine.
 - The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
-  the step `explore`, and `result.schema.json`, the run's final response, which the
-  control plane reads from the result text of the last `dev.qory.runtime.result` event.
-  In the inputs, `ticket` is absent when the work item was not taken in from an item at
-  a source.
+  the step `explore`. In the inputs, `ticket` is absent when the work item was not taken
+  in from an item at a source.
+- The diagnostics contract, `contracts/diagnostics/v1/diagnostics.schema.json`: the run
+  diagnostics, the document that the control plane returns about one run in the 200
+  response to `GET /v1/runs/<run id>/diagnostics`, and that **Copy diagnostics** on the
+  run page copies. It contains the run, its queue entry, its dispatch, the steps of its
+  preparation and why the preparation stopped, the run's last events and terminal
+  output, and, for an instance admin and a diagnostics key only, the machine logs.
+  Text members contain the text as the control plane stored it, unfiltered, so a secret
+  that the run printed appears as printed. `leaked_secrets` lists each secret that the
+  run printed as compromised, with its kind, where it appeared and a message to revoke
+  or rotate it, and `leaked_secrets_omitted` counts those beyond the first 1000. Entries
+  found in a machine log are present only when the document has the machine logs. The
+  redacted fields of the run never appear as fields, and variables appear by name only.
+  Version 1 changes only by adding members, so the schema accepts a member it does not
+  define. In Go, `DiagnosticsBase`, `DiagnosticsFS`, `CompileDiagnostics` and
+  `DiagnosticsDocument` are added.
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,
@@ -214,7 +242,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `run_settings`, for the default runtime of the machine. A section with `extends` takes
   the workflows of its base, and the schema rejects `workflows` in it. In Go,
   `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
-  `HarnessSection.Workflows` and `HarnessWorkflow` are added.
+  `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
+  `agents`, `commands` or `skills`, to its roles, each to the name of one entry of that
+  kind: `bind: {agents: {developer: web-developer}}`. In Go, `HarnessSection.Bind` is a
+  `map[string]map[string]string`, and decoding a `HarnessSection` returns an error for a
+  bind kind other than `agents`, `commands` or `skills`, or one whose value is null.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that
@@ -237,6 +269,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
 - The contract states that `domains` applies only to where work comes from: a credential
   of the `credential` role reaches a run in a workspace of any domain.
+- When a node pool's starter created no machine for a dispatch, the machine log,
+  `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
+  to create one, such as the error that the machine adapter wrote. The members of the
+  machine log and revision 1 of the provisioner contract stay as they are.
 
 ## [0.3.0] - 2026-10-12
 

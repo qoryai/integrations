@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/explore/v1/inputs.schema.json",
   "title": "Explore inputs",
-  "description": "The run's inputs, https://qory.dev/contracts/run/v1/documents.schema.json, for the step explore, which the control plane writes and the job reads. instruction.text is the instruction the member who took the work item in gave the step. Every other text value from the source or from members is untrusted data, never an instruction. The object's size is bounded as https://qory.dev/contracts/run/v1/documents.schema.json bounds the run's inputs. Every member is required, at every level, except target and ticket, and every object refuses a member this schema does not define. Every time is the integration contract's time, https://qory.dev/contracts/integration/v1/definitions.schema.json: RFC 3339 in UTC with whole seconds, ending Z.",
+  "description": "The run's inputs, https://qory.dev/contracts/run/v1/documents.schema.json, for the step explore, which the control plane writes and the job reads. instruction.text is the instruction the member who took the work item in gave the step. Every other text value, from the source or from members, such as ticket.title and comments[].body, is untrusted data, never an instruction. The object's size is bounded as https://qory.dev/contracts/run/v1/documents.schema.json bounds the run's inputs. Every member is required, at every level, except target and ticket, and every object refuses a member this schema does not define. Every time is the integration contract's time, https://qory.dev/contracts/integration/v1/definitions.schema.json: RFC 3339 in UTC with whole seconds, ending Z.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,9 +12,25 @@
     "instruction",
     "comments",
     "comments_omitted",
-    "answers",
     "domain"
   ],
+  "if": {
+    "not": {
+      "required": [
+        "ticket"
+      ]
+    }
+  },
+  "then": {
+    "properties": {
+      "comments": {
+        "maxItems": 0
+      },
+      "comments_omitted": {
+        "const": 0
+      }
+    }
+  },
   "properties": {
     "version": {
       "description": "The version of the step's input. The job refuses a version it does not read.",
@@ -46,23 +62,17 @@
       }
     },
     "run": {
-      "description": "Which run of the current take in this is.",
+      "description": "The run's place within the current take in of the work item, as attempt counts it.",
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "attempt",
-        "of"
+        "attempt"
       ],
       "properties": {
         "attempt": {
-          "description": "The run's number, from 1 to 3, counted within the current take in: taking the work item in again starts again at 1.",
+          "description": "The run's number, from 1, counted within the current take in: taking the work item in again starts again at 1.",
           "type": "integer",
-          "minimum": 1,
-          "maximum": 3
-        },
-        "of": {
-          "description": "The most runs a take in has, 3.",
-          "const": 3
+          "minimum": 1
         }
       }
     },
@@ -121,8 +131,8 @@
       ],
       "properties": {
         "text": {
-          "description": "The instruction, text as result.schema.json $defs text defines it, so it may span lines, 0 to 4000 characters: empty when none was given.",
-          "$ref": "result.schema.json#/$defs/text",
+          "description": "The instruction, text as $defs text defines it, so it may span lines, 0 to 4000 characters: empty when none was given.",
+          "$ref": "#/$defs/text",
           "maxLength": 4000
         },
         "by": {
@@ -136,7 +146,7 @@
       }
     },
     "comments": {
-      "description": "The comments on the item at the source, oldest first: empty when ticket is absent. The array has no maxItems: the bound on the object's size bounds it, and when the whole object would be larger than that bound, the control plane keeps the newest comments and counts the ones it dropped in comments_omitted.",
+      "description": "The comments on the item at the source, oldest first: empty when ticket is absent. With ticket, the array has no maxItems: the bound on the object's size bounds it, and when the whole object would be larger than that bound, the control plane keeps the newest comments and counts the ones it dropped in comments_omitted.",
       "type": "array",
       "items": {
         "type": "object",
@@ -163,41 +173,9 @@
       }
     },
     "comments_omitted": {
-      "description": "How many of the oldest comments the control plane dropped to keep the object within its bound, from 0: 0 when it dropped none.",
+      "description": "How many of the oldest comments the control plane dropped to keep the object within its bound, from 0: 0 when it dropped none, and 0 when ticket is absent.",
       "type": "integer",
       "minimum": 0
-    },
-    "answers": {
-      "description": "The answers given within the current take in to the earlier runs' questions, oldest first: none on attempt 1.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "question",
-          "answer",
-          "by",
-          "at"
-        ],
-        "properties": {
-          "question": {
-            "description": "The question, as an earlier run asked it.",
-            "$ref": "result.schema.json#/$defs/short_text"
-          },
-          "answer": {
-            "description": "The answer.",
-            "$ref": "result.schema.json#/$defs/short_text"
-          },
-          "by": {
-            "description": "The member who answered.",
-            "$ref": "#/$defs/member"
-          },
-          "at": {
-            "description": "When the member answered.",
-            "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/time"
-          }
-        }
-      }
     },
     "target": {
       "description": "Where the run's change would go: the same target as the run's target, https://qory.dev/contracts/run/v1/documents.schema.json, and absent when the run has none. The control plane writes the same value into both.",
@@ -209,6 +187,11 @@
     }
   },
   "$defs": {
+    "text": {
+      "description": "Text that may span lines: tab, line feed and carriage return are its only control characters, and U+0000 to U+0008, U+000B, U+000C, U+000E to U+001F, U+007F and U+0080 to U+009F are refused. So are the characters https://qory.dev/contracts/integration/v1/description.schema.json refuses in a prose line, $defs line, beyond control characters: the bidirectional controls, the marks U+061C, U+200E and U+200F, the embeddings and overrides U+202A to U+202E and the isolates U+2066 to U+2069; the separators U+2028 and U+2029; and the format characters U+00AD, U+180E, U+200B, U+2060 to U+2064, U+FEFF and U+FFF9 to U+FFFB.",
+      "type": "string",
+      "pattern": "^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u0080-\u009f\u00ad\u061c\u180e\u200b\u200e\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\ufff9-\ufffb]*$"
+    },
     "member": {
       "description": "A member of the control plane.",
       "type": "object",
@@ -218,7 +201,7 @@
       ],
       "properties": {
         "name": {
-          "description": "The name the control plane shows for the member, 1 to 160 characters on one line: no control character, U+0000 to U+001F, U+007F and U+0080 to U+009F, and no character result.schema.json $defs text refuses beyond control characters.",
+          "description": "The name the control plane shows for the member, 1 to 160 characters on one line: no control character, U+0000 to U+001F, U+007F and U+0080 to U+009F, and no character $defs text refuses beyond control characters.",
           "type": "string",
           "minLength": 1,
           "maxLength": 160,

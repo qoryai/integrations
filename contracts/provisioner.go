@@ -140,7 +140,8 @@ type Release struct {
 
 // MachineLog is the body of POST /v1/dispatches/<dispatch_id>/machine-log,
 // machine-log.schema.json: the starter uploads the log of the machine it created for
-// the dispatch, from the machine's creation to its end. Log has no U+0000. JSON
+// the dispatch, from the machine's creation to its end, or, when it created no machine
+// for the dispatch, the error text of its attempt to create one. Log has no U+0000. JSON
 // escaping can make the body larger than Log, so the starter keeps the last part of the
 // log such that Log is at most 768 KiB as UTF-8 and the request body, as serialized and
 // sent, is at most 1 MiB, and sets Truncated when it cut anything. Before the upload,
@@ -153,4 +154,40 @@ type MachineLog struct {
 	Time      string `json:"time"`
 	Log       string `json:"log"`
 	Truncated bool   `json:"truncated,omitempty"`
+}
+
+// The states of a [MachineEnd], machine-end.schema.json. MachineEndDeleting: the
+// starter's delete call was accepted, and the machine may still exist. MachineEndGone:
+// the machine adapter's delete call returned that no machine with the id exists at the
+// vendor, [MachineGone]. A missing entry in a list is no proof, because a vendor's list
+// can lag. MachineEndDeleteFailed: the delete call failed, and as far as the starter
+// knows the machine still exists.
+const (
+	MachineEndDeleting     = "deleting"
+	MachineEndGone         = "gone"
+	MachineEndDeleteFailed = "delete_failed"
+)
+
+// MachineEnd is the body of POST /v1/dispatches/<dispatch_id>/machine-end,
+// machine-end.schema.json: the starter reports the result of deleting the machine it
+// created for the dispatch. A dispatch for which it made no machine, or whose machine id
+// it never learned, gets no call. The starter sends the call after its delete call,
+// repeats the delete call until that call returns gone, and then sends
+// [MachineEndGone]. The call may come any number of times, before or after the dispatch
+// ends, and is never refused 410 gone or 409 lease_expired, because a machine usually
+// ends after its dispatch. The starter sends one call at a time for a dispatch: it sends
+// the next only after the answer to the one before, or after it gave that one up. The
+// control plane applies the calls in the order it receives them and compares no time,
+// and every accepted call replaces the state. MachineEndGone is final: a later call
+// changes nothing and still gets the signed 204 with no body. The call is optional for a
+// starter. A signed 403 or 404 ends the starter's attempts to send this call for the
+// dispatch; the delete calls go on. After any other failure, an unsigned answer among
+// them, the starter sends the call again for a limited time and then drops it, because
+// the call is optional. The starter counts a machine against its limit of machines only
+// until the delete call returns gone, whatever the answers to this call, so a control
+// plane without the route blocks no machine.
+type MachineEnd struct {
+	Version int    `json:"version"`
+	Time    string `json:"time"`
+	State   string `json:"state"`
 }

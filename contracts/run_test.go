@@ -172,6 +172,11 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-member-exports.json":                     {"documents", "/harness additionalProperties"},
 		"documents-harness-member-target.json":                      {"documents", "/harness additionalProperties"},
 		"documents-harness-section-target.json":                     {"documents", "/harness/harness additionalProperties"},
+		"documents-harness-bind-flat.json":                          {"documents", "/harness/harness/bind additionalProperties"},
+		"documents-harness-bind-unknown-kind.json":                  {"documents", "/harness/harness/bind additionalProperties"},
+		"documents-harness-bind-list.json":                          {"documents", "/harness/harness/bind/agents/reviewer type"},
+		"documents-harness-bind-name-slash.json":                    {"documents", "/harness/harness/bind/agents/writer pattern"},
+		"documents-harness-bind-role-dot.json":                      {"documents", "/ pattern"},
 		"documents-target-version-without-target.json":              {"documents", "/ dependentRequired/target_version"},
 		"documents-target-version-space.json":                       {"documents", "/target_version pattern"},
 		"documents-prebuild-with-harness.json":                      {"documents", "/harness "},
@@ -534,7 +539,7 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 				Only:    &contracts.HarnessSelection{OutputStyles: []string{"brief"}, Env: &contracts.HarnessPart{Names: []string{"REPORT_DIR"}}},
 				Variant: "weekly"},
 		},
-		Bind:       map[string]string{"agents/coder": "writer"},
+		Bind:       map[string]map[string]string{"agents": {"writer": "copywriter"}, "skills": {"review": "brand-review"}},
 		Extensions: map[string]json.RawMessage{"team": json.RawMessage(`{"size":3}`)},
 	}}
 	defined := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
@@ -800,10 +805,10 @@ func TestProviderModelsHaveAtMost256Entries(t *testing.T) {
 // TestTheRunDocumentsReadIntoTheirGoTypes pins that the target, work_item,
 // run_settings and harness of each run documents fixture read into their Go types and
 // are written back as the fixture's bytes, compacted, that a fixture without target has
-// no access and no target_version either, and that a fixture with workflow has harness
-// or target_version.
+// no access and no target_version either, that a fixture with workflow has harness or
+// target_version, and that at least one fixture has a harness with bind.
 func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
-	n, harnesses := 0, 0
+	n, harnesses, binds := 0, 0, 0
 	for _, f := range runFiles(t, "fixtures/documents") {
 		b, err := fs.ReadFile(contracts.RunFS, f)
 		if err != nil {
@@ -829,6 +834,9 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 		}
 		if d.Harness != nil {
 			harnesses++
+			if len(d.Harness.Harness.Bind) > 0 {
+				binds++
+			}
 		}
 		for name, v := range map[string]any{
 			"target":       &contracts.Target{},
@@ -862,6 +870,43 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 	}
 	if harnesses == 0 {
 		t.Error("fixtures/documents has no harness")
+	}
+	if binds == 0 {
+		t.Error("fixtures/documents has no harness with bind")
+	}
+}
+
+// TestABindTheSchemaRefusesFailsToRead pins that a bind in the flat form, <kind>/<role>
+// to a name, a bind with a kind other than agents, commands and skills, and a bind with
+// a kind whose value is null fail to read into a HarnessSection with an error, and that
+// a bind with each kind, or with empty objects, reads.
+func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
+	for _, c := range []struct{ in, err string }{
+		{`{"bind":{"agents/writer":"copywriter"}}`, "bind"},
+		{`{"bind":{"hooks":{"x":"y"}}}`, `use agents, commands or skills as a bind kind, not "hooks"`},
+		{`{"bind":{"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
+		{`{"bind":{"skills":{"review":"brand-review"},"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
+	} {
+		var s contracts.HarnessSection
+		err := json.Unmarshal([]byte(c.in), &s)
+		if err == nil {
+			t.Errorf("%s reads as %v, want an error", c.in, s.Bind)
+			continue
+		}
+		if !strings.Contains(err.Error(), c.err) {
+			t.Errorf("%s fails with %q, want an error with %q", c.in, err, c.err)
+		}
+	}
+	for _, in := range []string{
+		`{"bind":{"agents":{"writer":"copywriter"},"commands":{"publish":"post"},"skills":{"review":"brand-review"}}}`,
+		`{"bind":{"agents":{}}}`,
+		`{"bind":{}}`,
+		`{}`,
+	} {
+		var s contracts.HarnessSection
+		if err := json.Unmarshal([]byte(in), &s); err != nil {
+			t.Errorf("%s: %v", in, err)
+		}
 	}
 }
 

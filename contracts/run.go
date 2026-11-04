@@ -3,6 +3,9 @@ package contracts
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"maps"
+	"slices"
 )
 
 // MaxInputs is the most bytes the run's inputs has, serialized,
@@ -30,12 +33,12 @@ const MaxInputs = 768 << 10
 // machine's qory version does not meet that requirement, the run stops. It reads none of
 // the other machine keys of that file and none of its git and env sections, so the
 // harness file of the target does not set how the run starts. The machine works at
-// TargetVersion when it is set. A run of the step explore has WorkItem. A run of the
-// step prebuild has Access, Target, ImageDestination and exactly one of
-// EnvironmentDestination and EnvironmentImage, and no TargetVersion, WorkItem,
-// RunSettings, Workflow, HarnessHidden or Harness. RunSettings is set only for the step
-// explore. Inputs is the step's input as the control plane wrote it, whose shape belongs
-// to the step's schema.
+// TargetVersion when it is set, unless the run's work item has a branch, which the
+// machine reads. A run of the step explore has WorkItem. A run of the step prebuild has
+// Access, Target, ImageDestination and exactly one of EnvironmentDestination and
+// EnvironmentImage, and no TargetVersion, WorkItem, RunSettings, Workflow, HarnessHidden
+// or Harness. RunSettings is set only for the step explore. Inputs is the step's input
+// as the control plane wrote it, whose shape belongs to the step's schema.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -45,12 +48,13 @@ type Documents struct {
 	// TargetVersion is set only with Target, and never for the step prebuild: the
 	// version of the target at which the control plane checked for a harness file, the
 	// resolved_at of the read at the path of the harness file, whether the read returned
-	// the file or found: false. The machine works at this version, and composes the
-	// harness file at it when the read returned a file whose harness section has extends
-	// or lists at least one module. It is the exact version that the read returned,
-	// never a name that can point to another version later, because the machine would
-	// then compose a file that the control plane did not read: 1 to 255 letters, digits
-	// and the characters ._/-, a generic grammar, because a target in another system has
+	// the file or found: false. The machine composes the harness file at this version
+	// when the read returned a file whose harness section has extends or lists at least
+	// one module, and works at this version unless the run's work item has a branch,
+	// which the machine reads. It is the exact version that the read returned, never a
+	// name that can point to another version later, because the machine would then
+	// compose a file that the control plane did not read: 1 to 255 letters, digits and
+	// the characters ._/-, a generic grammar, because a target in another system has
 	// another kind of version.
 	TargetVersion string       `json:"target_version,omitempty"`
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
@@ -141,9 +145,10 @@ type HarnessSection struct {
 	// the modules of the stack the section defines when it is nil, where at least 1 is
 	// required.
 	Modules []HarnessModule `json:"modules,omitempty"`
-	// Bind maps <kind>/<role> to the name of the entry of that kind that fills the
-	// role.
-	Bind map[string]string `json:"bind,omitempty"`
+	// Bind maps a kind, agents, commands or skills, to the roles of that kind, each
+	// role to the name of the entry of that kind that fills it, such as agents:
+	// {developer: web-developer}.
+	Bind map[string]map[string]string `json:"bind,omitempty"`
 	// Extensions are values that qory copies into the report and does not read, by
 	// key, each a JSON value of any shape. Empty extensions are not written.
 	Extensions map[string]json.RawMessage `json:"extensions,omitempty"`
@@ -152,6 +157,27 @@ type HarnessSection struct {
 	// letter, then up to 63 lower-case letters, digits and hyphens. Only without
 	// Extends: a section with Extends takes the workflows of its base.
 	Workflows map[string]HarnessWorkflow `json:"workflows,omitempty"`
+}
+
+// UnmarshalJSON reads a harness section, and returns an error for a kind of Bind that
+// is not agents, commands or skills, or whose value is null: both fail
+// documents.schema.json.
+func (s *HarnessSection) UnmarshalJSON(b []byte) error {
+	type harnessSection HarnessSection
+	var v harnessSection
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	for _, k := range slices.Sorted(maps.Keys(v.Bind)) {
+		switch {
+		case k != "agents" && k != "commands" && k != "skills":
+			return fmt.Errorf("use agents, commands or skills as a bind kind, not %q", k)
+		case v.Bind[k] == nil:
+			return fmt.Errorf("set the bind kind %q to an object of roles to names, not null", k)
+		}
+	}
+	*s = HarnessSection(v)
+	return nil
 }
 
 // HarnessWorkflow is the settings of one workflow of a stack that a [HarnessSection]
