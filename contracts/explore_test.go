@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"encoding/json"
 	"io/fs"
 	"maps"
 	"path"
@@ -120,32 +121,34 @@ func TestExploreFixturesValidate(t *testing.T) {
 // contract, each with its schema and the reason it is refused for. A reason of the
 // keyword additionalProperties ends with the member that the document adds.
 var invalidExploreFixtures = map[string]struct{ schema, reason string }{
-	"inputs-version-2.json":                    {"inputs", "/version const"},
-	"inputs-work-item-number-0.json":           {"inputs", "/work_item/number minimum"},
-	"inputs-work-item-url-http.json":           {"inputs", "/work_item/url pattern"},
-	"inputs-attempt-0.json":                    {"inputs", "/run/attempt minimum"},
-	"inputs-run-of.json":                       {"inputs", "/run additionalProperties of"},
-	"inputs-filer-kind-bot.json":               {"inputs", "/ticket/filed_by/kind enum"},
-	"inputs-collection-ref.json":               {"inputs", "/ticket additionalProperties collection_ref"},
-	"inputs-ticket-ref.json":                   {"inputs", "/ticket required external_ref; /ticket additionalProperties ref"},
-	"inputs-time-not-utc.json":                 {"inputs", "/ticket/filed_at pattern"},
-	"inputs-instruction-escape.json":           {"inputs", "/instruction/text pattern"},
-	"inputs-instruction-c1-csi.json":           {"inputs", "/instruction/text pattern"},
-	"inputs-instruction-bidi-override.json":    {"inputs", "/instruction/text pattern"},
-	"inputs-instruction-zero-width-space.json": {"inputs", "/instruction/text pattern"},
-	"inputs-instruction-4001-characters.json":  {"inputs", "/instruction/text maxLength"},
-	"inputs-member-name-line-feed.json":        {"inputs", "/instruction/by/name pattern"},
-	"inputs-member-name-tab.json":              {"inputs", "/instruction/by/name pattern"},
-	"inputs-member-name-bidi-override.json":    {"inputs", "/instruction/by/name pattern"},
-	"inputs-member-name-empty.json":            {"inputs", "/instruction/by/name minLength"},
-	"inputs-member-name-161-characters.json":   {"inputs", "/instruction/by/name maxLength"},
-	"inputs-without-comments-omitted.json":     {"inputs", "/ required comments_omitted"},
-	"inputs-comments-omitted-negative.json":    {"inputs", "/comments_omitted minimum"},
-	"inputs-without-domain.json":               {"inputs", "/ required domain"},
-	"inputs-answers.json":                      {"inputs", "/ additionalProperties answers"},
-	"inputs-changes.json":                      {"inputs", "/ additionalProperties changes"},
-	"inputs-facts.json":                        {"inputs", "/ additionalProperties facts"},
-	"inputs-proposal.json":                     {"inputs", "/ additionalProperties proposal"},
+	"inputs-version-2.json":                         {"inputs", "/version const"},
+	"inputs-work-item-number-0.json":                {"inputs", "/work_item/number minimum"},
+	"inputs-work-item-url-http.json":                {"inputs", "/work_item/url pattern"},
+	"inputs-attempt-0.json":                         {"inputs", "/run/attempt minimum"},
+	"inputs-run-of.json":                            {"inputs", "/run additionalProperties of"},
+	"inputs-filer-kind-bot.json":                    {"inputs", "/ticket/filed_by/kind enum"},
+	"inputs-collection-ref.json":                    {"inputs", "/ticket additionalProperties collection_ref"},
+	"inputs-ticket-ref.json":                        {"inputs", "/ticket required external_ref; /ticket additionalProperties ref"},
+	"inputs-time-not-utc.json":                      {"inputs", "/ticket/filed_at pattern"},
+	"inputs-instruction-escape.json":                {"inputs", "/instruction/text pattern"},
+	"inputs-instruction-c1-csi.json":                {"inputs", "/instruction/text pattern"},
+	"inputs-instruction-bidi-override.json":         {"inputs", "/instruction/text pattern"},
+	"inputs-instruction-zero-width-space.json":      {"inputs", "/instruction/text pattern"},
+	"inputs-instruction-4001-characters.json":       {"inputs", "/instruction/text maxLength"},
+	"inputs-member-name-line-feed.json":             {"inputs", "/instruction/by/name pattern"},
+	"inputs-member-name-tab.json":                   {"inputs", "/instruction/by/name pattern"},
+	"inputs-member-name-bidi-override.json":         {"inputs", "/instruction/by/name pattern"},
+	"inputs-member-name-empty.json":                 {"inputs", "/instruction/by/name minLength"},
+	"inputs-member-name-161-characters.json":        {"inputs", "/instruction/by/name maxLength"},
+	"inputs-without-comments-omitted.json":          {"inputs", "/ required comments_omitted"},
+	"inputs-comments-omitted-negative.json":         {"inputs", "/comments_omitted minimum"},
+	"inputs-without-domain.json":                    {"inputs", "/ required domain"},
+	"inputs-without-ticket-with-comments.json":      {"inputs", "/comments maxItems"},
+	"inputs-without-ticket-comments-omitted-1.json": {"inputs", "/comments_omitted const"},
+	"inputs-answers.json":                           {"inputs", "/ additionalProperties answers"},
+	"inputs-changes.json":                           {"inputs", "/ additionalProperties changes"},
+	"inputs-facts.json":                             {"inputs", "/ additionalProperties facts"},
+	"inputs-proposal.json":                          {"inputs", "/ additionalProperties proposal"},
 }
 
 // TestInvalidExploreFixturesAreRefused pins that each document under fixtures/invalid
@@ -239,7 +242,9 @@ func TestExploreLengthFixturesAreOneCharacterPastTheBound(t *testing.T) {
 // ticket, and a member the schema does not define is refused. It first checks that
 // each object of fixtures/inputs/first-attempt.json has every member that the schema
 // defines at that location. It then removes each member in turn, then adds the member
-// undefined to each object in turn, and checks the refusal of each document.
+// undefined to each object in turn, and checks the refusal of each document. Without
+// ticket, the schema requires comments to be empty and comments_omitted to be 0, so
+// the document without ticket also has those values.
 func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 	const fixture = "fixtures/inputs/first-attempt.json"
 	schema := compileExplore(t, "inputs.schema.json")
@@ -284,6 +289,10 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 			members++
 			doc := read()
 			delete(objectAt(doc, where), member)
+			if len(where) == 0 && member == "ticket" {
+				objectAt(doc, where)["comments"] = []any{}
+				objectAt(doc, where)["comments_omitted"] = json.Number("0")
+			}
 			want := location + " required " + member
 			if len(where) == 0 && (member == "target" || member == "ticket") {
 				want = "accepted"

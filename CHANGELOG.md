@@ -67,7 +67,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   item, such as the proposal. The control plane stores each version of it, and each
   version is one or more files. In `inputs.schema.json`, `answers` and `run.of` are
   removed: members' answers are in the newest version of the `questions` artifact.
-  `run.attempt` has no maximum.
+  `run.attempt` has no maximum. Without `ticket`, `comments` must be empty and
+  `comments_omitted` must be 0.
 
 ### Added
 
