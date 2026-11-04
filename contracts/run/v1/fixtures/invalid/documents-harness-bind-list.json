@@ -81,7 +81,6 @@
       }
     ],
     "comments_omitted": 0,
-    "answers": [],
     "target": {
       "system": "ads.example.com",
       "path": "accounts/1234"

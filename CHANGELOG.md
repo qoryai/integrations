@@ -60,18 +60,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `409 grant_unknown`, which the adapter takes as the grant ended. In Go, `GrantEnd` is
   added.
 - If a run or a reader follows the explore contract as this module had it after 0.3.0,
-  change it, because `contracts/explore/v1` stays at revision 1 with a new shape. In
-  `result.schema.json`, `verdict`, `complexity`, `understanding`, `scope`, `approach`
-  and `knowledge` are removed. A result has `facts`, 1 to 20 Markdown texts of at most
-  20000 characters each; `solution`, one Markdown text, which is optional; and
-  `questions`, 0 to 20. When `questions` is empty, `solution` is required. Each entry of
-  `questions` is an object with `question`, Markdown of at most 20000 characters, and
-  `options`, 0 to 10 objects with `title` and `explanation`, both plain text. In
-  `inputs.schema.json`, `changes` is required and lists what members wrote on the
-  proposal and that no saved proposal update has read yet, the optional `facts` and
-  `solution` are those of the newest explore result of the current take in, and each
-  entry of `answers` has `custom`. `run.attempt` and `run.of` have no maximum, and
-  `attempt` equals `of` on the last run.
+  change it, because `contracts/explore/v1` stays at revision 1 with a new shape.
+  `result.schema.json` is removed, because the run pushes its outputs, the proposal and
+  the questions, as artifacts. In `inputs.schema.json`, `answers` is removed, and
+  `changes` is required: what members wrote on the newest proposal of the current take
+  in, oldest first, each entry with `text`, `by` and `at`. `run.attempt` and `run.of`
+  have no maximum, and `attempt` equals `of` on the last run.
 
 ### Added
 
@@ -208,10 +202,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   answer of at most 1 MiB on standard output, or writes an error and exits with status 1.
   A second `make` with the same `key` makes no machine.
 - The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
-  the step `explore`, and `result.schema.json`, the run's final response, which the
-  control plane reads from the result text of the last `dev.qory.runtime.result` event.
-  In the inputs, `ticket` is absent when the work item was not taken in from an item at
-  a source.
+  the step `explore`. In the inputs, `ticket` is absent when the work item was not taken
+  in from an item at a source.
 - The diagnostics contract, `contracts/diagnostics/v1/diagnostics.schema.json`: the run
   diagnostics, the document that the control plane returns about one run in the 200
   response to `GET /v1/runs/<run id>/diagnostics`, and that **Copy diagnostics** on the

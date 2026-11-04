@@ -123,11 +123,9 @@
 // receives it, signed, in the 201 of the run code's redemption, and Forager passes it
 // on unread. It is a document, not a request.
 //
-// The explore contract holds the documents of the step explore: inputs.schema.json, the
-// shape of the run's inputs for that step, run/v1 documents.schema.json, and
-// result.schema.json, the run's final response, which the control plane reads from the
-// result text of the Forager contract's dev.qory.runtime.result event. They are
-// documents of a step, not requests, and are not signed.
+// The explore contract holds the document of the step explore: inputs.schema.json, the
+// shape of the run's inputs for that step, run/v1 documents.schema.json. It is a
+// document of a step, not a request, and is not signed.
 //
 // The machines contract holds the protocol of a machine adapter, a program that makes
 // and deletes machines at one vendor, which the provisioner runs as `<adapter>
@@ -212,7 +210,7 @@ var ProvisionerFS = must(fs.Sub(embedded, "provisioner/v1"))
 // fixtures.
 var RunFS = must(fs.Sub(embedded, "run/v1"))
 
-// ExploreFS is the explore contract's directory, rooted at explore/v1: the schemas and
+// ExploreFS is the explore contract's directory, rooted at explore/v1: the schema and
 // the fixtures.
 var ExploreFS = must(fs.Sub(embedded, "explore/v1"))
 
@@ -268,7 +266,7 @@ func CompileRun(name string) (*jsonschema.Schema, error) {
 }
 
 // CompileExplore compiles one schema of the explore contract by its path under
-// explore/v1, "result.schema.json" say. A schema it refers to, of this contract or of
+// explore/v1, "inputs.schema.json" say. A schema it refers to, of this contract or of
 // the integration contract, is read from [ExploreFS] or [FS] by its $id, so nothing is
 // fetched.
 func CompileExplore(name string) (*jsonschema.Schema, error) {

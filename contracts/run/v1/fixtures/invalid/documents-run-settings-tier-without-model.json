@@ -85,7 +85,6 @@
       }
     ],
     "comments_omitted": 0,
-    "answers": [],
     "target": {
       "system": "code.example.com",
       "path": "acme/shop"
