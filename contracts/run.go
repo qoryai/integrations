@@ -60,8 +60,8 @@ type Documents struct {
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
 	RunSettings   *RunSettings `json:"run_settings,omitempty"`
 	// Workflow is set exactly when HarnessHidden is: the workflow of the harness that
-	// the run starts, invoked as its command, such as hello, which the job invokes as
-	// /hello.
+	// the run starts, such as hello. qory starts the skill workflow-hello, or the skill
+	// hello if the harness has no skill workflow-hello.
 	Workflow string `json:"workflow,omitempty"`
 	// HarnessHidden is set exactly when Workflow is: when true, the text that comes
 	// from the harness is hidden in the run, and when false, that text is shown. A
