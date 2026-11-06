@@ -14,7 +14,7 @@
       "pattern": "^ac_[0-9a-hjkmnp-tv-z]{16}$"
     },
     "comment_id": {
-      "description": "The id of a comment that a person wrote in the control plane on an item at the source: sc_ and 16 lower-case Crockford base32 characters. The control plane issues it when it stores the comment, and a comment entry of the change feed contains it (changes.schema.json).",
+      "description": "The id of a comment that a person wrote in the control plane on a work item taken in from an item at the source: sc_ and 16 lower-case Crockford base32 characters. The control plane issues it when it stores the comment, and a comment entry of the change feed contains it (changes.schema.json).",
       "type": "string",
       "pattern": "^sc_[0-9a-hjkmnp-tv-z]{16}$"
     },

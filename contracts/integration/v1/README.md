@@ -181,9 +181,10 @@ A run's policy selects them by the key, as it selects any credential:
 
 A source adapter reads its change feed with the signed
 `GET /v1/work-items/changes?after=<cursor>` (`changes.schema.json`). The control plane
-ends the answer's entries before the answer's body passes 4194304 bytes (4 MiB). The
-answer has at least one entry whenever the feed has an entry after the cursor, and the
-adapter reads the next entries from the answer's cursor.
+ends the feed answer's entries before the answer's body passes 4194304 bytes (4 MiB).
+The feed answer has at least one entry whenever the feed has an entry of a kind the
+revision defines, after the cursor. The adapter reads the next entries from the feed
+answer's `cursor`.
 
 A person can write a comment in the control plane on a work item taken in from an item
 at the source. The comment reaches the source in four steps:
@@ -192,26 +193,32 @@ at the source. The comment reaches the source in four steps:
    `comment` entry to the feed, with `comment_id`, `ref`, `author_name` and `body`.
    `comment_id` is `sc_` and 16 lower-case Crockford base32 characters.
 2. The adapter posts the comment on the item as the integration's account at the
-   source. The first line contains `author_name` and the name of the control plane, such
-   as `Dana Example wrote in Qory Apiary:`, and `body` follows unchanged. The adapter
-   posts one comment for one `comment_id`, also when it reads the entry again.
+   source. The first line is `<author_name> wrote in Qory Apiary:`, such as
+   `Dana Example wrote in Qory Apiary:`, and `body` follows unchanged. Before it posts,
+   the adapter checks, by a record it keeps or by a mark it puts in the posted comment,
+   that it has not already posted a comment for that `comment_id`. So it posts at most
+   one comment on the item per `comment_id`, however often it reads an entry with that
+   `comment_id`.
 3. The adapter sends the posted comment back with `POST /v1/source-items/comments`, with
-   `comment_id` set (`source-item-comments.schema.json`). The control plane matches it
-   to the comment it stored, and stores no second comment.
-4. If the post fails and trying again cannot fix it, or the adapter's retries end, the
-   adapter sends `POST /v1/work-items/changes/failed` (`changes-failed.schema.json`)
-   with `comment_id` and `reason`. The control plane marks the comment not posted.
+   `comment_id` set (`source-item-comments.schema.json`). The control plane matches the
+   sent comment to the comment it stored, and stores no second comment.
+4. After a failure that trying again cannot fix, or when its retries end, the adapter
+   sends `POST /v1/work-items/changes/failed` (`changes-failed.schema.json`) with
+   `comment_id` and `reason`. The control plane marks the comment not posted and stores
+   `reason`.
 
-| `reason` | |
+| `reason` | Meaning |
 |---|---|
-| `item_gone` | the item is no longer at the source |
-| `not_permitted` | the source does not let the integration's account comment on the item |
-| `too_long` | the comment with its first line is longer than the source allows |
-| `unreachable` | the source did not answer or was busy until the adapter's retries ended |
+| `item_gone` | the source returned that the item does not exist |
+| `not_permitted` | the source returned that the integration's account has no permission to comment on the item |
+| `too_long` | the comment with its first line is longer than the source's limit for a comment |
+| `unreachable` | each request to the source timed out, failed to connect or returned a busy status, until the adapter's retries ended |
 
-A source whose `source` role has `comments: false` gets no `comment` entry, and the
-comment stays in the control plane only. A source with `items: false` gets none either,
-and its `source` role has no `comments`.
+The control plane writes no comment entry for a source whose `source` role has
+`comments: false`: the source takes no comment from the control plane, so the adapter
+cannot post comments there, and the comment stays in the control plane only. The
+control plane writes no comment entry for a source with `items: false` either, and its
+`source` role has no `comments`.
 
 ## Fixtures
 

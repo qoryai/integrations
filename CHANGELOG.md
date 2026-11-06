@@ -70,20 +70,23 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `run.attempt` has no maximum. Without `ticket`, `comments` must be empty and
   `comments_omitted` must be 0.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, change
-  it to post the comments that a person writes in the control plane on a taken-in item.
-  Accept change feed entries of the kind `comment`, with `comment_id`, `ref`,
-  `author_name` and `body`, because `changes.schema.json` refuses an entry of a kind it
-  does not list. Post each one on its item as the integration's account, with a first
-  line that contains `author_name`, and post once per `comment_id`. Send the posted
-  comment back with `POST /v1/source-items/comments` and its `comment_id`, each time you
-  send that comment. If the post fails and trying again cannot fix it, or your retries
-  end, send `POST /v1/work-items/changes/failed` with `comment_id` and a `reason`:
-  `item_gone`, `not_permitted`, `too_long` or `unreachable`. If the source has no
-  comments, set `comments: false` on the `source` role. A feed answer ends before its
-  body passes 4194304 bytes (4 MiB), and has at least one entry whenever the feed has an
-  entry after the cursor; read the next entries from its `cursor`. In Go, `ChangeComment`,
-  `Change.CommentID`, `Change.AuthorName`, `Change.Body`, `Comment.CommentID` and
-  `ChangesFailed` are added.
+  it to post the comments that a person writes in the control plane on a work item
+  taken in from an item at the source. `changes.schema.json` has the entry kind
+  `comment`, with `comment_id`, `ref`, `author_name` and `body`. An adapter that checks
+  the feed against the earlier `changes.schema.json` fails on the first `comment` entry
+  and stops advancing its cursor. Post each `comment` entry on its item as the
+  integration's account, with the first line `<author_name> wrote in Qory Apiary:`, and
+  post at most one comment per `comment_id`. Send the posted comment back with
+  `POST /v1/source-items/comments`, and set `comment_id` on that comment in every
+  request that contains it. After a failure that trying again cannot fix, or when your
+  retries end, send `POST /v1/work-items/changes/failed` with `comment_id` and a
+  `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`. If the source
+  takes no comment from the control plane, so the adapter cannot post comments there,
+  set `comments: false` on the `source` role. A feed answer ends before its body passes
+  4194304 bytes (4 MiB), and has at least one entry whenever the feed has an entry of a
+  kind the revision defines, after the cursor; read the next entries from its `cursor`.
+  In Go, `ChangeComment`, `Change.CommentID`, `Change.AuthorName`, `Change.Body`,
+  `Comment.CommentID` and `ChangesFailed` are added.
 
 ### Added
 

@@ -285,9 +285,9 @@ func (s SourceItemComments) MarshalJSON() ([]byte, error) {
 // Comment is one comment on an item; Deleted marks one deleted at the source.
 // Truncated names the text fields the adapter cut at a code-point boundary to fit the
 // contract's limit, "body" or "author.name"; nil, the adapter cut none. CommentID is set
-// only on the comment the adapter posted for a comment entry of the change feed: that
-// entry's CommentID, which the control plane matches to the comment it stored. Empty,
-// the comment has no comment_id member.
+// only on the comment the adapter posted for the comment entry with CommentID; the
+// control plane matches the sent comment to the comment it stored by that id. Empty, the
+// comment has no comment_id member.
 type Comment struct {
 	Ref        string   `json:"ref"`
 	URL        string   `json:"url"`
@@ -355,9 +355,9 @@ const (
 )
 
 // Change is one entry of the change feed, of the kind Kind names. A work_item entry has
-// WorkItemID, Ref, Status "taken_in" or "undone", and URL; a comment entry has
-// CommentID, Ref, AuthorName and Body, a comment a person wrote in the control plane,
-// which the adapter posts on the item Ref; a collection entry has
+// WorkItemID, Ref, Status "taken_in" or "undone", and URL; a comment entry is a
+// comment a person wrote in the control plane, which the adapter posts on the item Ref,
+// and has CommentID, Ref, AuthorName and Body; a collection entry has
 // CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
 // adapter's declared default. It marshals with the members of its kind alone.
@@ -419,9 +419,9 @@ func (c Change) MarshalJSON() ([]byte, error) {
 }
 
 // ChangesFailed is the body of POST /v1/work-items/changes/failed,
-// changes-failed.schema.json: the adapter could not post the comment of the comment
-// entry CommentID and stopped trying, for Reason "item_gone", "not_permitted",
-// "too_long" or "unreachable". The control plane marks the comment not posted.
+// changes-failed.schema.json: the adapter stopped trying to post the comment of the
+// comment entry with CommentID, for Reason "item_gone", "not_permitted", "too_long" or
+// "unreachable". The control plane marks the comment not posted and stores Reason.
 type ChangesFailed struct {
 	Version   int    `json:"version"`
 	Time      string `json:"time"`

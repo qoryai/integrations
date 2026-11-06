@@ -115,7 +115,7 @@
               "const": false
             },
             "comments": {
-              "description": "false: the source takes no comment from the control plane. The control plane writes no comment entry to the change feed for the source's items (changes.schema.json), and keeps a comment that a person writes in the control plane on such an item in the control plane only. Absent, the source takes comments: the adapter posts the comment of each comment entry on its item. A source with items: false has no items, so it gets no comment entry either, and its description does not have comments.",
+              "description": "false: the source takes no comment from the control plane, so the adapter cannot post comments there. The control plane writes no comment entry to the change feed for the source's items (changes.schema.json), and keeps a comment that a person writes in the control plane on a work item taken in from such an item in the control plane only. Absent, the source takes comments: the adapter posts the comment of each comment entry on its item. A source with items: false has no items, so it gets no comment entry either, and its description does not have comments.",
               "const": false
             },
             "targets": {
