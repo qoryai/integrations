@@ -284,10 +284,14 @@ func (s SourceItemComments) MarshalJSON() ([]byte, error) {
 
 // Comment is one comment on an item; Deleted marks one deleted at the source.
 // Truncated names the text fields the adapter cut at a code-point boundary to fit the
-// contract's limit, "body" or "author.name"; nil, the adapter cut none.
+// contract's limit, "body" or "author.name"; nil, the adapter cut none. CommentID is set
+// only on the comment the adapter posted for a comment entry of the change feed: that
+// entry's CommentID, which the control plane matches to the comment it stored. Empty,
+// the comment has no comment_id member.
 type Comment struct {
 	Ref        string   `json:"ref"`
 	URL        string   `json:"url"`
+	CommentID  string   `json:"comment_id,omitempty"`
 	Author     Person   `json:"author"`
 	Body       string   `json:"body"`
 	BodyFormat string   `json:"body_format"`
@@ -344,13 +348,16 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 // The kinds of a change feed's entries.
 const (
 	ChangeWorkItem   = "work_item"
+	ChangeComment    = "comment"
 	ChangeCollection = "collection"
 	ChangeGrant      = "grant"
 	ChangeSync       = "sync"
 )
 
 // Change is one entry of the change feed, of the kind Kind names. A work_item entry has
-// WorkItemID, Ref, Status "taken_in" or "undone", and URL; a collection entry has
+// WorkItemID, Ref, Status "taken_in" or "undone", and URL; a comment entry has
+// CommentID, Ref, AuthorName and Body, a comment a person wrote in the control plane,
+// which the adapter posts on the item Ref; a collection entry has
 // CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
 // adapter's declared default. It marshals with the members of its kind alone.
@@ -364,6 +371,9 @@ type Change struct {
 	Status        string `json:"status,omitempty"`
 	URL           string `json:"url,omitempty"`
 	Interval      *int   `json:"interval,omitempty"`
+	CommentID     string `json:"comment_id,omitempty"`
+	AuthorName    string `json:"author_name,omitempty"`
+	Body          string `json:"body,omitempty"`
 }
 
 // MarshalJSON writes the entry with the members of its kind alone, and refuses a kind
@@ -378,6 +388,14 @@ func (c Change) MarshalJSON() ([]byte, error) {
 			Status     string `json:"status"`
 			URL        string `json:"url"`
 		}{c.Kind, c.WorkItemID, c.Ref, c.Status, c.URL})
+	case ChangeComment:
+		return json.Marshal(struct {
+			Kind       string `json:"kind"`
+			CommentID  string `json:"comment_id"`
+			Ref        string `json:"ref"`
+			AuthorName string `json:"author_name"`
+			Body       string `json:"body"`
+		}{c.Kind, c.CommentID, c.Ref, c.AuthorName, c.Body})
 	case ChangeCollection:
 		return json.Marshal(struct {
 			Kind          string `json:"kind"`
@@ -398,6 +416,17 @@ func (c Change) MarshalJSON() ([]byte, error) {
 		}{c.Kind, c.Interval})
 	}
 	return nil, fmt.Errorf("the change feed defines no kind %q", c.Kind)
+}
+
+// ChangesFailed is the body of POST /v1/work-items/changes/failed,
+// changes-failed.schema.json: the adapter could not post the comment of the comment
+// entry CommentID and stopped trying, for Reason "item_gone", "not_permitted",
+// "too_long" or "unreachable". The control plane marks the comment not posted.
+type ChangesFailed struct {
+	Version   int    `json:"version"`
+	Time      string `json:"time"`
+	CommentID string `json:"comment_id"`
+	Reason    string `json:"reason"`
 }
 
 // ConnectPass is the payload of a connect pass, connect-pass.schema.json.
