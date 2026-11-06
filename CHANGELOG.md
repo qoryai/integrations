@@ -123,9 +123,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a source adapter sends the control plane, `POST /v1/adapter` at start-up,
   `POST /v1/source-collections`, `POST /v1/source-items`,
   `POST /v1/source-items/comments`, `POST /v1/sources/disconnect`,
-  `POST /v1/connections/disconnect` and `POST /v1/grants/end`, and the change feed
-  `GET /v1/work-items/changes`, with the entry kinds `work_item`, `collection`, `grant`
-  and `sync`. The adapter signs each request with its access key as
+  `POST /v1/connections/disconnect`, `POST /v1/grants/end` and
+  `POST /v1/work-items/changes/failed`, and the change feed
+  `GET /v1/work-items/changes`, with the entry kinds `work_item`, `comment`,
+  `collection`, `grant` and `sync`. The adapter signs each request with its access key as
   `github.com/qoryai/forager/accesskey` signs one, sends the revision in
   `X-Qory-Contract-Version`, and checks each signed answer under a server key it pinned at
   enrolment. `refusal.schema.json` lists the refusals.
@@ -158,6 +159,23 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `grant_ref` that its copy of grants does not have under `connection_id`,
   `409 grant_unknown`. On success the control plane returns a signed 204 with no body. For
   a suspended connection, the control plane returns the signed 204 and ends the grant.
+- Comments from the control plane: a source role with `comments: true` receives a
+  `comment` entry in the change feed for each comment that a person writes in the
+  control plane on a work item taken in from one of its items. The entry has
+  `comment_id`, `sc_` and 16 lower-case Crockford base32 characters, `ref`,
+  `author_name`, 1 to 100 characters on one line, and `body`, 1 to 65000 characters.
+  The adapter posts the comment on the item as the integration's account, with the
+  first line `<author_name> wrote in Qory Apiary:`, then an empty line, then `body`
+  unchanged, and posts at most one comment per `comment_id`. It sends the posted comment
+  back with `POST /v1/source-items/comments` and its `comment_id`, and the control plane
+  matches it to the stored comment and stores no second comment. After a failure that
+  trying again cannot fix, or when its retries end, the adapter sends
+  `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and
+  `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane
+  marks the comment not posted and stores `reason`. It returns `403 forbidden` for a
+  request the access key has no permission for, and a signed 204 for every other
+  report, which changes nothing for an unknown or already matched `comment_id`. Without
+  `comments: true`, the control plane writes no `comment` entry for the source.
 - Adapter secrets: the adapter uploads up to 16 values with `POST /v1/adapter/secrets`,
   each at most 16384 bytes, sealed with HPKE `x25519-sha256-aes256gcm` to a pinned server
   key, and `GET /v1/adapter/secrets` returns them sealed to the adapter's access key.
