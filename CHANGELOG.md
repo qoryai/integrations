@@ -167,7 +167,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   receives a `comment` entry in the change feed for a comment that a person writes in the
   control plane on a work item taken in from one of the source's items. The entry has
   `comment_id`, `sc_` and 16 lower-case Crockford base32 characters, `ref`, `author_name`,
-  1 to 100 characters on one line, and `body`, 1 to 65000 characters. The adapter posts
+  1 to 100 characters on one line with at least one character that is not a space, and
+  `body`, 1 to 65000 characters. The adapter posts
   the comment on the item as the integration's account, with the first line
   `<author_name> wrote in Qory Apiary:`, then an empty line, then `body` unchanged, and
   with a mark that contains the `comment_id`, in a form that the source keeps and that,
