@@ -69,27 +69,29 @@ change what an existing reader or program relies on, and notes it under Upgradin
   removed; members' answers are in the newest version of the `questions` artifact.
   `run.attempt` has no maximum. Without `ticket`, `comments` must be empty and
   `comments_omitted` must be 0.
-- If an adapter follows the adapter contract as this module had it after 0.3.0, change
-  it to post the comments that a person writes in the control plane on a work item
-  taken in from an item at the source. `changes.schema.json` has the entry kind
-  `comment`, with `comment_id`, `ref`, `author_name` and `body`. Set `comments: true` on
-  the `source` role to receive `comment` entries; an adapter that does not set
-  `comments: true` never receives a `comment` entry. Without the flag, the source takes
-  no comment from the control plane, so the adapter cannot post comments there, and the
-  comment stays in the control plane only. An adapter that sets the flag and checks the
-  feed against the earlier `changes.schema.json` fails on the first `comment` entry and
-  stops advancing its cursor. Post each `comment` entry on its item as the
-  integration's account, with the first line `<author_name> wrote in Qory Apiary:`, and
-  post at most one comment per `comment_id`. Send the posted comment back with
-  `POST /v1/source-items/comments`, and set `comment_id` on that comment in every
-  request that contains it. After a failure that trying again cannot fix, or when your
-  retries end, send `POST /v1/work-items/changes/failed` with `comment_id` and a
-  `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`. A feed answer
-  ends before its body passes 4194304 bytes (4 MiB), and has at least one entry whenever
-  the feed has an entry of a kind the revision defines, after the cursor; read the next
-  entries from its `cursor`.
-  In Go, `ChangeComment`, `Change.CommentID`, `Change.AuthorName`, `Change.Body`,
-  `Comment.CommentID` and `ChangesFailed` are added.
+- If an adapter follows the adapter contract as this module had it after 0.3.0, change it
+  to post the comments that a person writes in the control plane on a work item taken in
+  from an item at the source. `changes.schema.json` has the entry kind `comment`, with
+  `comment_id`, `ref`, `author_name` and `body`. Set `comments: true` on the `source` role
+  to receive `comment` entries; an adapter that does not set `comments: true` never
+  receives a `comment` entry. Without `comments: true`, the source takes no comment from
+  the control plane, so the adapter cannot post comments there, and the comment stays in
+  the control plane only. An adapter that sets the flag and checks the feed against the
+  earlier `changes.schema.json` fails on the first `comment` entry and stops advancing its
+  cursor. Post each `comment` entry on its item as the integration's account: the first
+  line `<author_name> wrote in Qory Apiary:`, then an empty line, then `body` unchanged.
+  Put a mark that contains the `comment_id` in the posted comment, and before you post,
+  check the item for a comment with that mark, so a post whose result is unknown, such as
+  one that timed out, is never posted twice. Send the posted comment back with
+  `POST /v1/source-items/comments`, and set `comment_id` on that comment in every request
+  that contains it. After a failure that trying again cannot fix, or when your retries
+  end, send `POST /v1/work-items/changes/failed` with `comment_id` and a `reason`:
+  `item_gone`, `not_permitted`, `too_long` or `unreachable`. A feed answer ends before its
+  body passes 4194304 bytes (4 MiB), and has at least one entry whenever the feed has an
+  entry of a kind that the revision in the request's `X-Qory-Contract-Version` defines
+  after the cursor; read the next entries from its `cursor`. In Go, `ChangeComment`,
+  `Change.CommentID`, `Change.AuthorName`, `Change.Body`, `Comment.CommentID` and
+  `ChangesFailed` are added.
 
 ### Added
 
@@ -166,15 +168,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `author_name`, 1 to 100 characters on one line, and `body`, 1 to 65000 characters.
   The adapter posts the comment on the item as the integration's account, with the
   first line `<author_name> wrote in Qory Apiary:`, then an empty line, then `body`
-  unchanged, and posts at most one comment per `comment_id`. It sends the posted comment
+  unchanged, and with a mark that contains the `comment_id`. Before it posts, it checks
+  the item for a comment with that mark, so it posts at most one comment per
+  `comment_id`. It sends the posted comment
   back with `POST /v1/source-items/comments` and its `comment_id`, and the control plane
   matches it to the stored comment and stores no second comment. After a failure that
   trying again cannot fix, or when its retries end, the adapter sends
   `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and
   `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane
   marks the comment not posted and stores `reason`. It returns `403 forbidden` for a
-  request the access key has no permission for, and a signed 204 for every other
-  report, which changes nothing for an unknown or already matched `comment_id`. Without
+  request the access key has no permission for. On success it returns a signed 204 with
+  no body, and for an unknown or already matched `comment_id` it returns the signed 204
+  and changes nothing. Without
   `comments: true`, the control plane writes no `comment` entry for the source.
 - Adapter secrets: the adapter uploads up to 16 values with `POST /v1/adapter/secrets`,
   each at most 16384 bytes, sealed with HPKE `x25519-sha256-aes256gcm` to a pinned server

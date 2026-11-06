@@ -13,7 +13,7 @@
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
 // start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
 // and [ConnectionsDisconnect], the change feed [Changes] it reads back, the
-// [ChangesFailed] report of a comment it could not post, the secrets it stores in the
+// [ChangesFailed] report of a comment it stopped trying to post, the secrets it stores in the
 // control plane, [AdapterSecrets], sealed to the server key, and reads
 // back sealed to its access key, [AdapterSecretsAnswer], the [Grant] it reports for a
 // connection, the [GrantEnd] it reports when the source no longer covers a grant, and

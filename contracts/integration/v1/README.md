@@ -182,9 +182,9 @@ A run's policy selects them by the key, as it selects any credential:
 A source adapter reads its change feed with the signed
 `GET /v1/work-items/changes?after=<cursor>` (`changes.schema.json`). The control plane
 ends the feed answer's entries before the answer's body passes 4194304 bytes (4 MiB).
-The feed answer has at least one entry whenever the feed has an entry of a kind the
-revision defines, after the cursor. The adapter reads the next entries from the feed
-answer's `cursor`.
+The feed answer has at least one entry whenever the feed has an entry of a kind that the
+revision in the request's `X-Qory-Contract-Version` defines after the cursor. The
+adapter reads the next entries from the feed answer's `cursor`.
 
 A person can write a comment in the control plane on a work item taken in from an item
 at the source. The comment reaches the source in four steps:
@@ -194,11 +194,13 @@ at the source. The comment reaches the source in four steps:
    `comment_id` is `sc_` and 16 lower-case Crockford base32 characters.
 2. The adapter posts the comment on the item as the integration's account at the
    source. The first line is `<author_name> wrote in Qory Apiary:`, such as
-   `Dana Example wrote in Qory Apiary:`, and `body` follows unchanged. Before it posts,
-   the adapter checks, by a record it keeps or by a mark it puts in the posted comment,
-   that it has not already posted a comment for that `comment_id`. So it posts at most
-   one comment on the item per `comment_id`, however often it reads an entry with that
-   `comment_id`.
+   `Dana Example wrote in Qory Apiary:`, then an empty line, then `body` unchanged. The
+   adapter puts a mark that contains the `comment_id` in the posted comment. Before it
+   posts, it checks the item for a comment with that mark. So it posts at most one
+   comment per `comment_id`, however often it reads an entry with that `comment_id`,
+   and a post whose result is unknown, such as one that timed out, is never posted
+   twice. The form of the mark is the adapter's choice: the source must keep it, and
+   where the source allows, people who read the comment do not see it.
 3. The adapter sends the posted comment back with `POST /v1/source-items/comments`, with
    `comment_id` set (`source-item-comments.schema.json`). The control plane matches the
    sent comment to the comment it stored, and stores no second comment.
