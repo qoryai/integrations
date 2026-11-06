@@ -115,8 +115,8 @@
               "const": false
             },
             "comments": {
-              "description": "false: the source takes no comment from the control plane, so the adapter cannot post comments there. The control plane writes no comment entry to the change feed for the source's items (changes.schema.json), and keeps a comment that a person writes in the control plane on a work item taken in from such an item in the control plane only. Absent, the source takes comments: the adapter posts the comment of each comment entry on its item. A source with items: false has no items, so it gets no comment entry either, and its description does not have comments.",
-              "const": false
+              "description": "true: the source takes comments from the control plane. The control plane writes a comment entry to the change feed (changes.schema.json) for each comment that a person writes in the control plane on a work item taken in from one of the source's items, and the adapter posts it on the item. Absent, the source takes no comment from the control plane, so the adapter cannot post comments there: the control plane writes no comment entry for the source, and keeps the comment in the control plane only. An adapter that does not set comments: true never receives a comment entry. A source with items: false has no items, and its description does not have comments.",
+              "const": true
             },
             "targets": {
               "description": "true: the adapter's collections can have a target, a place where a run's changes go (source-collections.schema.json). An adapter with targets handles a run-credential call with purpose work for any of its collections that has a target, under the rules of run-credential.schema.json. This holds whatever source the run's work item came from, and also when the work item came from no item at a source. The control plane offers the collections of an adapter with targets as places for a run's changes. Absent: the control plane does not offer them. In both cases, the control plane accepts the target of each collection in a listing.",

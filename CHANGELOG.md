@@ -72,19 +72,22 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - If an adapter follows the adapter contract as this module had it after 0.3.0, change
   it to post the comments that a person writes in the control plane on a work item
   taken in from an item at the source. `changes.schema.json` has the entry kind
-  `comment`, with `comment_id`, `ref`, `author_name` and `body`. An adapter that checks
-  the feed against the earlier `changes.schema.json` fails on the first `comment` entry
-  and stops advancing its cursor. Post each `comment` entry on its item as the
+  `comment`, with `comment_id`, `ref`, `author_name` and `body`. Set `comments: true` on
+  the `source` role to receive `comment` entries; an adapter that does not set
+  `comments: true` never receives a `comment` entry. Without the flag, the source takes
+  no comment from the control plane, so the adapter cannot post comments there, and the
+  comment stays in the control plane only. An adapter that sets the flag and checks the
+  feed against the earlier `changes.schema.json` fails on the first `comment` entry and
+  stops advancing its cursor. Post each `comment` entry on its item as the
   integration's account, with the first line `<author_name> wrote in Qory Apiary:`, and
   post at most one comment per `comment_id`. Send the posted comment back with
   `POST /v1/source-items/comments`, and set `comment_id` on that comment in every
   request that contains it. After a failure that trying again cannot fix, or when your
   retries end, send `POST /v1/work-items/changes/failed` with `comment_id` and a
-  `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`. If the source
-  takes no comment from the control plane, so the adapter cannot post comments there,
-  set `comments: false` on the `source` role. A feed answer ends before its body passes
-  4194304 bytes (4 MiB), and has at least one entry whenever the feed has an entry of a
-  kind the revision defines, after the cursor; read the next entries from its `cursor`.
+  `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`. A feed answer
+  ends before its body passes 4194304 bytes (4 MiB), and has at least one entry whenever
+  the feed has an entry of a kind the revision defines, after the cursor; read the next
+  entries from its `cursor`.
   In Go, `ChangeComment`, `Change.CommentID`, `Change.AuthorName`, `Change.Body`,
   `Comment.CommentID` and `ChangesFailed` are added.
 
