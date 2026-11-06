@@ -198,9 +198,10 @@ at the source. The comment reaches the source in four steps:
    adapter puts a mark that contains the `comment_id` in the posted comment. Before it
    posts, it checks the item for a comment with that mark. So it posts at most one
    comment per `comment_id`, however often it reads an entry with that `comment_id`,
-   and a post whose result is unknown, such as one that timed out, is never posted
-   twice. The form of the mark is the adapter's choice: the source must keep it, and
-   where the source allows, people who read the comment do not see it.
+   and the comment of a post whose result is unknown, such as one that timed out, is
+   not posted a second time. The form of the mark is the adapter's choice: the source
+   must keep it, and where the source allows, people who read the comment do not see
+   it.
 3. The adapter sends the posted comment back with `POST /v1/source-items/comments`, with
    `comment_id` set (`source-item-comments.schema.json`). The control plane matches the
    sent comment to the comment it stored, and stores no second comment.

@@ -76,20 +76,22 @@ change what an existing reader or program relies on, and notes it under Upgradin
   to receive `comment` entries; an adapter that does not set `comments: true` never
   receives a `comment` entry. Without `comments: true`, the source takes no comment from
   the control plane, so the adapter cannot post comments there, and the comment stays in
-  the control plane only. An adapter that sets the flag and checks the feed against the
-  earlier `changes.schema.json` fails on the first `comment` entry and stops advancing its
-  cursor. Post each `comment` entry on its item as the integration's account: the first
-  line `<author_name> wrote in Qory Apiary:`, then an empty line, then `body` unchanged.
-  Put a mark that contains the `comment_id` in the posted comment, and before you post,
-  check the item for a comment with that mark, so a post whose result is unknown, such as
-  one that timed out, is never posted twice. Send the posted comment back with
-  `POST /v1/source-items/comments`, and set `comment_id` on that comment in every request
-  that contains it. After a failure that trying again cannot fix, or when your retries
-  end, send `POST /v1/work-items/changes/failed` with `comment_id` and a `reason`:
-  `item_gone`, `not_permitted`, `too_long` or `unreachable`. A feed answer ends before its
-  body passes 4194304 bytes (4 MiB), and has at least one entry whenever the feed has an
-  entry of a kind that the revision in the request's `X-Qory-Contract-Version` defines
-  after the cursor; read the next entries from its `cursor`. In Go, `ChangeComment`,
+  the control plane only. An adapter that sets `comments: true` and checks the feed
+  against the earlier `changes.schema.json` fails on the first `comment` entry and stops
+  advancing its cursor. Post each `comment` entry on its item as the integration's
+  account: the first line `<author_name> wrote in Qory Apiary:`, then an empty line, then
+  `body` unchanged. Put a mark that contains the `comment_id` in the posted comment, in a
+  form that the source keeps and that, where the source allows, people who read the
+  comment do not see. Before you post, check the item for a comment with that mark, so the
+  comment of a post whose result is unknown, such as one that timed out, is not posted a
+  second time. Send the posted comment back with `POST /v1/source-items/comments`, and set
+  `comment_id` on that comment in every request that contains it. After a failure that
+  trying again cannot fix, or when your retries end, send
+  `POST /v1/work-items/changes/failed` with `comment_id` and a `reason`: `item_gone`,
+  `not_permitted`, `too_long` or `unreachable`. A feed answer ends before its body passes
+  4194304 bytes (4 MiB), and has at least one entry whenever the feed has an entry of a
+  kind that the revision in the request's `X-Qory-Contract-Version` defines after the
+  cursor; read the next entries from its `cursor`. In Go, `ChangeComment`,
   `Change.CommentID`, `Change.AuthorName`, `Change.Body`, `Comment.CommentID` and
   `ChangesFailed` are added.
 
@@ -161,26 +163,28 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `grant_ref` that its copy of grants does not have under `connection_id`,
   `409 grant_unknown`. On success the control plane returns a signed 204 with no body. For
   a suspended connection, the control plane returns the signed 204 and ends the grant.
-- Comments from the control plane: a source role with `comments: true` receives a
-  `comment` entry in the change feed for each comment that a person writes in the
-  control plane on a work item taken in from one of its items. The entry has
-  `comment_id`, `sc_` and 16 lower-case Crockford base32 characters, `ref`,
-  `author_name`, 1 to 100 characters on one line, and `body`, 1 to 65000 characters.
-  The adapter posts the comment on the item as the integration's account, with the
-  first line `<author_name> wrote in Qory Apiary:`, then an empty line, then `body`
-  unchanged, and with a mark that contains the `comment_id`. Before it posts, it checks
-  the item for a comment with that mark, so it posts at most one comment per
-  `comment_id`. It sends the posted comment
-  back with `POST /v1/source-items/comments` and its `comment_id`, and the control plane
-  matches it to the stored comment and stores no second comment. After a failure that
-  trying again cannot fix, or when its retries end, the adapter sends
-  `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and
-  `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane
-  marks the comment not posted and stores `reason`. It returns `403 forbidden` for a
-  request the access key has no permission for. On success it returns a signed 204 with
-  no body, and for an unknown or already matched `comment_id` it returns the signed 204
-  and changes nothing. Without
-  `comments: true`, the control plane writes no `comment` entry for the source.
+- Comments from the control plane: an adapter whose source role has `comments: true`
+  receives a `comment` entry in the change feed for a comment that a person writes in the
+  control plane on a work item taken in from one of the source's items. The entry has
+  `comment_id`, `sc_` and 16 lower-case Crockford base32 characters, `ref`, `author_name`,
+  1 to 100 characters on one line, and `body`, 1 to 65000 characters. The adapter posts
+  the comment on the item as the integration's account, with the first line
+  `<author_name> wrote in Qory Apiary:`, then an empty line, then `body` unchanged, and
+  with a mark that contains the `comment_id`, in a form that the source keeps and that,
+  where the source allows, people who read the comment do not see. Before it posts, it
+  checks the item for a comment with that mark, so it posts at most one comment per
+  `comment_id`, and the comment of a post whose result is unknown, such as one that timed
+  out, is not posted a second time. It sends the posted comment back with
+  `POST /v1/source-items/comments` and its `comment_id`, and the control plane matches it
+  to the stored comment and stores no second comment. After a failure that trying again
+  cannot fix, or when its retries end, the adapter sends
+  `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and `reason`:
+  `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane marks the
+  comment not posted and stores `reason`. It returns `403 forbidden` for a request the
+  access key has no permission for. On success it returns a signed 204 with no body, and
+  for an unknown or already matched `comment_id` it returns the signed 204 and changes
+  nothing. Without `comments: true`, the control plane writes no `comment` entry for the
+  source.
 - Adapter secrets: the adapter uploads up to 16 values with `POST /v1/adapter/secrets`,
   each at most 16384 bytes, sealed with HPKE `x25519-sha256-aes256gcm` to a pinned server
   key, and `GET /v1/adapter/secrets` returns them sealed to the adapter's access key.
