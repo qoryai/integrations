@@ -168,17 +168,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   control plane on a work item taken in from one of the source's items. The entry has
   `comment_id`, `sc_` and 16 lower-case Crockford base32 characters, `ref`, `author_name`,
   1 to 100 characters on one line with at least one character that is not a space, and
-  `body`, 1 to 65000 characters. The adapter posts
-  the comment on the item as the integration's account, with the first line
-  `<author_name> wrote in Qory Apiary:`, then an empty line, then `body` unchanged, and
-  with a mark that contains the `comment_id`, in a form that the source keeps and that,
-  where the source allows, people who read the comment do not see. Before it posts, it
-  checks the item for a comment with that mark, so it posts at most one comment per
-  `comment_id`, and the comment of a post whose result is unknown, such as one that timed
-  out, is not posted a second time. It sends the posted comment back with
-  `POST /v1/source-items/comments` and its `comment_id`, and the control plane matches it
-  to the stored comment and stores no second comment. After a failure that trying again
-  cannot fix, or when its retries end, the adapter sends
+  `body`, 1 to 65000 characters. The adapter posts the comment on the item as the
+  integration's account, with the first line `<author_name> wrote in Qory Apiary:`, then
+  an empty line, then `body` unchanged, and with a mark that contains the `comment_id`, in
+  a form that the source keeps and that, where the source allows, people who read the
+  comment do not see. Before it posts, it checks the item for a comment with that mark, so
+  it posts at most one comment per `comment_id`, and the comment of a post whose result is
+  unknown, such as one that timed out, is not posted a second time. It sends the posted
+  comment back with `POST /v1/source-items/comments` and its `comment_id`, and the control
+  plane matches it to the stored comment and stores no second comment. After a failure
+  that trying again cannot fix, or when its retries end, the adapter sends
   `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and `reason`:
   `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane marks the
   comment not posted and stores `reason`. It returns `403 forbidden` for a request the

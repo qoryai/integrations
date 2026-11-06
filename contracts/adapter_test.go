@@ -139,6 +139,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-comment-author-name-next-line.json":           {"changes", "/changes/0/author_name pattern"},
 		"changes-comment-author-name-bidi-override.json":       {"changes", "/changes/0/author_name pattern"},
 		"changes-comment-author-name-spaces.json":              {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-unicode-spaces.json":      {"changes", "/changes/0/author_name pattern"},
 		"changes-failed-unknown-reason.json":                   {"changes-failed", "/reason enum"},
 		"changes-failed-without-comment-id.json":               {"changes-failed", "/ required comment_id"},
 		"source-item-comments-comment-id-upper-case.json":      {"source-item-comments", "/comments/0/comment_id pattern"},
