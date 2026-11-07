@@ -37,13 +37,15 @@ func (m MachineSpec) Fits(spec MachineSpec) bool {
 
 // Claim is the body of POST /v1/pools/claim, provisioner/v1 claim.schema.json. With an
 // empty PoolID the claim covers the key's node pool, the one node pool the pool's access
-// key belongs to. Offers are the machines the pool can start, 1 to 64 of them: for
-// each, DiskGiB is the largest disk the pool gives that machine. The control plane
-// gives a claim with offers only work whose run's machine type has a spec that one of
-// the offers fits. A pool that sends no offers gets only work of the instance's
-// default machine type, and its [ClaimAnswer] has no Machine and no MachineSpec. A
-// provisioner that uses a machine adapter sends the offers of the adapter's last
-// successful check, [MachinesCheckAnswer].
+// key belongs to. Offers are the machines the pool can create, 1 to 64 of them: for
+// each, DiskGiB is the largest disk the pool gives that machine. An empty Offers is left
+// out, the same as no offers. The control plane gives a claim with offers only work for
+// a run whose machine type one of the offers fits. A claim without offers gets only work
+// for a run of the instance's default machine type. A [ClaimAnswer] to a claim with
+// offers has Machine and MachineSpec, and an answer to a claim without offers has
+// neither. A provisioner that uses a machine adapter claims only after a successful
+// check of the adapter, and sends the offers of its last successful check,
+// [MachinesCheckAnswer], so each of its claims has offers.
 type Claim struct {
 	Version     int           `json:"version"`
 	Time        string        `json:"time"`
@@ -53,19 +55,20 @@ type Claim struct {
 }
 
 // ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json: a
-// request for one machine. The starter refuses one whose Revision is not the revision
-// it sent. Machine is the run's machine type, a name from the control plane's list of
+// request for one machine. The starter refuses one whose Revision is not the revision it
+// sent. Machine is the run's machine type, a name from the control plane's list of
 // machine types, such as standard, with MachineSpec the spec of that type: the starter
-// starts a machine that fits MachineSpec. Machine is empty and MachineSpec nil when the
-// claim had no offers, and the starter then uses its default. RunCode
+// creates a machine that fits MachineSpec, with a disk of MachineSpec's DiskGiB. Machine
+// is empty and MachineSpec nil when the claim had no offers: the run is of the
+// instance's default machine type, and the starter creates its default machine. RunCode
 // is the run code the control plane made at the claim. GatewayURL is the gateway that
 // the node pool's choice resolved to at the claim: https, a host and an optional port,
 // and nothing after them. The starter passes both to the machine it creates for the
 // dispatch alone, and does not read the code. The control plane binds the code to that
-// gateway, and refuses a redemption that another gateway relays with the same answer
-// as for an unknown code. The machine redeems the code at the enrolment,
-// https://qory.dev/contracts/forager/v1/enrolment.schema.json, which returns the run
-// key and the run's documents, run/v1 documents.schema.json, in its signed 201.
+// gateway, and refuses a redemption that another gateway relays with the same answer as
+// for an unknown code. The machine redeems the code at the enrolment,
+// https://qory.dev/contracts/forager/v1/enrolment.schema.json, which returns the run key
+// and the run's documents, run/v1 documents.schema.json, in its signed 201.
 //
 // The control plane sends the answer with Cache-Control: no-store and gives it once.
 // The starter keeps RunCode and GatewayURL no longer than it takes to pass them to the
@@ -131,18 +134,19 @@ type ClaimAnswer struct {
 // code can be redeemed until 15 minutes from the claim.
 //
 // The starter sends dispatched again every 60 seconds for each machine it has, with the
-// same External and MachineType. Each send is built anew, with a later Time and a new signature, as
-// https://qory.dev/contracts/integration/v1/definitions.schema.json describes for a
-// request sent again, so the replay rule does not refuse it. Only the first dispatched
-// of a dispatch is recorded, and nothing of a later one is. MachineType is the vendor's
-// type of the machine the starter created for the job, such as example-type, when the
-// starter knows it. While the dispatch lives,
-// the answer is a signed 204 with no body, whether the run code was redeemed or not.
-// Once the dispatch has ended, a dispatched is refused 410 gone, whether the run code
-// was redeemed or not, and the starter then sends the [MachineLog] and deletes the
-// machine. When the machine has not redeemed the run code within 15 minutes of the
-// claim, the control plane ends the dispatch, so the next dispatched is refused 410
-// gone. After dispatched, a [Release] is refused 409 machine_exists.
+// same External and MachineType. Each send is built anew, with a later Time and a new
+// signature, as https://qory.dev/contracts/integration/v1/definitions.schema.json
+// describes for a request sent again, so the replay rule does not refuse it. Only the
+// first dispatched of a dispatch is recorded, and nothing of a later one is. While the
+// dispatch lives, the answer is a signed 204 with no body, whether the run code was
+// redeemed or not. Once the dispatch has ended, a dispatched is refused 410 gone,
+// whether the run code was redeemed or not, and the starter then sends the [MachineLog]
+// and deletes the machine. When the machine has not redeemed the run code within 15
+// minutes of the claim, the control plane ends the dispatch, so the next dispatched is
+// refused 410 gone. After dispatched, a [Release] is refused 409 machine_exists.
+//
+// MachineType is the vendor's type of the machine the starter created for the job, such
+// as example-type, and is empty when the starter has no type for the machine.
 type Dispatched struct {
 	Version     int       `json:"version"`
 	Time        string    `json:"time"`

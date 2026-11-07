@@ -43,7 +43,7 @@
       }
     },
     "machine_type": {
-      "description": "The vendor's type of the machine the starter created for the job, such as example-type, when the starter knows it. Absent otherwise.",
+      "description": "The vendor's type of the machine the starter created for the job, such as example-type. Absent when the starter has no type for the machine.",
       "$ref": "definitions.schema.json#/$defs/machine_type"
     }
   }

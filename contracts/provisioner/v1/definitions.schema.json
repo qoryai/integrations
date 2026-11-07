@@ -63,7 +63,7 @@
       }
     },
     "machine_type": {
-      "description": "The vendor's name for the type of a machine, such as example-type, stored as data and never parsed: 1 to 64 printable ASCII characters with no space.",
+      "description": "The vendor's type of the machine, a name such as example-type, stored as data and never parsed: 1 to 64 printable ASCII characters with no space.",
       "type": "string",
       "pattern": "^[!-~]{1,64}$"
     }

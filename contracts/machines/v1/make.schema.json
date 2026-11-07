@@ -26,7 +26,7 @@
       "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/pool_id"
     },
     "machine_spec": {
-      "description": "The spec of the machine to make, such as the machine_spec of the provisioner contract's claim answer, https://qory.dev/contracts/provisioner/v1/claim-answer.schema.json. The adapter starts the smallest machine in its settings that fits machine_spec, by vCPUs and then by memory, a tie going to the order of the settings. When the vendor has no capacity for that machine, the adapter tries the next machine that fits, in the same order. When no machine in its settings fits, make fails with kind defect, because a retry fails the same way. When every machine that fits fails for lack of capacity, make fails with the kind of the last failure.",
+      "description": "The spec of the machine to make: the machine_spec of the claim answer for the dispatch in key, https://qory.dev/contracts/provisioner/v1/claim-answer.schema.json. The adapter makes the smallest machine in its settings that fits machine_spec, by vCPUs and then by memory, a tie going to the order of the settings, and gives the machine a disk of machine_spec's disk_gib. When the vendor has no capacity for that machine, the adapter tries the next machine that fits, in the same order. When no machine in its settings fits, make fails with kind defect, because a retry fails the same way. When every machine that fits fails for lack of capacity, make fails with the kind of the last failure.",
       "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/machine_spec"
     },
     "start_data": {

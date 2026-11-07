@@ -38,36 +38,42 @@ const (
 )
 
 // MachinesCheck is the request of `<adapter> check --settings FILE`, machines/v1
-// check.schema.json, on standard input: the adapter shows that its rights at the
-// vendor and its settings work, and makes no machine.
+// check.schema.json, on standard input: the adapter shows that its rights at the vendor
+// and its settings work, and makes no machine. The check answer lists the machines the
+// adapter can make with its settings. When the adapter's settings contain more than 64
+// machines, or none, check fails with kind [FailureDefect].
 type MachinesCheck struct {
 	Version int `json:"version"`
 }
 
 // MachinesCheckAnswer is the answer of check, check-answer.schema.json. Offers are the
-// machines the adapter can make with its settings, in the order of its settings, 1 to
-// 64 of them: for each, DiskGiB is the largest disk the adapter gives that machine. A
-// provisioner sends the offers of the adapter's last successful check as the Offers of
-// its [Claim].
+// machines the adapter can make with its settings, in the order of its settings: for
+// each, DiskGiB is the largest disk the adapter gives that machine. Offers has 1 to 64
+// entries: a nil Offers marshals to null, and the schema refuses null and an empty list.
+// A provisioner that uses the adapter claims only after a successful check, and sends
+// the offers of the adapter's last successful check as the Offers of each of its claims,
+// [Claim].
 type MachinesCheckAnswer struct {
 	Offers []MachineSpec `json:"offers"`
 }
 
-// MachinesMake is the request of `<adapter> make --settings FILE`, make.schema.json:
-// the adapter makes one machine for the dispatch in Key, in the node pool in Pool,
-// that fits MachineSpec. One Key makes at most one machine. A second make with the same
-// Key makes no machine, and its answer is the ID of the machine that the first make
-// with that Key made.
+// MachinesMake is the request of `<adapter> make --settings FILE`, make.schema.json: the
+// adapter makes one machine for the dispatch in Key, in the node pool in Pool, that fits
+// MachineSpec. MachineSpec is the MachineSpec of the [ClaimAnswer] for the dispatch in
+// Key. One Key makes at most one machine. A second make with the same Key makes no
+// machine, and its answer is the ID of the machine that the first make with that Key
+// made.
 //
-// The adapter starts the smallest machine in its settings that fits MachineSpec, by
-// vCPUs and then by memory, a tie going to the order of the settings. When the vendor
-// has no capacity for that machine, the adapter tries the next machine that fits, in
-// the same order. When no machine in its settings fits, make fails with kind
-// [FailureDefect], because a retry fails the same way. When every machine that fits
-// fails for lack of capacity, make fails with the kind of the last failure. StartData is standard base64
-// with padding of at most [MaxStartData] bytes, which the adapter passes to the machine
-// unread. It contains a run code, so it travels only on standard input, never in an
-// argument, and the adapter never writes it to a log.
+// The adapter makes the smallest machine in its settings that fits MachineSpec, by vCPUs
+// and then by memory, a tie going to the order of the settings, and gives the machine a
+// disk of MachineSpec's DiskGiB. When the vendor has no capacity for that machine, the
+// adapter tries the next machine that fits, in the same order. When no machine in its
+// settings fits, make fails with kind [FailureDefect], because a retry fails the same
+// way. When every machine that fits fails for lack of capacity, make fails with the kind
+// of the last failure. StartData is standard base64 with padding of at most
+// [MaxStartData] bytes, which the adapter passes to the machine unread. It contains a
+// run code, so it travels only on standard input, never in an argument, and the adapter
+// never writes it to a log.
 type MachinesMake struct {
 	Version     int         `json:"version"`
 	Key         string      `json:"key"`
@@ -76,10 +82,10 @@ type MachinesMake struct {
 	StartData   string      `json:"start_data"`
 }
 
-// MachinesMakeAnswer is the answer of make, make-answer.schema.json: the vendor's id
-// of the machine the adapter made for the request's Key, by this make or by the first
-// make with that Key. MachineType is the vendor's type of that machine, such as
-// example-type, and is empty when the adapter does not know it.
+// MachinesMakeAnswer is the answer of make, make-answer.schema.json: the vendor's id of
+// the machine the adapter made for the request's Key, by this make or by the first make
+// with that Key. MachineType is the vendor's type of the machine, such as example-type,
+// and is empty when the vendor does not return the type.
 type MachinesMakeAnswer struct {
 	ID          string `json:"id"`
 	MachineType string `json:"machine_type,omitempty"`
