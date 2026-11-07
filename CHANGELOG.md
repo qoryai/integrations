@@ -291,7 +291,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `extends` and lists no module, or when the file was not read, and the machine then
   composes `harness`. The registry host of `image_destination`,
   `environment_destination` and `environment_image` is lower case only, and a Docker Hub
-  host is refused.
+  host is refused. `workflow` and each name in `harness.workflows` are a lower-case
+  letter, then up to 54 lower-case letters, digits and hyphens, so that
+  `workflow-<name>` stays within 64 characters.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
   `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of

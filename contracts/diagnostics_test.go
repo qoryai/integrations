@@ -56,6 +56,7 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 		"unknown-cause.json":                                  {"diagnostics", "/preparation/stopped/cause enum"},
 		"unknown-fixer.json":                                  {"diagnostics", "/preparation/stopped/fixer enum"},
 		"run-id-prefix.json":                                  {"diagnostics", "/run/id pattern"},
+		"workflow-56-characters.json":                         {"diagnostics", "/run/workflow pattern"},
 		"version-2.json":                                      {"diagnostics", "/version const"},
 		"events-without-events-omitted.json":                  {"diagnostics", "/ dependentRequired/events"},
 		"step-without-step-failed.json":                       {"diagnostics", "/preparation/stopped "},
