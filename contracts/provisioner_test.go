@@ -145,6 +145,8 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"dispatched-machine-type-empty.json":                   {"dispatched", "/machine_type pattern"},
 		"dispatched-machine-type-65.json":                      {"dispatched", "/machine_type pattern"},
 		"dispatched-machine-type-space.json":                   {"dispatched", "/machine_type pattern"},
+		"dispatched-machine-type-non-ascii.json":               {"dispatched", "/machine_type pattern"},
+		"dispatched-machine-type-del.json":                     {"dispatched", "/machine_type pattern"},
 		"machine-log-without-log.json":                         {"machine-log", "/ required log"},
 		"machine-log-undefined-member.json":                    {"machine-log", "/ additionalProperties"},
 		"machine-log-log-nul.json":                             {"machine-log", "/log pattern"},
@@ -224,8 +226,8 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 	}
 }
 
-// standard is the spec of a machine type, in the form definitions.schema.json gives for
-// machine_spec.
+// standard is the spec of a machine type, in the form that definitions.schema.json
+// defines for machine_spec.
 var standard = contracts.MachineSpec{VCPUs: 4, MemoryMiB: 16384, DiskGiB: 100, Arch: "amd64"}
 
 // runCode is a run code in the form claim-answer.schema.json gives.
@@ -307,6 +309,8 @@ func TestTheNewMembersRoundTripTheirFixtures(t *testing.T) {
 		{"fixtures/machine-log/truncated.json", &contracts.MachineLog{}},
 		{"fixtures/claim/with-offers.json", &contracts.Claim{}},
 		{"fixtures/claim/offers-at-bounds.json", &contracts.Claim{}},
+		{"fixtures/claim/offers-64.json", &contracts.Claim{}},
+		{"fixtures/claim/one-offer.json", &contracts.Claim{}},
 		{"fixtures/dispatched/with-machine-type.json", &contracts.Dispatched{}},
 		{"fixtures/dispatched/longest-machine-type.json", &contracts.Dispatched{}},
 	}...) {
@@ -349,10 +353,11 @@ func TestAMachineLogWithinItsBoundCanExceedTheRequestLimit(t *testing.T) {
 	}
 }
 
-// TestAClaimAnswerHasExactlyItsMembers pins that a claim answer built in Go marshals
-// to version, revision, dispatch_id, pool_id, lease_until, machine and machine_spec
-// when they are set, run_code, gateway_url and max_lifetime_minutes, with no member about the work it is
-// for, that its schema accepts it, and that it reads back into the same value.
+// TestAClaimAnswerHasExactlyItsMembers pins that a claim answer built in Go marshals to
+// version, revision, dispatch_id, pool_id, lease_until, machine and machine_spec when
+// they are set, run_code, gateway_url and max_lifetime_minutes, with no member about the
+// work it is for, that its schema accepts it, and that it reads back into the same
+// value.
 func TestAClaimAnswerHasExactlyItsMembers(t *testing.T) {
 	for _, c := range []struct {
 		a    contracts.ClaimAnswer
