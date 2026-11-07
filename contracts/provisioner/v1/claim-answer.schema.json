@@ -45,12 +45,12 @@
       "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/time"
     },
     "machine": {
-      "description": "The run's machine type: a name from the control plane's list of machine types, such as standard, with machine_spec the spec of that type. The starter creates a machine that fits machine_spec, with a disk of machine_spec's disk_gib. Absent, with machine_spec, when the claim had no offers: the run is of the instance's default machine type, and the starter creates its default machine.",
+      "description": "The run's machine type: a name from the control plane's list of machine types, such as standard, with machine_spec the spec of that type. The starter creates a machine that fits machine_spec, with a disk of at least machine_spec's disk_gib. Absent, with machine_spec, when the claim had no offers: the run is of the instance's default machine type, and the starter creates its default machine.",
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]{0,63}$"
     },
     "machine_spec": {
-      "description": "The spec of the run's machine type, machine: the starter creates a machine that fits it, as definitions.schema.json describes, with a disk of its disk_gib. Present, with machine, when the claim had offers, and absent, with machine, when it had none.",
+      "description": "The spec of the run's machine type, machine: the starter creates a machine that fits it, as definitions.schema.json describes, with a disk of at least its disk_gib. Present, with machine, when the claim had offers, and absent, with machine, when it had none.",
       "$ref": "definitions.schema.json#/$defs/machine_spec"
     },
     "run_code": {

@@ -66,14 +66,14 @@ type MachinesCheckAnswer struct {
 //
 // The adapter makes the smallest machine in its settings that fits MachineSpec, by vCPUs
 // and then by memory, a tie going to the order of the settings, and gives the machine a
-// disk of MachineSpec's DiskGiB. When the vendor has no capacity for that machine, the
-// adapter tries the next machine that fits, in the same order. When no machine in its
-// settings fits, make fails with kind [FailureDefect], because a retry fails the same
-// way. When every machine that fits fails for lack of capacity, make fails with the kind
-// of the last failure. StartData is standard base64 with padding of at most
-// [MaxStartData] bytes, which the adapter passes to the machine unread. It contains a
-// run code, so it travels only on standard input, never in an argument, and the adapter
-// never writes it to a log.
+// disk of at least MachineSpec's DiskGiB. When the vendor has no capacity for that
+// machine, the adapter tries the next machine that fits, in the same order. When no
+// machine in its settings fits, make fails with kind [FailureDefect], because a retry
+// fails the same way. When every machine that fits fails for lack of capacity, make
+// fails with the kind of the last failure. StartData is standard base64 with padding of
+// at most [MaxStartData] bytes, which the adapter passes to the machine unread. It
+// contains a run code, so it travels only on standard input, never in an argument, and
+// the adapter never writes it to a log.
 type MachinesMake struct {
 	Version     int         `json:"version"`
 	Key         string      `json:"key"`

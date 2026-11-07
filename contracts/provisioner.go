@@ -58,15 +58,15 @@ type Claim struct {
 // request for one machine. The starter refuses one whose Revision is not the revision it
 // sent. Machine is the run's machine type, a name from the control plane's list of
 // machine types, such as standard, with MachineSpec the spec of that type: the starter
-// creates a machine that fits MachineSpec, with a disk of MachineSpec's DiskGiB. Machine
-// is empty and MachineSpec nil when the claim had no offers: the run is of the
-// instance's default machine type, and the starter creates its default machine. RunCode
-// is the run code the control plane made at the claim. GatewayURL is the gateway that
-// the node pool's choice resolved to at the claim: https, a host and an optional port,
-// and nothing after them. The starter passes both to the machine it creates for the
-// dispatch alone, and does not read the code. The control plane binds the code to that
-// gateway, and refuses a redemption that another gateway relays with the same answer as
-// for an unknown code. The machine redeems the code at the enrolment,
+// creates a machine that fits MachineSpec, with a disk of at least MachineSpec's
+// DiskGiB. Machine is empty and MachineSpec nil when the claim had no offers: the run
+// is of the instance's default machine type, and the starter creates its default
+// machine. RunCode is the run code the control plane made at the claim. GatewayURL is
+// the gateway that the node pool's choice resolved to at the claim: https, a host and
+// an optional port, and nothing after them. The starter passes both to the machine it
+// creates for the dispatch alone, and does not read the code. The control plane binds
+// the code to that gateway, and refuses a redemption that another gateway relays with
+// the same answer as for an unknown code. The machine redeems the code at the enrolment,
 // https://qory.dev/contracts/forager/v1/enrolment.schema.json, which returns the run key
 // and the run's documents, run/v1 documents.schema.json, in its signed 201.
 //
