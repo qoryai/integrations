@@ -245,11 +245,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   the `state` `deleting`, `gone` or `delete_failed`, and a starter that never sends one
   still works. A starter sends `gone` only when the machine adapter's delete call
   returned that no machine with the id exists at the vendor. A claim may contain
-  `offers`: the machines the pool can start, each a `machine_spec` of vCPUs, memory,
+  `offers`: the machines the pool can create, each a `machine_spec` of vCPUs, memory,
   disk, architecture and virtualization. The control plane gives a claim with offers only
-  work whose machine type has a spec that one offer fits, and the claim answer then has
-  the run's machine type in `machine` and its spec in `machine_spec`, both or neither. A
-  dispatched may contain `machine_type`, the vendor's type of the machine. In Go,
+  work for a run whose machine type one offer fits. An answer to a claim with offers has
+  the run's machine type in `machine` and its spec in `machine_spec`, and an answer to a
+  claim without offers has neither. A dispatched may contain `machine_type`, the
+  vendor's type of the machine. In Go,
   `MachineEnd`, `MachineEndDeleting`, `MachineEndGone`, `MachineEndDeleteFailed`,
   `MachineSpec` and `MachineSpec.Fits` are added.
 - The machines contract, `contracts/machines/v1`: a machine adapter makes and deletes
@@ -259,7 +260,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   answer of at most 1 MiB on standard output, or writes an error and exits with status 1.
   A second `make` with the same `key` makes no machine. The `check` answer has `offers`,
   the machines the adapter can make with its settings, which the provisioner sends in its
-  claims. `make` has `machine_spec`, and the adapter starts the smallest machine in its
+  claims. `make` has `machine_spec`, and the adapter makes the smallest machine in its
   settings that fits it. The `make` answer may contain `machine_type`, the vendor's type
   of the machine.
 - The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
