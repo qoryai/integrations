@@ -44,32 +44,45 @@ type MachinesCheck struct {
 	Version int `json:"version"`
 }
 
-// MachinesCheckAnswer is the answer of check, check-answer.schema.json: the empty
-// object.
-type MachinesCheckAnswer struct{}
+// MachinesCheckAnswer is the answer of check, check-answer.schema.json. Offers are the
+// machines the adapter can make with its settings, in the order of its settings, 1 to
+// 64 of them: for each, DiskGiB is the largest disk the adapter gives that machine. A
+// provisioner sends the offers of the adapter's last successful check as the Offers of
+// its [Claim].
+type MachinesCheckAnswer struct {
+	Offers []MachineSpec `json:"offers"`
+}
 
 // MachinesMake is the request of `<adapter> make --settings FILE`, make.schema.json:
-// the adapter makes one machine for the dispatch in Key, in the node pool in Pool, of
-// the size in Size. One Key makes at most one machine. A second make with the same Key
-// makes no machine, and its answer is the ID of the machine that the first make with
-// that Key made. A Size that the adapter's settings do not contain fails with kind
-// [FailureDefect], because a retry fails the same way. StartData is standard base64
+// the adapter makes one machine for the dispatch in Key, in the node pool in Pool,
+// that fits MachineSpec. One Key makes at most one machine. A second make with the same
+// Key makes no machine, and its answer is the ID of the machine that the first make
+// with that Key made.
+//
+// The adapter starts the smallest machine in its settings that fits MachineSpec, by
+// vCPUs and then by memory, a tie going to the order of the settings. When the vendor
+// has no capacity for that machine, the adapter tries the next machine that fits, in
+// the same order. When no machine in its settings fits, make fails with kind
+// [FailureDefect], because a retry fails the same way. When every machine that fits
+// fails for lack of capacity, make fails with the kind of the last failure. StartData is standard base64
 // with padding of at most [MaxStartData] bytes, which the adapter passes to the machine
 // unread. It contains a run code, so it travels only on standard input, never in an
 // argument, and the adapter never writes it to a log.
 type MachinesMake struct {
-	Version   int    `json:"version"`
-	Key       string `json:"key"`
-	Pool      string `json:"pool"`
-	Size      string `json:"size"`
-	StartData string `json:"start_data"`
+	Version     int         `json:"version"`
+	Key         string      `json:"key"`
+	Pool        string      `json:"pool"`
+	MachineSpec MachineSpec `json:"machine_spec"`
+	StartData   string      `json:"start_data"`
 }
 
 // MachinesMakeAnswer is the answer of make, make-answer.schema.json: the vendor's id
 // of the machine the adapter made for the request's Key, by this make or by the first
-// make with that Key.
+// make with that Key. MachineType is the vendor's type of that machine, such as
+// example-type, and is empty when the adapter does not know it.
 type MachinesMakeAnswer struct {
-	ID string `json:"id"`
+	ID          string `json:"id"`
+	MachineType string `json:"machine_type,omitempty"`
 }
 
 // MachinesList is the request of `<adapter> list --settings FILE`, list.schema.json:
