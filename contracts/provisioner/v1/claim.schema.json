@@ -28,6 +28,15 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 25
+    },
+    "offers": {
+      "description": "The machines the pool can start, 1 to 64 of them: for each, disk_gib is the largest disk the pool gives that machine. The control plane gives a claim with offers only work whose run's machine type has a spec that one of the offers fits, definitions.schema.json. A pool that sends no offers gets only work of the instance's default machine type, and its claim answer has no machine and no machine_spec. A provisioner that uses a machine adapter sends the offers of the adapter's last successful check, https://qory.dev/contracts/machines/v1/check-answer.schema.json.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "$ref": "definitions.schema.json#/$defs/machine_spec"
+      }
     }
   }
 }
