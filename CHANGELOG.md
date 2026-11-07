@@ -250,9 +250,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   work for a run whose machine type one offer fits. An answer to a claim with offers has
   the run's machine type in `machine` and its spec in `machine_spec`, and an answer to a
   claim without offers has neither. A dispatched may contain `machine_type`, the
-  vendor's type of the machine. In Go,
-  `MachineEnd`, `MachineEndDeleting`, `MachineEndGone`, `MachineEndDeleteFailed`,
-  `MachineSpec` and `MachineSpec.Fits` are added.
+  vendor's type of the machine. In Go, `MachineEnd`, `MachineEndDeleting`,
+  `MachineEndGone`, `MachineEndDeleteFailed`, `MachineSpec` and `MachineSpec.Fits` are
+  added.
 - The machines contract, `contracts/machines/v1`: a machine adapter makes and deletes
   machines at one vendor, and the provisioner runs it as
   `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`

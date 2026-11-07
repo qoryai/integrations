@@ -44,7 +44,7 @@ func (m MachineSpec) Fits(spec MachineSpec) bool {
 // for a run of the instance's default machine type. A [ClaimAnswer] to a claim with
 // offers has Machine and MachineSpec, and an answer to a claim without offers has
 // neither. A provisioner that uses a machine adapter claims only after a successful
-// check of the adapter, and sends the offers of its last successful check,
+// check of the adapter, and sends the offers of the adapter's last successful check,
 // [MachinesCheckAnswer], so each of its claims has offers.
 type Claim struct {
 	Version     int           `json:"version"`

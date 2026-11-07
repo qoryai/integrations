@@ -49,7 +49,7 @@ type MachinesCheck struct {
 // MachinesCheckAnswer is the answer of check, check-answer.schema.json. Offers are the
 // machines the adapter can make with its settings, in the order of its settings: for
 // each, DiskGiB is the largest disk the adapter gives that machine. Offers has 1 to 64
-// entries: a nil Offers marshals to null, and the schema refuses null and an empty list.
+// entries: a nil Offers marshals to null, and null and an empty list are refused.
 // A provisioner that uses the adapter claims only after a successful check, and sends
 // the offers of the adapter's last successful check as the Offers of each of its claims,
 // [Claim].
