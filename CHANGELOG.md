@@ -69,6 +69,31 @@ change what an existing reader or program relies on, and notes it under Upgradin
   removed; members' answers are in the newest version of the `questions` artifact.
   `run.attempt` has no maximum. Without `ticket`, `comments` must be empty and
   `comments_omitted` must be 0.
+- If an adapter follows the adapter contract as this module had it after 0.3.0, change it
+  to post the comments that a person writes in the control plane on a work item taken in
+  from an item at the source. `changes.schema.json` has the entry kind `comment`, with
+  `comment_id`, `ref`, `author_name` and `body`. Set `comments: true` on the `source` role
+  to receive `comment` entries; an adapter that does not set `comments: true` never
+  receives a `comment` entry. Without `comments: true`, the source takes no comment from
+  the control plane, so the adapter cannot post comments there, and the comment stays in
+  the control plane only. An adapter that sets `comments: true` and checks the feed
+  against the earlier `changes.schema.json` fails on the first `comment` entry and stops
+  advancing its cursor. Post each `comment` entry on its item as the integration's
+  account: the first line `<author_name> wrote in Qory Apiary:`, then an empty line, then
+  `body` unchanged. Put a mark that contains the `comment_id` in the posted comment, in a
+  form that the source keeps and that, where the source allows, people who read the
+  comment do not see. Before you post, check the item for a comment with that mark, so the
+  comment of a post whose result is unknown, such as one that timed out, is not posted a
+  second time. Send the posted comment back with `POST /v1/source-items/comments`, and set
+  `comment_id` on that comment in every request that contains it. After a failure that
+  trying again cannot fix, or when your retries end, send
+  `POST /v1/work-items/changes/failed` with `comment_id` and a `reason`: `item_gone`,
+  `not_permitted`, `too_long` or `unreachable`. A feed answer ends before its body passes
+  4194304 bytes (4 MiB), and has at least one entry whenever the feed has an entry of a
+  kind that the revision in the request's `X-Qory-Contract-Version` defines after the
+  cursor; read the next entries from its `cursor`. In Go, `ChangeComment`,
+  `Change.CommentID`, `Change.AuthorName`, `Change.Body`, `Comment.CommentID` and
+  `ChangesFailed` are added.
 
 ### Added
 
@@ -102,9 +127,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a source adapter sends the control plane, `POST /v1/adapter` at start-up,
   `POST /v1/source-collections`, `POST /v1/source-items`,
   `POST /v1/source-items/comments`, `POST /v1/sources/disconnect`,
-  `POST /v1/connections/disconnect` and `POST /v1/grants/end`, and the change feed
-  `GET /v1/work-items/changes`, with the entry kinds `work_item`, `collection`, `grant`
-  and `sync`. The adapter signs each request with its access key as
+  `POST /v1/connections/disconnect`, `POST /v1/grants/end` and
+  `POST /v1/work-items/changes/failed`, and the change feed
+  `GET /v1/work-items/changes`, with the entry kinds `work_item`, `comment`,
+  `collection`, `grant` and `sync`. The adapter signs each request with its access key as
   `github.com/qoryai/forager/accesskey` signs one, sends the revision in
   `X-Qory-Contract-Version`, and checks each signed answer under a server key it pinned at
   enrolment. `refusal.schema.json` lists the refusals.
@@ -137,6 +163,28 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `grant_ref` that its copy of grants does not have under `connection_id`,
   `409 grant_unknown`. On success the control plane returns a signed 204 with no body. For
   a suspended connection, the control plane returns the signed 204 and ends the grant.
+- Comments from the control plane: an adapter whose source role has `comments: true`
+  receives a `comment` entry in the change feed for a comment that a person writes in the
+  control plane on a work item taken in from one of the source's items. The entry has
+  `comment_id`, `sc_` and 16 lower-case Crockford base32 characters, `ref`, `author_name`,
+  1 to 100 characters on one line with at least one character that is not a space, and
+  `body`, 1 to 65000 characters. The adapter posts the comment on the item as the
+  integration's account, with the first line `<author_name> wrote in Qory Apiary:`, then
+  an empty line, then `body` unchanged, and with a mark that contains the `comment_id`, in
+  a form that the source keeps and that, where the source allows, people who read the
+  comment do not see. Before it posts, it checks the item for a comment with that mark, so
+  it posts at most one comment per `comment_id`, and the comment of a post whose result is
+  unknown, such as one that timed out, is not posted a second time. It sends the posted
+  comment back with `POST /v1/source-items/comments` and its `comment_id`, and the control
+  plane matches it to the stored comment and stores no second comment. After a failure
+  that trying again cannot fix, or when its retries end, the adapter sends
+  `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and `reason`:
+  `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane marks the
+  comment not posted and stores `reason`. It returns `403 forbidden` for a request the
+  access key has no permission for. On success it returns a signed 204 with no body, and
+  for an unknown or already matched `comment_id` it returns the signed 204 and changes
+  nothing. Without `comments: true`, the control plane writes no `comment` entry for the
+  source.
 - Adapter secrets: the adapter uploads up to 16 values with `POST /v1/adapter/secrets`,
   each at most 16384 bytes, sealed with HPKE `x25519-sha256-aes256gcm` to a pinned server
   key, and `GET /v1/adapter/secrets` returns them sealed to the adapter's access key.
@@ -196,14 +244,25 @@ change what an existing reader or program relies on, and notes it under Upgradin
   machine redeems and the gateway URL that the run code is bound to. A machine end has
   the `state` `deleting`, `gone` or `delete_failed`, and a starter that never sends one
   still works. A starter sends `gone` only when the machine adapter's delete call
-  returned that no machine with the id exists at the vendor. In Go, `MachineEnd`,
-  `MachineEndDeleting`, `MachineEndGone` and `MachineEndDeleteFailed` are added.
+  returned that no machine with the id exists at the vendor. A claim may contain
+  `offers`: the machines the pool can create, each a `machine_spec` of vCPUs, memory,
+  disk, architecture and virtualization. The control plane gives a claim with offers only
+  work for a run whose machine type one offer fits. An answer to a claim with offers has
+  the run's machine type in `machine` and its spec in `machine_spec`, and an answer to a
+  claim without offers has neither. A dispatched may contain `machine_type`, the
+  vendor's type of the machine. In Go, `MachineEnd`, `MachineEndDeleting`,
+  `MachineEndGone`, `MachineEndDeleteFailed`, `MachineSpec` and `MachineSpec.Fits` are
+  added.
 - The machines contract, `contracts/machines/v1`: a machine adapter makes and deletes
   machines at one vendor, and the provisioner runs it as
   `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`
   and `delete`. Each command reads one JSON request on standard input and writes one
   answer of at most 1 MiB on standard output, or writes an error and exits with status 1.
-  A second `make` with the same `key` makes no machine.
+  A second `make` with the same `key` makes no machine. The `check` answer has `offers`,
+  the machines the adapter can make with its settings, which the provisioner sends in its
+  claims. `make` has `machine_spec`, and the adapter makes the smallest machine in its
+  settings that fits it. The `make` answer may contain `machine_type`, the vendor's type
+  of the machine.
 - The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
   the step `explore`. In the inputs, `ticket` is absent when the work item was not taken
   in from an item at a source.
@@ -232,7 +291,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `extends` and lists no module, or when the file was not read, and the machine then
   composes `harness`. The registry host of `image_destination`,
   `environment_destination` and `environment_image` is lower case only, and a Docker Hub
-  host is refused.
+  host is refused. `workflow` and each name in `harness.workflows` are a lower-case
+  letter, then up to 54 lower-case letters, digits and hyphens, so that
+  `workflow-<name>` stays within 64 characters.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
   `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of

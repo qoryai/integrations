@@ -177,12 +177,58 @@ The tracker's `$X` is written `\u0024X`, which JSON reads as `$X`, and the quote
 A run's policy selects them by the key, as it selects any credential:
 `{name: github, argument: acme/shop}`.
 
+## Change feed and comments
+
+A source adapter reads its change feed with the signed
+`GET /v1/work-items/changes?after=<cursor>` (`changes.schema.json`). The control plane
+ends the feed answer's entries before the answer's body passes 4194304 bytes (4 MiB).
+The feed answer has at least one entry whenever the feed has an entry of a kind that the
+revision in the request's `X-Qory-Contract-Version` defines after the cursor. The
+adapter reads the next entries from the feed answer's `cursor`.
+
+A person can write a comment in the control plane on a work item taken in from an item
+at the source. The comment reaches the source in four steps:
+
+1. The control plane stores the comment with the item's other comments and writes a
+   `comment` entry to the feed, with `comment_id`, `ref`, `author_name` and `body`.
+   `comment_id` is `sc_` and 16 lower-case Crockford base32 characters.
+2. The adapter posts the comment on the item as the integration's account at the
+   source. The first line is `<author_name> wrote in Qory Apiary:`, such as
+   `Dana Example wrote in Qory Apiary:`, then an empty line, then `body` unchanged. The
+   adapter puts a mark that contains the `comment_id` in the posted comment. Before it
+   posts, it checks the item for a comment with that mark. So it posts at most one
+   comment per `comment_id`, however often it reads an entry with that `comment_id`,
+   and the comment of a post whose result is unknown, such as one that timed out, is
+   not posted a second time. The form of the mark is the adapter's choice: the source
+   must keep it, and where the source allows, people who read the comment do not see
+   it.
+3. The adapter sends the posted comment back with `POST /v1/source-items/comments`, with
+   `comment_id` set (`source-item-comments.schema.json`). The control plane matches the
+   sent comment to the comment it stored, and stores no second comment.
+4. After a failure that trying again cannot fix, or when its retries end, the adapter
+   sends `POST /v1/work-items/changes/failed` (`changes-failed.schema.json`) with
+   `comment_id` and `reason`. The control plane marks the comment not posted and stores
+   `reason`.
+
+| `reason` | Meaning |
+|---|---|
+| `item_gone` | the source returned that the item does not exist |
+| `not_permitted` | the source returned that the integration's account has no permission to comment on the item |
+| `too_long` | the comment with its first line is longer than the source's limit for a comment |
+| `unreachable` | each request to the source timed out, failed to connect or returned a busy status, until the adapter's retries ended |
+
+The control plane writes comment entries only for a source whose `source` role has
+`comments: true`. An adapter that does not set `comments: true` never receives a
+`comment` entry: the source takes no comment from the control plane, so the adapter
+cannot post comments there, and the comment stays in the control plane only. A source
+with `items: false` has no items, and its `source` role has no `comments`.
+
 ## Fixtures
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential`; `example-source-apply-bearer.json`, a source role with an apply item of the scheme `bearer` whose paths are templates with `{target.path}` and a path without it; `example-source-apply-basic.json`, one with an apply item of the scheme `basic` and its `username`; `example-source-apply-header.json`, one with an apply item of the scheme `header` and its `header`, on a DNS name and an IPv4 address; `example-source-guide.json`, a source role with a `guide`: a `setup` part with `before`, three `steps` and `after`, and a `connect` part with two `steps` alone; `example-source-targets.json`, a source role with `targets: true` | `description.schema.json` |
-| `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; and `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define | `description.schema.json`, expecting a failure |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential`; `example-source-apply-bearer.json`, a source role with an apply item of the scheme `bearer` whose paths are templates with `{target.path}` and a path without it; `example-source-apply-basic.json`, one with an apply item of the scheme `basic` and its `username`; `example-source-apply-header.json`, one with an apply item of the scheme `header` and its `header`, on a DNS name and an IPv4 address; `example-source-guide.json`, a source role with a `guide`: a `setup` part with `before`, three `steps` and `after`, and a `connect` part with two `steps` alone; `example-source-targets.json`, a source role with `targets: true`; `example-source-comments.json`, a source role with `comments: true` | `description.schema.json` |
+| `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define; `description-source-comments-false.json`, `comments: false`; and `description-source-items-false-with-comments.json`, `comments` beside `items: false` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.
 

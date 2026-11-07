@@ -1,0 +1,11 @@
+{
+  "offers": [
+    {
+      "vcpus": 2,
+      "memory_mib": 4096,
+      "disk_gib": 50,
+      "arch": "arm64",
+      "virtualization": false
+    }
+  ]
+}

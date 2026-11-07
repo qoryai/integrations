@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"path"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -107,34 +108,53 @@ func TestProvisionerFixturesValidate(t *testing.T) {
 // name, and for no other.
 func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"claim-wait-seconds-26.json":                     {"claim", "/wait_seconds maximum"},
-		"claim-pool-id-node.json":                        {"claim", "/pool_id pattern"},
-		"claim-undefined-member.json":                    {"claim", "/ additionalProperties"},
-		"claim-answer-dispatch-id-no-prefix.json":        {"claim-answer", "/dispatch_id pattern"},
-		"claim-answer-dispatch-id-upper-case.json":       {"claim-answer", "/dispatch_id pattern"},
-		"dispatched-external-type-upper-case.json":       {"dispatched", "/external/type pattern"},
-		"dispatched-external-ref-nul.json":               {"dispatched", "/external/ref pattern"},
-		"release-with-retry.json":                        {"release", "/ additionalProperties"},
-		"release-reason-nul.json":                        {"release", "/reason pattern"},
-		"claim-answer-revision-2.json":                   {"claim-answer", "/revision const"},
-		"claim-answer-run-code-qecn-prefix.json":         {"claim-answer", "/run_code pattern"},
-		"claim-answer-gateway-url-path.json":             {"claim-answer", "/gateway_url pattern"},
-		"claim-answer-gateway-url-http.json":             {"claim-answer", "/gateway_url pattern"},
-		"claim-answer-without-gateway-url.json":          {"claim-answer", "/ required gateway_url"},
-		"claim-answer-without-run-code.json":             {"claim-answer", "/ required run_code"},
-		"claim-answer-run-id.json":                       {"claim-answer", "/ additionalProperties"},
-		"claim-answer-max-lifetime-minutes-14.json":      {"claim-answer", "/max_lifetime_minutes minimum"},
-		"claim-answer-max-lifetime-minutes-1471.json":    {"claim-answer", "/max_lifetime_minutes maximum"},
-		"claim-answer-without-max-lifetime-minutes.json": {"claim-answer", "/ required max_lifetime_minutes"},
-		"claim-answer-machine-upper-case.json":           {"claim-answer", "/machine pattern"},
-		"machine-log-without-log.json":                   {"machine-log", "/ required log"},
-		"machine-log-undefined-member.json":              {"machine-log", "/ additionalProperties"},
-		"machine-log-log-nul.json":                       {"machine-log", "/log pattern"},
-		"machine-log-version-2.json":                     {"machine-log", "/version const"},
-		"machine-end-without-state.json":                 {"machine-end", "/ required state"},
-		"machine-end-unknown-state.json":                 {"machine-end", "/state enum"},
-		"machine-end-undefined-member.json":              {"machine-end", "/ additionalProperties"},
-		"machine-end-version-2.json":                     {"machine-end", "/version const"},
+		"claim-wait-seconds-26.json":                           {"claim", "/wait_seconds maximum"},
+		"claim-pool-id-node.json":                              {"claim", "/pool_id pattern"},
+		"claim-undefined-member.json":                          {"claim", "/ additionalProperties"},
+		"claim-answer-dispatch-id-no-prefix.json":              {"claim-answer", "/dispatch_id pattern"},
+		"claim-answer-dispatch-id-upper-case.json":             {"claim-answer", "/dispatch_id pattern"},
+		"dispatched-external-type-upper-case.json":             {"dispatched", "/external/type pattern"},
+		"dispatched-external-ref-nul.json":                     {"dispatched", "/external/ref pattern"},
+		"release-with-retry.json":                              {"release", "/ additionalProperties"},
+		"release-reason-nul.json":                              {"release", "/reason pattern"},
+		"claim-answer-revision-2.json":                         {"claim-answer", "/revision const"},
+		"claim-answer-run-code-qecn-prefix.json":               {"claim-answer", "/run_code pattern"},
+		"claim-answer-gateway-url-path.json":                   {"claim-answer", "/gateway_url pattern"},
+		"claim-answer-gateway-url-http.json":                   {"claim-answer", "/gateway_url pattern"},
+		"claim-answer-without-gateway-url.json":                {"claim-answer", "/ required gateway_url"},
+		"claim-answer-without-run-code.json":                   {"claim-answer", "/ required run_code"},
+		"claim-answer-run-id.json":                             {"claim-answer", "/ additionalProperties"},
+		"claim-answer-max-lifetime-minutes-14.json":            {"claim-answer", "/max_lifetime_minutes minimum"},
+		"claim-answer-max-lifetime-minutes-1471.json":          {"claim-answer", "/max_lifetime_minutes maximum"},
+		"claim-answer-without-max-lifetime-minutes.json":       {"claim-answer", "/ required max_lifetime_minutes"},
+		"claim-answer-machine-upper-case.json":                 {"claim-answer", "/machine pattern"},
+		"claim-answer-machine-without-machine-spec.json":       {"claim-answer", "/ dependentRequired/machine"},
+		"claim-answer-machine-spec-without-machine.json":       {"claim-answer", "/ dependentRequired/machine_spec"},
+		"claim-answer-machine-spec-virtualization-string.json": {"claim-answer", "/machine_spec/virtualization type"},
+		"claim-offers-vcpus-0.json":                            {"claim", "/offers/0/vcpus minimum"},
+		"claim-offers-vcpus-1025.json":                         {"claim", "/offers/0/vcpus maximum"},
+		"claim-offers-memory-mib-511.json":                     {"claim", "/offers/0/memory_mib minimum"},
+		"claim-offers-memory-mib-8388609.json":                 {"claim", "/offers/0/memory_mib maximum"},
+		"claim-offers-disk-gib-0.json":                         {"claim", "/offers/0/disk_gib minimum"},
+		"claim-offers-disk-gib-65537.json":                     {"claim", "/offers/0/disk_gib maximum"},
+		"claim-offers-arch-riscv64.json":                       {"claim", "/offers/0/arch enum"},
+		"claim-offers-without-arch.json":                       {"claim", "/offers/0 required arch"},
+		"claim-offers-undefined-member.json":                   {"claim", "/offers/0 additionalProperties"},
+		"claim-offers-empty.json":                              {"claim", "/offers minItems"},
+		"claim-offers-65.json":                                 {"claim", "/offers maxItems"},
+		"dispatched-machine-type-empty.json":                   {"dispatched", "/machine_type pattern"},
+		"dispatched-machine-type-65.json":                      {"dispatched", "/machine_type pattern"},
+		"dispatched-machine-type-space.json":                   {"dispatched", "/machine_type pattern"},
+		"dispatched-machine-type-non-ascii.json":               {"dispatched", "/machine_type pattern"},
+		"dispatched-machine-type-del.json":                     {"dispatched", "/machine_type pattern"},
+		"machine-log-without-log.json":                         {"machine-log", "/ required log"},
+		"machine-log-undefined-member.json":                    {"machine-log", "/ additionalProperties"},
+		"machine-log-log-nul.json":                             {"machine-log", "/log pattern"},
+		"machine-log-version-2.json":                           {"machine-log", "/version const"},
+		"machine-end-without-state.json":                       {"machine-end", "/ required state"},
+		"machine-end-unknown-state.json":                       {"machine-end", "/state enum"},
+		"machine-end-undefined-member.json":                    {"machine-end", "/ additionalProperties"},
+		"machine-end-version-2.json":                           {"machine-end", "/version const"},
 	}
 	got := provisionerFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -178,10 +198,12 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now}},
 		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now,
 			External: &contracts.External{Type: "example-ci", Ref: "run-1", URL: "https://ci.example.com/runs/1"}}},
+		{"dispatched", contracts.Dispatched{Version: contracts.Version, Time: now, MachineType: "example-type"}},
+		{"claim", contracts.Claim{Version: contracts.Version, Time: now, Offers: []contracts.MachineSpec{standard}}},
 		{"release", contracts.Release{Version: contracts.Version, Time: now, Reason: "No machine of this type was free."}},
 		{"claim-answer", contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision, DispatchID: "dp_0123456789abcdef",
-			PoolID: "np_0123456789abcdef", LeaseUntil: now, Machine: "small", RunCode: runCode, GatewayURL: gatewayURL,
-			MaxLifetimeMinutes: 1470}},
+			PoolID: "np_0123456789abcdef", LeaseUntil: now, Machine: "standard", MachineSpec: &standard, RunCode: runCode,
+			GatewayURL: gatewayURL, MaxLifetimeMinutes: 1470}},
 		{"machine-log", contracts.MachineLog{Version: contracts.Version, Time: now, Log: "machine created\n"}},
 		{"machine-log", contracts.MachineLog{Version: contracts.Version, Time: now, Log: "machine stopped\n", Truncated: true}},
 		{"machine-end", contracts.MachineEnd{Version: contracts.Version, Time: now, State: contracts.MachineEndDeleting}},
@@ -203,6 +225,10 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 		}
 	}
 }
+
+// standard is the spec of a machine type, in the form that definitions.schema.json
+// defines for machine_spec.
+var standard = contracts.MachineSpec{VCPUs: 4, MemoryMiB: 16384, DiskGiB: 100, Arch: "amd64"}
 
 // runCode is a run code in the form claim-answer.schema.json gives.
 const runCode = "qecr_01JB8Z3K5Q7R9T2V4W6X8Y0A1C.uoES-kuj1vk0sq0qoGlmAg"
@@ -263,8 +289,9 @@ func TestAGatewayURLIsHostAndPort(t *testing.T) {
 }
 
 // TestTheNewMembersRoundTripTheirFixtures pins that each claim answer fixture, each
-// machine end fixture, and each other fixture with run_code or truncated, reads into its
-// Go type and is written back as the fixture's bytes, compacted.
+// machine end fixture, and each other fixture with run_code, truncated, offers or
+// machine_type, reads into its Go type and is written back as the fixture's bytes,
+// compacted.
 func TestTheNewMembersRoundTripTheirFixtures(t *testing.T) {
 	type fixture struct {
 		fixture string
@@ -280,6 +307,12 @@ func TestTheNewMembersRoundTripTheirFixtures(t *testing.T) {
 	for _, c := range append(answers, []fixture{
 		{"fixtures/machine-log/whole.json", &contracts.MachineLog{}},
 		{"fixtures/machine-log/truncated.json", &contracts.MachineLog{}},
+		{"fixtures/claim/with-offers.json", &contracts.Claim{}},
+		{"fixtures/claim/offers-at-bounds.json", &contracts.Claim{}},
+		{"fixtures/claim/offers-64.json", &contracts.Claim{}},
+		{"fixtures/claim/one-offer.json", &contracts.Claim{}},
+		{"fixtures/dispatched/with-machine-type.json", &contracts.Dispatched{}},
+		{"fixtures/dispatched/longest-machine-type.json", &contracts.Dispatched{}},
 	}...) {
 		b, err := fs.ReadFile(contracts.ProvisionerFS, c.fixture)
 		if err != nil {
@@ -320,10 +353,11 @@ func TestAMachineLogWithinItsBoundCanExceedTheRequestLimit(t *testing.T) {
 	}
 }
 
-// TestAClaimAnswerHasExactlyItsMembers pins that a claim answer built in Go marshals
-// to version, revision, dispatch_id, pool_id, lease_until, machine when it is set,
-// run_code, gateway_url and max_lifetime_minutes, with no member about the work it is
-// for, that its schema accepts it, and that it reads back into the same value.
+// TestAClaimAnswerHasExactlyItsMembers pins that a claim answer built in Go marshals to
+// version, revision, dispatch_id, pool_id, lease_until, machine and machine_spec when
+// they are set, run_code, gateway_url and max_lifetime_minutes, with no member about the
+// work it is for, that its schema accepts it, and that it reads back into the same
+// value.
 func TestAClaimAnswerHasExactlyItsMembers(t *testing.T) {
 	for _, c := range []struct {
 		a    contracts.ClaimAnswer
@@ -337,9 +371,11 @@ func TestAClaimAnswerHasExactlyItsMembers(t *testing.T) {
 				`"max_lifetime_minutes":1470}`},
 		{contracts.ClaimAnswer{Version: contracts.Version, Revision: contracts.ProvisionerRevision,
 			DispatchID: "dp_8w3k0q9t2v7m4r6x", PoolID: "np_f1xt0re000000000", LeaseUntil: "2026-10-15T12:05:00Z",
-			Machine: "small", RunCode: runCode, GatewayURL: gatewayURL, MaxLifetimeMinutes: 1470},
+			Machine: "standard", MachineSpec: &standard, RunCode: runCode, GatewayURL: gatewayURL, MaxLifetimeMinutes: 1470},
 			`{"version":1,"revision":1,"dispatch_id":"dp_8w3k0q9t2v7m4r6x","pool_id":"np_f1xt0re000000000",` +
-				`"lease_until":"2026-10-15T12:05:00Z","machine":"small","run_code":"` + runCode + `","gateway_url":"` + gatewayURL + `",` +
+				`"lease_until":"2026-10-15T12:05:00Z","machine":"standard",` +
+				`"machine_spec":{"vcpus":4,"memory_mib":16384,"disk_gib":100,"arch":"amd64","virtualization":false},` +
+				`"run_code":"` + runCode + `","gateway_url":"` + gatewayURL + `",` +
 				`"max_lifetime_minutes":1470}`},
 	} {
 		out, err := json.Marshal(c.a)
@@ -356,8 +392,45 @@ func TestAClaimAnswerHasExactlyItsMembers(t *testing.T) {
 		if err := json.Unmarshal(out, &back); err != nil {
 			t.Fatal(err)
 		}
-		if back != c.a {
+		if !reflect.DeepEqual(back, c.a) {
 			t.Errorf("%s reads back as %+v, want %+v", out, back, c.a)
+		}
+	}
+}
+
+// TestAMachineFitsASpec pins MachineSpec.Fits: a machine fits a spec when its vcpus,
+// memory_mib and disk_gib are each at least the spec's, its arch is the spec's, and its
+// virtualization is true when the spec's is true.
+func TestAMachineFitsASpec(t *testing.T) {
+	spec := contracts.MachineSpec{VCPUs: 4, MemoryMiB: 16384, DiskGiB: 100, Arch: "amd64"}
+	with := func(change func(*contracts.MachineSpec)) contracts.MachineSpec {
+		m := spec
+		change(&m)
+		return m
+	}
+	for _, c := range []struct {
+		name    string
+		machine contracts.MachineSpec
+		spec    contracts.MachineSpec
+		fits    bool
+	}{
+		{"equal", spec, spec, true},
+		{"vcpus below", with(func(m *contracts.MachineSpec) { m.VCPUs = 3 }), spec, false},
+		{"vcpus above", with(func(m *contracts.MachineSpec) { m.VCPUs = 5 }), spec, true},
+		{"memory_mib below", with(func(m *contracts.MachineSpec) { m.MemoryMiB = 16383 }), spec, false},
+		{"memory_mib above", with(func(m *contracts.MachineSpec) { m.MemoryMiB = 16385 }), spec, true},
+		{"disk_gib below", with(func(m *contracts.MachineSpec) { m.DiskGiB = 99 }), spec, false},
+		{"disk_gib above", with(func(m *contracts.MachineSpec) { m.DiskGiB = 101 }), spec, true},
+		{"arch mismatch", with(func(m *contracts.MachineSpec) { m.Arch = "arm64" }), spec, false},
+		{"arch mismatch, all larger", contracts.MachineSpec{VCPUs: 64, MemoryMiB: 262144, DiskGiB: 1000, Arch: "arm64",
+			Virtualization: true}, spec, false},
+		{"virtualization needed and present", with(func(m *contracts.MachineSpec) { m.Virtualization = true }),
+			with(func(m *contracts.MachineSpec) { m.Virtualization = true }), true},
+		{"virtualization needed and absent", spec, with(func(m *contracts.MachineSpec) { m.Virtualization = true }), false},
+		{"virtualization present and not needed", with(func(m *contracts.MachineSpec) { m.Virtualization = true }), spec, true},
+	} {
+		if got := c.machine.Fits(c.spec); got != c.fits {
+			t.Errorf("%s: %+v fits %+v is %v, want %v", c.name, c.machine, c.spec, got, c.fits)
 		}
 	}
 }

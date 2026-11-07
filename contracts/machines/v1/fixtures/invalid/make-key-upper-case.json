@@ -2,6 +2,12 @@
   "version": 1,
   "key": "dp_8W3K0Q9T2V7M4R6X",
   "pool": "np_f1xt0re000000000",
-  "size": "small",
+  "machine_spec": {
+    "vcpus": 4,
+    "memory_mib": 16384,
+    "disk_gib": 100,
+    "arch": "amd64",
+    "virtualization": false
+  },
   "start_data": "eyJ2ZXJzaW9uIjoxLCJleGFtcGxlIjoic3RhcnQgZGF0YSJ9Cg=="
 }

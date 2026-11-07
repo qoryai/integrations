@@ -2,8 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/machines/v1/check-answer.schema.json",
   "title": "Check answer",
-  "description": "The answer of the command check, on standard output: the empty object, once the adapter has shown that its rights at the vendor and its settings work. The adapter made no machine for it. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "description": "The answer of the command check, on standard output, once the adapter has shown that its rights at the vendor and its settings work: offers, the machines the adapter can make with its settings. The adapter made no machine for it. A provisioner that uses the adapter claims only after a successful check, and sends the offers of the adapter's last successful check as the offers of each of its claims, https://qory.dev/contracts/provisioner/v1/claim.schema.json. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
   "type": "object",
   "additionalProperties": false,
-  "properties": {}
+  "required": [
+    "offers"
+  ],
+  "properties": {
+    "offers": {
+      "description": "The machines the adapter can make with its settings, in the order of its settings, 1 to 64 of them: for each, disk_gib is the largest disk the adapter gives that machine. Each is a machine_spec of the provisioner contract. When the settings contain more than 64 machines, or none, check fails with kind defect, check.schema.json.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/machine_spec"
+      }
+    }
+  }
 }

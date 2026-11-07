@@ -10,30 +10,65 @@ package contracts
 // and gateway URL are part of it.
 const ProvisionerRevision = 1
 
+// MachineSpec is the size and kind of a machine, definitions.schema.json machine_spec:
+// what a node pool offers in a [Claim], and what an instance admin defines for a
+// machine type in the control plane. VCPUs is from 1 to 1024, MemoryMiB from 512 to
+// 8388608 and DiskGiB from 1 to 65536. Arch is amd64 or arm64. Virtualization is true
+// when the machine can run virtual machines inside it; on Linux, such a machine has
+// /dev/kvm.
+type MachineSpec struct {
+	VCPUs          int    `json:"vcpus"`
+	MemoryMiB      int    `json:"memory_mib"`
+	DiskGiB        int    `json:"disk_gib"`
+	Arch           string `json:"arch"`
+	Virtualization bool   `json:"virtualization"`
+}
+
+// Fits reports whether the machine m fits spec: m's VCPUs, MemoryMiB and DiskGiB are
+// each at least spec's, m's Arch is spec's, and m's Virtualization is true when spec's
+// is true.
+func (m MachineSpec) Fits(spec MachineSpec) bool {
+	return m.VCPUs >= spec.VCPUs &&
+		m.MemoryMiB >= spec.MemoryMiB &&
+		m.DiskGiB >= spec.DiskGiB &&
+		m.Arch == spec.Arch &&
+		(m.Virtualization || !spec.Virtualization)
+}
+
 // Claim is the body of POST /v1/pools/claim, provisioner/v1 claim.schema.json. With an
 // empty PoolID the claim covers the key's node pool, the one node pool the pool's access
-// key belongs to.
+// key belongs to. Offers are the machines the pool can create, 1 to 64 of them: for
+// each, DiskGiB is the largest disk the pool gives that machine. An empty Offers is left
+// out, the same as no offers. The control plane gives a claim with offers only work for
+// a run whose machine type one of the offers fits. A claim without offers gets only work
+// for a run of the instance's default machine type. A [ClaimAnswer] to a claim with
+// offers has Machine and MachineSpec, and an answer to a claim without offers has
+// neither. A provisioner that uses a machine adapter claims only after a successful
+// check of the adapter, and sends the offers of the adapter's last successful check,
+// [MachinesCheckAnswer], so each of its claims has offers.
 type Claim struct {
-	Version     int    `json:"version"`
-	Time        string `json:"time"`
-	PoolID      string `json:"pool_id,omitempty"`
-	WaitSeconds int    `json:"wait_seconds"`
+	Version     int           `json:"version"`
+	Time        string        `json:"time"`
+	PoolID      string        `json:"pool_id,omitempty"`
+	WaitSeconds int           `json:"wait_seconds"`
+	Offers      []MachineSpec `json:"offers,omitempty"`
 }
 
 // ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json: a
-// request for one machine. The starter refuses one whose Revision is not the revision
-// it sent. Machine is the type of machine the job runs on, a name from the control
-// plane's list of machine types, such as small: the starter maps it to the machine it
-// creates, and releases the dispatch when it does not know the name. Machine is empty
-// when the control plane names no type, and the starter then uses its default. RunCode
-// is the run code the control plane made at the claim. GatewayURL is the gateway that
-// the node pool's choice resolved to at the claim: https, a host and an optional port,
-// and nothing after them. The starter passes both to the machine it creates for the
-// dispatch alone, and does not read the code. The control plane binds the code to that
-// gateway, and refuses a redemption that another gateway relays with the same answer
-// as for an unknown code. The machine redeems the code at the enrolment,
-// https://qory.dev/contracts/forager/v1/enrolment.schema.json, which returns the run
-// key and the run's documents, run/v1 documents.schema.json, in its signed 201.
+// request for one machine. The starter refuses one whose Revision is not the revision it
+// sent. Machine is the run's machine type, a name from the control plane's list of
+// machine types, such as standard, with MachineSpec the spec of that type: the starter
+// creates a machine that fits MachineSpec, with a disk of at least MachineSpec's
+// DiskGiB. Machine is empty and MachineSpec nil when the claim had no offers: the run
+// is of the instance's default machine type, and the starter creates its default
+// machine. RunCode is the run code the control plane made at the claim. GatewayURL is
+// the gateway that the node pool's choice resolved to at the claim: https, a host and
+// an optional port, and nothing after them. The starter passes both to the machine it
+// creates for the dispatch alone, and does not read the code. The control plane binds
+// the code to that gateway, and refuses a redemption that another gateway relays with
+// the same answer as for an unknown code. The machine redeems the code at the enrolment,
+// https://qory.dev/contracts/forager/v1/enrolment.schema.json, which returns the run key
+// and the run's documents, run/v1 documents.schema.json, in its signed 201.
 //
 // The control plane sends the answer with Cache-Control: no-store and gives it once.
 // The starter keeps RunCode and GatewayURL no longer than it takes to pass them to the
@@ -67,14 +102,15 @@ type Claim struct {
 // answer. Once the code is redeemed, a release is refused 409 machine_exists, even
 // before dispatched, because a machine exists.
 type ClaimAnswer struct {
-	Version    int    `json:"version"`
-	Revision   int    `json:"revision"`
-	DispatchID string `json:"dispatch_id"`
-	PoolID     string `json:"pool_id"`
-	LeaseUntil string `json:"lease_until"`
-	Machine    string `json:"machine,omitempty"`
-	RunCode    string `json:"run_code"`
-	GatewayURL string `json:"gateway_url"`
+	Version     int          `json:"version"`
+	Revision    int          `json:"revision"`
+	DispatchID  string       `json:"dispatch_id"`
+	PoolID      string       `json:"pool_id"`
+	LeaseUntil  string       `json:"lease_until"`
+	Machine     string       `json:"machine,omitempty"`
+	MachineSpec *MachineSpec `json:"machine_spec,omitempty"`
+	RunCode     string       `json:"run_code"`
+	GatewayURL  string       `json:"gateway_url"`
 	// MaxLifetimeMinutes is the minutes after which the machine powers itself off,
 	// counted from when it starts, whatever it runs: from 15 to 1470. The starter passes
 	// it to the machine with the run code, and deletes a machine of its node pool that
@@ -98,20 +134,24 @@ type ClaimAnswer struct {
 // code can be redeemed until 15 minutes from the claim.
 //
 // The starter sends dispatched again every 60 seconds for each machine it has, with the
-// same External. Each send is built anew, with a later Time and a new signature, as
-// https://qory.dev/contracts/integration/v1/definitions.schema.json describes for a
-// request sent again, so the replay rule does not refuse it. Only the first dispatched
-// of a dispatch is recorded, and nothing of a later one is. While the dispatch lives,
-// the answer is a signed 204 with no body, whether the run code was redeemed or not.
-// Once the dispatch has ended, a dispatched is refused 410 gone, whether the run code
-// was redeemed or not, and the starter then sends the [MachineLog] and deletes the
-// machine. When the machine has not redeemed the run code within 15 minutes of the
-// claim, the control plane ends the dispatch, so the next dispatched is refused 410
-// gone. After dispatched, a [Release] is refused 409 machine_exists.
+// same External and MachineType. Each send is built anew, with a later Time and a new
+// signature, as https://qory.dev/contracts/integration/v1/definitions.schema.json
+// describes for a request sent again, so the replay rule does not refuse it. Only the
+// first dispatched of a dispatch is recorded, and nothing of a later one is. While the
+// dispatch lives, the answer is a signed 204 with no body, whether the run code was
+// redeemed or not. Once the dispatch has ended, a dispatched is refused 410 gone,
+// whether the run code was redeemed or not, and the starter then sends the [MachineLog]
+// and deletes the machine. When the machine has not redeemed the run code within 15
+// minutes of the claim, the control plane ends the dispatch, so the next dispatched is
+// refused 410 gone. After dispatched, a [Release] is refused 409 machine_exists.
+//
+// MachineType is the vendor's type of the machine the starter created for the job, such
+// as example-type, and is empty when the starter has no type for the machine.
 type Dispatched struct {
-	Version  int       `json:"version"`
-	Time     string    `json:"time"`
-	External *External `json:"external,omitempty"`
+	Version     int       `json:"version"`
+	Time        string    `json:"time"`
+	External    *External `json:"external,omitempty"`
+	MachineType string    `json:"machine_type,omitempty"`
 }
 
 // External is a job at the vendor that runs it.

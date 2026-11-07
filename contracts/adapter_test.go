@@ -34,6 +34,7 @@ var adapterSchemas = []string{
 	"sources-disconnect.schema.json",
 	"connections-disconnect.schema.json",
 	"changes.schema.json",
+	"changes-failed.schema.json",
 	"connect-pass.schema.json",
 	"connect-return.schema.json",
 	"setup-pass.schema.json",
@@ -130,6 +131,18 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-work-item-status-linked.json":                 {"changes", "/changes/0/status enum"},
 		"changes-work-item-url-http.json":                      {"changes", "/changes/0/url pattern"},
 		"changes-without-revision.json":                        {"changes", "/ required revision"},
+		"changes-comment-id-wrong-prefix.json":                 {"changes", "/changes/0/comment_id pattern"},
+		"changes-comment-body-empty.json":                      {"changes", "/changes/0/body minLength"},
+		"changes-comment-body-65001.json":                      {"changes", "/changes/0/body maxLength"},
+		"changes-comment-author-name-101.json":                 {"changes", "/changes/0/author_name maxLength"},
+		"changes-comment-author-name-line-feed.json":           {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-next-line.json":           {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-bidi-override.json":       {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-spaces.json":              {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-unicode-spaces.json":      {"changes", "/changes/0/author_name pattern"},
+		"changes-failed-unknown-reason.json":                   {"changes-failed", "/reason enum"},
+		"changes-failed-without-comment-id.json":               {"changes-failed", "/ required comment_id"},
+		"source-item-comments-comment-id-upper-case.json":      {"source-item-comments", "/comments/0/comment_id pattern"},
 		"source-collections-no-listing.json":                   {"source-collections", "/ required listing"},
 		"source-item-comments-person-kind-app.json":            {"source-item-comments", "/comments/0/author/kind enum"},
 		"source-items-101-items.json":                          {"source-items", "/items maxItems"},
@@ -389,6 +402,12 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 				{Ref: "C-2", URL: "https://tracker.acme.example/TRK/TRK-1#C-2", Author: contracts.Person{Name: "Tracker bot", Kind: "automation"},
 					BodyFormat: "text", CreatedAt: now, UpdatedAt: now, Deleted: true, Truncated: []string{"author.name"}},
 			}}},
+		{"source-item-comments", contracts.SourceItemComments{Version: contracts.Version, Time: now, ItemRef: "acme/shop#12",
+			Comments: []contracts.Comment{
+				{Ref: "C-31", URL: "https://code.example.com/acme/shop/items/12#C-31", CommentID: "sc_7k2m9q4v1x8z3c5d",
+					Author: contracts.Person{Name: "Example integration", Kind: "automation"},
+					Body:   "Dana Example wrote in Qory Apiary:\n\nSeen too.", BodyFormat: "markdown", CreatedAt: now, UpdatedAt: now},
+			}}},
 		{"sources-disconnect", contracts.SourcesDisconnect{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef", CollectionRef: "TRK"}},
 		{"connections-disconnect", contracts.ConnectionsDisconnect{Version: contracts.Version, Time: now, ConnectionID: "ac_0123456789abcdef"}},
 		{"changes", contracts.Changes{Version: contracts.Version, Revision: contracts.Revision, Cursor: "c_1"}},
@@ -397,7 +416,9 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: contracts.ChangeCollection, CollectionRef: "TRK", Status: "linked"},
 			{Kind: contracts.ChangeSync},
 			{Kind: contracts.ChangeSync, Interval: &interval},
+			{Kind: contracts.ChangeComment, CommentID: "sc_7k2m9q4v1x8z3c5d", Ref: "TRK-1", AuthorName: "Dana Example", Body: "Seen too."},
 		}}},
+		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, CommentID: "sc_7k2m9q4v1x8z3c5d", Reason: "too_long"}},
 		{"connect-pass", contracts.ConnectPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
 			ConnectionID: "ac_0123456789abcdef", Nonce: "AAECAwQFBgcICQoLDA0ODw", ExpiresAt: now}},
 		{"connect-return", contracts.ConnectReturn{Version: contracts.Version, ConnectionID: "ac_0123456789abcdef",
@@ -1360,7 +1381,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		}
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
-		"connections-disconnect", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
+		"connections-disconnect", "changes-failed", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
 		"resolve-answer", "read", "read-public", "read-answer", "run-credential", "run-credential-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {

@@ -1,4 +1,6 @@
-# Qory integrations
+# Qory Integrations
+
+This repository is part of [Qory](https://github.com/qoryai/qory). The Qory README lists every part and how to install Qory.
 
 An integration is a program that connects Qory to an outside system, for example GitHub.
 Each integration is kept in a separate repository. This repository holds what they share:
