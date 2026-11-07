@@ -60,8 +60,9 @@ type Documents struct {
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
 	RunSettings   *RunSettings `json:"run_settings,omitempty"`
 	// Workflow is set exactly when HarnessHidden is: the workflow of the harness that
-	// the run starts, such as hello. qory starts the skill workflow-hello, or the skill
-	// hello if the harness has no skill workflow-hello.
+	// the run starts, such as hello. qory starts the first of these that the harness
+	// has: the skill workflow-hello, the command workflow-hello, the skill hello, the
+	// command hello. At most 55 characters, so that workflow-<name> stays within 64.
 	Workflow string `json:"workflow,omitempty"`
 	// HarnessHidden is set exactly when Workflow is: when true, the text that comes
 	// from the harness is hidden in the run, and when false, that text is shown. A
@@ -154,7 +155,7 @@ type HarnessSection struct {
 	Extensions map[string]json.RawMessage `json:"extensions,omitempty"`
 	// Workflows are the settings of each workflow of the stack the section defines, by
 	// the workflow's name, as workflows in qory-stack.yaml has them: a lower-case
-	// letter, then up to 63 lower-case letters, digits and hyphens. Only without
+	// letter, then up to 54 lower-case letters, digits and hyphens. Only without
 	// Extends: a section with Extends takes the workflows of its base.
 	Workflows map[string]HarnessWorkflow `json:"workflows,omitempty"`
 }
