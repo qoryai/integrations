@@ -248,46 +248,46 @@ change what an existing reader or program relies on, and notes it under Upgradin
   changes, and does not offer them when `targets` is absent. In both cases, the control
   plane accepts the `target` of each collection in a listing
   (`source-collections.schema.json`).
-- The provisioner contract, `contracts/provisioner/v1`, revision 1: the requests with
+  - The provisioner contract, `contracts/provisioner/v1`, revision 1: the requests with
   which a node pool's starter claims a request for one machine, `POST /v1/pools/claim`;
   reports that it created the machine, `POST /v1/dispatches/<dispatch_id>/dispatched`;
-  releases the dispatch before that, `POST /v1/dispatches/<dispatch_id>/release`;
-  uploads the log of the machine, `POST /v1/dispatches/<dispatch_id>/machine-log`; and
-  reports the result of deleting the machine,
-  `POST /v1/dispatches/<dispatch_id>/machine-end`. The starter signs them with the pool's
-  access key. The claim answer has the dispatch, its `lease_until`, the run code that the
-  machine redeems and the gateway URL that the run code is bound to. A machine end has
-  the `state` `deleting`, `gone` or `delete_failed`. A starter sends `gone` for every
-  dispatch for which the machine adapter's `make` returned a machine, every dispatch
-  whose release was refused `409 machine_exists`, and every dispatch that is the `key` of
-  a machine in an answer of `list`. It sends `gone` again until the control plane accepts
-  it, or until a signed 400, 403 or 404 refusal ends the attempts. A starter sends `gone`
-  when the machine adapter's delete call returned that no machine with the id exists at
-  the vendor, or when it has no record of a machine for the dispatch and a successful
-  answer of the machine adapter's `list`, received at or after `max_lifetime_minutes`
-  after the claim, contained no machine for the dispatch; a failed `list` is no proof. A
-  released dispatch may still get `gone` with no machine. When it had no earlier machine
-  event and no refusal took its slot again, its slot stays free; otherwise `gone` frees
-  it. `deleting` and `delete_failed` are optional. Each dispatch takes a slot of the node
-  pool's instance limit at the claim. A machine event is an accepted `dispatched`, the
-  machine's redemption of the run code, or an accepted machine end in any state; a
-  machine log is not one. Until the first machine event, the release, the lapse of the
-  lease or the end of the dispatch frees the slot. From the first machine event on, the
-  slot is kept at least until the control plane accepts `gone`. An accepted `gone` frees
-  the slot once the dispatch has ended or is stale, and otherwise when the dispatch ends
-  or goes stale. A later machine end other than `gone`, a `dispatched` refused
-  `409 lease_expired` or `410 gone`, or a refused redemption of the run code takes a
-  freed slot again, even over the instance limit. A refused redemption counts only when
-  all of these are true. It comes through the gateway that the run code is bound to. The
-  control plane still has the run code; the control plane deletes the run code when the
-  work is closed or undone. Its timestamp is within 300 seconds of the clock of the
-  control plane, as the enrolment contract requires. The redemption is refused because
-  the run code expired, the run ended, or the dispatch is stale or ended. Its proof
-  verifies. It is within the limit of attempts with one run code, the limit of the signed
-  429 `rate_limited` of the enrolment contract; past that limit, the control plane
-  records nothing for the refusal. Neither `dispatched` nor a redemption of the run code
-  was accepted before for the dispatch. Such a refused redemption gets the same answer as
-  an unknown code, the unsigned 401 of the enrolment contract, past that limit too. An
+  releases the dispatch before that, `POST /v1/dispatches/<dispatch_id>/release`; uploads
+  the log of the machine, `POST /v1/dispatches/<dispatch_id>/machine-log`; and reports
+  the result of deleting the machine, `POST /v1/dispatches/<dispatch_id>/machine-end`.
+  The starter signs them with the pool's access key. The claim answer has the dispatch,
+  its `lease_until`, the run code that the machine redeems and the gateway URL that the
+  run code is bound to. A machine end has the `state` `deleting`, `gone` or
+  `delete_failed`. A starter sends `gone` for every dispatch for which the machine
+  adapter's `make` returned a machine, every dispatch whose release was refused
+  `409 machine_exists`, and every dispatch that is the `key` of a machine in an answer of
+  `list`. It sends `gone` again until the control plane accepts it, or until a signed
+  400, 403 or 404 refusal ends the attempts. A starter sends `gone` when the machine
+  adapter's delete call returned that no machine with the id exists at the vendor, or
+  when it has no record of a machine for the dispatch and a successful answer of the
+  machine adapter's `list`, received at or after `max_lifetime_minutes` after the claim,
+  contained no machine for the dispatch; a failed `list` is no proof. A released dispatch
+  may still get `gone` with no machine. When it had no earlier machine event and no
+  refusal took its slot again, its slot stays free; otherwise `gone` frees it. `deleting`
+  and `delete_failed` are optional. Each dispatch takes a slot of the node pool's
+  instance limit at the claim. A machine event is an accepted `dispatched`, the machine's
+  redemption of the run code, or an accepted machine end in any state; a machine log is
+  not one. Until the first machine event, the release, the lapse of the lease or the end
+  of the dispatch frees the slot. From the first machine event on, the slot is kept at
+  least until the control plane accepts `gone`. An accepted `gone` frees the slot once
+  the dispatch has ended or is stale, and otherwise when the dispatch ends or goes stale.
+  A later machine end other than `gone`, a `dispatched` refused `409 lease_expired` or
+  `410 gone`, or a refused redemption of the run code takes a freed slot again, even over
+  the instance limit. A refused redemption counts only when all of these are true. It
+  comes through the gateway that the run code is bound to. The control plane still has
+  the run code; the control plane deletes the run code when the work is closed or undone.
+  The timestamp of the redemption is within 300 seconds of the clock of the control
+  plane, as the enrolment contract requires. The redemption is refused because the run
+  code expired, the run ended, or the dispatch is stale or ended. Its proof verifies. It
+  is within the limit of attempts with one run code, the limit of the signed 429
+  `rate_limited` of the enrolment contract; past that limit, the control plane records
+  nothing for the refusal. Neither `dispatched` nor a redemption of the run code was
+  accepted before for the dispatch. Such a refused redemption gets the same answer as an
+  unknown code, the unsigned 401 of the enrolment contract, past that limit too. An
   accepted `gone` never takes a slot, and after it no call takes the slot again. An
   accepted `dispatched` for a live dispatch takes no slot. The control plane frees a kept
   slot `max_lifetime_minutes` plus 60 minutes after the latest of the claim, the first
