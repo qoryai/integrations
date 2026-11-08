@@ -290,10 +290,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   diagnostics list, and shows it as it is. A bad parameter is refused with 400
   `invalid_request`. The refusal, `runs-refusal.schema.json`, contains the parameter's
   name in `parameter`. Version 1 changes only by adding members and row states, so the
-  schemas of the diagnostics contract accept a member they do not define. In Go, `DiagnosticsBase`, `DiagnosticsFS`,
-  `CompileDiagnostics` and `DiagnosticsDocument` are added. For the run list, Go adds
-  `RunList`, `RunListRow`, `RunListOrganisation`, `RunListWorkspace`,
-  `RunListRefusal`, `RunListInvalidRequest`, the parameter names
+  schemas of the diagnostics contract accept a member they do not define. In Go,
+  `DiagnosticsBase`, `DiagnosticsFS`, `CompileDiagnostics` and `DiagnosticsDocument`
+  are added. For the run list, Go adds `RunList`, `RunListRow`, `RunListOrganisation`,
+  `RunListWorkspace`, `RunListRefusal`, `RunListInvalidRequest`, the parameter names
   `RunListQueryWorkspace` to `RunListQueryLimit`, `RunListDefaultLimit` and
   `RunListMaxLimit`.
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
