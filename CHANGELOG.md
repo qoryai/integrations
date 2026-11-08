@@ -242,17 +242,45 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/dispatches/<dispatch_id>/machine-end`. The starter signs them with the pool's
   access key. The claim answer has the dispatch, its `lease_until`, the run code that the
   machine redeems and the gateway URL that the run code is bound to. A machine end has
-  the `state` `deleting`, `gone` or `delete_failed`, and a starter that never sends one
-  still works. A starter sends `gone` only when the machine adapter's delete call
-  returned that no machine with the id exists at the vendor. A claim may contain
-  `offers`: the machines the pool can create, each a `machine_spec` of vCPUs, memory,
-  disk, architecture and virtualization. The control plane gives a claim with offers only
-  work for a run whose machine type one offer fits. An answer to a claim with offers has
-  the run's machine type in `machine` and its spec in `machine_spec`, and an answer to a
-  claim without offers has neither. A dispatched may contain `machine_type`, the
-  vendor's type of the machine. In Go, `MachineEnd`, `MachineEndDeleting`,
-  `MachineEndGone`, `MachineEndDeleteFailed`, `MachineSpec` and `MachineSpec.Fits` are
-  added.
+  the `state` `deleting`, `gone` or `delete_failed`. A starter sends `gone` for every
+  dispatch for which the machine adapter's `make` returned a machine, every dispatch
+  whose release was refused `409 machine_exists`, and every dispatch that is the `key` of
+  a machine in an answer of `list`. It sends `gone` again until the control plane accepts
+  it, or until a signed 400, 403 or 404 refusal ends the attempts. A starter sends `gone`
+  when the machine adapter's delete call returned that no machine with the id exists at
+  the vendor, or when it has no record of a machine for the dispatch and a successful
+  answer of the machine adapter's `list`, received at or after `max_lifetime_minutes`
+  after the claim, contained no machine for the dispatch; a failed `list` is no proof. A
+  released dispatch may still get `gone` with no machine. When it had no earlier machine
+  event and no refusal took its slot again, its slot stays free; otherwise `gone` frees
+  it. `deleting` and `delete_failed` are optional. Each dispatch takes a slot of the node
+  pool's instance limit at the claim. A machine event is an accepted `dispatched`, the
+  machine's redemption of the run code, or an accepted machine end in any state; a
+  machine log is not one. Until the first machine event, the release, the lapse of the
+  lease or the end of the dispatch frees the slot. From the first machine event on, the
+  slot is kept at least until the control plane accepts `gone`. An accepted `gone` frees
+  the slot once the dispatch has ended or is stale, and otherwise when the dispatch ends
+  or goes stale. A later machine end other than `gone`, a `dispatched` refused
+  `409 lease_expired` or `410 gone`, or a refused redemption of the run code takes a
+  freed slot again, even over the instance limit. A refused redemption counts only when
+  all of these are true. Its proof verifies, and it comes through the gateway that the
+  run code is bound to. The run code was never redeemed, and the control plane still has
+  it; the control plane deletes the run code when the work is closed or undone. The
+  redemption is refused because the run code expired, the run ended, or the dispatch is
+  stale or ended. An accepted `gone` never takes a slot, and after it no call takes the
+  slot again. An accepted `dispatched` for a live dispatch takes no slot. The control
+  plane frees a kept slot `max_lifetime_minutes` plus 60 minutes after the latest of the
+  claim, the first accepted `dispatched`, the first accepted redemption, the last
+  accepted machine end, and the last refusal that took the slot again, even when no
+  `gone` arrives. A `dispatched` or a redemption sent again does not move that time. A
+  claim may contain `offers`: the machines the pool can create, each a `machine_spec` of
+  vCPUs, memory, disk, architecture and virtualization. The control plane gives a claim
+  with offers only work for a run whose machine type one offer fits. An answer to a claim
+  with offers has the run's machine type in `machine` and its spec in `machine_spec`, and
+  an answer to a claim without offers has neither. A dispatched may contain
+  `machine_type`, the vendor's type of the machine. In Go, `MachineEnd`,
+  `MachineEndDeleting`, `MachineEndGone`, `MachineEndDeleteFailed`, `MachineSpec` and
+  `MachineSpec.Fits` are added.
 - The machines contract, `contracts/machines/v1`: a machine adapter makes and deletes
   machines at one vendor, and the provisioner runs it as
   `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`
