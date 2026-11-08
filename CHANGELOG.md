@@ -263,11 +263,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   ended, takes a freed slot again, even over the instance limit. An accepted `gone` never
   takes a slot, and after it no call takes the slot again. An accepted `dispatched` for a
   live dispatch takes no slot. The control plane frees a kept slot `max_lifetime_minutes`
-  plus 60 minutes after the latest of the claim, the machine events, and each refused
-  `dispatched` or redemption that took the slot again, even when no `gone` arrives. A
-  claim may contain `offers`: the machines the pool can create, each a `machine_spec` of
-  vCPUs, memory, disk, architecture and virtualization. The control plane gives a claim
-  with offers only work for a run whose machine type one offer fits. An answer to a claim
+  plus 60 minutes after the latest of the claim, the machine events, and each
+  `dispatched` or redemption refused because the dispatch is stale or ended, even when
+  no `gone` arrives. A claim may contain `offers`: the machines the pool can create, each
+  a `machine_spec` of vCPUs, memory, disk, architecture and virtualization. The control
+  plane gives a claim with offers only work for a run whose machine type one offer fits.
+  An answer to a claim
   with offers has the run's machine type in `machine` and its spec in `machine_spec`, and
   an answer to a claim without offers has neither. A dispatched may contain
   `machine_type`, the vendor's type of the machine. In Go, `MachineEnd`,
