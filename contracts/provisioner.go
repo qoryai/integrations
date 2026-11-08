@@ -256,8 +256,8 @@ const (
 // number of times, before or after the dispatch ends, and is never refused 410 gone or
 // 409 lease_expired, because a machine usually ends after its dispatch. The starter
 // sends one call at a time for a dispatch: it sends the next only after the answer to
-// the one before, or after it gave that one up. The control plane applies the calls in the
-// order it receives them and compares no time, and every accepted call replaces the
+// the one before, or after it gave that one up. The control plane applies the calls in
+// the order it receives them and compares no time, and every accepted call replaces the
 // state. MachineEndGone is final: a later call changes nothing and still gets the
 // signed 204 with no body. A [MachineEndGone] after the time limit for a slot freed the
 // slot also gets the signed 204. A signed 400, 403 or 404 refusal ends the starter's
