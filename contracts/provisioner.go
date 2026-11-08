@@ -172,12 +172,12 @@ type External struct {
 // working at that moment. Before the first machine event of the dispatch, as
 // claim.schema.json defines it, the release frees the slot the dispatch took at the
 // claim. Of the machine events, only a machine end can come before an accepted release.
-// From the first machine event on, the dispatch keeps the slot until the control plane
-// accepts a machine end with the state [MachineEndGone] for the dispatch,
-// machine-end.schema.json, or until the control plane frees it under the time limit for
-// a slot, as claim.schema.json describes. The control plane may give the work to
-// another claim; no member of the release changes that. After dispatched, a release is
-// refused 409 machine_exists. Once the run code is redeemed, a release is refused 409
+// After an accepted release that follows a machine event, the dispatch keeps the slot
+// until the control plane accepts a machine end with the state [MachineEndGone] for the
+// dispatch, machine-end.schema.json, or until the control plane frees it under the time
+// limit for a slot, as claim.schema.json describes. The control plane may give the work
+// to another claim; no member of the release changes that. After dispatched, a release
+// is refused 409 machine_exists. Once the run code is redeemed, a release is refused 409
 // machine_exists even before dispatched, because a machine exists. A release and a
 // redemption of the same dispatch take effect one after the other, never both. A
 // release that takes effect first makes the run code unusable. After a redemption that
@@ -252,8 +252,8 @@ const (
 // dispatch then keeps it at least until the control plane accepts [MachineEndGone].
 // Such a machine end still gets the signed 204. An accepted [MachineEndGone] never takes
 // a slot, and after an accepted [MachineEndGone] no call takes the slot again. Even
-// when no [MachineEndGone] arrives,
-// the control plane frees the slot under the time limit for a slot, claim.schema.json.
+// when no [MachineEndGone] arrives, the control plane frees the slot under the time
+// limit for a slot, claim.schema.json.
 // That limit is MaxLifetimeMinutes of the [ClaimAnswer] plus 60 minutes after the latest
 // of the claim, the first accepted dispatched, the first accepted redemption of the run
 // code, the last accepted machine end, and the last refusal that took the slot again. A
