@@ -25,7 +25,6 @@
         "slug": "example"
       },
       "workflow": "hello",
-      "work_item": "wi_example-8",
       "work_item_number": 8,
       "work_item_title": "Update the README",
       "state": "running",

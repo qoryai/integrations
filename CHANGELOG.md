@@ -279,20 +279,23 @@ change what an existing reader or program relies on, and notes it under Upgradin
   found in a machine log are present only when the document has the machine logs. The
   redacted fields of the run never appear as fields, and variables appear by name only.
   The run list, `contracts/diagnostics/v1/runs.schema.json`, is one page of the runs of
-  the instance in the 200 response to `GET /v1/runs`, a request signed with a
-  diagnostics key, the last run created first. The query parameters `workspace`
-  (`<organisation>/<workspace>`), `work_item` (a work item number, only with
-  `workspace`), `workflow`, `state` and `since` select the runs, `before` is the `next`
-  of the previous page, and `limit` is 1 to 100, 25 by default. Each row contains the
-  run's id, number, organisation, workspace, workflow, work item id, number and title,
-  state, reason, `created_at`, `started_at` and `duration_seconds`. A bad parameter is
-  refused with 400 `invalid_request`, and the refusal, `runs-refusal.schema.json`,
-  contains the parameter's name in `parameter`. Version 1 changes only by adding
-  members, so the schemas of the diagnostics contract accept a member they do not
-  define. In Go, `DiagnosticsBase`, `DiagnosticsFS`, `CompileDiagnostics` and
-  `DiagnosticsDocument` are added, and for the run list `RunList`, `RunListRow`,
-  `RunListRefusal`, the parameter names `RunListQueryWorkspace` to
-  `RunListQueryLimit`, `RunListDefaultLimit` and `RunListMaxLimit`.
+  the instance in the 200 answer to `GET /v1/runs`. The request is signed with a
+  diagnostics key. The rows are ordered by `created_at`, the last first, then by id,
+  the greatest first. The query parameters `workspace` (`<organisation>/<workspace>`),
+  `work_item` (a work item number, only with `workspace`), `workflow`, `state` and
+  `since` select the runs. `before` is the `next` of the previous page. `limit` is 1 to
+  100, 25 by default. Each row contains the run's id, number, organisation, workspace,
+  workflow, work item number and title, state, reason, `created_at`, `started_at` and
+  `duration_seconds`. A reader accepts a `state` that the row's list does not contain,
+  and shows it as it is. A bad parameter is refused with 400 `invalid_request`. The
+  refusal, `runs-refusal.schema.json`, contains the parameter's name in `parameter`.
+  Version 1 changes only by adding members, so the schemas of the diagnostics contract
+  accept a member they do not define. In Go, `DiagnosticsBase`, `DiagnosticsFS`,
+  `CompileDiagnostics` and `DiagnosticsDocument` are added. For the run list, Go adds
+  `RunList`, `RunListRow`, `RunListOrganisation`, `RunListWorkspace`,
+  `RunListRefusal`, `RunListInvalidRequest`, the parameter names
+  `RunListQueryWorkspace` to `RunListQueryLimit`, `RunListDefaultLimit` and
+  `RunListMaxLimit`.
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,

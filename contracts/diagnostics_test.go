@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"path"
 	"slices"
@@ -79,16 +82,21 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 		"leaked-secret-access-key-with-run-id.json":           {"diagnostics", "/leaked_secrets/0/id pattern"},
 		"runs-run-id-prefix.json":                             {"runs", "/runs/0/id pattern"},
 		"runs-without-state.json":                             {"runs", "/runs/0 required state"},
-		"runs-unknown-state.json":                             {"runs", "/runs/0/state enum"},
+		"runs-state-upper-case.json":                          {"runs", "/runs/0/state pattern"},
+		"runs-number-0.json":                                  {"runs", "/runs/0/number minimum"},
+		"runs-work-item-number-0.json":                        {"runs", "/runs/0/work_item_number minimum"},
+		"runs-work-item-number-alone.json":                    {"runs", "/runs/0 dependentRequired/work_item_number"},
+		"runs-work-item-title-alone.json":                     {"runs", "/runs/0 dependentRequired/work_item_title"},
+		"runs-duration-without-started-at.json":               {"runs", "/runs/0 dependentRequired/duration_seconds"},
 		"runs-next-workspace-id.json":                         {"runs", "/next type; /next pattern"},
 		"runs-negative-duration.json":                         {"runs", "/runs/0/duration_seconds minimum"},
 		"runs-work-item-title-1025-characters.json":           {"runs", "/runs/0/work_item_title maxLength"},
-		"runs-work-item-id-alone.json":                        {"runs", "/runs/0 dependentRequired/work_item"},
 		"runs-101-rows.json":                                  {"runs", "/runs maxItems"},
 		"runs-empty-with-next.json":                           {"runs", "/next type"},
 		"runs-without-next.json":                              {"runs", "/ required next"},
 		"runs-refusal-invalid-request-without-parameter.json": {"runs-refusal", "/ required parameter"},
 		"runs-refusal-parameter-with-unauthorized.json":       {"runs-refusal", "/ "},
+		"runs-refusal-parameter-65-characters.json":           {"runs-refusal", "/parameter pattern"},
 	}
 	got := treeFiles(t, contracts.DiagnosticsFS, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -115,8 +123,8 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestDiagnosticsAcceptMembersTheSchemaDoesNotDefine pins that version 1 of the run
-// diagnostics changes only by adding members: no object of the schema sets
+// TestDiagnosticsAcceptMembersTheSchemaDoesNotDefine pins that version 1 of the
+// diagnostics contract changes only by adding members: no object of its schemas sets
 // additionalProperties to false, and each valid fixture with a member added to every
 // object in it, the top level included, is still accepted.
 func TestDiagnosticsAcceptMembersTheSchemaDoesNotDefine(t *testing.T) {
@@ -176,8 +184,8 @@ func TestDiagnosticsAcceptMembersTheSchemaDoesNotDefine(t *testing.T) {
 	}
 }
 
-// diagnosticsTypes are the Go type of each schema of the diagnostics contract that has
-// one, by the name of its fixture folder.
+// diagnosticsTypes are the Go types of the schemas of the diagnostics contract that
+// have one, each by the name of its fixture folder.
 var diagnosticsTypes = map[string]func() any{
 	"runs":         func() any { return &contracts.RunList{} },
 	"runs-refusal": func() any { return &contracts.RunListRefusal{} },
@@ -254,13 +262,14 @@ func TestRunListTypesMarshalToTheirSchemas(t *testing.T) {
 			t.Errorf("%T is written as %s, want %s", c.v, b, c.want)
 		}
 		if err := validate(compileDiagnostics(t, c.schema+".schema.json"), b); err != nil {
-			t.Errorf("%T marshals to %s, which %s.schema.json refuses: %v", c.v, b, c.schema, err)
+			t.Errorf("%T marshals to %s, which fails %s.schema.json: %v", c.v, b, c.schema, err)
 		}
 	}
 }
 
 // TestARunListHasAtMostRunListMaxLimitRows pins that runs.schema.json accepts
-// RunListMaxLimit rows and refuses one more, and that the default limit is within it.
+// RunListMaxLimit rows and that one more fails it, and that the default limit is
+// within it.
 func TestARunListHasAtMostRunListMaxLimitRows(t *testing.T) {
 	if contracts.RunListDefaultLimit < 1 || contracts.RunListDefaultLimit > contracts.RunListMaxLimit {
 		t.Errorf("RunListDefaultLimit is %d, want 1 to %d", contracts.RunListDefaultLimit, contracts.RunListMaxLimit)
@@ -287,18 +296,73 @@ func TestARunListHasAtMostRunListMaxLimitRows(t *testing.T) {
 	}
 }
 
-// TestRunListStatesAreTheRunStates pins that a row accepts each run state of the run
-// diagnostics, and that the description of runs.schema.json describes each query
-// parameter by the name of its constant.
+// TestRunListStatesAreTheRunStates pins that the states of run_state in
+// diagnostics.schema.json are the states that the state of a row in runs.schema.json
+// and the RunListQueryState comment list, and that a row accepts each of them.
 func TestRunListStatesAreTheRunStates(t *testing.T) {
+	doc, err := contracts.DiagnosticsDocument("diagnostics.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var states []string
+	for _, s := range doc.(map[string]any)["$defs"].(map[string]any)["run_state"].(map[string]any)["enum"].([]any) {
+		states = append(states, s.(string))
+	}
+	if len(states) == 0 {
+		t.Fatal("run_state in diagnostics.schema.json lists no state")
+	}
+	runs, err := contracts.DiagnosticsDocument("runs.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := runs.(map[string]any)["$defs"].(map[string]any)["row"].(map[string]any)
+	description, _ := row["properties"].(map[string]any)["state"].(map[string]any)["description"].(string)
+	comment := constComment(t, "diagnostics.go", "RunListQueryState")
 	schema := compileDiagnostics(t, "runs.schema.json")
-	for _, s := range []string{"pending", "running", "completed", "failed", "cancelled", "lost"} {
+	for _, s := range states {
+		if !strings.Contains(description, s) {
+			t.Errorf("the state of a row in runs.schema.json does not list %s", s)
+		}
+		if !strings.Contains(comment, s) {
+			t.Errorf("the RunListQueryState comment does not list %s", s)
+		}
 		b := fmt.Appendf(nil, `{"runs":[{"id":"rn_0123456789abcdeh","number":1,"organisation":{"slug":"example-org"},`+
 			`"workspace":{"id":"ws_0123456789abcdef","slug":"example"},"state":%q,"created_at":"2026-11-01T10:00:00Z"}],"next":null}`, s)
 		if err := validate(schema, b); err != nil {
-			t.Errorf("the state %s is refused: %v", s, err)
+			t.Errorf("the state %s fails runs.schema.json: %v", s, err)
 		}
 	}
+}
+
+// constComment returns the doc comment of the constant name in the file of this package
+// at file, or fails the test.
+func constComment(t *testing.T, file, name string) string {
+	t.Helper()
+	f, err := parser.ParseFile(token.NewFileSet(), file, nil, parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range f.Decls {
+		g, ok := d.(*ast.GenDecl)
+		if !ok || g.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range g.Specs {
+			v := spec.(*ast.ValueSpec)
+			for _, n := range v.Names {
+				if n.Name == name && v.Doc != nil {
+					return v.Doc.Text()
+				}
+			}
+		}
+	}
+	t.Fatalf("%s has no constant %s with a doc comment", file, name)
+	return ""
+}
+
+// TestRunListDescribesEachQueryParameter pins that the description of runs.schema.json
+// describes each query parameter by the name of its constant.
+func TestRunListDescribesEachQueryParameter(t *testing.T) {
 	doc, err := contracts.DiagnosticsDocument("runs.schema.json")
 	if err != nil {
 		t.Fatal(err)
@@ -312,5 +376,34 @@ func TestRunListStatesAreTheRunStates(t *testing.T) {
 		if !strings.Contains(description, " "+p+": ") {
 			t.Errorf("runs.schema.json does not describe the parameter %s", p)
 		}
+	}
+}
+
+// TestRunListEdgesAreAccepted pins the largest values that the run list and its refusal
+// accept: a work item title of 1024 characters and a parameter name of 64.
+func TestRunListEdgesAreAccepted(t *testing.T) {
+	var zero int64
+	list := contracts.RunList{Runs: []contracts.RunListRow{{
+		ID: "rn_0123456789abcdeh", Number: 1,
+		Organisation:   contracts.RunListOrganisation{Slug: "example-org"},
+		Workspace:      contracts.RunListWorkspace{ID: "ws_0123456789abcdef", Slug: "example"},
+		WorkItemNumber: 1, WorkItemTitle: strings.Repeat("x", 1024),
+		State: "running", CreatedAt: "2026-11-01T10:00:00Z", StartedAt: "2026-11-01T10:00:00Z",
+		DurationSeconds: &zero,
+	}}}
+	b, err := json.Marshal(list)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(compileDiagnostics(t, "runs.schema.json"), b); err != nil {
+		t.Errorf("a work item title of 1024 characters fails runs.schema.json: %v", err)
+	}
+	name := strings.Repeat("p", 64)
+	b, err = json.Marshal(contracts.RunListRefusal{Error: contracts.RunListInvalidRequest, Parameter: &name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(compileDiagnostics(t, "runs-refusal.schema.json"), b); err != nil {
+		t.Errorf("a parameter of 64 characters fails runs-refusal.schema.json: %v", err)
 	}
 }

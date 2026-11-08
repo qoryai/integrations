@@ -141,11 +141,11 @@
 // GET /v1/runs/<run id>/diagnostics and the text that Copy diagnostics on the run page
 // copies. The run diagnostics are a document, not a request, and are not signed. The
 // contract also contains the run list, runs.schema.json, [RunList]: the body of the 200
-// response to GET /v1/runs, one page of the runs of the instance, the last one created
-// first, and its refusal, runs-refusal.schema.json, [RunListRefusal]. Both routes take a
-// request signed with a diagnostics key. Version 1 changes only by adding members, so
-// the schemas of the diagnostics contract accept a member they do not define, unlike the
-// other contracts.
+// answer to GET /v1/runs, one page of the runs of the instance, the last one created
+// first, and its refusal, runs-refusal.schema.json, [RunListRefusal]. GET /v1/runs and
+// GET /v1/runs/<run id>/diagnostics both take a request signed with a diagnostics key.
+// Version 1 changes only by adding members, so the schemas of the diagnostics contract
+// accept a member they do not define, unlike the other contracts.
 //
 // Each schema's $id is [Base] followed by the file's path under integration/v1,
 // [ProvisionerBase] followed by its path under provisioner/v1, [RunBase] followed by
