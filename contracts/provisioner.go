@@ -248,10 +248,11 @@ const (
 // slot is freed when the dispatch ends or goes stale. Before the first machine event,
 // the release, the lapse of the lease or the end of the dispatch frees the slot, as
 // claim.schema.json describes. An accepted machine end other than [MachineEndGone] takes
-// a freed slot again until the control plane accepts [MachineEndGone], even when the
-// node pool is then over its instance limit. Such a machine end still gets the signed
-// 204. An accepted [MachineEndGone] never takes a slot, and after an accepted
-// [MachineEndGone] no call takes the slot again. Even when no [MachineEndGone] arrives,
+// a freed slot again, even when the node pool is then over its instance limit; the
+// dispatch then keeps it at least until the control plane accepts [MachineEndGone].
+// Such a machine end still gets the signed 204. An accepted [MachineEndGone] never takes
+// a slot, and after an accepted [MachineEndGone] no call takes the slot again. Even
+// when no [MachineEndGone] arrives,
 // the control plane frees the slot under the time limit for a slot, claim.schema.json.
 // That limit is MaxLifetimeMinutes of the [ClaimAnswer] plus 60 minutes after the latest
 // of the claim, the first accepted dispatched, the first accepted redemption of the run
