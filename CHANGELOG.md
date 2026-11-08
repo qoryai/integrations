@@ -242,10 +242,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/dispatches/<dispatch_id>/machine-end`. The starter signs them with the pool's
   access key. The claim answer has the dispatch, its `lease_until`, the run code that the
   machine redeems and the gateway URL that the run code is bound to. A machine end has
-  the `state` `deleting`, `gone` or `delete_failed`, and a starter that never sends one
-  still works. A starter sends `gone` only when the machine adapter's delete call
-  returned that no machine with the id exists at the vendor. A claim may contain
-  `offers`: the machines the pool can create, each a `machine_spec` of vCPUs, memory,
+  the `state` `deleting`, `gone` or `delete_failed`. A starter sends `gone` for every
+  dispatch it claimed, and sends it again until the control plane accepts it. The
+  control plane counts the dispatch against the node pool's instance limit until it
+  accepts `gone`. A starter sends `gone` when the machine adapter's delete call returned
+  that no machine with the id exists at the vendor, or when the starter has no record of
+  a machine for the dispatch. `deleting` and `delete_failed` are optional. A claim may
+  contain `offers`: the machines the pool can create, each a `machine_spec` of vCPUs, memory,
   disk, architecture and virtualization. The control plane gives a claim with offers only
   work for a run whose machine type one offer fits. An answer to a claim with offers has
   the run's machine type in `machine` and its spec in `machine_spec`, and an answer to a

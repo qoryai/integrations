@@ -199,9 +199,13 @@ type MachineLog struct {
 // The states of a [MachineEnd], machine-end.schema.json. MachineEndDeleting: the
 // starter's delete call was accepted, and the machine may still exist. MachineEndGone:
 // the machine adapter's delete call returned that no machine with the id exists at the
-// vendor, [MachineGone]. A missing entry in a list is no proof, because a vendor's list
-// can lag. MachineEndDeleteFailed: the delete call failed, and as far as the starter
-// knows the machine still exists.
+// vendor, [MachineGone], or the starter has no record of a machine for the dispatch: it
+// made none, it never learned the machine's id, or no [MachinesListAnswer] contained a
+// machine with the dispatch in Key by the end of the machine's lifetime, the
+// MaxLifetimeMinutes of the [ClaimAnswer]. For a machine whose id the starter has, a
+// missing entry in a list is no proof that the machine is gone, because a vendor's list
+// can lag. MachineEndDeleteFailed: the delete call failed, and the starter treats the
+// machine as still existing.
 const (
 	MachineEndDeleting     = "deleting"
 	MachineEndGone         = "gone"
@@ -210,22 +214,30 @@ const (
 
 // MachineEnd is the body of POST /v1/dispatches/<dispatch_id>/machine-end,
 // machine-end.schema.json: the starter reports the result of deleting the machine it
-// created for the dispatch. A dispatch for which it made no machine, or whose machine id
-// it never learned, gets no call. The starter sends the call after its delete call,
-// repeats the delete call until that call returns gone, and then sends
-// [MachineEndGone]. The call may come any number of times, before or after the dispatch
-// ends, and is never refused 410 gone or 409 lease_expired, because a machine usually
-// ends after its dispatch. The starter sends one call at a time for a dispatch: it sends
-// the next only after the answer to the one before, or after it gave that one up. The
-// control plane applies the calls in the order it receives them and compares no time,
-// and every accepted call replaces the state. MachineEndGone is final: a later call
-// changes nothing and still gets the signed 204 with no body. The call is optional for a
-// starter. A signed 403 or 404 ends the starter's attempts to send this call for the
-// dispatch; the delete calls go on. After any other failure, an unsigned answer among
-// them, the starter sends the call again for a limited time and then drops it, because
-// the call is optional. The starter counts a machine against its limit of machines only
-// until the delete call returns gone, whatever the answers to this call, so a control
-// plane without the route blocks no machine.
+// created for the dispatch, or that it has no record of a machine for the dispatch. The
+// starter sends the call for a machine it created for the dispatch, and for no other
+// machine. It also sends [MachineEndGone] for a dispatch for which it has no record of
+// a machine, in the cases that [MachineEndGone] lists. The starter sends the call after
+// its delete call, repeats the delete call until that call returns gone, and then sends
+// [MachineEndGone]. The starter sends [MachineEndGone] for every dispatch it claimed,
+// once the dispatch's machine is gone or once it has no record of a machine for the
+// dispatch. The control plane counts the dispatch against the node pool's instance
+// limit until it accepts [MachineEndGone] for the dispatch. [MachineEndDeleting] and
+// [MachineEndDeleteFailed] are optional. The call may come any number of times, before
+// or after the dispatch ends, and is never refused 410 gone or 409 lease_expired,
+// because a machine usually ends after its dispatch. The starter sends one call at a
+// time for a dispatch: it sends the next only after the answer to the one before, or
+// after it gave that one up. The control plane applies the calls in the order it
+// receives them and compares no time, and every accepted call replaces the state.
+// MachineEndGone is final: a later call changes nothing and still gets the signed 204 with no body. A signed 400, 403 or 404
+// refusal ends the starter's attempts to send this call for the dispatch, because the
+// same call sent again cannot succeed; the delete calls go on. After any other failure
+// to send [MachineEndGone], an unsigned answer among them, the starter sends it again,
+// built anew, with no time limit, until the control plane accepts it with the signed
+// 204. After any other failure to send [MachineEndDeleting] or
+// [MachineEndDeleteFailed], the starter may send that state again for a limited time,
+// and then drops it. The starter counts a machine against its limit of machines only
+// until the delete call returns gone, whatever the answers to this call.
 type MachineEnd struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
