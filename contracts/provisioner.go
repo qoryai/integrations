@@ -225,48 +225,53 @@ const (
 // MachineEnd is the body of POST /v1/dispatches/<dispatch_id>/machine-end,
 // machine-end.schema.json: the starter reports the result of deleting the machine it
 // created for the dispatch, or that it has no record of a machine for the dispatch. The
-// starter sends the call only for the machine that it created for the dispatch, or,
-// with the state [MachineEndGone], for a dispatch for which it has no record of a
-// machine. For a machine that the starter has, it sends the call after its delete call,
-// repeats the delete call until that call returns gone, and then sends
-// [MachineEndGone]. The starter sends [MachineEndGone] for every dispatch for which the
-// command make, [MachinesMakeAnswer], returned a machine, every dispatch whose
-// [Release] was refused 409 machine_exists, and every dispatch that is the Key of a
-// [Machine] in a [MachinesListAnswer]. It sends [MachineEndGone] once the dispatch's
-// machine is gone or once the no-record case of [MachineEndGone] applies. In the
-// no-record case, a successful [MachinesListAnswer], received at or after the
-// MaxLifetimeMinutes of the [ClaimAnswer] after the claim, contained no machine with
-// the dispatch in Key. A failed list call is no proof. A released dispatch may still
-// get [MachineEndGone] with no machine; the control plane accepts it with the signed
-// 204. When the dispatch had no machine event, its slot stays free. From the first
-// machine event of the dispatch, as claim.schema.json defines it, the dispatch keeps
-// the slot it took at the claim until the control plane accepts [MachineEndGone] for
-// the dispatch. Before the first machine event, the release, the lapse of the lease or
-// the end of the dispatch frees the slot, as claim.schema.json describes. An accepted
-// machine end other than [MachineEndGone] takes a freed slot again until the control
-// plane accepts [MachineEndGone], even when the node pool is then over its instance
-// limit. Such a machine end still gets the signed 204. An accepted [MachineEndGone]
-// never takes a slot, and after an accepted [MachineEndGone] no call takes the slot
-// again. Even when no [MachineEndGone] arrives, the control plane frees the slot under
-// the time limit for a slot, claim.schema.json: MaxLifetimeMinutes of the [ClaimAnswer]
-// plus 60 minutes after the latest of the claim, the machine events of the dispatch,
-// and each dispatched or redemption refused because the dispatch is stale or ended. The
-// starter has no limit on machines other than the node pool's instance limit.
-// [MachineEndDeleting] and [MachineEndDeleteFailed] are optional. The call may come any
-// number of times, before or after the dispatch ends, and is never refused 410 gone or
-// 409 lease_expired, because a machine usually ends after its dispatch. The starter
-// sends one call at a time for a dispatch: it sends the next only after the answer to
-// the one before, or after it gave that one up. The control plane applies the calls in
-// the order it receives them and compares no time, and every accepted call replaces the
-// state. MachineEndGone is final: a later call changes nothing and still gets the
-// signed 204 with no body. A [MachineEndGone] after the time limit for a slot freed the
-// slot also gets the signed 204. A signed 400, 403 or 404 refusal ends the starter's
-// attempts to send this call for the dispatch, because the same call sent again cannot
-// succeed; the delete calls go on. After any other failure to send [MachineEndGone], an
-// unsigned answer among them, the starter keeps sending [MachineEndGone], each send
-// built anew, until the control plane accepts it with the signed 204. After any other
-// failure to send [MachineEndDeleting] or [MachineEndDeleteFailed], the starter may
-// send that state again for a limited time, and then drops it.
+// starter sends the call only for the machine that it created for the dispatch, or, with
+// the state [MachineEndGone], for a dispatch for which it has no record of a machine.
+// For a machine that the starter has, it sends the call after its delete call, repeats
+// the delete call until that call returns gone, and then sends [MachineEndGone]. The
+// starter sends [MachineEndGone] for every dispatch for which the command make,
+// [MachinesMakeAnswer], returned a machine, every dispatch whose [Release] was refused
+// 409 machine_exists, and every dispatch that is the Key of a [Machine] in a
+// [MachinesListAnswer]. It sends [MachineEndGone] once the dispatch's machine is gone or
+// once the no-record case of [MachineEndGone] applies. In the no-record case, a
+// successful [MachinesListAnswer], received at or after the MaxLifetimeMinutes of the
+// [ClaimAnswer] after the claim, contained no machine with the dispatch in Key. A failed
+// list call is no proof. A released dispatch may still get [MachineEndGone] with no
+// machine; the control plane accepts it with the signed 204. When the dispatch had no
+// machine event, its slot stays free. From the first machine event of the dispatch, as
+// claim.schema.json defines it, the dispatch keeps the slot it took at the claim until
+// the control plane accepts [MachineEndGone] for the dispatch. An accepted
+// [MachineEndGone] frees the slot once the dispatch has ended or is stale, whether or
+// not dispatched or a machine end with the state deleting came first. Until then, the
+// dispatch keeps the slot, and the slot is freed when the dispatch ends. Before the
+// first machine event, the release, the lapse of the lease or the end of the dispatch
+// frees the slot, as claim.schema.json describes. An accepted machine end other than
+// [MachineEndGone] takes a freed slot again until the control plane accepts
+// [MachineEndGone], even when the node pool is then over its instance limit. Such a
+// machine end still gets the signed 204. An accepted [MachineEndGone] never takes a
+// slot, and after an accepted [MachineEndGone] no call takes the slot again. Even when
+// no [MachineEndGone] arrives, the control plane frees the slot under the time limit for
+// a slot, claim.schema.json: MaxLifetimeMinutes of the [ClaimAnswer] plus 60 minutes
+// after the latest of the claim, the first accepted dispatched, the first accepted
+// redemption of the run code, the last accepted machine end, and the last refusal that
+// took the slot again. A dispatched or a redemption sent again does not move the time
+// limit, because only the first accepted one counts. The starter has no limit on
+// machines other than the node pool's instance limit. [MachineEndDeleting] and
+// [MachineEndDeleteFailed] are optional. The call may come any number of times, before
+// or after the dispatch ends, and is never refused 410 gone or 409 lease_expired,
+// because a machine usually ends after its dispatch. The starter sends one call at a
+// time for a dispatch: it sends the next only after the answer to the one before, or
+// after it gave that one up. The control plane applies the calls in the order it
+// receives them and compares no time, and every accepted call replaces the state.
+// MachineEndGone is final: a later call changes nothing and still gets the signed 204
+// with no body. A [MachineEndGone] after the time limit for a slot freed the slot also
+// gets the signed 204. A signed 400, 403 or 404 refusal ends the starter's attempts to
+// send this call for the dispatch, because the same call sent again cannot succeed; the
+// delete calls go on. After any other failure to send [MachineEndGone], an unsigned
+// answer among them, the starter keeps sending [MachineEndGone], each send built anew,
+// until the control plane accepts it with the signed 204. After any other failure to
+// send [MachineEndDeleting] or [MachineEndDeleteFailed], the starter may send that state
+// again for a limited time, and then drops it.
 type MachineEnd struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
