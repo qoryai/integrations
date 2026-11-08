@@ -82,8 +82,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   account: the first line `<author_name> wrote in Qory Apiary:`, then an empty line, then
   `body` unchanged. The control plane sends `author_name` as it is, with no escaping.
   Write it in that line as plain text: escape each character or sequence that the format
-  would read as markup or as a mention in the format of the source's comments, such as a
-  code fence for a source whose comments are Markdown. Keep the escaped name, the rest of
+  of the source's comments would read as markup or as a mention, such as a code fence for
+  a source whose comments are Markdown. Keep the escaped name, the rest of
   the first line, the two line breaks and the mark at most 536 characters together: the
   room that `body` leaves of the 65536 characters of a comment. Put a mark that contains
   the `comment_id` in the posted comment, in a form that the source keeps and that, where
@@ -179,8 +179,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a form that the source keeps and that, where the source allows, people who read the
   comment do not see. The control plane sends `author_name` as it is, with no escaping.
   The adapter writes it in the first line as plain text: it escapes each character or
-  sequence that the format would read as markup or as a mention in the format of the
-  source's comments. The escaped name, the rest of the first line, the two line breaks
+  sequence that the format of the source's comments would read as markup or as a
+  mention. The escaped name, the rest of the first line, the two line breaks
   and the mark are at most 536 characters together: the room that `body` leaves of the
   65536 characters of a comment. Before it posts, it checks the item for a comment with
   that mark, so it posts at most one comment per `comment_id`, and the comment of a post
