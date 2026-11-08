@@ -268,7 +268,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   in from an item at a source.
 - The diagnostics contract, `contracts/diagnostics/v1/diagnostics.schema.json`: the run
   diagnostics, the document that the control plane returns about one run in the 200
-  response to `GET /v1/runs/<run id>/diagnostics`, and that **Copy diagnostics** on the
+  answer to `GET /v1/runs/<run id>/diagnostics`, and that **Copy diagnostics** on the
   run page copies. It contains the run, its queue entry, its dispatch, the steps of its
   preparation and why the preparation stopped, the run's last events and terminal
   output, and, for an instance admin and a diagnostics key only, the machine logs.
@@ -286,8 +286,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `since` select the runs. `before` is the `next` of the previous page. `limit` is 1 to
   100, 25 by default. Each row contains the run's id, number, organisation, workspace,
   workflow, work item number and title, state, reason, `created_at`, `started_at` and
-  `duration_seconds`. A reader accepts a `state` that the row's list does not contain,
-  and shows it as it is. A bad parameter is refused with 400 `invalid_request`. The
+  `duration_seconds`. A reader accepts a `state` other than the six that the run
+  diagnostics list, and shows it as it is. A bad parameter is refused with 400 `invalid_request`. The
   refusal, `runs-refusal.schema.json`, contains the parameter's name in `parameter`.
   Version 1 changes only by adding members, so the schemas of the diagnostics contract
   accept a member they do not define. In Go, `DiagnosticsBase`, `DiagnosticsFS`,

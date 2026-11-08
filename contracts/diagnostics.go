@@ -5,11 +5,11 @@ import "encoding/json"
 // The query parameters of GET /v1/runs, the run list, diagnostics/v1 runs.schema.json.
 // The request is signed with a diagnostics key, as GET /v1/runs/<run id>/diagnostics is.
 // Every parameter is optional and appears at most once, and each row of the answer
-// matches every parameter in the request. A work_item, workflow or state that no run
-// has gives an empty Runs. A parameter that is not one of these, a parameter given
-// twice, an empty value or a value outside its rule is refused with 400 and a
-// [RunListRefusal] whose Error is [RunListInvalidRequest] and whose Parameter is the
-// parameter's name.
+// matches every parameter in the request. If no run has the work_item, workflow or
+// state of the request, runs is empty. A parameter that is not one of these, a
+// parameter given twice, an empty value or a value outside its rule is refused with 400
+// and a [RunListRefusal] whose Error is [RunListInvalidRequest] and whose Parameter is
+// the parameter's name.
 const (
 	// RunListQueryWorkspace selects the runs of one workspace, as
 	// <organisation>/<workspace>: the two slugs, such as example-org/example. A
@@ -31,8 +31,8 @@ const (
 	RunListQuerySince = "since"
 	// RunListQueryBefore is the [RunList] Next of the previous page, a run id. The rows
 	// are ordered by created_at, the last first, then by id, the greatest first. before
-	// selects the runs whose created_at is earlier than that run's, or the same with a
-	// smaller id. The id of no run is refused.
+	// selects the runs whose created_at is earlier than the created_at of the run whose
+	// id is before, or equal to it with a smaller id. The id of no run is refused.
 	RunListQueryBefore = "before"
 	// RunListQueryLimit is the most rows in the answer, from 1 to [RunListMaxLimit],
 	// [RunListDefaultLimit] when absent.
@@ -71,12 +71,12 @@ func (l RunList) MarshalJSON() ([]byte, error) {
 }
 
 // RunListRow is one run of a [RunList]. Where run in diagnostics.schema.json has a
-// member for the same value, the row uses its name and definition. State is the one
-// exception, with a wider definition. Workflow is empty when the run starts no workflow.
-// WorkItemNumber and WorkItemTitle are both set when the run is for a work item, and
-// both zero otherwise. Reason is empty when the run has no reason. CreatedAt is when Qory
-// Apiary created the run. StartedAt is empty when the run has not started. Times are RFC
-// 3339 in UTC with whole seconds.
+// member for the same value, the row uses its name and definition. State and Workspace
+// differ: State accepts more values, and Workspace also has Slug. Workflow is empty when
+// the run starts no workflow. WorkItemNumber and WorkItemTitle are both set when the
+// run is for a work item, and both zero otherwise. Reason is empty when the run has no
+// reason. CreatedAt is when Qory Apiary created the run. StartedAt is empty when the run
+// has not started. Times are RFC 3339 in UTC with whole seconds.
 //
 // State is the run's state, 1 to 32 lower-case letters and underscores. The states
 // written today are pending, running, completed, failed, cancelled and lost. A reader

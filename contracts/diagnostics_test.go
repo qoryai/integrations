@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"math"
 	"path"
 	"slices"
 	"strings"
@@ -84,6 +85,7 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 		"runs-without-state.json":                             {"runs", "/runs/0 required state"},
 		"runs-state-upper-case.json":                          {"runs", "/runs/0/state pattern"},
 		"runs-number-0.json":                                  {"runs", "/runs/0/number minimum"},
+		"runs-number-above-int64.json":                        {"runs", "/runs/0/number maximum"},
 		"runs-work-item-number-0.json":                        {"runs", "/runs/0/work_item_number minimum"},
 		"runs-work-item-number-alone.json":                    {"runs", "/runs/0 dependentRequired/work_item_number"},
 		"runs-work-item-title-alone.json":                     {"runs", "/runs/0 dependentRequired/work_item_title"},
@@ -296,9 +298,10 @@ func TestARunListHasAtMostRunListMaxLimitRows(t *testing.T) {
 	}
 }
 
-// TestRunListStatesAreTheRunStates pins that the states of run_state in
-// diagnostics.schema.json are the states that the state of a row in runs.schema.json
-// and the RunListQueryState comment list, and that a row accepts each of them.
+// TestRunListStatesAreTheRunStates pins that each state of run_state in
+// diagnostics.schema.json is listed in the state of a row and the parameter state in
+// runs.schema.json, in the RunListQueryState comment and in the State paragraph of the
+// RunListRow comment, and that a row accepts each of them.
 func TestRunListStatesAreTheRunStates(t *testing.T) {
 	doc, err := contracts.DiagnosticsDocument("diagnostics.schema.json")
 	if err != nil {
@@ -316,15 +319,28 @@ func TestRunListStatesAreTheRunStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	row := runs.(map[string]any)["$defs"].(map[string]any)["row"].(map[string]any)
-	description, _ := row["properties"].(map[string]any)["state"].(map[string]any)["description"].(string)
-	comment := constComment(t, "diagnostics.go", "RunListQueryState")
+	top, _ := runs.(map[string]any)["description"].(string)
+	_, parameter, _ := strings.Cut(top, " state: ")
+	parameter, _, _ = strings.Cut(parameter, ". ")
+	_, paragraph, _ := strings.Cut(declComment(t, "diagnostics.go", "RunListRow"), "State is the run's state")
+	paragraph, _, _ = strings.Cut(paragraph, "\n\n")
+	lists := map[string]string{
+		"the state of a row in runs.schema.json":        row["properties"].(map[string]any)["state"].(map[string]any)["description"].(string),
+		"the parameter state in runs.schema.json":       parameter,
+		"the RunListQueryState comment":                 declComment(t, "diagnostics.go", "RunListQueryState"),
+		"the State paragraph of the RunListRow comment": paragraph,
+	}
+	for where, list := range lists {
+		if strings.TrimSpace(list) == "" {
+			t.Errorf("%s is not found", where)
+		}
+	}
 	schema := compileDiagnostics(t, "runs.schema.json")
 	for _, s := range states {
-		if !strings.Contains(description, s) {
-			t.Errorf("the state of a row in runs.schema.json does not list %s", s)
-		}
-		if !strings.Contains(comment, s) {
-			t.Errorf("the RunListQueryState comment does not list %s", s)
+		for where, list := range lists {
+			if !strings.Contains(list, s) {
+				t.Errorf("%s does not list %s", where, s)
+			}
 		}
 		b := fmt.Appendf(nil, `{"runs":[{"id":"rn_0123456789abcdeh","number":1,"organisation":{"slug":"example-org"},`+
 			`"workspace":{"id":"ws_0123456789abcdef","slug":"example"},"state":%q,"created_at":"2026-11-01T10:00:00Z"}],"next":null}`, s)
@@ -334,9 +350,10 @@ func TestRunListStatesAreTheRunStates(t *testing.T) {
 	}
 }
 
-// constComment returns the doc comment of the constant name in the file of this package
-// at file, or fails the test.
-func constComment(t *testing.T, file, name string) string {
+// declComment returns the doc comment of the constant or type name in the file of this
+// package at file, or fails the test. For a declaration outside parentheses, the doc
+// comment is the comment of the declaration.
+func declComment(t *testing.T, file, name string) string {
 	t.Helper()
 	f, err := parser.ParseFile(token.NewFileSet(), file, nil, parser.ParseComments)
 	if err != nil {
@@ -344,19 +361,29 @@ func constComment(t *testing.T, file, name string) string {
 	}
 	for _, d := range f.Decls {
 		g, ok := d.(*ast.GenDecl)
-		if !ok || g.Tok != token.CONST {
+		if !ok {
 			continue
 		}
 		for _, spec := range g.Specs {
-			v := spec.(*ast.ValueSpec)
-			for _, n := range v.Names {
-				if n.Name == name && v.Doc != nil {
-					return v.Doc.Text()
+			var doc *ast.CommentGroup
+			var names []*ast.Ident
+			switch v := spec.(type) {
+			case *ast.ValueSpec:
+				doc, names = v.Doc, v.Names
+			case *ast.TypeSpec:
+				doc, names = v.Doc, []*ast.Ident{v.Name}
+			}
+			if doc == nil && g.Lparen == token.NoPos {
+				doc = g.Doc
+			}
+			for _, n := range names {
+				if n.Name == name && doc != nil {
+					return doc.Text()
 				}
 			}
 		}
 	}
-	t.Fatalf("%s has no constant %s with a doc comment", file, name)
+	t.Fatalf("%s has no declaration %s with a doc comment", file, name)
 	return ""
 }
 
@@ -380,14 +407,15 @@ func TestRunListDescribesEachQueryParameter(t *testing.T) {
 }
 
 // TestRunListEdgesAreAccepted pins the largest values that the run list and its refusal
-// accept: a work item title of 1024 characters and a parameter name of 64.
+// accept: a run number and a work item number of 9223372036854775807, the largest
+// int64, a work item title of 1024 characters and a parameter name of 64.
 func TestRunListEdgesAreAccepted(t *testing.T) {
 	var zero int64
 	list := contracts.RunList{Runs: []contracts.RunListRow{{
-		ID: "rn_0123456789abcdeh", Number: 1,
+		ID: "rn_0123456789abcdeh", Number: math.MaxInt64,
 		Organisation:   contracts.RunListOrganisation{Slug: "example-org"},
 		Workspace:      contracts.RunListWorkspace{ID: "ws_0123456789abcdef", Slug: "example"},
-		WorkItemNumber: 1, WorkItemTitle: strings.Repeat("x", 1024),
+		WorkItemNumber: math.MaxInt64, WorkItemTitle: strings.Repeat("x", 1024),
 		State: "running", CreatedAt: "2026-11-01T10:00:00Z", StartedAt: "2026-11-01T10:00:00Z",
 		DurationSeconds: &zero,
 	}}}
@@ -396,7 +424,7 @@ func TestRunListEdgesAreAccepted(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := validate(compileDiagnostics(t, "runs.schema.json"), b); err != nil {
-		t.Errorf("a work item title of 1024 characters fails runs.schema.json: %v", err)
+		t.Errorf("a row with the largest numbers and title fails runs.schema.json: %v", err)
 	}
 	name := strings.Repeat("p", 64)
 	b, err = json.Marshal(contracts.RunListRefusal{Error: contracts.RunListInvalidRequest, Parameter: &name})
