@@ -290,8 +290,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   diagnostics list, and shows it as it is. A bad parameter is refused with 400
   `invalid_request`. The refusal, `runs-refusal.schema.json`, contains the parameter's
   name in `parameter`. The query is read as `application/x-www-form-urlencoded`, so `+`
-  is a space. A query that is not valid UTF-8 after percent-decoding gets a 400 whose
-  body is not defined. Version 1 changes only by adding members and row states, so the
+  is a space. A request whose query is not valid UTF-8 after percent-decoding is refused
+  with 400 and a body that is not defined, which can come before the request is
+  verified. Version 1 changes only by adding members and row states, so the
   schemas of the diagnostics contract accept a member they do not define. In Go,
   `DiagnosticsBase`, `DiagnosticsFS`, `CompileDiagnostics` and `DiagnosticsDocument`
   are added. For the run list, Go adds `RunList`, `RunListRow`, `RunListOrganisation`,
