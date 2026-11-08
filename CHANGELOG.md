@@ -81,24 +81,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   advancing its cursor. Post each `comment` entry on its item as the integration's
   account: the first line `<author_name> wrote in Qory Apiary:`, then an empty line, then
   `body` unchanged. The control plane sends `author_name` as it is, with no escaping.
-  Write it in that line as plain text: escape each character or sequence that, unescaped,
-  would start markup or a mention in the format of the source's comments, such as a code
-  fence for a source whose comments are Markdown. `body` leaves 536 of the 65536
-  characters of a comment for the first line, the empty line and the mark, so use escapes
-  short enough to fit in them. Put a mark that contains the `comment_id` in the posted
-  comment, in a form that the source keeps and that, where the source allows, people who
-  read the comment do not see. Before you post, check the item for a comment with that
-  mark, so the comment of a post whose result is unknown, such as one that timed out, is
-  not posted a second time. Send the posted comment back with
-  `POST /v1/source-items/comments`, and set `comment_id` on that comment in every request
-  that contains it. After a failure that trying again cannot fix, or when your retries
-  end, send `POST /v1/work-items/changes/failed` with `comment_id` and a `reason`:
-  `item_gone`, `not_permitted`, `too_long` or `unreachable`. A feed answer ends before
-  its body passes 4194304 bytes (4 MiB), and has at least one entry whenever the feed has
-  an entry of a kind that the revision in the request's `X-Qory-Contract-Version` defines
-  after the cursor; read the next entries from its `cursor`. In Go, `ChangeComment`,
-  `Change.CommentID`, `Change.AuthorName`, `Change.Body`, `Comment.CommentID` and
-  `ChangesFailed` are added.
+  Write it in that line as plain text: escape each character or sequence that the format
+  would read as markup or as a mention in the format of the source's comments, such as a
+  code fence for a source whose comments are Markdown. Keep the escaped name, the rest of
+  the first line, the two line breaks and the mark at most 536 characters together: the
+  room that `body` leaves of the 65536 characters of a comment. Put a mark that contains
+  the `comment_id` in the posted comment, in a form that the source keeps and that, where
+  the source allows, people who read the comment do not see. Before you post, check the
+  item for a comment with that mark, so the comment of a post whose result is unknown,
+  such as one that timed out, is not posted a second time. Send the posted comment back
+  with `POST /v1/source-items/comments`, and set `comment_id` on that comment in every
+  request that contains it. After a failure that trying again cannot fix, or when your
+  retries end, send `POST /v1/work-items/changes/failed` with `comment_id` and a
+  `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`. A feed answer ends
+  before its body passes 4194304 bytes (4 MiB), and has at least one entry whenever the
+  feed has an entry of a kind that the revision in the request's
+  `X-Qory-Contract-Version` defines after the cursor; read the next entries from its
+  `cursor`. In Go, `ChangeComment`, `Change.CommentID`, `Change.AuthorName`,
+  `Change.Body`, `Comment.CommentID` and `ChangesFailed` are added.
 
 ### Added
 
@@ -179,21 +179,22 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a form that the source keeps and that, where the source allows, people who read the
   comment do not see. The control plane sends `author_name` as it is, with no escaping.
   The adapter writes it in the first line as plain text: it escapes each character or
-  sequence that, unescaped, would start markup or a mention in the format of the source's
-  comments, with escapes short enough that the comment fits in 65536 characters. Before
-  it posts, it checks the item for a comment with that mark, so it posts at most one
-  comment per `comment_id`, and the comment of a post whose result is unknown, such as
-  one that timed out, is not posted a second time. It sends the posted comment back with
-  `POST /v1/source-items/comments` and its `comment_id`, and the control plane matches it
-  to the stored comment and stores no second comment. After a failure that trying again
-  cannot fix, or when its retries end, the adapter sends
-  `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and `reason`:
-  `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane marks the
-  comment not posted and stores `reason`. It returns `403 forbidden` for a request the
-  access key has no permission for. On success it returns a signed 204 with no body, and
-  for an unknown or already matched `comment_id` it returns the signed 204 and changes
-  nothing. Without `comments: true`, the control plane writes no `comment` entry for the
-  source.
+  sequence that the format would read as markup or as a mention in the format of the
+  source's comments. The escaped name, the rest of the first line, the two line breaks
+  and the mark are at most 536 characters together: the room that `body` leaves of the
+  65536 characters of a comment. Before it posts, it checks the item for a comment with
+  that mark, so it posts at most one comment per `comment_id`, and the comment of a post
+  whose result is unknown, such as one that timed out, is not posted a second time. It
+  sends the posted comment back with `POST /v1/source-items/comments` and its
+  `comment_id`, and the control plane matches it to the stored comment and stores no
+  second comment. After a failure that trying again cannot fix, or when its retries end,
+  the adapter sends `POST /v1/work-items/changes/failed` with `version`, `time`,
+  `comment_id` and `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`.
+  The control plane marks the comment not posted and stores `reason`. It returns
+  `403 forbidden` for a request the access key has no permission for. On success it
+  returns a signed 204 with no body, and for an unknown or already matched `comment_id`
+  it returns the signed 204 and changes nothing. Without `comments: true`, the control
+  plane writes no `comment` entry for the source.
 - Adapter secrets: the adapter uploads up to 16 values with `POST /v1/adapter/secrets`,
   each at most 16384 bytes, sealed with HPKE `x25519-sha256-aes256gcm` to a pinned server
   key, and `GET /v1/adapter/secrets` returns them sealed to the adapter's access key.

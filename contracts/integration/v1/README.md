@@ -197,15 +197,19 @@ at the source. The comment reaches the source in four steps:
    `Dana Example wrote in Qory Apiary:`, then an empty line, then `body` unchanged.
    `author_name` is plain text, and the control plane sends it as it is, with no
    escaping. The adapter writes it as plain text in the format of the source's comments:
-   it escapes each character or sequence that, unescaped, would start markup or a mention
-   in that format. For a source whose comments are Markdown, that includes an @ at the
-   start of a word, a code fence, leading spaces and the start of an HTML comment. `body`
-   leaves 536 of the 65536 characters of a comment for the first line, the empty line and
-   the mark, so the adapter uses escapes short enough to fit in them, such as a backslash
-   before a character. The adapter puts a mark that contains the `comment_id` in the
-   posted comment. Before it posts, it checks the item for a comment with that mark. So
-   it posts at most one comment per `comment_id`, however often it reads an entry with
-   that `comment_id`, and the comment of a post whose result is unknown, such as one that
+   it escapes each character or sequence that the format would read as markup or as a
+   mention in that format. For a source whose comments are Markdown, that includes an @
+   at the start of a word, a code fence, leading spaces and the start of an HTML comment.
+   The escaped name, the other 22 characters of the first line
+   (`" wrote in Qory Apiary:"`), the two line breaks after it, and the mark with any line
+   break before it are at most 536 characters together. 536 is the room that `body`, at
+   most 65000 characters, leaves of the 65536 characters in `definitions.schema.json`,
+   `$defs.body`. For example, a backslash before each character that needs one and a
+   character reference for a leading space keep a name of 100 characters at most 203
+   characters. The adapter puts a mark that contains the `comment_id` in the posted
+   comment. Before it posts, it checks the item for a comment with that mark. So it posts
+   at most one comment per `comment_id`, however often it reads an entry with that
+   `comment_id`, and the comment of a post whose result is unknown, such as one that
    timed out, is not posted a second time. The form of the mark is the adapter's choice:
    the source must keep it, and where the source allows, people who read the comment do
    not see it.
