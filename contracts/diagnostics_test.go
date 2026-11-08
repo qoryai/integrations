@@ -125,8 +125,8 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestDiagnosticsAcceptMembersTheSchemaDoesNotDefine pins that version 1 of the
-// diagnostics contract changes only by adding members: no object of its schemas sets
+// TestDiagnosticsAcceptMembersTheSchemaDoesNotDefine pins that the schemas of the
+// diagnostics contract accept a member they do not define: no object of its schemas sets
 // additionalProperties to false, and each valid fixture with a member added to every
 // object in it, the top level included, is still accepted.
 func TestDiagnosticsAcceptMembersTheSchemaDoesNotDefine(t *testing.T) {
