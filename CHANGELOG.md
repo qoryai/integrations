@@ -279,15 +279,20 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `409 lease_expired` or `410 gone`, or a refused redemption of the run code takes a
   freed slot again, even over the instance limit. A refused redemption counts only when
   all of these are true. Its proof verifies, and it comes through the gateway that the
-  run code is bound to. The run code was never redeemed, and the control plane still has
-  it; the control plane deletes the run code when the work is closed or undone. The
-  redemption is refused because the run code expired, the run ended, or the dispatch is
-  stale or ended. An accepted `gone` never takes a slot, and after it no call takes the
-  slot again. An accepted `dispatched` for a live dispatch takes no slot. The control
-  plane frees a kept slot `max_lifetime_minutes` plus 60 minutes after the latest of the
-  claim, the first accepted `dispatched`, the first accepted redemption, the last
-  accepted machine end, and the last refusal that took the slot again, even when no
-  `gone` arrives. A `dispatched` or a redemption sent again does not move that time. A
+  run code is bound to. Neither `dispatched` nor a redemption of the run code was
+  accepted before for the dispatch, and the control plane still has the run code; the
+  control plane deletes the run code when the work is closed or undone. The redemption
+  is refused because the run code expired, the run ended, or the dispatch is stale or
+  ended. It is within the limit of attempts per run code (`rate_limited` at the
+  enrolment); past that limit, the control plane records nothing for the refusal. An
+  accepted `gone` never takes a slot, and after it no call takes the slot again. An
+  accepted `dispatched` for a live dispatch takes no slot. The control plane frees a
+  kept slot `max_lifetime_minutes` plus 60 minutes after the latest of the claim, the
+  first accepted `dispatched`, the first accepted redemption when no `dispatched` was
+  accepted before it, the last accepted machine end, and the last refusal of a kind that
+  takes a slot again, whether or not that refusal took the slot again, even when no
+  `gone` arrives. An accepted `dispatched` or redemption sent again does not move that
+  time. A
   claim may contain `offers`: the machines the pool can create, each a `machine_spec` of
   vCPUs, memory, disk, architecture and virtualization. The control plane gives a claim
   with offers only work for a run whose machine type one offer fits. An answer to a claim
