@@ -80,20 +80,29 @@ change what an existing reader or program relies on, and notes it under Upgradin
   against the earlier `changes.schema.json` fails on the first `comment` entry and stops
   advancing its cursor. Post each `comment` entry on its item as the integration's
   account: the first line `<author_name> wrote in Qory Apiary:`, then an empty line, then
-  `body` unchanged. Put a mark that contains the `comment_id` in the posted comment, in a
-  form that the source keeps and that, where the source allows, people who read the
-  comment do not see. Before you post, check the item for a comment with that mark, so the
-  comment of a post whose result is unknown, such as one that timed out, is not posted a
-  second time. Send the posted comment back with `POST /v1/source-items/comments`, and set
-  `comment_id` on that comment in every request that contains it. After a failure that
-  trying again cannot fix, or when your retries end, send
-  `POST /v1/work-items/changes/failed` with `comment_id` and a `reason`: `item_gone`,
-  `not_permitted`, `too_long` or `unreachable`. A feed answer ends before its body passes
-  4194304 bytes (4 MiB), and has at least one entry whenever the feed has an entry of a
-  kind that the revision in the request's `X-Qory-Contract-Version` defines after the
-  cursor; read the next entries from its `cursor`. In Go, `ChangeComment`,
-  `Change.CommentID`, `Change.AuthorName`, `Change.Body`, `Comment.CommentID` and
-  `ChangesFailed` are added.
+  `body` unchanged. The control plane sends `author_name` as it is, with no escaping.
+  Write it in that line as plain text: escape each character or sequence that the format
+  of the source's comments would read as markup or as a mention, such as a code fence for
+  a source whose comments are Markdown. Keep the escaped name, the other 22 characters of
+  the first line, the two line breaks after it, and the mark with any line break before
+  it at most 536 characters together: the room that `body`, at most 65000 characters,
+  leaves of the 65536 characters of a comment. An escape of at most 2 characters for
+  each character of the name, such as a backslash before a character, keeps a name of
+  100 characters at most 200 characters. A character reference for every character
+  makes the name 500 characters or more and leaves too little room for the mark. Put a
+  mark that contains the `comment_id` in the posted comment, in a form that the source
+  keeps and that, where the source allows, people who read the comment do not see. Before
+  you post, check the item for a comment with that mark, so the comment of a post whose
+  result is unknown, such as one that timed out, is not posted a second time. Send the
+  posted comment back with `POST /v1/source-items/comments`, and set `comment_id` on that
+  comment in every request that contains it. After a failure that trying again cannot
+  fix, or when your retries end, send `POST /v1/work-items/changes/failed` with
+  `comment_id` and a `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`.
+  A feed answer ends before its body passes 4194304 bytes (4 MiB), and has at least one
+  entry whenever the feed has an entry of a kind that the revision in the request's
+  `X-Qory-Contract-Version` defines after the cursor; read the next entries from its
+  `cursor`. In Go, `ChangeComment`, `Change.CommentID`, `Change.AuthorName`,
+  `Change.Body`, `Comment.CommentID` and `ChangesFailed` are added.
 
 ### Added
 
@@ -172,12 +181,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   integration's account, with the first line `<author_name> wrote in Qory Apiary:`, then
   an empty line, then `body` unchanged, and with a mark that contains the `comment_id`, in
   a form that the source keeps and that, where the source allows, people who read the
-  comment do not see. Before it posts, it checks the item for a comment with that mark, so
-  it posts at most one comment per `comment_id`, and the comment of a post whose result is
+  comment do not see. The control plane sends `author_name` as it is, with no escaping.
+  The adapter writes it in the first line as plain text: it escapes each character or
+  sequence that the format of the source's comments would read as markup or as a
+  mention. The escaped name, the other 22 characters of the first line, the two line
+  breaks after it, and the mark with any line break before it are at most 536
+  characters together: the room that `body` leaves of the 65536 characters of a
+  comment. Before it posts, it checks the item for a comment with that mark, so it posts
+  at most one comment per `comment_id`, and the comment of a post whose result is
   unknown, such as one that timed out, is not posted a second time. It sends the posted
-  comment back with `POST /v1/source-items/comments` and its `comment_id`, and the control
-  plane matches it to the stored comment and stores no second comment. After a failure
-  that trying again cannot fix, or when its retries end, the adapter sends
+  comment back with `POST /v1/source-items/comments` and its `comment_id`, and the
+  control plane matches it to the stored comment and stores no second comment. After a
+  failure that trying again cannot fix, or when its retries end, the adapter sends
   `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and `reason`:
   `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane marks the
   comment not posted and stores `reason`. It returns `403 forbidden` for a request the
