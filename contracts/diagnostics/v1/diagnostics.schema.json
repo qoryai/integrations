@@ -166,6 +166,22 @@
           "type": "string",
           "pattern": "^ng_[0-9a-hjkmnp-tv-z]{16}$"
         },
+        "machine": {
+          "description": "The machine type of the instance that the run used: its key and its display name; absent when Qory Apiary has no record of the machine type, such as for a run made before machine types had keys.",
+          "type": "object",
+          "properties": {
+            "key": {
+              "description": "The key of the instance's machine type that the run used, such as standard: a lower-case letter, then lower-case letters, digits and hyphens, 1 to 64 characters in all. It is the same value as machine in the claim answer of the run's dispatch, https://qory.dev/contracts/provisioner/v1/claim-answer.schema.json, when that answer has machine. Absent when Qory Apiary has no key for the machine type.",
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,63}$"
+            },
+            "name": {
+              "description": "The display name of the machine type, such as Standard, 1 to 100 characters on one line, with no control character, U+0000 to U+001F or U+007F; absent when Qory Apiary has no name for the machine type.",
+              "type": "string",
+              "pattern": "^[^\\x00-\\x1f\\x7f]{1,100}$"
+            }
+          }
+        },
         "variables": {
           "description": "The names of the run's variables, each at most once, with no values. A name is a letter or an underscore, then letters, digits and underscores, 1 to 128 characters in all.",
           "type": "array",
