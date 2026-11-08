@@ -137,11 +137,15 @@
 // Its documents travel between two programs on one host, and are not signed.
 //
 // The diagnostics contract contains the run diagnostics, diagnostics.schema.json: the
-// document the control plane returns about one run, the body of the 200 response to
+// document the control plane returns about one run, the body of the 200 answer to
 // GET /v1/runs/<run id>/diagnostics and the text that Copy diagnostics on the run page
-// copies. Version 1 changes only by adding members, so its schema accepts a member it
-// does not define, unlike the other contracts. It is a document, not a request, and is
-// not signed.
+// copies. The run diagnostics are a document, not a request, and are not signed. The
+// contract also contains the run list, runs.schema.json, [RunList]: the body of the 200
+// answer to GET /v1/runs, one page of the runs of the instance, the last one created
+// first, and its refusal, runs-refusal.schema.json, [RunListRefusal]. GET /v1/runs and
+// GET /v1/runs/<run id>/diagnostics both take a request signed with a diagnostics key.
+// Version 1 changes only by adding members and row states, so the schemas of the
+// diagnostics contract accept a member they do not define, unlike the other contracts.
 //
 // Each schema's $id is [Base] followed by the file's path under integration/v1,
 // [ProvisionerBase] followed by its path under provisioner/v1, [RunBase] followed by
@@ -221,7 +225,7 @@ var ExploreFS = must(fs.Sub(embedded, "explore/v1"))
 var MachinesFS = must(fs.Sub(embedded, "machines/v1"))
 
 // DiagnosticsFS is the diagnostics contract's directory, rooted at diagnostics/v1: the
-// schema and the fixtures.
+// schemas and the fixtures.
 var DiagnosticsFS = must(fs.Sub(embedded, "diagnostics/v1"))
 
 func must[T any](v T, err error) T {
@@ -284,9 +288,9 @@ func CompileMachines(name string) (*jsonschema.Schema, error) {
 }
 
 // CompileDiagnostics compiles one schema of the diagnostics contract by its path under
-// diagnostics/v1, "diagnostics.schema.json" say. A schema it refers to, of the
-// provisioner contract or of the integration contract, is read from [ProvisionerFS] or
-// [FS] by its $id, so nothing is fetched.
+// diagnostics/v1, "diagnostics.schema.json" say. A schema it refers to, of this
+// contract, of the provisioner contract or of the integration contract, is read from
+// [DiagnosticsFS], [ProvisionerFS] or [FS] by its $id, so nothing is fetched.
 func CompileDiagnostics(name string) (*jsonschema.Schema, error) {
 	return compile(DiagnosticsBase, DiagnosticsFS, name)
 }
