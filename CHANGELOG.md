@@ -184,12 +184,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   comment do not see. The control plane sends `author_name` as it is, with no escaping.
   The adapter writes it in the first line as plain text: it escapes each character or
   sequence that the format of the source's comments would read as markup or as a
-  mention. The escaped name, the rest of the first line, the two line breaks after it,
-  and the mark with any line break before it are at most 536 characters together: the
-  room that `body` leaves of the 65536 characters of a comment. Before it posts, it
-  checks the item for a comment with that mark, so it posts at most one comment per
-  `comment_id`, and the comment of a post whose result is unknown, such as one that timed
-  out, is not posted a second time. It sends the posted comment back with
+  mention. The escaped name, the other 22 characters of the first line, the two line
+  breaks after it, and the mark with any line break before it are at most 536
+  characters together: the room that `body` leaves of the 65536 characters of a
+  comment. Before it posts, it checks the item for a comment with that mark, so it posts
+  at most one comment per `comment_id`, and the comment of a post whose result is
+  unknown, such as one that timed out, is not posted a second time. It sends the posted comment back with
   `POST /v1/source-items/comments` and its `comment_id`, and the control plane matches it
   to the stored comment and stores no second comment. After a failure that trying again
   cannot fix, or when its retries end, the adapter sends

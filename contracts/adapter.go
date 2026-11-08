@@ -366,7 +366,10 @@ const (
 // The adapter writes it as plain text: it escapes each character or sequence that the
 // format of the source's comments would read as markup or as a mention. For a source
 // whose comments are Markdown, that includes an @ at the start of a word, a code fence,
-// leading spaces and the start of an HTML comment.
+// leading spaces and the start of an HTML comment. The escaped name, the other 22
+// characters of the first line, the two line breaks after it, and the mark with any
+// line break before it are at most 536 characters together: the room that Body, at most
+// 65000 characters, leaves of the 65536 characters of a comment.
 type Change struct {
 	Kind          string `json:"kind"`
 	WorkItemID    string `json:"work_item_id,omitempty"`
