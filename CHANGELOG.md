@@ -303,6 +303,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   or rotate it, and `leaked_secrets_omitted` counts those beyond the first 1000. Entries
   found in a machine log are present only when the document has the machine logs. The
   redacted fields of the run never appear as fields, and variables appear by name only.
+  `run.machine` contains the `key` and the display `name` of the machine type that the
+  run used. `run.machine` is absent when the control plane has no record of the machine
+  type, and `key` or `name` is absent when the control plane has no value for it.
   The run list, `contracts/diagnostics/v1/runs.schema.json`, is one page of the runs of
   the instance in the 200 answer to `GET /v1/runs`. The request is signed with a
   diagnostics key. The rows are ordered by `created_at`, the last first, then by id,
