@@ -146,7 +146,8 @@ type ClaimAnswer struct {
 // [MachineEndGone] for the dispatch, unless the control plane accepted [MachineEndGone]
 // for it before, as claim.schema.json describes. When the machine has not redeemed the
 // run code within 15 minutes of the claim, the control plane ends the dispatch, so the
-// next dispatched is refused 410 gone. After dispatched, a [Release] is refused 409 machine_exists.
+// next dispatched is refused 410 gone. After dispatched, a [Release] is refused 409
+// machine_exists.
 //
 // MachineType is the vendor's type of the machine the starter created for the job, such
 // as example-type, and is empty when the starter has no type for the machine.
@@ -252,10 +253,10 @@ const (
 // and each dispatched or redemption refused because the dispatch is stale or ended. The
 // starter has no limit on machines other than the node pool's instance limit.
 // [MachineEndDeleting] and [MachineEndDeleteFailed] are optional. The call may come any
-// number of times, before or after the dispatch ends, and is never refused 410 gone or 409
-// lease_expired, because a machine usually ends after its dispatch. The starter sends
-// one call at a time for a dispatch: it sends the next only after the answer to the one
-// before, or after it gave that one up. The control plane applies the calls in the
+// number of times, before or after the dispatch ends, and is never refused 410 gone or
+// 409 lease_expired, because a machine usually ends after its dispatch. The starter
+// sends one call at a time for a dispatch: it sends the next only after the answer to
+// the one before, or after it gave that one up. The control plane applies the calls in the
 // order it receives them and compares no time, and every accepted call replaces the
 // state. MachineEndGone is final: a later call changes nothing and still gets the
 // signed 204 with no body. A [MachineEndGone] after the time limit for a slot freed the
