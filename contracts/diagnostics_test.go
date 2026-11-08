@@ -68,6 +68,7 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 		"unknown-fixer.json":                                  {"diagnostics", "/preparation/stopped/fixer enum"},
 		"run-id-prefix.json":                                  {"diagnostics", "/run/id pattern"},
 		"workflow-56-characters.json":                         {"diagnostics", "/run/workflow pattern"},
+		"run-machine-empty.json":                              {"diagnostics", "/run/machine minProperties"},
 		"run-machine-key-upper-case.json":                     {"diagnostics", "/run/machine/key pattern"},
 		"run-machine-name-empty.json":                         {"diagnostics", "/run/machine/name pattern"},
 		"run-machine-name-101-characters.json":                {"diagnostics", "/run/machine/name pattern"},
