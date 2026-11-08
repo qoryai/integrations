@@ -189,10 +189,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   characters together: the room that `body` leaves of the 65536 characters of a
   comment. Before it posts, it checks the item for a comment with that mark, so it posts
   at most one comment per `comment_id`, and the comment of a post whose result is
-  unknown, such as one that timed out, is not posted a second time. It sends the posted comment back with
-  `POST /v1/source-items/comments` and its `comment_id`, and the control plane matches it
-  to the stored comment and stores no second comment. After a failure that trying again
-  cannot fix, or when its retries end, the adapter sends
+  unknown, such as one that timed out, is not posted a second time. It sends the posted
+  comment back with `POST /v1/source-items/comments` and its `comment_id`, and the
+  control plane matches it to the stored comment and stores no second comment. After a
+  failure that trying again cannot fix, or when its retries end, the adapter sends
   `POST /v1/work-items/changes/failed` with `version`, `time`, `comment_id` and `reason`:
   `item_gone`, `not_permitted`, `too_long` or `unreachable`. The control plane marks the
   comment not posted and stores `reason`. It returns `403 forbidden` for a request the
