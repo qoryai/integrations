@@ -243,13 +243,22 @@ change what an existing reader or program relies on, and notes it under Upgradin
   access key. The claim answer has the dispatch, its `lease_until`, the run code that the
   machine redeems and the gateway URL that the run code is bound to. A machine end has
   the `state` `deleting`, `gone` or `delete_failed`. A starter sends `gone` for every
-  dispatch it claimed, and sends it again until the control plane accepts it. The
-  control plane counts the dispatch against the node pool's instance limit until it
-  accepts `gone`. A starter sends `gone` when the machine adapter's delete call returned
-  that no machine with the id exists at the vendor, or when the starter has no record of
-  a machine for the dispatch. `deleting` and `delete_failed` are optional. A claim may
-  contain `offers`: the machines the pool can create, each a `machine_spec` of vCPUs, memory,
-  disk, architecture and virtualization. The control plane gives a claim with offers only
+  dispatch for which it made a machine or may have made one, and for every dispatch
+  whose release was refused `409 machine_exists`. It sends `gone` again until the control
+  plane accepts it. A starter sends `gone` when the machine adapter's delete call
+  returned that no machine with the id exists at the vendor, or when no answer of the
+  machine adapter's `list` contained a machine for the dispatch by
+  `max_lifetime_minutes` after the claim. `deleting` and `delete_failed` are optional.
+  Each dispatch takes a slot of the node pool's instance limit at the claim. A machine
+  event is an accepted `dispatched`, the machine's redemption of the run code, or an
+  accepted machine end in any state; a machine log is not one. Until the first machine
+  event, the release, the lapse of the lease or the end of the dispatch frees the slot.
+  From the first machine event on, the slot is held until the control plane accepts
+  `gone`, whether the dispatch is released, stale or ended. A later machine end other
+  than `gone` takes a freed slot back. The control plane frees a held slot
+  `max_lifetime_minutes` plus 60 minutes after the latest machine event, even when no
+  `gone` arrives. A claim may contain `offers`: the machines the pool can create, each a
+  `machine_spec` of vCPUs, memory, disk, architecture and virtualization. The control plane gives a claim with offers only
   work for a run whose machine type one offer fits. An answer to a claim with offers has
   the run's machine type in `machine` and its spec in `machine_spec`, and an answer to a
   claim without offers has neither. A dispatched may contain `machine_type`, the

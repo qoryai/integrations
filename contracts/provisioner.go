@@ -162,16 +162,20 @@ type External struct {
 }
 
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
-// release.schema.json: the starter gives the dispatch back before it says
-// [Dispatched], and Reason says why. A release is accepted only before dispatched, and
-// only while the run code is not redeemed. It ends the dispatch and frees the slot, and
-// the run code stops working at that moment. Whether the work is claimed again is the
-// control plane's decision: the starter does not ask for it. After dispatched, a
-// release is refused 409 machine_exists. Once the run code is redeemed, a release is
-// refused 409 machine_exists even before dispatched, because a machine exists. A
-// release and a redemption of the same dispatch take effect one after the other, never
-// both. A release that takes effect first makes the run code unusable. After a
-// redemption that takes effect first, the release is refused 409 machine_exists.
+// release.schema.json: the starter gives the dispatch back before it says [Dispatched],
+// and Reason says why. A release is accepted only before dispatched, and only while the
+// run code is not redeemed. It ends the dispatch, and the run code stops working at
+// that moment. Before the first machine event of the dispatch, as claim.schema.json
+// defines it, the release frees the slot the dispatch took at the claim; from the first
+// machine event on, the dispatch holds the slot until the control plane accepts
+// [MachineEndGone] for it, or until the time limit for a slot frees it, as
+// claim.schema.json describes. Whether the work is claimed again is the control plane's
+// decision: the starter does not ask for it. After dispatched, a release is refused 409
+// machine_exists. Once the run code is redeemed, a release is refused 409
+// machine_exists even before dispatched, because a machine exists. A release and a
+// redemption of the same dispatch take effect one after the other, never both. A
+// release that takes effect first makes the run code unusable. After a redemption that
+// takes effect first, the release is refused 409 machine_exists.
 type Release struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
@@ -199,13 +203,12 @@ type MachineLog struct {
 // The states of a [MachineEnd], machine-end.schema.json. MachineEndDeleting: the
 // starter's delete call was accepted, and the machine may still exist. MachineEndGone:
 // the machine adapter's delete call returned that no machine with the id exists at the
-// vendor, [MachineGone], or the starter has no record of a machine for the dispatch: it
-// made none, it never learned the machine's id, or no [MachinesListAnswer] contained a
-// machine with the dispatch in Key by the end of the machine's lifetime, the
-// MaxLifetimeMinutes of the [ClaimAnswer]. For a machine whose id the starter has, a
-// missing entry in a list is no proof that the machine is gone, because a vendor's list
-// can lag. MachineEndDeleteFailed: the delete call failed, and the starter treats the
-// machine as still existing.
+// vendor, [MachineGone], or the starter has no record of a machine for the dispatch: no
+// [MachinesListAnswer] contained a machine with the dispatch in Key by the
+// MaxLifetimeMinutes of the [ClaimAnswer] after the claim. For a machine whose id the
+// starter has, a missing entry in a list is no proof that the machine is gone, because
+// a vendor's list can lag. MachineEndDeleteFailed: the delete call failed, and the
+// starter treats the machine as still existing.
 const (
 	MachineEndDeleting     = "deleting"
 	MachineEndGone         = "gone"
@@ -219,25 +222,33 @@ const (
 // machine. It also sends [MachineEndGone] for a dispatch for which it has no record of
 // a machine, in the cases that [MachineEndGone] lists. The starter sends the call after
 // its delete call, repeats the delete call until that call returns gone, and then sends
-// [MachineEndGone]. The starter sends [MachineEndGone] for every dispatch it claimed,
-// once the dispatch's machine is gone or once it has no record of a machine for the
-// dispatch. The control plane counts the dispatch against the node pool's instance
-// limit until it accepts [MachineEndGone] for the dispatch. [MachineEndDeleting] and
-// [MachineEndDeleteFailed] are optional. The call may come any number of times, before
-// or after the dispatch ends, and is never refused 410 gone or 409 lease_expired,
-// because a machine usually ends after its dispatch. The starter sends one call at a
-// time for a dispatch: it sends the next only after the answer to the one before, or
-// after it gave that one up. The control plane applies the calls in the order it
-// receives them and compares no time, and every accepted call replaces the state.
-// MachineEndGone is final: a later call changes nothing and still gets the signed 204 with no body. A signed 400, 403 or 404
-// refusal ends the starter's attempts to send this call for the dispatch, because the
-// same call sent again cannot succeed; the delete calls go on. After any other failure
-// to send [MachineEndGone], an unsigned answer among them, the starter sends it again,
-// built anew, with no time limit, until the control plane accepts it with the signed
-// 204. After any other failure to send [MachineEndDeleting] or
-// [MachineEndDeleteFailed], the starter may send that state again for a limited time,
-// and then drops it. The starter counts a machine against its limit of machines only
-// until the delete call returns gone, whatever the answers to this call.
+// [MachineEndGone]. The starter sends [MachineEndGone] for every dispatch for which it
+// made a machine or may have made one, and for every dispatch whose [Release] was
+// refused 409 machine_exists. It sends [MachineEndGone] once the dispatch's machine is
+// gone or once it has no record of a machine for the dispatch. From the first machine
+// event of the dispatch, as claim.schema.json defines it, the control plane counts the
+// dispatch against the node pool's instance limit until it accepts [MachineEndGone] for
+// the dispatch. Before the first machine event, the release, the lapse of the lease or
+// the end of the dispatch frees the slot, as claim.schema.json describes. An accepted
+// machine end other than [MachineEndGone] takes a freed slot back until the control
+// plane accepts [MachineEndGone]. Even when no [MachineEndGone] arrives, the time limit
+// for a slot, claim.schema.json, frees the slot MaxLifetimeMinutes of the [ClaimAnswer]
+// plus 60 minutes after the latest machine event of the dispatch. [MachineEndDeleting]
+// and [MachineEndDeleteFailed] are optional. The call may come any number of times,
+// before or after the dispatch ends, and is never refused 410 gone or 409
+// lease_expired, because a machine usually ends after its dispatch. The starter sends
+// one call at a time for a dispatch: it sends the next only after the answer to the one
+// before, or after it gave that one up. The control plane applies the calls in the
+// order it receives them and compares no time, and every accepted call replaces the
+// state. MachineEndGone is final: a later call changes nothing and still gets the
+// signed 204 with no body. A [MachineEndGone] after the time limit for a slot freed the
+// slot also gets the signed 204. A signed 400, 403 or 404 refusal ends the starter's
+// attempts to send this call for the dispatch, because the same call sent again cannot
+// succeed; the delete calls go on. After any other failure to send [MachineEndGone], an
+// unsigned answer among them, the starter sends it again, built anew, with no time
+// limit, until the control plane accepts it with the signed 204. After any other
+// failure to send [MachineEndDeleting] or [MachineEndDeleteFailed], the starter may
+// send that state again for a limited time, and then drops it.
 type MachineEnd struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
