@@ -249,18 +249,17 @@ const (
 // the release, the lapse of the lease or the end of the dispatch frees the slot, as
 // claim.schema.json describes. An accepted machine end other than [MachineEndGone] takes
 // a freed slot again, even when the node pool is then over its instance limit; the
-// dispatch then keeps it at least until the control plane accepts [MachineEndGone].
-// Such a machine end still gets the signed 204. An accepted [MachineEndGone] never takes
-// a slot, and after an accepted [MachineEndGone] no call takes the slot again. Even
-// when no [MachineEndGone] arrives, the control plane frees the slot under the time
-// limit for a slot, claim.schema.json. That limit is MaxLifetimeMinutes of the
-// [ClaimAnswer] plus 60 minutes after the latest of the claim, the first accepted
-// dispatched, the first accepted redemption of the run code when no dispatched was
-// accepted before it, the last accepted machine end, and the last refusal of a kind
-// that takes a slot again, whether or not that refusal took the slot again. An accepted
-// dispatched or redemption sent again does not move the time limit, because only the
-// first accepted one counts. The starter has no limit on machines other than the node
-// pool's instance limit.
+// dispatch then keeps it at least until the control plane accepts [MachineEndGone]. Such
+// a machine end still gets the signed 204. An accepted [MachineEndGone] never takes a
+// slot, and after an accepted [MachineEndGone] no call takes the slot again. Even when
+// no [MachineEndGone] arrives, the control plane frees the slot under the time limit for
+// a slot, claim.schema.json. That limit is MaxLifetimeMinutes of the [ClaimAnswer] plus
+// 60 minutes after the latest of the claim, the first accepted dispatched, the first
+// accepted redemption of the run code when no dispatched was accepted before it, the
+// last accepted machine end up to the first accepted [MachineEndGone], and the last
+// refusal of a kind that takes a slot again, whether or not that refusal took the slot
+// again. An accepted dispatched or redemption sent again does not move the time limit.
+// The starter has no limit on machines other than the node pool's instance limit.
 // [MachineEndDeleting] and [MachineEndDeleteFailed] are optional. The call may come any
 // number of times, before or after the dispatch ends, and is never refused 410 gone or
 // 409 lease_expired, because a machine usually ends after its dispatch. The starter

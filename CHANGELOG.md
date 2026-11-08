@@ -278,29 +278,31 @@ change what an existing reader or program relies on, and notes it under Upgradin
   or goes stale. A later machine end other than `gone`, a `dispatched` refused
   `409 lease_expired` or `410 gone`, or a refused redemption of the run code takes a
   freed slot again, even over the instance limit. A refused redemption counts only when
-  all of these are true. Its proof verifies, and it comes through the gateway that the
-  run code is bound to. Neither `dispatched` nor a redemption of the run code was
-  accepted before for the dispatch, and the control plane still has the run code; the
-  control plane deletes the run code when the work is closed or undone. The redemption
-  is refused because the run code expired, the run ended, or the dispatch is stale or
-  ended. It is within the limit of attempts per run code (`rate_limited` at the
-  enrolment); past that limit, the control plane records nothing for the refusal. An
+  all of these are true. It comes through the gateway that the run code is bound to. The
+  control plane still has the run code; the control plane deletes the run code when the
+  work is closed or undone. Its timestamp is within 300 seconds of the clock of the
+  control plane, as the enrolment contract requires. The redemption is refused because
+  the run code expired, the run ended, or the dispatch is stale or ended. Its proof
+  verifies. It is within the limit of attempts with one run code, the limit of the signed
+  429 `rate_limited` of the enrolment contract; past that limit, the control plane
+  records nothing for the refusal. Neither `dispatched` nor a redemption of the run code
+  was accepted before for the dispatch. Such a refused redemption gets the same answer as
+  an unknown code, the unsigned 401 of the enrolment contract, past that limit too. An
   accepted `gone` never takes a slot, and after it no call takes the slot again. An
-  accepted `dispatched` for a live dispatch takes no slot. The control plane frees a
-  kept slot `max_lifetime_minutes` plus 60 minutes after the latest of the claim, the
-  first accepted `dispatched`, the first accepted redemption when no `dispatched` was
-  accepted before it, the last accepted machine end, and the last refusal of a kind that
-  takes a slot again, whether or not that refusal took the slot again, even when no
-  `gone` arrives. An accepted `dispatched` or redemption sent again does not move that
-  time. A
-  claim may contain `offers`: the machines the pool can create, each a `machine_spec` of
-  vCPUs, memory, disk, architecture and virtualization. The control plane gives a claim
-  with offers only work for a run whose machine type one offer fits. An answer to a claim
-  with offers has the run's machine type in `machine` and its spec in `machine_spec`, and
-  an answer to a claim without offers has neither. A dispatched may contain
-  `machine_type`, the vendor's type of the machine. In Go, `MachineEnd`,
-  `MachineEndDeleting`, `MachineEndGone`, `MachineEndDeleteFailed`, `MachineSpec` and
-  `MachineSpec.Fits` are added.
+  accepted `dispatched` for a live dispatch takes no slot. The control plane frees a kept
+  slot `max_lifetime_minutes` plus 60 minutes after the latest of the claim, the first
+  accepted `dispatched`, the first accepted redemption when no `dispatched` was accepted
+  before it, the last accepted machine end up to the first accepted `gone`, and the last
+  refusal of a kind that takes a slot again, whether or not that refusal took the slot
+  again, even when no `gone` arrives. An accepted `dispatched` or redemption sent again
+  does not move that time. A claim may contain `offers`: the machines the pool can
+  create, each a `machine_spec` of vCPUs, memory, disk, architecture and virtualization.
+  The control plane gives a claim with offers only work for a run whose machine type one
+  offer fits. An answer to a claim with offers has the run's machine type in `machine`
+  and its spec in `machine_spec`, and an answer to a claim without offers has neither. A
+  dispatched may contain `machine_type`, the vendor's type of the machine. In Go,
+  `MachineEnd`, `MachineEndDeleting`, `MachineEndGone`, `MachineEndDeleteFailed`,
+  `MachineSpec` and `MachineSpec.Fits` are added.
 - The machines contract, `contracts/machines/v1`: a machine adapter makes and deletes
   machines at one vendor, and the provisioner runs it as
   `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`
