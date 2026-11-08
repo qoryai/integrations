@@ -287,10 +287,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   100, 25 by default. Each row contains the run's id, number, organisation, workspace,
   workflow, work item number and title, state, reason, `created_at`, `started_at` and
   `duration_seconds`. A reader accepts a `state` other than the six that the run
-  diagnostics list, and shows it as it is. A bad parameter is refused with 400 `invalid_request`. The
-  refusal, `runs-refusal.schema.json`, contains the parameter's name in `parameter`.
-  Version 1 changes only by adding members, so the schemas of the diagnostics contract
-  accept a member they do not define. In Go, `DiagnosticsBase`, `DiagnosticsFS`,
+  diagnostics list, and shows it as it is. A bad parameter is refused with 400
+  `invalid_request`. The refusal, `runs-refusal.schema.json`, contains the parameter's
+  name in `parameter`. Version 1 changes only by adding members and row states, so the
+  schemas of the diagnostics contract accept a member they do not define. In Go, `DiagnosticsBase`, `DiagnosticsFS`,
   `CompileDiagnostics` and `DiagnosticsDocument` are added. For the run list, Go adds
   `RunList`, `RunListRow`, `RunListOrganisation`, `RunListWorkspace`,
   `RunListRefusal`, `RunListInvalidRequest`, the parameter names
