@@ -361,6 +361,12 @@ const (
 // CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
 // adapter's declared default. It marshals with the members of its kind alone.
+//
+// AuthorName is plain text, and the control plane sends it as it is, with no escaping.
+// The adapter writes it as plain text in the format of the source's comments: it
+// escapes each character or sequence that, unescaped, would start markup or a mention
+// in that format. For a source whose comments are Markdown, that includes an @ at the
+// start of a word, a code fence, leading spaces and the start of an HTML comment.
 type Change struct {
 	Kind          string `json:"kind"`
 	WorkItemID    string `json:"work_item_id,omitempty"`

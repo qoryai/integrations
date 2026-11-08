@@ -194,14 +194,21 @@ at the source. The comment reaches the source in four steps:
    `comment_id` is `sc_` and 16 lower-case Crockford base32 characters.
 2. The adapter posts the comment on the item as the integration's account at the
    source. The first line is `<author_name> wrote in Qory Apiary:`, such as
-   `Dana Example wrote in Qory Apiary:`, then an empty line, then `body` unchanged. The
-   adapter puts a mark that contains the `comment_id` in the posted comment. Before it
-   posts, it checks the item for a comment with that mark. So it posts at most one
-   comment per `comment_id`, however often it reads an entry with that `comment_id`,
-   and the comment of a post whose result is unknown, such as one that timed out, is
-   not posted a second time. The form of the mark is the adapter's choice: the source
-   must keep it, and where the source allows, people who read the comment do not see
-   it.
+   `Dana Example wrote in Qory Apiary:`, then an empty line, then `body` unchanged.
+   `author_name` is plain text, and the control plane sends it as it is, with no
+   escaping. The adapter writes it as plain text in the format of the source's comments:
+   it escapes each character or sequence that, unescaped, would start markup or a mention
+   in that format. For a source whose comments are Markdown, that includes an @ at the
+   start of a word, a code fence, leading spaces and the start of an HTML comment. `body`
+   leaves 536 of the 65536 characters of a comment for the first line, the empty line and
+   the mark, so the adapter uses escapes short enough to fit in them, such as a backslash
+   before a character. The adapter puts a mark that contains the `comment_id` in the
+   posted comment. Before it posts, it checks the item for a comment with that mark. So
+   it posts at most one comment per `comment_id`, however often it reads an entry with
+   that `comment_id`, and the comment of a post whose result is unknown, such as one that
+   timed out, is not posted a second time. The form of the mark is the adapter's choice:
+   the source must keep it, and where the source allows, people who read the comment do
+   not see it.
 3. The adapter sends the posted comment back with `POST /v1/source-items/comments`, with
    `comment_id` set (`source-item-comments.schema.json`). The control plane matches the
    sent comment to the comment it stored, and stores no second comment.
