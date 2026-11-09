@@ -38,13 +38,13 @@
 // accepts: every answer whose content the revision bounds names that revision in its
 // signed body, as [Changes] does in Revision, and the adapter refuses one that names
 // another revision than the one it implements and sent, applies no entry of it, and
-// neither sends nor stores its cursor. An answer's signature covers its body and is
-// bound to the request's signature, so the revision the answer was built for is signed.
-// So the answers' schemas stay strict, refusing a member they do not define and an entry
-// of a kind they do not know, and an addition to the contract never breaks an adapter
-// already deployed. The Forager contract makes additions safe the other way, with
-// lenient answers whose unknown members are ignored; both conventions are safe, and they
-// apply to different contracts.
+// neither sends nor stores the answer's cursor. An answer's signature covers its body
+// and is bound to the request's signature, so the revision the answer was built for is
+// signed. So the answers' schemas stay strict, refusing a member they do not define and
+// an entry of a kind they do not know, and an addition to the contract never breaks an
+// adapter already deployed. The Forager contract makes additions safe the other way,
+// with lenient answers whose unknown members are ignored; both conventions are safe, and
+// they apply to different contracts.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;

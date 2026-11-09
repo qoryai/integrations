@@ -147,14 +147,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
   enrolment. `refusal.schema.json` lists the refusals.
 - In the change feed, entries for one item, the `work_item` and `comment` entries with
   the same `ref`, apply in cursor order. While the adapter retries an entry that failed,
-  it may apply later entries for other items first; a `collection`, `grant` or `sync`
-  entry applies only after every entry before it is done, and before every entry after
-  it. The adapter stores a cursor only when every entry before it is done. An entry is
-  done once the adapter has applied it, or has passed it: after a failure that a retry
-  cannot fix, or after it has failed for a time that the adapter sets. A `comment` entry
-  is passed only once the adapter has also sent its failure report, or has stopped
-  sending it (`changes-failed.schema.json`). The adapter applies no entry of a refused
-  answer, and neither sends its cursor as `after` nor stores it.
+  it may apply a later entry first when neither entry changes what the other depends on,
+  such as entries for different items, but not a `grant` entry and an entry for an item
+  that the grant covers. The adapter stores a cursor only when every entry before it is
+  done. An entry is done once the adapter has applied it, or has passed it: after a
+  failure that trying again cannot fix, or when the adapter's retries for it end. A
+  `comment` entry is passed only once the adapter has also stopped sending its failure
+  report (`changes-failed.schema.json`). The adapter applies no entry of a refused
+  answer, and neither sends that answer's cursor as `after` nor stores it.
 - A connect pass and a setup pass, signed by the control plane, send a person to the
   adapter's `connect_url` or `setup_url`, and a connect return, signed by the adapter,
   sends the person back. A connect pass may be for a live connection, to add or replace
