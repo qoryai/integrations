@@ -81,15 +81,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   advancing its cursor. Post each `comment` entry on its item as the integration's
   account: the first line `<author_name> wrote in Qory Apiary:`, then an empty line, then
   `body` unchanged. The control plane sends `author_name` as it is, with no escaping.
-  Write it in that line as plain text: escape each character or sequence that the format
-  of the source's comments would read as markup or as a mention, such as a code fence for
-  a source whose comments are Markdown. Keep the escaped name, the other 22 characters of
-  the first line, the two line breaks after it, and the mark with any line break before
-  it at most 536 characters together: the room that `body`, at most 65000 characters,
-  leaves of the 65536 characters of a comment. An escape of at most 3 characters for
-  each character of the name, such as a backslash before a character and a
-  zero-width space after it, keeps a name of 100 characters at most 300 characters.
-  A character reference for every character makes the name 500 characters or more
+  Write it in that line as plain text: escape each character or sequence that the
+  format of the source's comments would read as markup, as a mention, or as a link,
+  such as a code fence or a reference to another item for a source whose comments
+  are Markdown. Keep the escaped name, the other 22 characters of the first line,
+  the two line breaks after it, and the mark with any line break before it at most
+  536 characters together: the room that `body`, at most 65000 characters, leaves of
+  the 65536 characters of a comment. An escape of at most 3 characters for each
+  character of the name, such as a backslash before a character and a zero-width
+  space after it, keeps a name of 100 characters at most 300 characters. A numeric
+  character reference for every character makes the name 500 characters or more
   and leaves too little room for the mark. Put a mark that contains the `comment_id`
   in the posted comment, in a form that the source keeps and that, where the source
   allows, people who read the comment do not see. Before you post, check the item
