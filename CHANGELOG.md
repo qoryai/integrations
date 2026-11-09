@@ -145,6 +145,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `github.com/qoryai/forager/accesskey` signs one, sends the revision in
   `X-Qory-Contract-Version`, and checks each signed answer under a server key it pinned at
   enrolment. `refusal.schema.json` lists the refusals.
+- In the change feed, entries for one item, the `work_item` and `comment` entries with
+  the same `ref`, apply in cursor order. While the adapter retries an entry that failed,
+  it may apply a later entry first when neither entry changes what the other depends on,
+  such as entries for different items, but not a `grant` entry and an entry for an item
+  that the grant covers. The adapter stores a cursor only when every entry before it is
+  done. An entry is done once the adapter has applied it, or has passed it: after a
+  failure that trying again cannot fix, or when the adapter's retries for it end. A
+  `comment` entry is passed only once the adapter has also stopped sending its failure
+  report (`changes-failed.schema.json`): on the signed 204, a `403 forbidden` or a
+  `400 invalid_request`, or once its retries of the report end. The adapter applies no
+  entry of a refused answer, and neither sends that answer's cursor as `after` nor stores
+  it.
 - A connect pass and a setup pass, signed by the control plane, send a person to the
   adapter's `connect_url` or `setup_url`, and a connect return, signed by the adapter,
   sends the person back. A connect pass may be for a live connection, to add or replace
