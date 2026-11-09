@@ -86,15 +86,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a source whose comments are Markdown. Keep the escaped name, the other 22 characters of
   the first line, the two line breaks after it, and the mark with any line break before
   it at most 536 characters together: the room that `body`, at most 65000 characters,
-  leaves of the 65536 characters of a comment. An escape of at most 2 characters for
-  each character of the name, such as a backslash before a character, keeps a name of
-  100 characters at most 200 characters. A character reference for every character
-  makes the name 500 characters or more and leaves too little room for the mark. Put a
-  mark that contains the `comment_id` in the posted comment, in a form that the source
-  keeps and that, where the source allows, people who read the comment do not see. Before
-  you post, check the item for a comment with that mark, so the comment of a post whose
-  result is unknown, such as one that timed out, is not posted a second time. Send the
-  posted comment back with `POST /v1/source-items/comments`, and set `comment_id` on that
+  leaves of the 65536 characters of a comment. An escape of at most 3 characters for
+  each character of the name, such as a backslash before a character and a
+  zero-width space after it, keeps a name of 100 characters at most 300 characters.
+  A character reference for every character makes the name 500 characters or more
+  and leaves too little room for the mark. Put a mark that contains the `comment_id`
+  in the posted comment, in a form that the source keeps and that, where the source
+  allows, people who read the comment do not see. Before you post, check the item
+  for a comment with that mark, so the comment of a post whose result is unknown,
+  such as one that timed out, is not posted a second time. Send the posted comment
+  back with `POST /v1/source-items/comments`, and set `comment_id` on that
   comment in every request that contains it. After a failure that trying again cannot
   fix, or when your retries end, send `POST /v1/work-items/changes/failed` with
   `comment_id` and a `reason`: `item_gone`, `not_permitted`, `too_long` or `unreachable`.

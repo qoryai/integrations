@@ -199,14 +199,16 @@ at the source. The comment reaches the source in four steps:
    escaping. The adapter writes it as plain text: it escapes each character or sequence
    that the format of the source's comments would read as markup or as a mention. For a
    source whose comments are Markdown, that includes an @ at the start of a word, a code
-   fence, leading spaces and the start of an HTML comment. The escaped name, the other 22
-   characters of the first line (`" wrote in Qory Apiary:"`), the two line breaks after
-   it, and the mark with any line break before it are at most 536 characters together.
-   536 is the room that `body`, at most 65000 characters, leaves of the 65536 characters
-   in `definitions.schema.json`, `$defs.body`. For example, an escape of at most 2
-   characters for each character of the name, such as a backslash before a character,
-   keeps a name of 100 characters at most 200 characters. A character reference for
-   every character, such as `&#64;`, makes the name 500 characters or more and leaves too
+   fence, leading spaces, the start of an HTML comment, and a sequence that the source
+   turns into a link, such as a reference to another item (`ABC-123`, `#123`) or a
+   commit id. The escaped name, the other 22 characters of the first line
+   (`" wrote in Qory Apiary:"`), the two line breaks after it, and the mark with any line
+   break before it are at most 536 characters together. 536 is the room that `body`, at
+   most 65000 characters, leaves of the 65536 characters in `definitions.schema.json`,
+   `$defs.body`. For example, an escape of at most 3 characters for each character of the
+   name, such as a backslash before a character and a zero-width space after it, keeps a
+   name of 100 characters at most 300 characters. A character reference for every
+   character, such as `&#64;`, makes the name 500 characters or more and leaves too
    little room for the mark. The adapter puts a mark that contains the `comment_id` in
    the posted comment. Before it posts, it checks the item for a comment with that mark.
    So it posts at most one comment per `comment_id`, however often it reads an entry with
