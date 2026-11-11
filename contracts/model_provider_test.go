@@ -109,6 +109,10 @@ func TestAModelProviderIsRefusedForTheRuleInItsName(t *testing.T) {
 		"fixtures/invalid/description-model-provider-key-prefixes-space.json":        {`"acme key-"`, `"acme-key-"`},
 		"fixtures/invalid/description-model-provider-key-prefixes-33-characters.json": {
 			`"` + strings.Repeat("a", 33) + `"`, `"` + strings.Repeat("a", 32) + `"`},
+		"fixtures/invalid/description-model-provider-limit-windows-upper-case.json":    {`"Five_hour"`, `"five_hour"`},
+		"fixtures/invalid/description-model-provider-limit-windows-leading-digit.json": {`"5_hour"`, `"five_hour"`},
+		"fixtures/invalid/description-model-provider-limit-windows-65-characters.json": {
+			`"` + strings.Repeat("a", 65) + `"`, `"` + strings.Repeat("a", 64) + `"`},
 	} {
 		b := read(t, name)
 		fixed := bytes.Replace(b, []byte(fix[0]), []byte(fix[1]), 1)
@@ -258,6 +262,62 @@ func TestAnAPIHoldsItsRules(t *testing.T) {
 	check("5 APIs", list(5), "/roles/model_provider/apis maxItems")
 	check("no API", "", "/roles/model_provider/apis minItems")
 	check("an API without auth", `{"format": "gemini", "endpoint": `+url+`}`, "/roles/model_provider/apis/0 required auth")
+}
+
+// TestLimitWindowsHoldTheirRules pins limit_windows of model_provider to the rules its
+// schema states, with a value at each edge accepted and a value past it refused: 1 to
+// 11 names, none twice, each 1 to 64 characters of lower-case letters, digits and
+// underscores that starts with a letter. A provider without limit_windows is accepted.
+func TestLimitWindowsHoldTheirRules(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	check := func(name, windows, want string) {
+		t.Helper()
+		text := provider(`{"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": {"scheme": "bearer", "oauth": true}}`)
+		if windows != "" {
+			text = strings.Replace(text, `"models":`, `"limit_windows": `+windows+`, "models":`, 1)
+		}
+		doc, err := jsonschema.UnmarshalJSON(strings.NewReader(text))
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		got := ""
+		if v, ok := schema.Validate(doc).(*jsonschema.ValidationError); ok {
+			got = strings.Join(leaves(v), "; ")
+		}
+		if got != want {
+			t.Errorf("%s: refused for %q, want %q", name, got, want)
+		}
+	}
+	names := func(n int) string {
+		list := make([]string, n)
+		for i := range list {
+			list[i] = fmt.Sprintf(`"window_%d"`, i)
+		}
+		return "[" + strings.Join(list, ", ") + "]"
+	}
+	for _, tc := range []struct{ name, windows, want string }{
+		{"no limit_windows", "", ""},
+		{"1 name", `["five_hour"]`, ""},
+		{"2 names", `["five_hour", "seven_day"]`, ""},
+		{"11 names", names(11), ""},
+		{"1 character", `["a"]`, ""},
+		{"64 characters", `["` + strings.Repeat("a", 64) + `"]`, ""},
+		{"letters, digits and underscores", `["window_2_b"]`, ""},
+		{"no name", `[]`, "/roles/model_provider/limit_windows minItems"},
+		{"12 names", names(12), "/roles/model_provider/limit_windows maxItems"},
+		{"a name twice", `["five_hour", "five_hour"]`, "/roles/model_provider/limit_windows uniqueItems"},
+		{"an empty name", `[""]`, "/roles/model_provider/limit_windows/0 pattern"},
+		{"an upper-case letter", `["Five_hour"]`, "/roles/model_provider/limit_windows/0 pattern"},
+		{"a leading digit", `["5_hour"]`, "/roles/model_provider/limit_windows/0 pattern"},
+		{"a leading underscore", `["_hour"]`, "/roles/model_provider/limit_windows/0 pattern"},
+		{"a hyphen", `["five-hour"]`, "/roles/model_provider/limit_windows/0 pattern"},
+		{"a space", `["five hour"]`, "/roles/model_provider/limit_windows/0 pattern"},
+		{"65 characters", `["` + strings.Repeat("a", 65) + `"]`, "/roles/model_provider/limit_windows/0 pattern"},
+		{"a number", `[5]`, "/roles/model_provider/limit_windows/0 type"},
+		{"a string, not a list", `"five_hour"`, "/roles/model_provider/limit_windows type"},
+	} {
+		check(tc.name, tc.windows, tc.want)
+	}
 }
 
 // TestADataDescriptionHasTheModelProviderRoleAlone pins the reason of each invalid data

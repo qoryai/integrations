@@ -112,6 +112,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
   subscription access token, and optional `key_prefixes`; and the `models` a new provider
   of this kind starts with.
+- The `model_provider` role can list `limit_windows`: 1 to 11 windows of the provider's
+  limits, such as `five_hour` and `seven_day`, that a key's `use_up_to_percent` applies
+  to. A window is a period whose use the provider limits and reports as a percentage.
+  The control plane sends the list as `use_up_to_windows` in the run configuration, with
+  a key's `use_up_to_percent`. Without `limit_windows`, the provider's keys take no
+  `use_up_to_percent`. In `descriptions/claude-subscription.json`, `limit_windows` is
+  `["five_hour", "seven_day"]`.
 - A description in the data form has no `program_version`: it is a file that no program
   prints, its one role is `model_provider`, and its settings have no member `writeOnly`.
   `descriptions/` contains the data descriptions of five model providers, and the `name`

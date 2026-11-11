@@ -12,7 +12,8 @@
       "models": [
         {"id": "acme-large-2", "title": "Acme Large 2", "effort": ["low", "medium", "high", "xhigh", "max"]},
         {"id": "acme-small-1", "title": "Acme Small 1"}
-      ]
+      ],
+      "limit_windows": ["five_hour", "seven_day"]
     }
   },
   "egress_hosts": ["api.acme.example"]
