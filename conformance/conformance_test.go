@@ -229,7 +229,7 @@ func TestFailureIsOneLineAndNothingElse(t *testing.T) {
 }
 
 // dataFixtures are the data descriptions among the contract's fixtures.
-var dataFixtures = []string{"fixtures/acme-models.json", "fixtures/example-gateway.json"}
+var dataFixtures = []string{"fixtures/acme-models.json", "fixtures/acme-subscription.json", "fixtures/example-gateway.json"}
 
 // gateway is a data description with one API whose endpoint is the setting url, with
 // the settings and the models put in.
