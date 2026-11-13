@@ -242,7 +242,7 @@
           }
         },
         "auth": {
-          "description": "How the gateway sets the key on a request, as Forager's auth.schema.json defines it. bearer sets Authorization: Bearer and the value. header sets the header in header to the value. basic sets Authorization: Basic with the username in username and the value as the password. oauth, only with bearer, marks the value as an OAuth access token, such as the subscription token of a Claude subscription: the gateway sets it as any bearer value, and the session reads oauth to choose the runtime's variable for the key. account_header and account_claim come both or neither, and only with oauth: the gateway sets the header account_header, such as chatgpt-account-id, to the claim at the JSON pointer account_claim in the access token's JWT payload.",
+          "description": "How the gateway sets the key on a request, as Forager's auth.schema.json defines it. bearer sets Authorization: Bearer and the value. header sets the header in header to the value. basic sets Authorization: Basic with the username in username and the value as the password. oauth, only with bearer, marks the value as an OAuth access token, such as the OAuth access token of a Claude subscription: the gateway sets it as any bearer value, and the session reads oauth to choose the runtime's variable for the key. account_header and account_claim come both or neither, and only with oauth: the gateway sets the header account_header, such as chatgpt-account-id, to the claim at the JSON pointer account_claim in the access token's JWT payload.",
           "$ref": "https://qory.dev/contracts/forager/v1/auth.schema.json"
         },
         "key_prefixes": {
