@@ -18,7 +18,7 @@
     },
     "title": {"description": "A human name, for a form or a listing.", "type": "string", "minLength": 1},
     "description": {"description": "A sentence or two on what the integration does, for a form or a listing.", "type": "string"},
-    "vendor": {"description": "The vendor's name, 1 to 40 characters, such as Anthropic, or your LiteLLM proxy for a proxy that the admin runs. The control plane shows it in lines such as \"Anthropic rejected it on <date time>.\". A line may start with the name, and the control plane then writes its first letter in upper case.", "type": "string", "minLength": 1, "maxLength": 40},
+    "vendor": {"description": "The vendor's name, a line as $defs/line defines it of at most 40 characters, such as Anthropic, or your LiteLLM proxy for a proxy that the admin runs. The control plane shows it in lines such as \"Anthropic rejected it on <date time>.\". A line may start with the name, and the control plane then writes its first letter in upper case.", "$ref": "#/$defs/line", "maxLength": 40},
     "domains": {
       "description": "The domains the integration works with, each a domain name, such as software. When the integration names no domain, the field is absent, never an empty list.",
       "type": "array",
@@ -192,7 +192,7 @@
               "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}
             },
             "key_lifetime_days": {
-              "description": "The days a key of this provider stays valid after it is made, such as 365: an integer from 1 to 3650. The control plane warns 14 days before the end of that lifetime, counted from the time the key was added. Absent, the lifetime is unknown, and the control plane shows no such warning.",
+              "description": "The days a key of this provider stays valid, counted from the time the key was added, such as 365: an integer from 1 to 3650. The control plane warns 14 days before the end of that lifetime. Absent, the lifetime is unknown, and the control plane shows no such warning.",
               "type": "integer",
               "minimum": 1,
               "maximum": 3650
@@ -242,7 +242,7 @@
           }
         },
         "auth": {
-          "description": "How the gateway sets the key on a request, as Forager's auth.schema.json defines it. bearer sets Authorization: Bearer and the value. header sets the header in header to the value. basic sets Authorization: Basic with the username in username and the value as the password. oauth, only with bearer, marks the value as an OAuth access token, such as the subscription token of a Claude subscription: the gateway sets it as any bearer value, and the session reads oauth to choose the runtime's variable for the key.",
+          "description": "How the gateway sets the key on a request, as Forager's auth.schema.json defines it. bearer sets Authorization: Bearer and the value. header sets the header in header to the value. basic sets Authorization: Basic with the username in username and the value as the password. oauth, only with bearer, marks the value as an OAuth access token, such as the subscription token of a Claude subscription: the gateway sets it as any bearer value, and the session reads oauth to choose the runtime's variable for the key. account_header and account_claim come both or neither, and only with oauth: the gateway sets the header account_header, such as chatgpt-account-id, to the claim at the JSON pointer account_claim in the access token's JWT payload.",
           "$ref": "https://qory.dev/contracts/forager/v1/auth.schema.json"
         },
         "key_prefixes": {

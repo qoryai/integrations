@@ -121,6 +121,7 @@ func TestAModelProviderIsRefusedForTheRuleInItsName(t *testing.T) {
 		"fixtures/invalid/description-model-provider-oauth-refresh-without-oauth.json":   {`{"scheme": "bearer"}`, `{"scheme": "bearer", "oauth": true}`},
 		"fixtures/invalid/description-model-provider-oauth-refresh-url-http.json":        {`"http://`, `"https://`},
 		"fixtures/invalid/description-model-provider-oauth-refresh-client-id-space.json": {`"acme cli"`, `"acme-cli"`},
+		"fixtures/invalid/description-vendor-line-feed.json":                             {`\nCloud`, ` Cloud`},
 	} {
 		b := read(t, name)
 		fixed := bytes.Replace(b, []byte(fix[0]), []byte(fix[1]), 1)
@@ -513,8 +514,8 @@ func TestKeyLifetimeDaysHoldsItsRules(t *testing.T) {
 }
 
 // TestVendorHoldsItsRules pins vendor of a description to the rules its schema states,
-// with a value at each edge accepted and a value past it refused: a string of 1 to 40
-// characters. A description without vendor is accepted.
+// with a value at each edge accepted and a value past it refused: a line as $defs/line
+// defines it, of 1 to 40 characters. A description without vendor is accepted.
 func TestVendorHoldsItsRules(t *testing.T) {
 	schema := compile(t, "description.schema.json")
 	for _, tc := range []struct{ name, vendor, want string }{
@@ -522,7 +523,10 @@ func TestVendorHoldsItsRules(t *testing.T) {
 		{"1 character", `"A"`, ""},
 		{"40 characters", `"` + strings.Repeat("a", 40) + `"`, ""},
 		{"lower case and spaces", `"your LiteLLM proxy"`, ""},
-		{"empty", `""`, "/vendor minLength"},
+		{"empty", `""`, "/vendor minLength; /vendor pattern"},
+		{"a line feed", `"Acme\nCloud"`, "/vendor pattern"},
+		{"a control character", `"Acme\u0007"`, "/vendor pattern"},
+		{"a bidirectional override", `"Acme\u202eduolC"`, "/vendor pattern"},
 		{"41 characters", `"` + strings.Repeat("a", 41) + `"`, "/vendor maxLength"},
 		{"a number", `1`, "/vendor type"},
 	} {

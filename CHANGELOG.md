@@ -125,17 +125,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   key on, which the control plane copies unchanged into `paths` of `api_credential`; and,
   only with `oauth: true`, `oauth_refresh`, with the `url`, `client_id` and optional
   `scope` with which the control plane refreshes an OAuth login. The `model_provider`
-  role can set `key_lifetime_days`, from 1 to 3650: the control plane warns 14 days
-  before the time the key was added plus `key_lifetime_days`. A description can set
-  `vendor`, the vendor's name in lines the control plane shows, such as
-  `Anthropic rejected it on <date time>.`.
+  role can set `key_lifetime_days`, from 1 to 3650: the days a key stays valid, counted
+  from the time the key was added; the control plane warns 14 days before the end. A
+  description can set `vendor`, the vendor's name in lines the control plane shows,
+  such as `Anthropic rejected it on <date time>.`.
   `contracts.CheckModelProvider` refuses an `oauth_refresh` `url` whose host or port
   the control plane cannot read. Every description in `descriptions/` sets `vendor`; in
   `descriptions/claude-subscription.json`, `runtimes` is `["claude"]` and
   `key_lifetime_days` is `365`.
 - `descriptions/openai.json` describes the OpenAI API key provider: the Responses API at
   `https://api.openai.com/v1`, a bearer key that starts with `sk-`, and four GPT models.
-  Its endpoint and host follow OpenAI's API reference; no run has used them yet.
+  Its endpoint and host follow OpenAI's API reference; no run used them before
+  2026-11-13.
 - `descriptions/openai-subscription.json` describes the OpenAI subscription provider: a
   ChatGPT plan's sign-in from Codex, for the `codex` runtime, on the Responses API at
   `https://chatgpt.com/backend-api/codex`, with `limit_windows` `five_hour` and

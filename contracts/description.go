@@ -75,7 +75,7 @@ func CheckDescription(b []byte) error {
 // CheckModelProvider reports the first rule of the model_provider role of
 // description.schema.json that a description breaks and that the schema does not
 // express: no two entries of apis have the same format; an API endpoint that is a URL,
-// and the url of an API's oauth_refresh, has a host and port as [urlHost] reads them;
+// and the url of each oauth_refresh, each have a host and port as [urlHost] reads them;
 // an API endpoint that is a setting is the name of a property of settings whose type
 // is string and that is not marked writeOnly; and no two entries of models have the
 // same id. doc is the description as a schema validates it, after the schema accepts
