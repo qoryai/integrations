@@ -136,9 +136,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `descriptions/openai.json` describes the OpenAI API key provider: the Responses API at
   `https://api.openai.com/v1`, a bearer key that starts with `sk-`, and four GPT models.
   Its endpoint and host follow OpenAI's API reference; no run has used them yet.
+- `descriptions/openai-subscription.json` describes the OpenAI subscription provider: a
+  ChatGPT plan's sign-in from Codex, for the `codex` runtime, on the Responses API at
+  `https://chatgpt.com/backend-api/codex`, with `limit_windows` `five_hour` and
+  `seven_day`, the refresh at `https://auth.openai.com/oauth/token`, and eight GPT models.
 - A description in the data form has no `program_version`: it is a file that no program
   prints, its one role is `model_provider`, and its settings have no member `writeOnly`.
-  `descriptions/` contains the data descriptions of six model providers, and the `name`
+  `descriptions/` contains the data descriptions of seven model providers, and the `name`
   of each is its file name without `.json`.
 - A description can list `egress_hosts`, every host that runs of the integration reach:
   each entry is an exact lower-case host, or `{"setting": "<name>"}` for the host of the
