@@ -119,6 +119,19 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a key's `use_up_to_percent`. Without `limit_windows`, the provider's keys take no
   `use_up_to_percent`. In `descriptions/claude-subscription.json`, `limit_windows` is
   `["five_hour", "seven_day"]`.
+- Five optional members describe model keys further. An API of `model_provider` can
+  list `runtimes`, the runtimes that may use its key, each a name in Forager's
+  `runtimes.json`; `paths`, the paths of the endpoint's host that the gateway sets the
+  key on, which the control plane copies unchanged into `paths` of `api_credential`; and,
+  only with `oauth: true`, `oauth_refresh`, with the `url`, `client_id` and optional
+  `scope` with which the control plane refreshes an OAuth login. The `model_provider`
+  role can set `key_lifetime_days`, from 1 to 3650: the control plane warns 14 days
+  before a key's lifetime ends. A description can set `vendor`, the vendor's name in
+  lines the control plane shows, such as `Anthropic rejected it on <date time>.`.
+  `contracts.CheckModelProvider` refuses an `oauth_refresh` `url` whose host or port
+  the control plane cannot read. Every description in `descriptions/` sets `vendor`; in
+  `descriptions/claude-subscription.json`, `runtimes` is `["claude"]` and
+  `key_lifetime_days` is `365`.
 - A description in the data form has no `program_version`: it is a file that no program
   prints, its one role is `model_provider`, and its settings have no member `writeOnly`.
   `descriptions/` contains the data descriptions of five model providers, and the `name`

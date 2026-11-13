@@ -113,6 +113,14 @@ func TestAModelProviderIsRefusedForTheRuleInItsName(t *testing.T) {
 		"fixtures/invalid/description-model-provider-limit-windows-leading-digit.json": {`"5_hour"`, `"five_hour"`},
 		"fixtures/invalid/description-model-provider-limit-windows-65-characters.json": {
 			`"` + strings.Repeat("a", 65) + `"`, `"` + strings.Repeat("a", 64) + `"`},
+		"fixtures/invalid/description-model-provider-runtimes-upper-case.json":           {`"Claude"`, `"claude"`},
+		"fixtures/invalid/description-model-provider-runtimes-leading-digit.json":        {`"1claude"`, `"claude"`},
+		"fixtures/invalid/description-model-provider-paths-no-leading-slash.json":        {`"v1/messages"`, `"/v1/messages"`},
+		"fixtures/invalid/description-model-provider-paths-star-inside.json":             {`"/v1/*/messages"`, `"/v1/messages/*"`},
+		"fixtures/invalid/description-model-provider-paths-query.json":                   {`?beta=true`, ``},
+		"fixtures/invalid/description-model-provider-oauth-refresh-without-oauth.json":   {`{"scheme": "bearer"}`, `{"scheme": "bearer", "oauth": true}`},
+		"fixtures/invalid/description-model-provider-oauth-refresh-url-http.json":        {`"http://`, `"https://`},
+		"fixtures/invalid/description-model-provider-oauth-refresh-client-id-space.json": {`"acme cli"`, `"acme-cli"`},
 	} {
 		b := read(t, name)
 		fixed := bytes.Replace(b, []byte(fix[0]), []byte(fix[1]), 1)
@@ -317,6 +325,251 @@ func TestLimitWindowsHoldTheirRules(t *testing.T) {
 		{"a string, not a list", `"five_hour"`, "/roles/model_provider/limit_windows type"},
 	} {
 		check(tc.name, tc.windows, tc.want)
+	}
+}
+
+// refusal validates with schema the description that edit makes from api, the members
+// of an API of the scheme bearer with oauth true, and role, the text "models": of the
+// model_provider role. It returns the refusal's reasons, or "" when schema accepts the
+// description.
+func refusal(t *testing.T, schema *jsonschema.Schema, name string, edit func(api, role string) string) string {
+	t.Helper()
+	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(edit(`"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": {"scheme": "bearer", "oauth": true}`, `"models":`)))
+	if err != nil {
+		t.Fatalf("%s: %v", name, err)
+	}
+	if v, ok := schema.Validate(doc).(*jsonschema.ValidationError); ok {
+		return strings.Join(leaves(v), "; ")
+	}
+	return ""
+}
+
+// inAPI returns an edit for refusal that adds members, such as `, "paths": ["/v1"]`,
+// to the API.
+func inAPI(members string) func(api, role string) string {
+	return func(api, _ string) string { return provider("{" + api + members + "}") }
+}
+
+// strs is a JSON array of n strings, each format with its index put in.
+func strs(n int, format string) string {
+	l := make([]string, n)
+	for i := range l {
+		l[i] = `"` + fmt.Sprintf(format, i) + `"`
+	}
+	return "[" + strings.Join(l, ", ") + "]"
+}
+
+// TestRuntimesHoldTheirRules pins runtimes of an API to the rules its schema states,
+// with a value at each edge accepted and a value past it refused: 1 to 16 names, none
+// twice, each 1 to 64 characters of lower-case letters, digits and hyphens that starts
+// with a letter. An API without runtimes is accepted.
+func TestRuntimesHoldTheirRules(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	at := "/roles/model_provider/apis/0/runtimes"
+	for _, tc := range []struct{ name, runtimes, want string }{
+		{"no runtimes", "", ""},
+		{"1 name", `["claude"]`, ""},
+		{"16 names", strs(16, "runtime-%d"), ""},
+		{"1 character", `["a"]`, ""},
+		{"64 characters", `["` + strings.Repeat("a", 64) + `"]`, ""},
+		{"letters, digits and hyphens", `["acme-2-b"]`, ""},
+		{"no name", `[]`, at + " minItems"},
+		{"17 names", strs(17, "runtime-%d"), at + " maxItems"},
+		{"a name twice", `["claude", "claude"]`, at + " uniqueItems"},
+		{"an empty name", `[""]`, at + "/0 pattern"},
+		{"an upper-case letter", `["Claude"]`, at + "/0 pattern"},
+		{"a leading digit", `["1claude"]`, at + "/0 pattern"},
+		{"a leading hyphen", `["-claude"]`, at + "/0 pattern"},
+		{"an underscore", `["acme_cli"]`, at + "/0 pattern"},
+		{"65 characters", `["` + strings.Repeat("a", 65) + `"]`, at + "/0 pattern"},
+		{"a number", `[5]`, at + "/0 type"},
+		{"a string, not a list", `"claude"`, at + " type"},
+	} {
+		members := ""
+		if tc.runtimes != "" {
+			members = `, "runtimes": ` + tc.runtimes
+		}
+		if got := refusal(t, schema, tc.name, inAPI(members)); got != tc.want {
+			t.Errorf("%s: refused for %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestPathsHoldTheirRules pins paths of an API to the rules its schema states, with a
+// value at each edge accepted and a value past it refused: 1 to 32 paths, none twice,
+// each in Forager's path grammar. An API without paths is accepted.
+func TestPathsHoldTheirRules(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	at := "/roles/model_provider/apis/0/paths"
+	for _, tc := range []struct{ name, paths, want string }{
+		{"no paths", "", ""},
+		{"1 path", `["/v1/messages"]`, ""},
+		{"32 paths", strs(32, "/v1/p%d"), ""},
+		{"the root", `["/"]`, ""},
+		{"every path", `["/*"]`, ""},
+		{"a star at the end", `["/backend-api/codex/*"]`, ""},
+		{"no path", `[]`, at + " minItems"},
+		{"33 paths", strs(33, "/v1/p%d"), at + " maxItems"},
+		{"a path twice", `["/v1", "/v1"]`, at + " uniqueItems"},
+		{"an empty path", `[""]`, at + "/0 pattern"},
+		{"no leading slash", `["v1/messages"]`, at + "/0 pattern"},
+		{"a star inside", `["/v1/*/messages"]`, at + "/0 pattern"},
+		{"two stars", `["/v1/**"]`, at + "/0 pattern"},
+		{"a query", `["/v1/messages?beta=true"]`, at + "/0 pattern"},
+		{"a fragment", `["/v1#top"]`, at + "/0 pattern"},
+		{"a space", `["/v1/a b"]`, at + "/0 pattern"},
+		{"a tab", `["/v1/a\tb"]`, at + "/0 pattern"},
+		{"a string, not a list", `"/v1"`, at + " type"},
+	} {
+		members := ""
+		if tc.paths != "" {
+			members = `, "paths": ` + tc.paths
+		}
+		if got := refusal(t, schema, tc.name, inAPI(members)); got != tc.want {
+			t.Errorf("%s: refused for %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestOAuthRefreshHoldsItsRules pins oauth_refresh of an API to the rules its schema
+// states: url and client_id required, scope optional, no other member; url as
+// $defs/endpoint defines it; client_id 1 to 128 characters with no white space; scope 1
+// to 256 characters; and oauth_refresh only with an auth whose oauth is true. An API
+// without oauth_refresh is accepted.
+func TestOAuthRefreshHoldsItsRules(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	at := "/roles/model_provider/apis/0/oauth_refresh"
+	url := `"url": "https://auth.acme.example/oauth/token"`
+	id := `"client_id": "acme-cli"`
+	if got := refusal(t, schema, "no oauth_refresh", inAPI("")); got != "" {
+		t.Errorf("no oauth_refresh: refused for %q", got)
+	}
+	for _, tc := range []struct{ name, refresh, want string }{
+		{"url and client_id", url + ", " + id, ""},
+		{"with a scope", url + ", " + id + `, "scope": "openid profile email"`, ""},
+		{"a url with a port", `"url": "https://auth.acme.example:8443/oauth/token", ` + id, ""},
+		{"a client_id of 128 characters", url + `, "client_id": "` + strings.Repeat("a", 128) + `"`, ""},
+		{"a scope of 256 characters", url + ", " + id + `, "scope": "` + strings.Repeat("a", 256) + `"`, ""},
+		{"no url", id, at + " required url"},
+		{"no client_id", url, at + " required client_id"},
+		{"an undefined member", url + ", " + id + `, "client_secret": "acme"`, at + " additionalProperties"},
+		{"a url over http", `"url": "http://auth.acme.example/oauth/token", ` + id, at + "/url pattern"},
+		{"a url with a query", `"url": "https://auth.acme.example/oauth/token?grant=1", ` + id, at + "/url pattern"},
+		{"an empty client_id", url + `, "client_id": ""`, at + "/client_id minLength; " + at + "/client_id pattern"},
+		{"a client_id of 129 characters", url + `, "client_id": "` + strings.Repeat("a", 129) + `"`, at + "/client_id maxLength"},
+		{"a client_id with a space", url + `, "client_id": "acme cli"`, at + "/client_id pattern"},
+		{"a client_id with a tab", url + `, "client_id": "acme\tcli"`, at + "/client_id pattern"},
+		{"an empty scope", url + ", " + id + `, "scope": ""`, at + "/scope minLength"},
+		{"a scope of 257 characters", url + ", " + id + `, "scope": "` + strings.Repeat("a", 257) + `"`, at + "/scope maxLength"},
+	} {
+		if got := refusal(t, schema, tc.name, inAPI(`, "oauth_refresh": {`+tc.refresh+`}`)); got != tc.want {
+			t.Errorf("%s: refused for %q, want %q", tc.name, got, tc.want)
+		}
+	}
+	for _, tc := range []struct{ name, auth string }{
+		{"bearer without oauth", `{"scheme": "bearer"}`},
+		{"header", `{"scheme": "header", "header": "x-api-key"}`},
+		{"basic", `{"scheme": "basic", "username": "acme"}`},
+	} {
+		edit := func(_, _ string) string {
+			return provider(`{"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": ` + tc.auth +
+				`, "oauth_refresh": {` + url + ", " + id + `}}`)
+		}
+		if got, want := refusal(t, schema, tc.name, edit), "/roles/model_provider/apis/0/auth required oauth"; got != want {
+			t.Errorf("%s: refused for %q, want %q", tc.name, got, want)
+		}
+	}
+}
+
+// TestKeyLifetimeDaysHoldsItsRules pins key_lifetime_days of model_provider to the rules
+// its schema states, with a value at each edge accepted and a value past it refused: an
+// integer from 1 to 3650. A provider without key_lifetime_days is accepted.
+func TestKeyLifetimeDaysHoldsItsRules(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	at := "/roles/model_provider/key_lifetime_days"
+	for _, tc := range []struct{ name, days, want string }{
+		{"no key_lifetime_days", "", ""},
+		{"1", "1", ""},
+		{"365", "365", ""},
+		{"3650", "3650", ""},
+		{"0", "0", at + " minimum"},
+		{"-1", "-1", at + " minimum"},
+		{"3651", "3651", at + " maximum"},
+		{"365.5", "365.5", at + " type"},
+		{"a string", `"365"`, at + " type"},
+		{"null", "null", at + " type"},
+	} {
+		edit := func(api, role string) string {
+			text := provider("{" + api + "}")
+			if tc.days != "" {
+				text = strings.Replace(text, role, `"key_lifetime_days": `+tc.days+", "+role, 1)
+			}
+			return text
+		}
+		if got := refusal(t, schema, tc.name, edit); got != tc.want {
+			t.Errorf("%s: refused for %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestVendorHoldsItsRules pins vendor of a description to the rules its schema states,
+// with a value at each edge accepted and a value past it refused: a string of 1 to 40
+// characters. A description without vendor is accepted.
+func TestVendorHoldsItsRules(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	for _, tc := range []struct{ name, vendor, want string }{
+		{"no vendor", "", ""},
+		{"1 character", `"A"`, ""},
+		{"40 characters", `"` + strings.Repeat("a", 40) + `"`, ""},
+		{"lower case and spaces", `"your LiteLLM proxy"`, ""},
+		{"empty", `""`, "/vendor minLength"},
+		{"41 characters", `"` + strings.Repeat("a", 41) + `"`, "/vendor maxLength"},
+		{"a number", `1`, "/vendor type"},
+	} {
+		edit := func(api, _ string) string {
+			text := provider("{" + api + "}")
+			if tc.vendor != "" {
+				text = strings.Replace(text, `"settings":`, `"vendor": `+tc.vendor+`, "settings":`, 1)
+			}
+			return text
+		}
+		if got := refusal(t, schema, tc.name, edit); got != tc.want {
+			t.Errorf("%s: refused for %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestCheckModelProviderReadsTheOAuthRefreshURLHost pins that CheckModelProvider refuses
+// an oauth_refresh url whose host or port the control plane cannot read, which the
+// schema accepts, and accepts one at the edges.
+func TestCheckModelProviderReadsTheOAuthRefreshURLHost(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	doc := func(url string) any {
+		t.Helper()
+		d, err := jsonschema.UnmarshalJSON(strings.NewReader(provider(`{"format": "anthropic-messages", "endpoint": "https://api.acme.example",
+ "auth": {"scheme": "bearer", "oauth": true}, "oauth_refresh": {"url": "` + url + `", "client_id": "acme-cli"}}`)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := schema.Validate(d); err != nil {
+			t.Fatalf("%s: the schema refuses it: %v", url, err)
+		}
+		return d
+	}
+	for _, tc := range []struct{ url, why string }{
+		{"https://API.acme.example/oauth/token", `the host "API.acme.example" is not labels joined by dots, each 1 to 63 lower-case letters, digits and hyphens that starts and ends with a letter or a digit`},
+		{"https://10.0.0.256/oauth/token", `the host "10.0.0.256" ends in a number and is not an IPv4 address of four decimal parts from 0 to 255, each with no leading zero`},
+		{"https://auth.acme.example:65536/oauth/token", `the port "65536" is not a number from 1 to 65535`},
+	} {
+		want := `the oauth_refresh url "` + tc.url + `" of model_provider apis[0] has no host the control plane can read: ` + tc.why
+		if err := contracts.CheckModelProvider(doc(tc.url)); err == nil || err.Error() != want {
+			t.Errorf("%s: %v, want %q", tc.url, err, want)
+		}
+	}
+	for _, url := range []string{"https://auth.acme.example/oauth/token", "https://auth.acme.example:65535/oauth/token", "https://10.0.0.1/oauth/token"} {
+		if err := contracts.CheckModelProvider(doc(url)); err != nil {
+			t.Errorf("%s: %v", url, err)
+		}
 	}
 }
 
