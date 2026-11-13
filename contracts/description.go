@@ -75,12 +75,11 @@ func CheckDescription(b []byte) error {
 // CheckModelProvider reports the first rule of the model_provider role of
 // description.schema.json that a description breaks and that the schema does not
 // express: no two entries of apis have the same format; an API endpoint that is a URL,
-// and the url of an API's oauth_refresh, has a host and port as [urlHost] reads them; an
-// API endpoint that is a setting
-// is the name of a property of settings whose type is string and that is not marked
-// writeOnly; and no two entries of models have the same id. doc is the
-// description as a schema validates it, after the schema accepts it. A description
-// with no model_provider role keeps every rule.
+// and the url of an API's oauth_refresh, has a host and port as [urlHost] reads them;
+// an API endpoint that is a setting is the name of a property of settings whose type
+// is string and that is not marked writeOnly; and no two entries of models have the
+// same id. doc is the description as a schema validates it, after the schema accepts
+// it. A description with no model_provider role keeps every rule.
 func CheckModelProvider(doc any) error {
 	d, _ := doc.(map[string]any)
 	roles, _ := d["roles"].(map[string]any)
@@ -232,9 +231,9 @@ var exactHost = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z
 var numberLabel = regexp.MustCompile(`(^|\.)([0-9]+|0x[0-9a-f]*)$`)
 
 // endpointHost returns the host of endpoint, the URL endpoint of model_provider
-// apis[i], as [urlHost] reads it, or an error that says why it has none. These hosts
-// are a subset of the hosts Forager's policy.EndpointHost reads, so a gateway reads the
-// host of every endpoint this accepts.
+// apis[i], as [urlHost] reads it, or an error that states why. These hosts are a
+// subset of the hosts Forager's policy.EndpointHost reads, so a gateway reads the host
+// of every endpoint this accepts.
 func endpointHost(endpoint string, i int) (string, error) {
 	host, err := urlHost(endpoint)
 	if err != nil {
@@ -244,10 +243,9 @@ func endpointHost(endpoint string, i int) (string, error) {
 }
 
 // urlHost returns the host of raw, a URL as $defs/endpoint of description.schema.json
-// defines it, or an error that says why it has none. The host is in exactHost's form,
-// and a host whose last label is a number is a canonical IPv4 address, four decimal
-// parts from 0 to 255 with no leading zero; a port, when one is written, is from 1 to
-// 65535.
+// defines it, or an error that states why. The host is in exactHost's form, and a host
+// whose last label is a number is a canonical IPv4 address, four decimal parts from 0
+// to 255 with no leading zero; a port, when one is written, is from 1 to 65535.
 func urlHost(raw string) (string, error) {
 	u, err := url.Parse(raw)
 	if err != nil {

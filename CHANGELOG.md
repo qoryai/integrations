@@ -126,8 +126,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   only with `oauth: true`, `oauth_refresh`, with the `url`, `client_id` and optional
   `scope` with which the control plane refreshes an OAuth login. The `model_provider`
   role can set `key_lifetime_days`, from 1 to 3650: the control plane warns 14 days
-  before a key's lifetime ends. A description can set `vendor`, the vendor's name in
-  lines the control plane shows, such as `Anthropic rejected it on <date time>.`.
+  before the time the key was added plus `key_lifetime_days`. A description can set
+  `vendor`, the vendor's name in lines the control plane shows, such as
+  `Anthropic rejected it on <date time>.`.
   `contracts.CheckModelProvider` refuses an `oauth_refresh` `url` whose host or port
   the control plane cannot read. Every description in `descriptions/` sets `vendor`; in
   `descriptions/claude-subscription.json`, `runtimes` is `["claude"]` and
