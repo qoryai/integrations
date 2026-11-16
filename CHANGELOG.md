@@ -402,10 +402,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `environment_destination` and `environment_image` is lower case only, and a Docker Hub
   host is refused. `workflow` and each name in `harness.workflows` are a lower-case
   letter, then up to 54 lower-case letters, digits and hyphens, so that
-  `workflow-<name>` stays within 64 characters. For a target that is a repository, the
-  machine composes the harness file of the target at `target_version` when its harness
-  section has `extends` or lists a module. A branch of the run's work item does not
-  change that version. For a target that is a repository, if the run works on such a
+  `workflow-<name>` stays within 64 characters. The rest of this entry applies to a
+  target that is a repository. The machine composes the harness file of the target at
+  `target_version` when its `harness` section has `extends` or lists a module. A branch
+  of the run's work item does not change that version. If the run works on such a
   branch, the machine checks it out after the compose. An agent may change, on that
   branch, the harness file of the target or a file that the compose reads. A run
   composes that change only when the run's `target_version` contains the change.
