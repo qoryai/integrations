@@ -15,6 +15,10 @@
       "path": "modules/forge-submit"
     }
   },
+  "submit": {
+    "type": "code-change",
+    "send": "after_gate"
+  },
   "inputs": {
     "version": 1,
     "work_item": {

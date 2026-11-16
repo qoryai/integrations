@@ -126,14 +126,22 @@ type Documents struct {
 	// environment image. A run of the step prebuild has exactly one of
 	// EnvironmentDestination and EnvironmentImage.
 	EnvironmentImage string `json:"environment_image,omitempty"`
-	// SubmitModule is set only with Workflow and with Access "write": the harness module
-	// that contains the submit program of the forge of the target, which the control plane
-	// takes from [Adapter.SubmitModule] of the forge's adapter. The machine appends it
-	// after the modules of the harness it composes, whether Harness is set or nil, and
-	// the control plane never also lists it in Harness. The description of submit_module
-	// in documents.schema.json states what the machine does when a module that it
-	// composes has the same name.
+	// SubmitModule is set only with Submit: the harness module that contains the submit
+	// program of the forge of the target, which the control plane takes from
+	// [Adapter.SubmitModule] of the forge's adapter when the start-up of the adapter has
+	// one. The machine appends it after the modules of the harness it composes, whether
+	// Harness is set or nil, and the control plane never also lists it in Harness. The
+	// description of submit_module in documents.schema.json states what the machine does
+	// when a module that it composes has the same name.
 	SubmitModule *SubmitModule `json:"submit_module,omitempty"`
+	// Submit is set only with Workflow and with Access "write": the settings of the
+	// submit step of the run, which the control plane writes whenever the process version
+	// of the workspace has one. With Submit and a nil SubmitModule, qory runs the submit
+	// step and records the draft of each repository as {"none": "no-program"}.
+	// On a run with a run code, qory takes the settings of the submit step only from
+	// Submit, never from process.yaml. The description of submit in documents.schema.json
+	// states what qory does when process.yaml has a different submit.
+	Submit *Submit `json:"submit,omitempty"`
 }
 
 // HarnessDocument is the run's harness, documents.schema.json: the harness document
@@ -368,6 +376,20 @@ type SubmitModule struct {
 	// Name is the name of the module, which the manifest of the module must declare.
 	Name   string        `json:"name,omitempty"`
 	Source HarnessSource `json:"source"`
+}
+
+// Submit is the settings of the submit step of a run, the submit of the run documents,
+// documents.schema.json: Type and Send, both required.
+type Submit struct {
+	// Type is the artifact type of the submission: the name of a structured entry of
+	// artifact_types of the process. The name is lower-case letters and digits in groups
+	// joined by single hyphens, 1 to 64 bytes. The schema cannot check that
+	// artifact_types has that entry.
+	Type string `json:"type"`
+	// Send is when the submit step sends the submission. With "end_of_run", the submit
+	// step sends the submission at the end of the run. With "after_gate", the submit step
+	// stores the submission and sends it after the gate of the stage passes.
+	Send string `json:"send"`
 }
 
 // HarnessSelection is parts of a module, by kind, the exclude or only of a
