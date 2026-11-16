@@ -21,14 +21,14 @@ const MaxInputs = 768 << 10
 // has Harness, TargetVersion, or both. When the run composes a harness, the harness
 // comes from one of two places. If TargetVersion is set and the read of the harness file
 // of the target returned a file whose harness section extends a stack or defines one,
-// the machine composes that file at TargetVersion, as the doc of
-// [Documents.TargetVersion] states, and Harness is nil. A harness section extends a
-// stack when it has extends, a base, and defines one when it has no extends and lists
-// at least one module. The run documents contain Harness in three cases: TargetVersion
-// is set and the read returned a file whose harness section is absent, or has no
-// extends and lists no module; TargetVersion is set and the read returned found: false;
-// or TargetVersion is empty, because the run has no target or the control plane read no
-// harness file of the target. When Harness is set, the machine composes Harness instead
+// Harness is nil. For a target that is a repository, the machine composes that file at
+// TargetVersion. The doc of [Documents.TargetVersion] states how. A harness section
+// extends a stack when it has extends, a base, and defines one when it has no extends
+// and lists at least one module. The run documents contain Harness in three cases:
+// TargetVersion is set and the read returned a file whose harness section is absent, or
+// has no extends and lists no module; TargetVersion is set and the read returned found:
+// false; or TargetVersion is empty, because the run has no target or the control plane
+// read no harness file of the target. When Harness is set, the machine composes Harness instead
 // of the harness section of the harness file of the target. Of that file, the machine
 // applies the qory version that the file requires, the worktree section, and the tiers
 // of the harness section, as the doc of [RunSettings.Tiers] states. If the machine's
@@ -49,19 +49,20 @@ type Documents struct {
 	// TargetVersion is set only with Target, and never for the step prebuild: the
 	// version of the target at which the control plane checked for a harness file, the
 	// resolved_at of the read at the path of the harness file, whether the read returned
-	// the file or found: false. The machine reads the harness file of the target at this
-	// version, whether or not the run works on a branch of its work item. At this
-	// version, the machine composes the harness section of that file when the section
-	// has extends or lists at least one module. The machine applies the qory version
-	// that the file requires, the worktree section and the tiers at this version too.
-	// After the compose, the machine works at this version, or checks out a branch of
-	// the run's work item and works on that branch. The run documents contain no
-	// branch: the machine reads the branch from the control plane. An agent may change,
-	// on that branch, the harness file of the target or a file that the compose reads. A
-	// run composes that change only when the TargetVersion of that run contains the
-	// change. The value is the exact version that the read returned, never a name that
-	// can point to another version later. So the machine reads the harness file at the
-	// version that the control plane read. The grammar is generic, because a target in
+	// the file or found: false. For a target that is a repository, the machine reads the
+	// harness file at this version, whether or not the run works on a branch of its work
+	// item. At this version, the machine composes the harness section of that file when
+	// the section has extends or lists at least one module. The machine applies the qory
+	// version that the file requires, the worktree section and the tiers at this version
+	// too. For a target that is a repository, the machine works at this version after
+	// the compose, unless the run works on a branch of its work item. For a target that
+	// is a repository, the machine checks out that branch after the compose. The run
+	// documents contain no branch: the machine reads the branch from the control plane.
+	// An agent may change, on that branch, the harness file of the target or a file that
+	// the compose reads. A run composes that change only when the TargetVersion of that
+	// run contains the change. The value is the exact version that the read returned,
+	// never a name that can point to another version later, so that the machine reads
+	// the file that the control plane read. The grammar is generic, because a target in
 	// another system has another kind of version: 1 to 255 letters, digits and the
 	// characters ._/-.
 	TargetVersion string       `json:"target_version,omitempty"`
@@ -84,15 +85,15 @@ type Documents struct {
 	// harness document of the workspace, in the form of qory.yaml, which the control
 	// plane takes from the settings of the workspace. If TargetVersion is set and the
 	// read returned a file whose harness section has extends or lists at least one
-	// module, the machine composes that file at TargetVersion, as the doc of
-	// [Documents.TargetVersion] states, and Harness is nil. When Harness is set, the
-	// machine composes Harness instead of the harness section of the harness file of the
-	// target. Of that file, the machine applies the qory version that the file requires,
-	// the worktree section, and the tiers of the harness section, as the doc of
-	// [RunSettings.Tiers] states. If the machine's qory version does not meet that
-	// requirement, the run stops. It reads none of the other machine keys of that file
-	// and none of its git and env sections, so the harness file of the target does not
-	// set how the run starts.
+	// module, Harness is nil. For a target that is a repository, the machine composes
+	// that file at TargetVersion. The doc of [Documents.TargetVersion] states how. When
+	// Harness is set, the machine composes Harness instead of the harness section of the
+	// harness file of the target. Of that file, the machine applies the qory version that
+	// the file requires, the worktree section, and the tiers of the harness section, as
+	// the doc of [RunSettings.Tiers] states. If the machine's qory version does not meet
+	// that requirement, the run stops. It reads none of the other machine keys of that
+	// file and none of its git and env sections, so the harness file of the target does
+	// not set how the run starts.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
