@@ -105,6 +105,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `X-Qory-Contract-Version` defines after the cursor; read the next entries from its
   `cursor`. In Go, `ChangeComment`, `Change.CommentID`, `Change.AuthorName`,
   `Change.Body`, `Comment.CommentID` and `ChangesFailed` are added.
+- If a program builds or reads the `bind` of the `harness` of the run documents in Go,
+  use `BindValue` for each role. `HarnessSection.Bind` is a
+  `map[string]map[string]BindValue`; after 0.3.0 and before this release it was a
+  `map[string]map[string]string`. Set `BindValue.Name` for a role that is not a group,
+  and `BindValue.Names` for a group role, which a list of agents fills.
 
 ### Added
 
@@ -409,9 +414,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
   `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
   `agents`, `commands` or `skills`, to its roles, each to the name of one entry of that
-  kind: `bind: {agents: {developer: web-developer}}`. In Go, `HarnessSection.Bind` is a
-  `map[string]map[string]string`, and decoding a `HarnessSection` returns an error for a
-  bind kind other than `agents`, `commands` or `skills`, or one whose value is null.
+  kind: `bind: {agents: {developer: web-developer}}`. A group role of the kind `agents`,
+  a role that several agents fill, takes a list of 1 or more agents, as in qory's
+  `qory.yaml`: `bind: {agents: {reviewers: [copy-reviewer, legal-reviewer]}}`. A name may
+  appear twice in a list. A list on a `commands` or `skills` role and an empty list fail
+  the schema. A list on any `agents` role passes it; qory's compose fails for a list on
+  a role that is not a group in the module manifests. In Go,
+  `HarnessSection.Bind` is a `map[string]map[string]BindValue`: `BindValue.Name` is set
+  for a name, and `BindValue.Names` for a list, and each is written back in the form it
+  was read in. Decoding a `HarnessSection` returns an error for a bind kind other than
+  `agents`, `commands` or `skills`, for one whose value is null, for a role whose value
+  is null, for a list on a `commands` or `skills` role, for an empty list, and for a null
+  item of a list.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that
