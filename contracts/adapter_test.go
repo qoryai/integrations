@@ -252,6 +252,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"read-answer-content-and-not-found.json":               {"read-answer", "/content "},
 		"read-answer-without-content-or-found.json":            {"read-answer", "/ required content"},
 		"run-credential-access-admin.json":                     {"run-credential", "/access enum"},
+		"run-credential-access-write-no-push.json":             {"run-credential", "/access enum"},
 		"run-credential-purpose-other.json":                    {"run-credential", "/purpose enum"},
 		"run-credential-without-resources.json":                {"run-credential", "/resources minItems; /resources minItems"},
 		"run-credential-work-two-resources.json":               {"run-credential", "/resources maxItems"},
