@@ -122,7 +122,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 ### Added
 
 - The adapter's start-up, `adapter.schema.json`, and the run documents can contain
-  `submit_module`: the harness module that ships a forge's submit program, the module
+  `submit_module`: the harness module that contains a forge's submit program, the module
   whose manifest declares `submit_program`. It has the shape of a module of `harness`,
   `{name, source}`, with `name` optional and no `exclude`, `only` or `variant`. Its
   `source.ref` is a full commit hash, 40 or 64 lower-case hexadecimal digits; a branch

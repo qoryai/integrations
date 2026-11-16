@@ -114,7 +114,7 @@ type Documents struct {
 	// EnvironmentDestination and EnvironmentImage.
 	EnvironmentImage string `json:"environment_image,omitempty"`
 	// SubmitModule is set only with Workflow and with Access "write": the harness module
-	// that ships the submit program of the forge of the target, which the control plane
+	// that contains the submit program of the forge of the target, which the control plane
 	// takes from [Adapter.SubmitModule] of the forge's adapter. The machine appends it
 	// after the modules of the harness it composes, whether Harness is set or nil, and
 	// the control plane never also lists it in Harness. The description of submit_module
@@ -351,7 +351,7 @@ type HarnessSource struct {
 	Module string `json:"module,omitempty"`
 }
 
-// SubmitModule is the harness module that ships the submit program of a forge, the
+// SubmitModule is the harness module that contains the submit program of a forge, the
 // module whose manifest declares submit_program: the submit_module of the run
 // documents, documents.schema.json, and of the adapter's start-up, adapter.schema.json.
 // It has the shape of a [HarnessModule] with no Exclude, Only or Variant, and its
