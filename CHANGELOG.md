@@ -125,22 +125,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `source.ref` is a full commit hash, 40 or 64 lower-case hexadecimal digits; a branch
   name, a tag and a short hash fail the schema. `ref` in the other sources of `harness`
   stays any version. The adapter of a forge sends `submit_module` in its start-up. The
-  control plane writes it to the run documents only for a run with `workflow` and with
-  `access` `write`. It does so whether `harness` is present or absent. A run of the step
-  `prebuild` has no `submit_module`. The machine appends the module after the modules of
-  the harness it composes. For the rule when a composed module has the same name as
+  control plane writes it to the run documents only for a run with `submit`. It does so
+  whether `harness` is present or absent. A run of the step `prebuild` has no
+  `submit_module`. The machine appends the module after the modules of the harness it
+  composes. For the rule when a composed module has the same name as
   `submit_module`, see the description of `submit_module` in `documents.schema.json`. In
   Go, `SubmitModule`, `Adapter.SubmitModule` and `Documents.SubmitModule` are added.
 - The run documents can contain `submit`: the settings of the submit step of the run,
   with `type` and `send`, both required, and no other member. `type` is the name of the
   artifact type of the submission: lower-case letters and digits in groups joined by
   single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`. The
-  control plane writes `submit` from the process version of the workspace. Run documents
-  have both `submit` and `submit_module`, or neither. Like `submit_module`, `submit` is
-  present only on a run with `workflow` and with `access` `write`, and never on a run of
-  the step `prebuild`. On a run with a run code, qory takes the settings of the submit
-  step only from `submit`, never from `process.yaml`. If `process.yaml` has a different
-  `submit`, qory prints one line with both values and uses `submit` of the run
+  control plane writes `submit` whenever the process version of the workspace has one.
+  `submit` is present only on a run with `workflow` and with `access` `write`, and never
+  on a run of the step `prebuild`. Run documents can have `submit` without
+  `submit_module`, but not `submit_module` without `submit`. With `submit` and no
+  `submit_module`, qory runs the submit step and records the draft of each repository as
+  `{"none": "no-program"}`. On a run with a run code, qory takes the settings of the
+  submit step only from `submit`, never from `process.yaml`. If `process.yaml` has a
+  different `submit`, qory prints one line with both values and uses `submit` of the run
   documents. A run that a person starts with no run code has no `submit` and no submit
   step. In Go, `Submit` and `Documents.Submit` are added.
 - A description can declare the role `model_provider`. The role lists the provider's APIs

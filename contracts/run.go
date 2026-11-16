@@ -113,16 +113,18 @@ type Documents struct {
 	// environment image. A run of the step prebuild has exactly one of
 	// EnvironmentDestination and EnvironmentImage.
 	EnvironmentImage string `json:"environment_image,omitempty"`
-	// SubmitModule is set only with Workflow and with Access "write": the harness module
-	// that contains the submit program of the forge of the target, which the control plane
-	// takes from [Adapter.SubmitModule] of the forge's adapter. The machine appends it
-	// after the modules of the harness it composes, whether Harness is set or nil, and
-	// the control plane never also lists it in Harness. The description of submit_module
-	// in documents.schema.json states what the machine does when a module that it
-	// composes has the same name.
+	// SubmitModule is set only with Submit: the harness module that contains the submit
+	// program of the forge of the target, which the control plane takes from
+	// [Adapter.SubmitModule] of the forge's adapter when the start-up of the adapter has
+	// one. The machine appends it after the modules of the harness it composes, whether
+	// Harness is set or nil, and the control plane never also lists it in Harness. The
+	// description of submit_module in documents.schema.json states what the machine does
+	// when a module that it composes has the same name.
 	SubmitModule *SubmitModule `json:"submit_module,omitempty"`
-	// Submit is set exactly when SubmitModule is set: the settings of the submit step of
-	// the run, which the control plane writes from the process version of the workspace.
+	// Submit is set only with Workflow and with Access "write": the settings of the
+	// submit step of the run, which the control plane writes whenever the process version
+	// of the workspace has one. With Submit and a nil SubmitModule, qory runs the submit
+	// step and records the draft of each repository as {"none": "no-program"}.
 	// On a run with a run code, qory takes the settings of the submit step only from
 	// Submit, never from process.yaml. The description of submit in documents.schema.json
 	// states what qory does when process.yaml has a different submit.
