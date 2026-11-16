@@ -28,18 +28,18 @@ const MaxInputs = 768 << 10
 // TargetVersion is set and the read returned a file whose harness section is absent, or
 // has no extends and lists no module; TargetVersion is set and the read returned found:
 // false; or TargetVersion is empty, because the run has no target or the control plane
-// read no harness file of the target. When Harness is set, the machine composes Harness instead
-// of the harness section of the harness file of the target. Of that file, the machine
-// applies the qory version that the file requires, the worktree section, and the tiers
-// of the harness section, as the doc of [RunSettings.Tiers] states. If the machine's
-// qory version does not meet that requirement, the run stops. It reads none of the
-// other machine keys of that file and none of its git and env sections, so the harness
-// file of the target does not set how the run starts. A run of the step explore has
-// WorkItem. A run of the step prebuild has Access, Target, ImageDestination and exactly
-// one of EnvironmentDestination and EnvironmentImage, and no TargetVersion, WorkItem,
-// RunSettings, Workflow, HarnessHidden or Harness. RunSettings is set only for the step
-// explore. Inputs is the step's input as the control plane wrote it, whose shape belongs
-// to the step's schema.
+// read no harness file of the target. When Harness is set, the machine composes
+// Harness instead of the harness section of the harness file of the target. Of that
+// file, the machine applies the qory version that the file requires, the worktree
+// section, and the tiers of the harness section, as the doc of [RunSettings.Tiers]
+// states. If the machine's qory version does not meet that requirement, the run stops.
+// It reads none of the other machine keys of that file and none of its git and env
+// sections, so the harness file of the target does not set how the run starts. A run
+// of the step explore has WorkItem. A run of the step prebuild has Access, Target,
+// ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
+// no TargetVersion, WorkItem, RunSettings, Workflow, HarnessHidden or Harness.
+// RunSettings is set only for the step explore. Inputs is the step's input as the
+// control plane wrote it, whose shape belongs to the step's schema.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
