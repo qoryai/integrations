@@ -224,11 +224,11 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestAPrebuildIsRefusedForItsWorkflowHarnessHiddenOrHarnessAlone pins that the invalid
+// TestAPrebuildIsRefusedForEachRunMemberAlone pins that the invalid
 // run documents of the step prebuild that have workflow, harness_hidden, harness or
 // submit_module are refused for that member alone: the same documents without it are
 // accepted.
-func TestAPrebuildIsRefusedForItsWorkflowHarnessHiddenOrHarnessAlone(t *testing.T) {
+func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	for _, c := range []struct{ fixture, member string }{
 		{"documents-prebuild-with-workflow.json", "workflow"},
