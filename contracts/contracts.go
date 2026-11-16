@@ -50,36 +50,37 @@
 // either way, and a request whose signature it has already seen, with an unsigned 401;
 // definitions.schema.json has the replay rule. That 401 is one uniform answer for
 // everything about who is asking, whose causes refusal.schema.json lists, and nothing
-// in it shows which cause applied. An X-Qory-Access-Key-Id,
-// X-Qory-Instance-Id, X-Qory-Signature-Ed25519 or X-Qory-Timestamp sent twice, or an
-// X-Qory-Instance-Id that is absent or outside its pattern, is refused 400 bad_request,
-// and only those are. A retry is a new request: the adapter builds it again, a POST with
-// a time and a GET with an X-Qory-Timestamp later than those of the request it retries,
-// and signs it again. Each GET an instance sends has an X-Qory-Timestamp later than
-// that of the previous GET it sent, so no two GETs of one instance have the same
-// signature, and an answer bound to one GET verifies for no other. A request sent again
-// unchanged has a signature the control plane has seen, and is refused, 401; an adapter
-// never takes that 401 as its access key being revoked. Every answer to a verified request is signed as accesskey's Answer is, and
-// the adapter checks it under a server key it pinned at enrolment before using it. A 401
-// is always unsigned. A 413, 415 or 400 bad_request may be unsigned, because the control
-// plane may decide them before it verifies the request's signature. Every other answer
-// is signed, and an adapter acts on no other unsigned answer. On an unsigned 401, 413,
-// 415 or 400 bad_request, the adapter changes no state: no cursor, no run, no key. It
-// treats the request as failed and sends it again, built anew, with backoff. It never
-// takes a 401 as revocation, and never splits or drops items because of an unsigned 413.
-// An unsigned 429 is not a 429: the adapter ignores its Retry-After and backs off as it
-// does for any failed request. A POST whose Content-Type is not application/json is
-// refused 415 unsupported_media_type; a GET carries no body and no Content-Type, and is
-// never refused 415. A POST body is application/json. An integer is written without a
+// in it shows which cause applied. An X-Qory-Access-Key-Id, X-Qory-Instance-Id,
+// X-Qory-Signature-Ed25519 or X-Qory-Timestamp sent twice, or an X-Qory-Instance-Id
+// that is absent or outside its pattern, is refused 400 bad_request, and only those
+// are. A retry is a new request: the adapter builds it again, a POST with a time and a
+// GET with an X-Qory-Timestamp later than those of the request it retries, and signs it
+// again. Each GET an instance sends has an X-Qory-Timestamp later than that of the
+// previous GET it sent, so no two GETs of one instance have the same signature, and an
+// answer bound to one GET verifies for no other. A request sent again unchanged has a
+// signature the control plane has seen, and is refused, 401; an adapter never takes
+// that 401 as its access key being revoked. Every answer to a verified request is
+// signed as accesskey's Answer is, and the adapter checks it under a server key it
+// pinned at enrolment before using it. A 401 is always unsigned. A 413, 415 or 400
+// bad_request may be unsigned, because the control plane may decide them before it
+// verifies the request's signature. Every other answer is signed, and an adapter acts
+// on no other unsigned answer. On an unsigned 401, 413, 415 or 400 bad_request, the
+// adapter changes no state: no cursor, no run, no key. It treats the request as failed
+// and sends it again, built anew, with backoff. It never takes a 401 as revocation, and
+// never splits or drops items because of an unsigned 413. An unsigned 429 is not a 429:
+// the adapter ignores its Retry-After and backs off as it does for any failed request.
+// A POST whose Content-Type is not application/json is refused 415
+// unsupported_media_type; a GET carries no body and no Content-Type, and is never
+// refused 415. A POST body is application/json. An integer is written without a
 // fraction or an exponent, and no object repeats a member, at any depth; the control
 // plane refuses either, 400 invalid_request. The numbers inside the description member
-// of POST /v1/adapter follow description.schema.json instead, and may have a fraction or
-// an exponent; no object inside it repeats a member either. A POST whose schema names no
-// answer body is answered, on success, with a signed 204 and no body. The adapter's
-// access key is the integration's, enrolled once for the instance. An organisation
-// reaches the adapter only through a connection, and no request names an organisation or
-// a workspace. forager/accesskey is the reference signer; an adapter may sign to this
-// text itself.
+// of POST /v1/adapter follow description.schema.json instead, and may have a fraction
+// or an exponent; no object inside it repeats a member either. A POST whose schema
+// names no answer body is answered, on success, with a signed 204 and no body. The
+// adapter's access key is the integration's, enrolled once for the instance. An
+// organisation reaches the adapter only through a connection, and no request names an
+// organisation or a workspace. forager/accesskey is the reference signer; an adapter
+// may sign to this text itself.
 //
 // The control plane also calls an adapter, at the call_url the adapter declares in its
 // start-up body: each call is a POST, a [Call], signed with the control plane's server

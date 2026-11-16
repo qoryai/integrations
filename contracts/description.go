@@ -11,8 +11,8 @@ import (
 	"github.com/qoryai/integrations/internal/rawjson"
 )
 
-// The limits of a description that are described in words in description.schema.json,
-// since a schema cannot express them.
+// The limits of a description that description.schema.json has only in words, since a
+// schema cannot express them.
 const (
 	// DescriptionMaxBytes is the most bytes a description's raw document takes, 256 KiB.
 	DescriptionMaxBytes = 262144

@@ -21,10 +21,10 @@ const MaxInputs = 768 << 10
 // has Harness, TargetVersion, or both. When the run composes a harness, the harness
 // comes from one of two places. If TargetVersion is set and the read of the harness file
 // of the target returned a file whose harness section extends a stack or defines one,
-// Harness is nil. For a target that is a repository, the machine composes that file as
-// described under [Documents.TargetVersion]. A harness section extends a stack when it
-// has extends, a base, and defines one when it has no extends and lists at least one
-// module. The run documents contain Harness in three cases:
+// Harness is nil. For a target that is a repository, the machine composes that file at
+// TargetVersion, as described under [Documents.TargetVersion]. A harness section
+// extends a stack when it has extends, a base, and defines one when it has no extends
+// and lists at least one module. The run documents contain Harness in three cases:
 // TargetVersion is set and the read returned a file whose harness section is absent, or
 // has no extends and lists no module; TargetVersion is set and the read returned found:
 // false; or TargetVersion is empty, because the run has no target or the control plane
@@ -35,11 +35,11 @@ const MaxInputs = 768 << 10
 // If the machine's qory version does not meet that requirement, the run stops. It reads
 // none of the other machine keys of that file and none of its git and env sections, so
 // the harness file of the target does not set how the run starts. A run of the step
-// explore has WorkItem. A run of the step prebuild has Access, Target,
-// ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
-// no TargetVersion, WorkItem, RunSettings, Workflow, HarnessHidden or Harness.
-// RunSettings is set only for the step explore. Inputs is the step's input as the
-// control plane wrote it, whose shape belongs to the step's schema.
+// explore has WorkItem. A run of the step prebuild has Access, Target, ImageDestination
+// and exactly one of EnvironmentDestination and EnvironmentImage, and no TargetVersion,
+// WorkItem, RunSettings, Workflow, HarnessHidden or Harness. RunSettings is set only
+// for the step explore. Inputs is the step's input as the control plane wrote it, whose
+// shape belongs to the step's schema.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -99,14 +99,14 @@ type Documents struct {
 	// plane takes from the settings of the workspace. If TargetVersion is set and the
 	// read returned a file whose harness section has extends or lists at least one
 	// module, Harness is nil. For a target that is a repository, the machine composes
-	// that file as described under [Documents.TargetVersion]. When Harness is set, the
-	// machine composes Harness instead of the harness section of the harness file of the
-	// target. Of that file, the machine applies the qory version that the file requires,
-	// the worktree section, and the tiers of the harness section, as described under
-	// [RunSettings.Tiers]. If the machine's qory version does not meet that requirement,
-	// the run stops. It reads none of the other machine keys of that file and none of its
-	// git and env sections, so the harness file of the target does not set how the run
-	// starts.
+	// that file at TargetVersion, as described under [Documents.TargetVersion]. When
+	// Harness is set, the machine composes Harness instead of the harness section of the
+	// harness file of the target. Of that file, the machine applies the qory version that
+	// the file requires, the worktree section, and the tiers of the harness section, as
+	// described under [RunSettings.Tiers]. If the machine's qory version does not meet
+	// that requirement, the run stops. It reads none of the other machine keys of that
+	// file and none of its git and env sections, so the harness file of the target does
+	// not set how the run starts.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target

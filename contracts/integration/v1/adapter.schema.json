@@ -35,7 +35,7 @@
       ]
     },
     "sync": {
-      "description": "How often the adapter pulls changes from the source by default, and the shortest interval it allows. minimum_interval is at most default_interval; the schema cannot say so, and the control plane refuses a sync that breaks it, invalid_request. A person may change the interval in the control plane, and the change feed has an entry for the change (changes.schema.json, the sync kind).",
+      "description": "How often the adapter pulls changes from the source by default, and the shortest interval it allows. minimum_interval is at most default_interval; the schema cannot say so, and the control plane refuses a sync that breaks it, invalid_request. A person may change the interval in the control plane, and the control plane appends a sync entry to the change feed (changes.schema.json).",
       "type": "object",
       "additionalProperties": false,
       "required": ["default_interval", "minimum_interval", "sends_changes"],
