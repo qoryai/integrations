@@ -481,7 +481,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   nothing fetched. Go types such as `Adapter`, `Grant`, `RunCredential`, `Claim`,
   `Documents` and `MachinesMake` marshal to the documents that their schemas accept.
   `CheckDescription`, `CheckModelProvider` and `CheckEgressHosts` check the rules of a
-  description that its schema states only in words.
+  description that its schema describes only in words.
 - `conformance.Description` also checks a description's `model_provider` role and
   `egress_hosts`, and refuses an API `auth` of the scheme `header` whose header
   conformance reserves, as `conformance.Credential` refuses one in an `apply` entry.
@@ -494,8 +494,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 - The module requires Forager at its main commit b6ac9f0
   (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
-- The contract states that `domains` applies only to where work comes from: a credential
-  of the `credential` role reaches a run in a workspace of any domain.
+- The contract describes `domains` as applying only to where work comes from: a
+  credential of the `credential` role reaches a run in a workspace of any domain.
 - When a node pool's starter created no machine for a dispatch, the machine log,
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the

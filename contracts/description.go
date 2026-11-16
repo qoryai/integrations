@@ -11,8 +11,8 @@ import (
 	"github.com/qoryai/integrations/internal/rawjson"
 )
 
-// The limits of a description that description.schema.json states in words, since a
-// schema cannot express them.
+// The limits of a description that are described in words in description.schema.json,
+// since a schema cannot express them.
 const (
 	// DescriptionMaxBytes is the most bytes a description's raw document takes, 256 KiB.
 	DescriptionMaxBytes = 262144
@@ -225,7 +225,7 @@ var exactHost = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z
 var numberLabel = regexp.MustCompile(`(^|\.)([0-9]+|0x[0-9a-f]*)$`)
 
 // endpointHost returns the host of endpoint, the URL endpoint of model_provider
-// apis[i], or an error that says why it has none. The host is in exactHost's form, and
+// apis[i], or an error that shows why it has none. The host is in exactHost's form, and
 // a host whose last label is a number is a canonical IPv4 address, four decimal parts
 // from 0 to 255 with no leading zero; a port, when one is written, is from 1 to 65535.
 // These hosts are a subset of the hosts Forager's policy.EndpointHost reads, so a

@@ -111,7 +111,7 @@ conformance.Credential(stdout)             // output of `<program> credential ..
 conformance.Failure(code, stdout, stderr)  // a command that failed
 ```
 
-Each returns an error that says which rule the output breaks.
+Each returns an error that shows which rule the output breaks.
 
 ## Release rule
 

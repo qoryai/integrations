@@ -31,11 +31,11 @@ const MaxInputs = 768 << 10
 // read no harness file of the target. When Harness is set, the machine composes
 // Harness instead of the harness section of the harness file of the target. Of that
 // file, the machine applies the qory version that the file requires, the worktree
-// section, and the tiers of the harness section, as the doc of [RunSettings.Tiers]
-// states. If the machine's qory version does not meet that requirement, the run stops.
-// It reads none of the other machine keys of that file and none of its git and env
-// sections, so the harness file of the target does not set how the run starts. A run
-// of the step explore has WorkItem. A run of the step prebuild has Access, Target,
+// section, and the tiers of the harness section, as described under [RunSettings.Tiers].
+// If the machine's qory version does not meet that requirement, the run stops. It reads
+// none of the other machine keys of that file and none of its git and env sections, so
+// the harness file of the target does not set how the run starts. A run of the step
+// explore has WorkItem. A run of the step prebuild has Access, Target,
 // ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
 // no TargetVersion, WorkItem, RunSettings, Workflow, HarnessHidden or Harness.
 // RunSettings is set only for the step explore. Inputs is the step's input as the
@@ -101,12 +101,12 @@ type Documents struct {
 	// module, Harness is nil. For a target that is a repository, the machine composes
 	// that file as described under [Documents.TargetVersion]. When Harness is set, the
 	// machine composes Harness instead of the harness section of the harness file of the
-	// target. Of that file, the machine applies the qory version that
-	// the file requires, the worktree section, and the tiers of the harness section, as
-	// the doc of [RunSettings.Tiers] states. If the machine's qory version does not meet
-	// that requirement, the run stops. It reads none of the other machine keys of that
-	// file and none of its git and env sections, so the harness file of the target does
-	// not set how the run starts.
+	// target. Of that file, the machine applies the qory version that the file requires,
+	// the worktree section, and the tiers of the harness section, as described under
+	// [RunSettings.Tiers]. If the machine's qory version does not meet that requirement,
+	// the run stops. It reads none of the other machine keys of that file and none of its
+	// git and env sections, so the harness file of the target does not set how the run
+	// starts.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
@@ -139,17 +139,17 @@ type Documents struct {
 	// program of the forge of the target, which the control plane takes from
 	// [Adapter.SubmitModule] of the forge's adapter when the start-up of the adapter has
 	// one. The machine appends it after the modules of the harness it composes, whether
-	// Harness is set or nil, and the control plane never also lists it in Harness. The
-	// description of submit_module in documents.schema.json states what the machine does
-	// when a module that it composes has the same name.
+	// Harness is set or nil, and the control plane never also lists it in Harness. For
+	// what the machine does when a module that it composes has the same name, see
+	// submit_module in documents.schema.json.
 	SubmitModule *SubmitModule `json:"submit_module,omitempty"`
 	// Submit is set only with Workflow and with Access "write": the settings of the
 	// submit step of the run, which the control plane writes whenever the process version
 	// of the workspace has one. With Submit and a nil SubmitModule, qory runs the submit
 	// step and records the draft of each repository as {"none": "no-program"}.
 	// On a run with a run code, qory takes the settings of the submit step only from
-	// Submit, never from process.yaml. The description of submit in documents.schema.json
-	// states what qory does when process.yaml has a different submit.
+	// Submit, never from process.yaml. For what qory does when process.yaml has a
+	// different submit, see submit in documents.schema.json.
 	Submit *Submit `json:"submit,omitempty"`
 }
 

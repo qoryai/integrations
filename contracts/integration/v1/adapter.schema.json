@@ -28,14 +28,14 @@
       ]
     },
     "call_url": {
-      "description": "The base address at which the control plane calls the adapter (definitions.schema.json): an https URL with no query and no fragment, whose path ends with /. The control plane sends each call as a POST to call_url followed by the call's path, which the call's schema states. The adapter declares it when it serves calls. The control plane takes it from the latest start-up: absent, the control plane makes no call to the adapter.",
+      "description": "The base address at which the control plane calls the adapter (definitions.schema.json): an https URL with no query and no fragment, whose path ends with /. The control plane sends each call as a POST to call_url followed by the call's path, as given in the call's schema. The adapter declares it when it serves calls. The control plane takes it from the latest start-up: absent, the control plane makes no call to the adapter.",
       "allOf": [
         {"$ref": "definitions.schema.json#/$defs/url"},
         {"pattern": "^[^?#]*/$"}
       ]
     },
     "sync": {
-      "description": "How often the adapter pulls changes from the source by default, and the shortest interval it allows. minimum_interval is at most default_interval; the schema cannot say so, and the control plane refuses a sync that breaks it, invalid_request. A person may change the interval in the control plane, and the change feed tells the adapter (changes.schema.json, the sync kind).",
+      "description": "How often the adapter pulls changes from the source by default, and the shortest interval it allows. minimum_interval is at most default_interval; the schema cannot say so, and the control plane refuses a sync that breaks it, invalid_request. A person may change the interval in the control plane, and the change feed has an entry for the change (changes.schema.json, the sync kind).",
       "type": "object",
       "additionalProperties": false,
       "required": ["default_interval", "minimum_interval", "sends_changes"],

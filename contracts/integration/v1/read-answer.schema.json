@@ -21,7 +21,7 @@
       "minimum": 1
     },
     "content": {
-      "description": "The document's text, UTF-8 of at most 262144 bytes without a NUL, as the source holds it, never cut. Present exactly when found is absent. The schema states that limit only as 262144 characters, since a schema counts characters; the control plane refuses a longer content.",
+      "description": "The document's text, UTF-8 of at most 262144 bytes without a NUL, as the source holds it, never cut. Present exactly when found is absent. The schema sets that limit only as 262144 characters, since a schema counts characters; the control plane refuses a longer content.",
       "type": "string",
       "maxLength": 262144,
       "$ref": "definitions.schema.json#/$defs/text"

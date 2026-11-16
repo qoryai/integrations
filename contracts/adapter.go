@@ -64,8 +64,8 @@ var ErrCallMethod = errors.New("a call is a POST, and no other method")
 
 // Call is one call of the control plane to the adapter, as its signature covers it. The
 // message is six lines joined by a line feed, with none after the last: [CallDomain], the
-// adapter id, the instance id, the method in upper case, the call's path as its schema
-// states it, such as resolve, and the raw body.
+// adapter id, the instance id, the method in upper case, the call's path as given in
+// its schema, such as resolve, and the raw body.
 type Call struct {
 	AdapterID  string
 	InstanceID string
@@ -305,8 +305,8 @@ type Comment struct {
 	Truncated  []string `json:"truncated,omitempty"`
 }
 
-// CommentsComplete says a request's comments are all of the item's comments, read from
-// Since.
+// CommentsComplete is present when a request's comments are all of the item's
+// comments, read from Since.
 type CommentsComplete struct {
 	Since string `json:"since"`
 }
@@ -688,11 +688,11 @@ const RunCredentialTokenMaxBytes = 16384
 // RunCredential is the body of the call with the path [RunCredentialPath],
 // run-credential.schema.json: a credential for one run covering Resources, with
 // Access "read" or "write" and Purpose "harness" or "work". Access is "read" for
-// Purpose "harness". run-credential.schema.json states the runs for which the control
-// plane uses a harness credential. GrantRef is set for Purpose "harness" and empty for
-// Purpose "work". ConnectionID is set for Purpose
-// "work" and empty for Purpose "harness": it is the connection of the run's target
-// collection, as the control plane holds it for the run's organisation, a live
+// Purpose "harness". For the runs for which the control plane uses a harness
+// credential, see run-credential.schema.json. GrantRef is set for Purpose "harness"
+// and empty for Purpose "work". ConnectionID is set for Purpose "work" and empty for
+// Purpose "harness": it is the connection of the run's target collection, as the
+// control plane holds it for the run's organisation, a live
 // connection of that organisation when the call is sent. For a work call, the adapter
 // checks that the collection is a live collection under ConnectionID in its state, and
 // does not look the connection up from the ref; it uses only a grant that the control
@@ -784,8 +784,9 @@ type Resolve struct {
 // [ResolvePath], resolve-answer.schema.json: one result for each address of the call, in
 // the call's order. The control plane uses a result only under a grant that the run may
 // use, or, for a result with Public set, without a grant and only to send a
-// [ReadPublic], as resolve-answer.schema.json states. It treats every other result as
-// covered: false, or, when Public is set, as a result with Public set and no GrantRef.
+// [ReadPublic], as described in resolve-answer.schema.json. It treats every other
+// result as covered: false, or, when Public is set, as a result with Public set and no
+// GrantRef.
 // Under an assignment, it sends a [RunCredential] only when the adapter's
 // credential_scope is resource, with Resources set to the assigned source's resource
 // alone; when credential_scope is grant, it reads the assigned source only with a

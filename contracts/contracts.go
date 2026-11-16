@@ -49,8 +49,8 @@
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;
 // definitions.schema.json has the replay rule. That 401 is one uniform answer for
-// everything about who is asking, whose causes refusal.schema.json lists, and it tells
-// the adapter nothing about which cause applied. An X-Qory-Access-Key-Id,
+// everything about who is asking, whose causes refusal.schema.json lists, and nothing
+// in it shows which cause applied. An X-Qory-Access-Key-Id,
 // X-Qory-Instance-Id, X-Qory-Signature-Ed25519 or X-Qory-Timestamp sent twice, or an
 // X-Qory-Instance-Id that is absent or outside its pattern, is refused 400 bad_request,
 // and only those are. A retry is a new request: the adapter builds it again, a POST with
@@ -105,7 +105,7 @@
 // source only with a [Read]. It sends a [ReadPublic] only with ResourceRef set to the
 // PublicRef of a [Resolved] with Public set, under no grant, and never sends a
 // [RunCredential] for a resource that it reads with a [ReadPublic].
-// resolve-answer.schema.json states the rule.
+// See resolve-answer.schema.json for the rule.
 //
 // The provisioner contract holds the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its

@@ -250,7 +250,7 @@ func TestExploreLengthFixturesAreOneCharacterPastTheBound(t *testing.T) {
 	}
 }
 
-// TestExploreMembersAreRequiredAndClosed pins two rules that inputs.schema.json states
+// TestExploreMembersAreRequiredAndClosed pins two rules that inputs.schema.json sets
 // for every object at every level: every member is required, except target and
 // ticket, and a member the schema does not define is refused. It first checks that
 // each object of fixtures/inputs/first-attempt.json has every member that the schema

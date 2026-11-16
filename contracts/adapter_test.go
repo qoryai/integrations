@@ -512,8 +512,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 
 // TestCollectionItemsRoundTrips decodes a listing whose second collection has items:
 // false into SourceCollections, and pins that Items is nil where the listing leaves
-// items out, points to false where it says false, and marshals back to a document that
-// source-collections.schema.json accepts.
+// items out, points to false where the listing has false, and marshals back to a
+// document that source-collections.schema.json accepts.
 func TestCollectionItemsRoundTrips(t *testing.T) {
 	var s contracts.SourceCollections
 	if err := json.Unmarshal(read(t, "fixtures/adapter/source-collections/code-host-items-false.json"), &s); err != nil {
@@ -2150,7 +2150,7 @@ func TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
 // connect-return/linked-live-connection.json, with the same connection_id and nonce.
 // Whether the connection is pending or live, and whether the grant is already linked to
 // another live connection, are the control plane's and the adapter's checks, which
-// connect-return.schema.json states and no schema expresses.
+// connect-return.schema.json describes and no schema expresses.
 func TestAConnectFlowOnALiveConnectionHasTheSameShape(t *testing.T) {
 	var p contracts.ConnectPass
 	var r contracts.ConnectReturn
