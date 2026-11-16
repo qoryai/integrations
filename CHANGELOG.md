@@ -403,11 +403,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   host is refused. `workflow` and each name in `harness.workflows` are a lower-case
   letter, then up to 54 lower-case letters, digits and hyphens, so that
   `workflow-<name>` stays within 64 characters. The machine reads the harness file of the
-  target and composes the harness at the compose version: `target_version`, or, when the
-  target is a repository and the run's work item has a branch, the merge base of
-  `target_version` and the head of that branch. An agent may change, on the branch, the
-  harness file of the target or a file that the compose reads, and no run composes that
-  change before the change is in the target at the run's `target_version`.
+  target and composes the harness at `target_version`, whether or not the run works on a
+  branch of its work item. If the run works on such a branch, the machine checks it out
+  after the compose. An agent may change, on that branch, the harness file of the target
+  or a file that the compose reads. A run composes that change only when the run's
+  `target_version` contains the change.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
   `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
