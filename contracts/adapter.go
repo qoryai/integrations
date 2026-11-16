@@ -131,14 +131,18 @@ func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 // document `<program> describe` prints for the adapter's program, description.schema.json,
 // sent whole: the same JSON document, which json.Marshal writes compacted and with <, >
 // and & escaped. A nil Description marshals as null, which adapter.schema.json refuses.
+// SubmitModule is set only by the adapter of a forge: the harness module that contains
+// the forge's submit program, whose source's ref is a full commit hash. The control
+// plane writes it as [Documents.SubmitModule]. Nil, the start-up has no submit_module.
 type Adapter struct {
-	Version     int             `json:"version"`
-	Time        string          `json:"time"`
-	ConnectURL  string          `json:"connect_url"`
-	SetupURL    string          `json:"setup_url,omitempty"`
-	CallURL     string          `json:"call_url,omitempty"`
-	Sync        Sync            `json:"sync"`
-	Description json.RawMessage `json:"description"`
+	Version      int             `json:"version"`
+	Time         string          `json:"time"`
+	ConnectURL   string          `json:"connect_url"`
+	SetupURL     string          `json:"setup_url,omitempty"`
+	CallURL      string          `json:"call_url,omitempty"`
+	Sync         Sync            `json:"sync"`
+	Description  json.RawMessage `json:"description"`
+	SubmitModule *SubmitModule   `json:"submit_module,omitempty"`
 }
 
 // Sync is how often an adapter pulls changes from the source, in seconds, and whether
