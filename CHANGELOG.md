@@ -13,10 +13,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   this `adapter.schema.json`. A control plane that checks the start-up against an
   earlier copy refuses the member, `invalid_request`. Update a reader of the run
   documents to this `documents.schema.json` before the control plane writes
-  `submit_module` there, for the same reason.
-- Update a reader of the run documents to this `documents.schema.json` before the
-  control plane writes `submit` there. A reader that checks the run documents against an
-  earlier copy refuses the member.
+  `submit_module` or `submit` there, for the same reason.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
@@ -134,19 +131,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   the harness it composes. For the rule when a composed module has the same name as
   `submit_module`, see the description of `submit_module` in `documents.schema.json`. In
   Go, `SubmitModule`, `Adapter.SubmitModule` and `Documents.SubmitModule` are added.
-- The run documents can contain `submit`: the submit step of the run, with `type` and
-  `send`, both required, and no other member. `type` is the name of the artifact type of
-  the submission: lower-case letters and digits in groups joined by single hyphens, 1 to
-  64 characters. `send` is `end_of_run` or `after_gate`. The control plane writes
-  `submit` from the process version of the workspace. When it records the process
-  version, it checks that `artifact_types` of the process has a structured entry with
-  the name in `type`. Run documents have both `submit` and `submit_module`, or neither.
-  Like `submit_module`, `submit` is present only on a run with `workflow` and with
-  `access` `write`, and never on a run of the step `prebuild`. On a run with a run code,
-  qory takes the submit step only from `submit`, never from `process.yaml`. If
-  `process.yaml` has a different `submit`, qory prints one line with both values and
-  uses `submit` of the run documents. A run that a person starts with no run code has no
-  `submit` and no submit step. In Go, `Submit` and `Documents.Submit` are added.
+- The run documents can contain `submit`: the settings of the submit step of the run,
+  with `type` and `send`, both required, and no other member. `type` is the name of the
+  artifact type of the submission: lower-case letters and digits in groups joined by
+  single hyphens, 1 to 64 characters. `send` is `end_of_run` or `after_gate`. The
+  control plane writes `submit` from the process version of the workspace. Run documents
+  have both `submit` and `submit_module`, or neither. Like `submit_module`, `submit` is
+  present only on a run with `workflow` and with `access` `write`, and never on a run of
+  the step `prebuild`. On a run with a run code, qory takes the settings of the submit
+  step only from `submit`, never from `process.yaml`. If `process.yaml` has a different
+  `submit`, qory prints one line with both values and uses `submit` of the run
+  documents. A run that a person starts with no run code has no `submit` and no submit
+  step. In Go, `Submit` and `Documents.Submit` are added.
 - A description can declare the role `model_provider`. The role lists the provider's APIs
   in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
   subscription access token, and optional `key_prefixes`; and the `models` a new provider

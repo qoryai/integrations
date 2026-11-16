@@ -655,7 +655,7 @@
       }
     },
     "submit": {
-      "description": "The submit step of the run: type and send, both required, and no other member. The control plane writes submit from the process version of the workspace, and submit_module from the start-up of the forge's adapter. submit is present exactly when submit_module is present, so only on a run with workflow and with access write. On a run with a run code, qory takes the submit step only from submit of the run documents, never from process.yaml. If the process.yaml of the composed harness has a different submit, qory prints one line with both values and uses submit of the run documents. A run that a person starts with no run code has no run documents, so it has no submit and no submit step. A run of the step prebuild has no submit.",
+      "description": "The settings of the submit step of the run: type and send, both required, and no other member. The control plane writes submit from the process version of the workspace, and submit_module from the start-up of the forge's adapter. submit is present exactly when submit_module is present, so only on a run with workflow and with access write. On a run with a run code, qory takes the settings of the submit step only from submit of the run documents, never from process.yaml. If the process.yaml of the composed harness has a different submit, qory prints one line with both values and uses submit of the run documents. A run that a person starts with no run code has no run documents, so it has no submit and no submit step. A run of the step prebuild has no submit.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -664,13 +664,13 @@
       ],
       "properties": {
         "type": {
-          "description": "The artifact type of the submission: the name of a structured entry of artifact_types of the process. The name is lower-case letters and digits in groups joined by single hyphens, 1 to 64 characters. This schema cannot check that artifact_types has that entry, so the control plane checks it when it records the process version.",
+          "description": "The artifact type of the submission: the name of a structured entry of artifact_types of the process. The name is lower-case letters and digits in groups joined by single hyphens, 1 to 64 characters. This schema cannot check that artifact_types has that entry.",
           "type": "string",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
         },
         "send": {
-          "description": "When the submit step sends the submission. With end_of_run, the submit step sends it at the end of the run. With after_gate, the submit step stores it and sends nothing before the gate of the stage passes.",
+          "description": "When the submit step sends the submission. With end_of_run, the submit step sends the submission at the end of the run. With after_gate, the submit step stores the submission and sends it after the gate of the stage passes.",
           "type": "string",
           "enum": [
             "end_of_run",
