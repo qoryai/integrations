@@ -224,10 +224,9 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 	}
 }
 
-// TestAPrebuildIsRefusedForEachRunMemberAlone pins that the invalid
-// run documents of the step prebuild that have workflow, harness_hidden, harness or
-// submit_module are refused for that member alone: the same documents without it are
-// accepted.
+// TestAPrebuildIsRefusedForEachRunMemberAlone pins that the invalid run documents of
+// the step prebuild that have workflow, harness_hidden, harness or submit_module are
+// refused for that member alone: the same documents without it are accepted.
 func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	for _, c := range []struct{ fixture, member string }{

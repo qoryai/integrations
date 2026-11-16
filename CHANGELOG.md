@@ -123,8 +123,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   control plane writes it to the run documents only for a run with `workflow` and with
   `access` `write`. It does so whether `harness` is present or absent. A run of the step
   `prebuild` has no `submit_module`. The machine appends the module after the modules of
-  the harness it composes. In Go, `SubmitModule`, `Adapter.SubmitModule` and
-  `Documents.SubmitModule` are added.
+  the harness it composes. For qory's rule when a composed module has the same name, see
+  the description of `submit_module` in `documents.schema.json`. In Go, `SubmitModule`,
+  `Adapter.SubmitModule` and `Documents.SubmitModule` are added.
 - A description can declare the role `model_provider`. The role lists the provider's APIs
   in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
   subscription access token, and optional `key_prefixes`; and the `models` a new provider
