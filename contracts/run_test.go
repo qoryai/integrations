@@ -930,6 +930,27 @@ func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 	}
 }
 
+// TestABindErrorIsForTheFirstBadValue pins that decoding a HarnessSection returns the
+// error for the first bad value of its bind, in the order of roles and then of list
+// items: a value of the wrong type before a later null, and a list item of the wrong
+// type before a later null item, as BindValue alone returns it.
+func TestABindErrorIsForTheFirstBadValue(t *testing.T) {
+	for _, c := range []struct{ in, err string }{
+		{`{"bind":{"agents":{"reviewers":["copy-reviewer",3,null]}}}`, "set a bind role to one name or a list of names: json: cannot unmarshal number into .1 of type string"},
+		{`{"bind":{"agents":{"a":{"o":1},"b":null}}}`, "set a bind role to one name or a list of names: json: cannot unmarshal object into Go value of type string"},
+	} {
+		var s contracts.HarnessSection
+		if err := json.Unmarshal([]byte(c.in), &s); err == nil || err.Error() != c.err {
+			t.Errorf("%s fails with %v, want %q", c.in, err, c.err)
+		}
+	}
+	var v contracts.BindValue
+	const alone = "set a bind role to one name or a list of names: json: cannot unmarshal number into .1 of type string"
+	if err := json.Unmarshal([]byte(`["copy-reviewer",3,null]`), &v); err == nil || err.Error() != alone {
+		t.Errorf("a BindValue alone fails with %v, want %q", err, alone)
+	}
+}
+
 // TestABindValueKeepsItsForm pins that a bind role read from JSON is written back as
 // the same bytes: a name as a name, and a list as a list, a list of one name and a list
 // with a name twice included, that null and a null item of a list fail to read, and

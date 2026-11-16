@@ -189,7 +189,9 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 
 // checkBind returns the error of [HarnessSection.UnmarshalJSON] for the first kind, in
 // order, and then the first role of it, in order, that fails documents.schema.json for
-// one of the reasons that method lists, and nil for none.
+// one of the reasons that method lists, and nil for none. It returns nil at the first
+// role whose value is neither a string, a list nor null, and at the first list item
+// that is not a string: the decode then returns the error for that value.
 func checkBind(bind map[string]map[string]json.RawMessage) error {
 	for _, k := range slices.Sorted(maps.Keys(bind)) {
 		switch {
@@ -204,9 +206,14 @@ func checkBind(bind map[string]map[string]json.RawMessage) error {
 			if string(x) == "null" {
 				return fmt.Errorf("set the bind role %q to one name or a list of names, not null", at)
 			}
+			if len(x) > 0 && x[0] == '"' {
+				continue
+			}
+			// The decode returns the error for a value that is neither a string, a list
+			// nor null, so that the error is for the first bad value in key order.
 			var items []json.RawMessage
 			if len(x) == 0 || x[0] != '[' || json.Unmarshal(x, &items) != nil {
-				continue
+				return nil
 			}
 			switch {
 			case k != "agents":
@@ -215,8 +222,12 @@ func checkBind(bind map[string]map[string]json.RawMessage) error {
 				return fmt.Errorf("write one name or more in the list of the bind role %q: the list is empty", at)
 			}
 			for i, item := range items {
-				if string(bytes.TrimSpace(item)) == "null" {
+				item = bytes.TrimSpace(item)
+				if string(item) == "null" {
 					return fmt.Errorf("set item %d of the list of the bind role %q to a name, not null", i+1, at)
+				}
+				if len(item) == 0 || item[0] != '"' {
+					return nil
 				}
 			}
 		}
