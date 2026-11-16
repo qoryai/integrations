@@ -22,7 +22,7 @@ const MaxInputs = 768 << 10
 // comes from one of two places. If TargetVersion is set and the read of the harness file
 // of the target returned a file whose harness section extends a stack or defines one,
 // Harness is nil. For a target that is a repository, the machine composes that file at
-// TargetVersion. The doc of [Documents.TargetVersion] states how. A harness section
+// TargetVersion; see [Documents.TargetVersion]. A harness section
 // extends a stack when it has extends, a base, and defines one when it has no extends
 // and lists at least one module. The run documents contain Harness in three cases:
 // TargetVersion is set and the read returned a file whose harness section is absent, or
@@ -99,7 +99,7 @@ type Documents struct {
 	// plane takes from the settings of the workspace. If TargetVersion is set and the
 	// read returned a file whose harness section has extends or lists at least one
 	// module, Harness is nil. For a target that is a repository, the machine composes
-	// that file at TargetVersion. The doc of [Documents.TargetVersion] states how. When
+	// that file at TargetVersion; see [Documents.TargetVersion]. When
 	// Harness is set, the machine composes Harness instead of the harness section of the
 	// harness file of the target. Of that file, the machine applies the qory version that
 	// the file requires, the worktree section, and the tiers of the harness section, as
@@ -327,8 +327,8 @@ func (v *BindValue) UnmarshalJSON(b []byte) error {
 // defines.
 type HarnessWorkflow struct {
 	// Access is the access level the workflow declares for what a run of it works on,
-	// "read", "write-no-push" or "write", as the description of access of the run
-	// documents states ([Documents.Access]), and empty for read.
+	// "read", "write-no-push" or "write", as described under access in the run documents
+	// (see [Documents.Access]), and empty for read.
 	Access string `json:"access,omitempty"`
 	// TimeLimit is how long a run of the workflow may run, counted from the run's open,
 	// as a Go duration above zero, such as 7h or 45m, and empty when the workflow sets
