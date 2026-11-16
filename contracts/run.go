@@ -148,8 +148,10 @@ type HarnessSection struct {
 	Modules []HarnessModule `json:"modules,omitempty"`
 	// Bind maps a kind, agents, commands or skills, to the roles of that kind, each
 	// role to the name of the entry of that kind that fills it, such as agents:
-	// {developer: web-developer}.
-	Bind map[string]map[string]string `json:"bind,omitempty"`
+	// {developer: web-developer}, or, for a group role of the kind agents, to the list
+	// of the agents that fill it, such as agents: {reviewers: [copy-reviewer,
+	// legal-reviewer]}. See [BindValue].
+	Bind map[string]map[string]BindValue `json:"bind,omitempty"`
 	// Extensions are values that qory copies into the report and does not read, by
 	// key, each a JSON value of any shape. Empty extensions are not written.
 	Extensions map[string]json.RawMessage `json:"extensions,omitempty"`
@@ -161,7 +163,8 @@ type HarnessSection struct {
 }
 
 // UnmarshalJSON reads a harness section, and returns an error for a kind of Bind that
-// is not agents, commands or skills, or whose value is null: both fail
+// is not agents, commands or skills, for a kind whose value is null, for a list on a
+// role of the kind commands or skills, and for an empty list: each fails
 // documents.schema.json.
 func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 	type harnessSection HarnessSection
@@ -176,8 +179,56 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 		case v.Bind[k] == nil:
 			return fmt.Errorf("set the bind kind %q to an object of roles to names, not null", k)
 		}
+		for _, role := range slices.Sorted(maps.Keys(v.Bind[k])) {
+			switch names := v.Bind[k][role].Names; {
+			case names == nil:
+			case k != "agents":
+				return fmt.Errorf("set the bind role %s.%q to one name, not a list: only an agents role can be a group", k, role)
+			case len(names) == 0:
+				return fmt.Errorf("write one name or more in the list of the bind role agents.%q: the list is empty", role)
+			}
+		}
 	}
 	*s = HarnessSection(v)
+	return nil
+}
+
+// BindValue is the value of one role in the Bind of a [HarnessSection]: in JSON, the
+// name of the one entry that fills the role, or, for a group role of the kind agents, a
+// list of the names of the agents that fill it. Name is set for the first form, and
+// Names, not nil, for the second, in the order written. A list of one name is a list:
+// qory reads it as a group role with one member, and the compose of qory fails for it
+// on a role that is not a group in the module manifests.
+type BindValue struct {
+	Name  string
+	Names []string
+}
+
+// MarshalJSON writes the list Names when it is not nil, and the name Name otherwise.
+func (v BindValue) MarshalJSON() ([]byte, error) {
+	if v.Names != nil {
+		return json.Marshal(v.Names)
+	}
+	return json.Marshal(v.Name)
+}
+
+// UnmarshalJSON reads a name, or a list of names. An empty list reads as Names set to
+// an empty list, not nil.
+func (v *BindValue) UnmarshalJSON(b []byte) error {
+	b = bytes.TrimSpace(b)
+	if len(b) > 0 && b[0] == '[' {
+		names := []string{}
+		if err := json.Unmarshal(b, &names); err != nil {
+			return fmt.Errorf("set a bind role to one name or a list of names: %w", err)
+		}
+		*v = BindValue{Names: names}
+		return nil
+	}
+	var name string
+	if err := json.Unmarshal(b, &name); err != nil {
+		return fmt.Errorf("set a bind role to one name or a list of names: %w", err)
+	}
+	*v = BindValue{Name: name}
 	return nil
 }
 

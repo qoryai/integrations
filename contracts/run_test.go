@@ -176,8 +176,11 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-section-target.json":                     {"documents", "/harness/harness additionalProperties"},
 		"documents-harness-bind-flat.json":                          {"documents", "/harness/harness/bind additionalProperties"},
 		"documents-harness-bind-unknown-kind.json":                  {"documents", "/harness/harness/bind additionalProperties"},
-		"documents-harness-bind-list.json":                          {"documents", "/harness/harness/bind/agents/reviewer type"},
-		"documents-harness-bind-name-slash.json":                    {"documents", "/harness/harness/bind/agents/writer pattern"},
+		"documents-harness-bind-list-empty.json":                    {"documents", "/harness/harness/bind/agents/reviewers type; /harness/harness/bind/agents/reviewers minItems"},
+		"documents-harness-bind-list-commands.json":                 {"documents", "/harness/harness/bind/commands/publish type"},
+		"documents-harness-bind-list-skills.json":                   {"documents", "/harness/harness/bind/skills/review type"},
+		"documents-harness-bind-list-name-slash.json":               {"documents", "/harness/harness/bind/agents/reviewers type; /harness/harness/bind/agents/reviewers/1 pattern"},
+		"documents-harness-bind-name-slash.json":                    {"documents", "/harness/harness/bind/agents/writer pattern; /harness/harness/bind/agents/writer type"},
 		"documents-harness-bind-role-dot.json":                      {"documents", "/ pattern"},
 		"documents-target-version-without-target.json":              {"documents", "/ dependentRequired/target_version"},
 		"documents-target-version-space.json":                       {"documents", "/target_version pattern"},
@@ -541,7 +544,10 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 				Only:    &contracts.HarnessSelection{OutputStyles: []string{"brief"}, Env: &contracts.HarnessPart{Names: []string{"REPORT_DIR"}}},
 				Variant: "weekly"},
 		},
-		Bind:       map[string]map[string]string{"agents": {"writer": "copywriter"}, "skills": {"review": "brand-review"}},
+		Bind: map[string]map[string]contracts.BindValue{
+			"agents": {"writer": {Name: "copywriter"}, "reviewers": {Names: []string{"copy-reviewer", "legal-reviewer"}}},
+			"skills": {"review": {Name: "brand-review"}},
+		},
 		Extensions: map[string]json.RawMessage{"team": json.RawMessage(`{"size":3}`)},
 	}}
 	defined := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
@@ -879,15 +885,22 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 }
 
 // TestABindTheSchemaRefusesFailsToRead pins that a bind in the flat form, <kind>/<role>
-// to a name, a bind with a kind other than agents, commands and skills, and a bind with
-// a kind whose value is null fail to read into a HarnessSection with an error, and that
-// a bind with each kind, or with empty objects, reads.
+// to a name, a bind with a kind other than agents, commands and skills, a bind with a
+// kind whose value is null, a list on a commands or skills role, an empty list, and a
+// role set to neither a name nor a list fail to read into a HarnessSection with an
+// error, and that a bind with each kind, with a list on an agents role, or with empty
+// objects, reads.
 func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 	for _, c := range []struct{ in, err string }{
 		{`{"bind":{"agents/writer":"copywriter"}}`, "bind"},
 		{`{"bind":{"hooks":{"x":"y"}}}`, `use agents, commands or skills as a bind kind, not "hooks"`},
 		{`{"bind":{"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
 		{`{"bind":{"skills":{"review":"brand-review"},"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
+		{`{"bind":{"commands":{"publish":["post","schedule"]}}}`, `set the bind role commands."publish" to one name, not a list: only an agents role can be a group`},
+		{`{"bind":{"skills":{"review":["brand-review"]}}}`, `set the bind role skills."review" to one name, not a list: only an agents role can be a group`},
+		{`{"bind":{"agents":{"reviewers":[]}}}`, `write one name or more in the list of the bind role agents."reviewers": the list is empty`},
+		{`{"bind":{"agents":{"reviewers":{"one":"copy-reviewer"}}}}`, "set a bind role to one name or a list of names"},
+		{`{"bind":{"agents":{"reviewers":["copy-reviewer",3]}}}`, "set a bind role to one name or a list of names"},
 	} {
 		var s contracts.HarnessSection
 		err := json.Unmarshal([]byte(c.in), &s)
@@ -901,6 +914,7 @@ func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 	}
 	for _, in := range []string{
 		`{"bind":{"agents":{"writer":"copywriter"},"commands":{"publish":"post"},"skills":{"review":"brand-review"}}}`,
+		`{"bind":{"agents":{"reviewers":["copy-reviewer","legal-reviewer"],"writer":"copywriter"}}}`,
 		`{"bind":{"agents":{}}}`,
 		`{"bind":{}}`,
 		`{}`,
@@ -908,6 +922,54 @@ func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 		var s contracts.HarnessSection
 		if err := json.Unmarshal([]byte(in), &s); err != nil {
 			t.Errorf("%s: %v", in, err)
+		}
+	}
+}
+
+// TestABindValueKeepsItsForm pins that a bind role read from JSON is written back as
+// the same bytes: a name as a name, and a list as a list, a list of one name and a list
+// with a name twice included. A BindValue built in Go is written as a name when Names
+// is nil, and as a list otherwise.
+func TestABindValueKeepsItsForm(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		want contracts.BindValue
+	}{
+		{`"copywriter"`, contracts.BindValue{Name: "copywriter"}},
+		{`["copy-reviewer","legal-reviewer"]`, contracts.BindValue{Names: []string{"copy-reviewer", "legal-reviewer"}}},
+		{`["copy-reviewer"]`, contracts.BindValue{Names: []string{"copy-reviewer"}}},
+		{`["copy-reviewer","copy-reviewer"]`, contracts.BindValue{Names: []string{"copy-reviewer", "copy-reviewer"}}},
+		{`[]`, contracts.BindValue{Names: []string{}}},
+	} {
+		var v contracts.BindValue
+		if err := json.Unmarshal([]byte(c.in), &v); err != nil {
+			t.Errorf("%s: %v", c.in, err)
+			continue
+		}
+		if !reflect.DeepEqual(v, c.want) {
+			t.Errorf("%s reads as %+v, want %+v", c.in, v, c.want)
+		}
+		out, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(out) != c.in {
+			t.Errorf("%s is written back as %s", c.in, out)
+		}
+	}
+	for _, c := range []struct {
+		v    contracts.BindValue
+		want string
+	}{
+		{contracts.BindValue{Name: "copywriter"}, `"copywriter"`},
+		{contracts.BindValue{Names: []string{"copy-reviewer"}}, `["copy-reviewer"]`},
+	} {
+		out, err := json.Marshal(c.v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(out) != c.want {
+			t.Errorf("%+v is written as %s, want %s", c.v, out, c.want)
 		}
 	}
 }
