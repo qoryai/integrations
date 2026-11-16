@@ -16,7 +16,7 @@
       "$ref": "definitions.schema.json#/$defs/time"
     },
     "connection_id": {
-      "description": "The connection the adapter no longer reaches the collection through, as it was in a listing (source-collections.schema.json).",
+      "description": "The connection the adapter no longer reaches the collection through, in the same form as in a listing (source-collections.schema.json).",
       "$ref": "definitions.schema.json#/$defs/connection_id"
     },
     "collection_ref": {

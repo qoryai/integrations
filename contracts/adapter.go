@@ -119,7 +119,7 @@ const MaxRequest = 1 << 20
 // 3339 in UTC with whole seconds.
 const TimeLayout = "2006-01-02T15:04:05Z"
 
-// FormatTime writes a moment in the form of the documents, [TimeLayout], in UTC.
+// FormatTime writes a moment in the form the documents use, [TimeLayout], in UTC.
 func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 
 // Adapter is the body of POST /v1/adapter, adapter.schema.json, which an adapter sends

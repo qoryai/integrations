@@ -16,7 +16,7 @@
       "$ref": "definitions.schema.json#/$defs/time"
     },
     "connection_id": {
-      "description": "The connection the source no longer grants access to, as it was in a listing (source-collections.schema.json).",
+      "description": "The connection the source no longer grants access to, in the same form as in a listing (source-collections.schema.json).",
       "$ref": "definitions.schema.json#/$defs/connection_id"
     }
   }

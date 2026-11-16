@@ -20,7 +20,7 @@
       "$ref": "definitions.schema.json#/$defs/ref"
     },
     "comments": {
-      "description": "The comments, 0 to 100 with complete, 1 to 100 without it. No comments with complete mean that the item has none: the control plane marks every comment of the item deleted, except those updated at or after complete.since. The control plane never marks deleted a comment a person wrote in the control plane: when the request leaves out such a comment that has a ref and was updated before complete.since, the control plane keeps the comment and clears its ref and url, as for a sent comment with deleted: true. A comment that the control plane matched to a sent comment takes the sent comment's updated_at.",
+      "description": "The comments, 0 to 100 with complete, 1 to 100 without it. An empty comments list with complete means that the item has none: the control plane marks every comment of the item deleted, except those updated at or after complete.since. The control plane never marks deleted a comment a person wrote in the control plane: when the request leaves out such a comment that has a ref and was updated before complete.since, the control plane keeps the comment and clears its ref and url, as for a sent comment with deleted: true. A comment that the control plane matched to a sent comment takes the sent comment's updated_at.",
       "type": "array",
       "minItems": 0,
       "maxItems": 100,

@@ -16,8 +16,8 @@ import (
 const (
 	// DescriptionMaxBytes is the most bytes a description's raw document takes, 256 KiB.
 	DescriptionMaxBytes = 262144
-	// DescriptionMaxStringBytes is the most bytes of UTF-8 a string of a description,
-	// a member name included, has.
+	// DescriptionMaxStringBytes is the most bytes of UTF-8 in a string of a
+	// description, a member name included.
 	DescriptionMaxStringBytes = 16384
 	// DescriptionMaxValues is the most JSON values a description contains in all: the
 	// document itself, each array entry and each member's value count one each, and
