@@ -16,7 +16,7 @@ import (
 )
 
 // runSchema is the path of the schema that the fixtures under fixtures/<name> of the
-// run contract, and the invalid fixtures whose expected reason names name, validate
+// run contract, and the invalid fixtures whose expected reason contains name, validate
 // against: documents.schema.json for documents, and for documents/<definition>, that
 // definition of documents.schema.json.
 func runSchema(name string) string {
@@ -42,8 +42,8 @@ func runFiles(t *testing.T, dir string) []string {
 	return treeFiles(t, contracts.RunFS, dir)
 }
 
-// TestRunSchemaIsTheContract pins that run/v1 holds exactly documents.schema.json, with
-// the $id RunBase/documents.schema.json, and that it compiles.
+// TestRunSchemaIsTheContract pins that run/v1 contains exactly documents.schema.json,
+// with the $id RunBase/documents.schema.json, and that it compiles.
 func TestRunSchemaIsTheContract(t *testing.T) {
 	entries, err := fs.ReadDir(contracts.RunFS, ".")
 	if err != nil {
@@ -69,7 +69,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 }
 
 // TestRunFixturesValidate pins that each document under fixtures/documents/ of the run
-// contract is accepted by documents.schema.json, and that fixtures/ holds no other
+// contract is accepted by documents.schema.json, and that fixtures/ contains no other
 // folder of valid documents.
 func TestRunFixturesValidate(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
@@ -998,7 +998,7 @@ func TestTheInputsPassThrough(t *testing.T) {
 }
 
 // TestAPrebuildIsRefusedForItsWorkItemAlone pins that the invalid run documents of the
-// step prebuild that have work_item, whose refusal names no keyword, are refused for
+// step prebuild that have work_item, whose refusal contains no keyword, are refused for
 // work_item and for nothing else: the same documents without work_item are accepted.
 func TestAPrebuildIsRefusedForItsWorkItemAlone(t *testing.T) {
 	for _, c := range []struct{ fixture, schema string }{

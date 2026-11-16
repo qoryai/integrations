@@ -512,8 +512,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 
 // TestCollectionItemsRoundTrips decodes a listing whose second collection has items:
 // false into SourceCollections, and pins that Items is nil where the listing leaves
-// items out, points to false where it says false, and marshals back to a document that
-// source-collections.schema.json accepts.
+// items out, points to false where the listing has false, and marshals back to a
+// document that source-collections.schema.json accepts.
 func TestCollectionItemsRoundTrips(t *testing.T) {
 	var s contracts.SourceCollections
 	if err := json.Unmarshal(read(t, "fixtures/adapter/source-collections/code-host-items-false.json"), &s); err != nil {
@@ -581,7 +581,7 @@ func TestAdapterDescriptionRoundTrips(t *testing.T) {
 }
 
 // TestAdapterSetupURLRoundTrips decodes the start-up fixture with a setup_url into
-// Adapter, and pins that SetupURL holds it and that it marshals back to a document
+// Adapter, and pins that SetupURL is set to it and that it marshals back to a document
 // adapter.schema.json accepts, with the same setup_url; and that an Adapter without a
 // SetupURL marshals no setup_url member.
 func TestAdapterSetupURLRoundTrips(t *testing.T) {
@@ -680,9 +680,9 @@ func TestAdapterSubmitModuleRoundTrips(t *testing.T) {
 
 // TestASetupURLIsRefusedForItsFragmentOrState pins the reason of each invalid start-up
 // fixture whose setup_url breaks a "not" of adapter.schema.json, which the refusal
-// itself does not name: the same document is accepted once the fragment is taken out, or
-// the query parameter state, written plainly or percent-encoded, bare or with a value, is
-// named otherwise.
+// itself does not contain: the same document is accepted once the fragment is taken
+// out, or the query parameter state, written plainly or percent-encoded, bare or with a
+// value, is named otherwise.
 func TestASetupURLIsRefusedForItsFragmentOrState(t *testing.T) {
 	schema := compile(t, "adapter.schema.json")
 	for name, fix := range map[string][2]string{
@@ -801,10 +801,10 @@ func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
 // TestADescriptionsNumbersFollowTheDescriptionContract pins that the numbers of an
 // adapter start-up's description member follow description.schema.json, not the integer
 // rule: fixtures/adapter/adapter/settings-numbers.json, whose description's settings
-// schema holds 1e3 and 0.5, is accepted by adapter.schema.json and by the strict check,
-// its description member is accepted by CheckDescription, and the integer rule over the
-// whole body refuses it. It also pins that every start-up fixture's description member
-// is accepted by CheckDescription.
+// schema contains 1e3 and 0.5, is accepted by adapter.schema.json and by the strict
+// check, its description member is accepted by CheckDescription, and the integer rule
+// over the whole body refuses it. It also pins that every start-up fixture's
+// description member is accepted by CheckDescription.
 func TestADescriptionsNumbersFollowTheDescriptionContract(t *testing.T) {
 	const name = "fixtures/adapter/adapter/settings-numbers.json"
 	b := read(t, name)
@@ -834,8 +834,8 @@ var externalWords = []string{"github", "issue", "pull", "repositor", "installati
 
 // TestTheAdapterSchemasNameNoExternalSystem walks every schema of the adapter, those of
 // the provisioner and explore contracts and description.schema.json among them, and fails on a member name, a required name, a
-// const or an enum value that holds an external system's word, or is app. The fixtures'
-// data are not checked.
+// const or an enum value that contains an external system's word, or is app. The
+// fixtures' data are not checked.
 func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
 	check := func(name, where, word string) {
 		w := strings.ToLower(word)
@@ -1391,7 +1391,7 @@ func TestEmptyListsMarshalAsEmptyLists(t *testing.T) {
 // strictJSON reports the first member an object repeats, at any depth, and the first
 // number written with a fraction or an exponent: the two rules of definitions.schema.json
 // that the control plane checks on a request's raw bytes, and that no schema can express,
-// since a parsed document holds 900.0 as the integer 900 and keeps one member of a name.
+// since a parsed document has 900.0 as the integer 900 and keeps one member of a name.
 // Every number of a request of the schema is an integer, except inside the description
 // member of an adapter start-up, whose numbers follow description.schema.json: for the
 // schema adapter, the integer rule is checked on the body without that member.
@@ -1455,7 +1455,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 }
 
 // TestACallURLIsRefusedForItsOneFault pins the reason of each invalid start-up fixture
-// whose call_url breaks one of its two patterns, which the refusal does not tell apart:
+// whose call_url breaks one of its two patterns, with the same refusal for both:
 // the same document is accepted once the one fault is fixed. It also pins that the
 // start-up fixture with a call_url decodes into Adapter with CallURL set, and that an
 // Adapter without a CallURL marshals no call_url member.
@@ -2150,7 +2150,7 @@ func TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
 // connect-return/linked-live-connection.json, with the same connection_id and nonce.
 // Whether the connection is pending or live, and whether the grant is already linked to
 // another live connection, are the control plane's and the adapter's checks, which
-// connect-return.schema.json states and no schema expresses.
+// connect-return.schema.json describes and no schema expresses.
 func TestAConnectFlowOnALiveConnectionHasTheSameShape(t *testing.T) {
 	var p contracts.ConnectPass
 	var r contracts.ConnectReturn

@@ -3,9 +3,9 @@
 This repository is part of [Qory](https://github.com/qoryai/qory). The Qory README lists every part and how to install Qory.
 
 An integration is a program that connects Qory to an outside system, for example GitHub.
-Each integration is kept in a separate repository. This repository holds what they share:
-the contract they implement, a Go module for testing against it, and reusable CI and
-release workflows.
+Each integration is kept in a separate repository. This repository contains what they
+share: the contract they implement, a Go module for testing against it, and reusable CI
+and release workflows.
 
 | Path | What it is |
 |---|---|
@@ -64,14 +64,14 @@ The only role is `credential`. For it:
 
 In the agent's container:
 
-- The variables the integration lists hold a placeholder,
+- The variables the integration lists are set to a placeholder,
   `qory-sets-the-credential-outside-the-enclosure`. Tools that read them start and send
   the placeholder.
 - The gateway's proxy replaces it with the access token on each request to the
   integration's hosts and paths.
 - Under `enforce`, a request to another path on those hosts fails.
 
-This holds when the agent runs in a container, behind Forager's wall. Without one, a
+This applies when the agent runs in a container, behind Forager's wall. Without one, a
 program that ignores the proxy is bound by nothing.
 
 ## Write an integration
@@ -111,7 +111,7 @@ conformance.Credential(stdout)             // output of `<program> credential ..
 conformance.Failure(code, stdout, stderr)  // a command that failed
 ```
 
-Each returns an error that says which rule the output breaks.
+Each returns an error that shows which rule the output breaks.
 
 ## Release rule
 

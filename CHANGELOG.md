@@ -309,7 +309,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The `source` role may contain `targets: true`: the adapter's collections can have a
   target, a place where a run's changes go. An adapter with `targets` handles a
   `run-credential` call with purpose `work` for any of its collections that has a target,
-  under the rules of `run-credential.schema.json`. This holds whatever source the run's
+  under the rules of `run-credential.schema.json`. This applies whatever source the run's
   work item came from, and also when the work item came from no item at a source. The
   control plane offers the collections of an adapter with `targets` as places for a run's
   changes, and does not offer them when `targets` is absent. In both cases, the control
@@ -444,8 +444,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   host is refused. `workflow` and each name in `harness.workflows` are a lower-case
   letter, then up to 54 lower-case letters, digits and hyphens, so that
   `workflow-<name>` stays within 64 characters. The rest of this entry applies to a
-  target that is a repository, as the description of `target_version` defines it. The
-  machine composes the harness file of the target at `target_version` when its `harness`
+  target that is a repository, as described under `target_version`. The machine
+  composes the harness file of the target at `target_version` when its `harness`
   section has `extends` or lists a module. A branch of the run's work item does not
   change that version. If the run works on such a branch, the machine checks it out after
   the compose. An agent may change, on that branch, the harness file of the target or a
@@ -481,7 +481,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   nothing fetched. Go types such as `Adapter`, `Grant`, `RunCredential`, `Claim`,
   `Documents` and `MachinesMake` marshal to the documents that their schemas accept.
   `CheckDescription`, `CheckModelProvider` and `CheckEgressHosts` check the rules of a
-  description that its schema states only in words.
+  description that its schema describes only in words.
 - `conformance.Description` also checks a description's `model_provider` role and
   `egress_hosts`, and refuses an API `auth` of the scheme `header` whose header
   conformance reserves, as `conformance.Credential` refuses one in an `apply` entry.
@@ -494,8 +494,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 - The module requires Forager at its main commit b6ac9f0
   (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
-- The contract states that `domains` applies only to where work comes from: a credential
-  of the `credential` role reaches a run in a workspace of any domain.
+- The contract describes `domains` as applying only to where work comes from: a
+  credential of the `credential` role reaches a run in a workspace of any domain.
 - When a node pool's starter created no machine for a dispatch, the machine log,
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the

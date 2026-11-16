@@ -156,7 +156,7 @@ func withEgress(doc, egress string) string {
 
 // TestCheckEgressHostsHoldsTheRulesTheSchemaDoesNotCheck pins the rules of egress_hosts
 // that the schema does not check: each refused document is accepted by the schema and
-// refused by CheckEgressHosts with a message that states the rule; each accepted
+// refused by CheckEgressHosts with a message that contains the rule; each accepted
 // document is accepted by both; and every description under fixtures keeps the rules.
 func TestCheckEgressHostsHoldsTheRulesTheSchemaDoesNotCheck(t *testing.T) {
 	schema := compile(t, "description.schema.json")

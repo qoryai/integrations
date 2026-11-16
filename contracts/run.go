@@ -22,7 +22,7 @@ const MaxInputs = 768 << 10
 // comes from one of two places. If TargetVersion is set and the read of the harness file
 // of the target returned a file whose harness section extends a stack or defines one,
 // Harness is nil. For a target that is a repository, the machine composes that file at
-// TargetVersion. The doc of [Documents.TargetVersion] states how. A harness section
+// TargetVersion, as described under [Documents.TargetVersion]. A harness section
 // extends a stack when it has extends, a base, and defines one when it has no extends
 // and lists at least one module. The run documents contain Harness in three cases:
 // TargetVersion is set and the read returned a file whose harness section is absent, or
@@ -31,15 +31,15 @@ const MaxInputs = 768 << 10
 // read no harness file of the target. When Harness is set, the machine composes
 // Harness instead of the harness section of the harness file of the target. Of that
 // file, the machine applies the qory version that the file requires, the worktree
-// section, and the tiers of the harness section, as the doc of [RunSettings.Tiers]
-// states. If the machine's qory version does not meet that requirement, the run stops.
-// It reads none of the other machine keys of that file and none of its git and env
-// sections, so the harness file of the target does not set how the run starts. A run
-// of the step explore has WorkItem. A run of the step prebuild has Access, Target,
-// ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
-// no TargetVersion, WorkItem, RunSettings, Workflow, HarnessHidden or Harness.
-// RunSettings is set only for the step explore. Inputs is the step's input as the
-// control plane wrote it, whose shape belongs to the step's schema.
+// section, and the tiers of the harness section, as described under [RunSettings.Tiers].
+// If the machine's qory version does not meet that requirement, the run stops. It reads
+// none of the other machine keys of that file and none of its git and env sections, so
+// the harness file of the target does not set how the run starts. A run of the step
+// explore has WorkItem. A run of the step prebuild has Access, Target, ImageDestination
+// and exactly one of EnvironmentDestination and EnvironmentImage, and no TargetVersion,
+// WorkItem, RunSettings, Workflow, HarnessHidden or Harness. RunSettings is set only
+// for the step explore. Inputs is the step's input as the control plane wrote it, whose
+// shape belongs to the step's schema.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -99,11 +99,11 @@ type Documents struct {
 	// plane takes from the settings of the workspace. If TargetVersion is set and the
 	// read returned a file whose harness section has extends or lists at least one
 	// module, Harness is nil. For a target that is a repository, the machine composes
-	// that file at TargetVersion. The doc of [Documents.TargetVersion] states how. When
+	// that file at TargetVersion, as described under [Documents.TargetVersion]. When
 	// Harness is set, the machine composes Harness instead of the harness section of the
 	// harness file of the target. Of that file, the machine applies the qory version that
 	// the file requires, the worktree section, and the tiers of the harness section, as
-	// the doc of [RunSettings.Tiers] states. If the machine's qory version does not meet
+	// described under [RunSettings.Tiers]. If the machine's qory version does not meet
 	// that requirement, the run stops. It reads none of the other machine keys of that
 	// file and none of its git and env sections, so the harness file of the target does
 	// not set how the run starts.
@@ -139,17 +139,17 @@ type Documents struct {
 	// program of the forge of the target, which the control plane takes from
 	// [Adapter.SubmitModule] of the forge's adapter when the start-up of the adapter has
 	// one. The machine appends it after the modules of the harness it composes, whether
-	// Harness is set or nil, and the control plane never also lists it in Harness. The
-	// description of submit_module in documents.schema.json states what the machine does
-	// when a module that it composes has the same name.
+	// Harness is set or nil, and the control plane never also lists it in Harness. For
+	// what the machine does when a module that it composes has the same name, see
+	// submit_module in documents.schema.json.
 	SubmitModule *SubmitModule `json:"submit_module,omitempty"`
 	// Submit is set only with Workflow and with Access "write": the settings of the
 	// submit step of the run, which the control plane writes whenever the process version
 	// of the workspace has one. With Submit and a nil SubmitModule, qory runs the submit
 	// step and records the draft of each repository as {"none": "no-program"}.
 	// On a run with a run code, qory takes the settings of the submit step only from
-	// Submit, never from process.yaml. The description of submit in documents.schema.json
-	// states what qory does when process.yaml has a different submit.
+	// Submit, never from process.yaml. For what qory does when process.yaml has a
+	// different submit, see submit in documents.schema.json.
 	Submit *Submit `json:"submit,omitempty"`
 }
 
@@ -327,8 +327,8 @@ func (v *BindValue) UnmarshalJSON(b []byte) error {
 // defines.
 type HarnessWorkflow struct {
 	// Access is the access level the workflow declares for what a run of it works on,
-	// "read", "write-no-push" or "write", as the description of access of the run
-	// documents states ([Documents.Access]), and empty for read.
+	// "read", "write-no-push" or "write", as described under access in the run documents
+	// (see [Documents.Access]), and empty for read.
 	Access string `json:"access,omitempty"`
 	// TimeLimit is how long a run of the workflow may run, counted from the run's open,
 	// as a Go duration above zero, such as 7h or 45m, and empty when the workflow sets
