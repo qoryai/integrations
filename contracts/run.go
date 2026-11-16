@@ -49,22 +49,24 @@ type Documents struct {
 	// TargetVersion is set only with Target, and never for the step prebuild: the
 	// version of the target at which the control plane checked for a harness file, the
 	// resolved_at of the read at the path of the harness file, whether the read returned
-	// the file or found: false. For a target that is a repository, the machine reads the
-	// harness file at this version, whether or not the run works on a branch of its work
-	// item. At this version, the machine composes the harness section of that file when
-	// the section has extends or lists at least one module. The machine applies the qory
-	// version that the file requires, the worktree section and the tiers at this version
-	// too. For a target that is a repository, the machine works at this version after
-	// the compose, unless the run works on a branch of its work item. For a target that
-	// is a repository, the machine checks out that branch after the compose. The run
+	// the file or found: false.
+	//
+	// The rules in this paragraph hold for a target that is a repository. The machine
+	// reads the harness file at this version, whether or not the run works on a branch
+	// of its work item. At this version, the machine composes the harness section of
+	// that file when the section has extends or lists at least one module. The machine
+	// applies the qory version that the file requires, the worktree section and the
+	// tiers at this version too. After the compose, the machine works at this version,
+	// or checks out the branch of the run's work item and works on that branch. The run
 	// documents contain no branch: the machine reads the branch from the control plane.
 	// An agent may change, on that branch, the harness file of the target or a file that
 	// the compose reads. A run composes that change only when the TargetVersion of that
-	// run contains the change. The value is the exact version that the read returned,
-	// never a name that can point to another version later, so that the machine reads
-	// the file that the control plane read. The grammar is generic, because a target in
-	// another system has another kind of version: 1 to 255 letters, digits and the
-	// characters ._/-.
+	// run contains the change.
+	//
+	// The value is the exact version that the read returned, never a name that can point
+	// to another version later, so that the machine reads the file that the control
+	// plane read. The grammar is generic, because a target in another system has another
+	// kind of version: 1 to 255 letters, digits and the characters ._/-.
 	TargetVersion string       `json:"target_version,omitempty"`
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
 	RunSettings   *RunSettings `json:"run_settings,omitempty"`
