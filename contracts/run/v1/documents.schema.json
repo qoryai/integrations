@@ -280,10 +280,11 @@
       }
     },
     "access": {
-      "description": "What the run may do on its target: read, or write. The machine's credential integration narrows the run's access to it. Present exactly when target is present.",
+      "description": "What the run may do on its target: read, write-no-push or write. With read, the run gets a read credential and a read-only checkout of the target. With write-no-push, the run gets a read credential and a writable checkout, in which the agent may change and commit files, and the run has no push step and no submit, so nothing that the agent changes reaches the target. With write, the run gets a write credential and a writable checkout, its push step sends the agent's commits to the target, and only a run with write may have submit. The machine's credential integration narrows the run's access to it. Present exactly when target is present.",
       "type": "string",
       "enum": [
         "read",
+        "write-no-push",
         "write"
       ]
     },
@@ -512,10 +513,11 @@
       "additionalProperties": false,
       "properties": {
         "access": {
-          "description": "The access level the workflow declares for what a run of it works on: read or write. Left out, it is read.",
+          "description": "The access level the workflow declares for what a run of it works on: read, write-no-push or write, as the description of access states. Left out, it is read.",
           "type": "string",
           "enum": [
             "read",
+            "write-no-push",
             "write"
           ]
         },

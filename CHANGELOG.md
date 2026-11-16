@@ -145,6 +145,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   different `submit`, qory prints one line with both values and uses `submit` of the run
   documents. A run that a person starts with no run code has no `submit` and no submit
   step. In Go, `Submit` and `Documents.Submit` are added.
+- `access` in the run documents, and `access` of a workflow in `harness`, can be
+  `write-no-push`: the run gets a read credential and a writable checkout, in which the
+  agent may change and commit files, and has no push step and no `submit`.
 - A description can declare the role `model_provider`. The role lists the provider's APIs
   in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
   subscription access token, and optional `key_prefixes`; and the `models` a new provider

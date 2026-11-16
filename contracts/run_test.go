@@ -201,6 +201,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-submit-module-path-and-module.json":              {"documents", "/submit_module/source ; /submit_module/source "},
 		"documents-submit-module-without-source.json":               {"documents", "/submit_module required source"},
 		"documents-submit-module-access-read.json":                  {"documents", "/access const"},
+		"documents-submit-module-access-write-no-push.json":         {"documents", "/access const"},
 		"documents-submit-module-without-workflow.json":             {"documents", "/ dependentRequired/submit; / dependentRequired/submit_module"},
 		"documents-submit-module-without-target.json":               {"documents", "/ dependentRequired/submit_module; / dependentRequired/submit"},
 		"documents-prebuild-with-submit-module.json":                {"documents", "/ dependentRequired/submit_module; /submit_module "},
@@ -212,6 +213,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-submit-without-type.json":                        {"documents", "/submit required type"},
 		"documents-submit-without-send.json":                        {"documents", "/submit required send"},
 		"documents-submit-access-read.json":                         {"documents", "/access const"},
+		"documents-submit-access-write-no-push.json":                {"documents", "/access const"},
 		"documents-submit-without-workflow.json":                    {"documents", "/ dependentRequired/submit"},
 		"documents-submit-module-without-submit.json":               {"documents", "/ dependentRequired/submit_module"},
 		"documents-prebuild-with-submit.json":                       {"documents", "/ dependentRequired/submit; /submit ; /access const"},
@@ -487,9 +489,9 @@ func TestSubmitModuleRequiresSubmit(t *testing.T) {
 }
 
 // TestASubmitWithoutSubmitModuleIsRefusedForOneRuleAlone pins that run documents with
-// submit and no submit_module are refused on a run with access read and on a run with no
-// workflow, and for that alone: the same documents with access write, or with workflow
-// and harness_hidden, are accepted.
+// submit and no submit_module are refused on a run with access read, on a run with access
+// write-no-push and on a run with no workflow, and for that alone: the same documents
+// with access write, or with workflow and harness_hidden, are accepted.
 func TestASubmitWithoutSubmitModuleIsRefusedForOneRuleAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	for _, c := range []struct {
@@ -497,6 +499,7 @@ func TestASubmitWithoutSubmitModuleIsRefusedForOneRuleAlone(t *testing.T) {
 		fix     func(map[string]any)
 	}{
 		{"documents-submit-access-read.json", func(doc map[string]any) { doc["access"] = "write" }},
+		{"documents-submit-access-write-no-push.json", func(doc map[string]any) { doc["access"] = "write" }},
 		{"documents-submit-without-workflow.json", func(doc map[string]any) {
 			doc["workflow"] = "build"
 			doc["harness_hidden"] = false
@@ -517,6 +520,28 @@ func TestASubmitWithoutSubmitModuleIsRefusedForOneRuleAlone(t *testing.T) {
 		c.fix(doc)
 		if err := schema.Validate(doc); err != nil {
 			t.Errorf("%s, corrected, is refused: %v", c.fixture, err)
+		}
+	}
+}
+
+// TestAnAccessIsOneOfThreeLevels pins the access of documents.schema.json and the
+// access of a workflow in harness: read, write-no-push and write are accepted, and
+// every other value is refused.
+func TestAnAccessIsOneOfThreeLevels(t *testing.T) {
+	access := compileRun(t, runSchema("documents/access"))
+	workflow := compileRun(t, runSchema("documents/harness_workflow"))
+	check := func(v string) (error, error) {
+		return access.Validate(v), workflow.Validate(map[string]any{"access": v})
+	}
+	for _, v := range []string{"read", "write-no-push", "write"} {
+		if a, w := check(v); a != nil || w != nil {
+			t.Errorf("%q is refused: access %v, workflow %v", v, a, w)
+		}
+	}
+	for _, v := range []string{"", "admin", "Write", "WRITE-NO-PUSH", "write_no_push", "write-no-push ",
+		"writenopush", "no-push", "push", "read-write"} {
+		if a, w := check(v); a == nil || w == nil {
+			t.Errorf("%q is accepted: access %v, workflow %v", v, a, w)
 		}
 	}
 }
