@@ -34,8 +34,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   credential host that an `egress_hosts` entry cannot be, such as `localhost` or a single
   label.
 - The module requires Go 1.27.3 or later (`go 1.27.3` in `go.mod`), because Forager does.
-  An integration that requires this module builds with Go 1.27.3 or later. `go.yml` sets
-  `GOTOOLCHAIN` to `go1.27.3+auto`, because its image has Go 1.27.2.
+  An integration that requires this module builds with Go 1.27.3 or later. `go.yml` runs
+  its job in `ghcr.io/qoryai/ci-images:golang-1.27.4`, by digest. That image has Go
+  1.27.4, and `go.yml` sets `GOTOOLCHAIN` to `go1.27.4+auto`, so a job downloads a newer
+  Go when the `go.mod` of the calling repository requires one.
 - Run documents have no top-level `stack` and no `stack_reference`, members that this
   module had after 0.3.0 and before this release. A reader takes the harness from the
   harness file of the target at `target_version`, or from `harness`, as Added describes.
@@ -435,13 +437,20 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `run_settings`, `workflow`, `harness_hidden`, `harness`, `image_destination`,
   `environment_destination` and `environment_image` by step. `target_version` is the exact
   version at which the control plane checked for the harness file of the target.
-  `harness` is present when that file is absent, when its `harness` section has no
-  `extends` and lists no module, or when the file was not read, and the machine then
-  composes `harness`. The registry host of `image_destination`,
+  `harness` is present in three cases: that file is absent, its `harness` section has no
+  `extends` and lists no module, or the file was not read. In each of these cases, the
+  machine composes `harness`. The registry host of `image_destination`,
   `environment_destination` and `environment_image` is lower case only, and a Docker Hub
   host is refused. `workflow` and each name in `harness.workflows` are a lower-case
   letter, then up to 54 lower-case letters, digits and hyphens, so that
-  `workflow-<name>` stays within 64 characters.
+  `workflow-<name>` stays within 64 characters. The rest of this entry applies to a
+  target that is a repository, as the description of `target_version` defines it. The
+  machine composes the harness file of the target at `target_version` when its `harness`
+  section has `extends` or lists a module. A branch of the run's work item does not
+  change that version. If the run works on such a branch, the machine checks it out after
+  the compose. An agent may change, on that branch, the harness file of the target or a
+  file that the compose reads. A run composes that change only when the run's
+  `target_version` contains the change.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
   `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
