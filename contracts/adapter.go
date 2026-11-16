@@ -356,6 +356,7 @@ const (
 	ChangeCollection = "collection"
 	ChangeGrant      = "grant"
 	ChangeSync       = "sync"
+	ChangeWatch      = "watch"
 )
 
 // Change is one entry of the change feed, of the kind set in Kind. A work_item entry has
@@ -364,7 +365,9 @@ const (
 // and has CommentID, Ref, AuthorName and Body; a collection entry has
 // CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
-// adapter's declared default. It marshals with the members of its kind alone.
+// adapter's declared default; a watch entry, which the control plane writes when a run
+// whose target collection is one of the adapter's collections stores a submission
+// version, has WorkItemID and URL. It marshals with the members of its kind alone.
 //
 // AuthorName is plain text, and the control plane sends it as it is, with no escaping.
 // The adapter writes it as plain text: it escapes each character or sequence that the
@@ -429,6 +432,12 @@ func (c Change) MarshalJSON() ([]byte, error) {
 			Kind     string `json:"kind"`
 			Interval *int   `json:"interval"`
 		}{c.Kind, c.Interval})
+	case ChangeWatch:
+		return json.Marshal(struct {
+			Kind       string `json:"kind"`
+			WorkItemID string `json:"work_item_id"`
+			URL        string `json:"url"`
+		}{c.Kind, c.WorkItemID, c.URL})
 	}
 	return nil, fmt.Errorf("the change feed defines no kind %q", c.Kind)
 }
