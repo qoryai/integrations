@@ -9,6 +9,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Upgrading
 
+- Before an adapter sends `submit_module` in its start-up, update the control plane to
+  this `adapter.schema.json`: a control plane that checks the start-up against an
+  earlier copy refuses the member, `invalid_request`. Update a reader of the run
+  documents to this `documents.schema.json` before the control plane writes
+  `submit_module` there, for the same reason.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
@@ -108,6 +113,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- The adapter's start-up, `adapter.schema.json`, and the run documents can contain
+  `submit_module`: the harness module that ships a forge's submit program, the module
+  whose manifest declares `submit_program`. It has the shape of a module of `harness`,
+  `{name, source}`, with `name` optional and no `exclude`, `only` or `variant`. Its
+  `source.ref` is a full commit hash, 40 or 64 lower-case hexadecimal digits; a branch
+  name, a tag and a short hash fail the schema. `ref` in the other sources of `harness`
+  stays any version. The adapter of a forge sends `submit_module`, and the control plane
+  writes it to the run documents only for a run with `workflow` and with `access`
+  `write`, whether `harness` is present or absent; a run of the step `prebuild` has none.
+  The machine appends the module after the modules of the harness it composes. In Go,
+  `SubmitModule`, `Adapter.SubmitModule` and `Documents.SubmitModule` are added.
 - A description can declare the role `model_provider`. The role lists the provider's APIs
   in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
   subscription access token, and optional `key_prefixes`; and the `models` a new provider

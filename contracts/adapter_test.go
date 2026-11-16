@@ -206,6 +206,9 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-call-url-query.json":                          {"adapter", "/call_url pattern"},
 		"adapter-call-url-without-final-slash.json":            {"adapter", "/call_url pattern"},
 		"adapter-description-secrets-twice.json":               {"adapter", "/description/roles/source/secrets uniqueItems"},
+		"adapter-submit-module-ref-branch.json":                {"adapter", "/submit_module/source/ref pattern"},
+		"adapter-submit-module-ref-short.json":                 {"adapter", "/submit_module/source/ref pattern"},
+		"adapter-submit-module-exclude.json":                   {"adapter", "/submit_module/exclude "},
 		"grant-without-pass-nonce.json":                        {"grant", "/ required pass_nonce"},
 		"grant-without-account.json":                           {"grant", "/ required account"},
 		"grant-end-without-grant-ref.json":                     {"grant-end", "/ required grant_ref"},
@@ -435,6 +438,11 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
 			CallURL: "https://adapter.example.com/calls/", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
 			Description: read(t, "fixtures/example-tracker.json")}},
+		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
+			Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60}, Description: read(t, "fixtures/example-tracker.json"),
+			SubmitModule: &contracts.SubmitModule{Name: "forge-submit", Source: contracts.HarnessSource{
+				Git: "https://code.example.com/example-org/forge-module", Ref: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4",
+				Module: "forge-submit"}}}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 		{"refusal", contracts.Refusal{Error: "grant_taken"}},
 		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
@@ -612,6 +620,60 @@ func TestAdapterSetupURLRoundTrips(t *testing.T) {
 	}
 	if err := validate(schema, b); err != nil {
 		t.Errorf("an adapter without a setup URL marshals to %s, which adapter.schema.json refuses: %v", b, err)
+	}
+}
+
+// TestAdapterSubmitModuleRoundTrips decodes the start-up fixture with a submit_module
+// into Adapter, and pins that SubmitModule has its name and source, that it marshals back
+// to a document adapter.schema.json accepts, with the same submit_module, and that an
+// Adapter without a SubmitModule marshals no submit_module member.
+func TestAdapterSubmitModuleRoundTrips(t *testing.T) {
+	const name = "fixtures/adapter/adapter/code-host-submit-module.json"
+	var a contracts.Adapter
+	if err := json.Unmarshal(read(t, name), &a); err != nil {
+		t.Fatal(err)
+	}
+	want := contracts.SubmitModule{Name: "forge-submit", Source: contracts.HarnessSource{
+		Git: "https://code.example.com/example-org/forge-module", Ref: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4",
+		Module: "forge-submit"}}
+	if a.SubmitModule == nil || *a.SubmitModule != want {
+		t.Fatalf("%s decodes submit_module as %+v", name, a.SubmitModule)
+	}
+	schema := compile(t, "adapter.schema.json")
+	b, err := json.Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(schema, b); err != nil {
+		t.Errorf("%s marshals back to %s, which adapter.schema.json refuses: %v", name, b, err)
+	}
+	var doc, fixture map[string]json.RawMessage
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(read(t, name), &fixture); err != nil {
+		t.Fatal(err)
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, fixture["submit_module"]); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(doc["submit_module"], compact.Bytes()) {
+		t.Errorf("%s marshals back submit_module as %s, want %s", name, doc["submit_module"], compact.Bytes())
+	}
+	a.SubmitModule = nil
+	if b, err = json.Marshal(a); err != nil {
+		t.Fatal(err)
+	}
+	doc = nil
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := doc["submit_module"]; ok {
+		t.Errorf("an adapter without a submit module marshals to %s, with a submit_module member", b)
+	}
+	if err := validate(schema, b); err != nil {
+		t.Errorf("an adapter without a submit module marshals to %s, which adapter.schema.json refuses: %v", b, err)
 	}
 }
 

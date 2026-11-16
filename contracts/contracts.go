@@ -249,7 +249,8 @@ var trees = []struct {
 
 // Compile compiles one schema of the contract by its path under integration/v1,
 // "description.schema.json" say. A schema of the contract it refers to, such as
-// definitions.schema.json, is read from [FS] by its $id, a schema of the Forager contract
+// definitions.schema.json, is read from [FS] by its $id, a schema of the run contract,
+// such as documents.schema.json, from [RunFS] by its $id, a schema of the Forager contract
 // it refers to, such as auth.schema.json, from the forager module's contracts.FS by its
 // $id, and the JSON Schema meta-schema a description's settings are checked against is
 // the copy built into the compiler, so nothing is fetched.
