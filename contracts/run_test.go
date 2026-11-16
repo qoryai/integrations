@@ -476,7 +476,7 @@ func TestSubmitAndSubmitModuleRequireEachOther(t *testing.T) {
 }
 
 // TestASubmitTypeHasItsGrammar pins the type of the submit of documents.schema.json:
-// lower-case letters and digits in groups joined by single hyphens, 1 to 64 characters,
+// lower-case letters and digits in groups joined by single hyphens, 1 to 64 bytes,
 // and nothing else.
 func TestASubmitTypeHasItsGrammar(t *testing.T) {
 	schema := compileRun(t, runSchema("documents/submit"))

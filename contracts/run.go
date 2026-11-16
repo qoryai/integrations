@@ -368,7 +368,7 @@ type SubmitModule struct {
 type Submit struct {
 	// Type is the artifact type of the submission: the name of a structured entry of
 	// artifact_types of the process. The name is lower-case letters and digits in groups
-	// joined by single hyphens, 1 to 64 characters. The schema cannot check that
+	// joined by single hyphens, 1 to 64 bytes. The schema cannot check that
 	// artifact_types has that entry.
 	Type string `json:"type"`
 	// Send is when the submit step sends the submission. With "end_of_run", the submit

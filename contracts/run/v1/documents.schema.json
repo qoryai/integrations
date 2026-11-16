@@ -664,7 +664,7 @@
       ],
       "properties": {
         "type": {
-          "description": "The artifact type of the submission: the name of a structured entry of artifact_types of the process. The name is lower-case letters and digits in groups joined by single hyphens, 1 to 64 characters. This schema cannot check that artifact_types has that entry.",
+          "description": "The artifact type of the submission: the name of a structured entry of artifact_types of the process. The name is lower-case letters and digits in groups joined by single hyphens, 1 to 64 bytes. This schema cannot check that artifact_types has that entry.",
           "type": "string",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"

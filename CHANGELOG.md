@@ -134,7 +134,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The run documents can contain `submit`: the settings of the submit step of the run,
   with `type` and `send`, both required, and no other member. `type` is the name of the
   artifact type of the submission: lower-case letters and digits in groups joined by
-  single hyphens, 1 to 64 characters. `send` is `end_of_run` or `after_gate`. The
+  single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`. The
   control plane writes `submit` from the process version of the workspace. Run documents
   have both `submit` and `submit_module`, or neither. Like `submit_module`, `submit` is
   present only on a run with `workflow` and with `access` `write`, and never on a run of
