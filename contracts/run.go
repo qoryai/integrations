@@ -51,17 +51,18 @@ type Documents struct {
 	// resolved_at of the read at the path of the harness file, whether the read returned
 	// the file or found: false.
 	//
-	// The rules in this paragraph apply to a target that is a repository. The machine
-	// reads the harness file at this version, whether or not the run works on a branch
-	// of its work item. At this version, the machine composes the harness section of
-	// that file when the section has extends or lists at least one module. The machine
-	// applies the qory version that the file requires, the worktree section and the
-	// tiers at this version too. After the compose, the machine works at this version,
-	// or checks out the branch of the run's work item and works on that branch. The run
-	// documents contain no branch: the machine reads the branch from the control plane.
-	// An agent may change, on that branch, the harness file of the target or a file that
-	// the compose reads. A run composes that change only when the TargetVersion of that
-	// run contains the change. Because TargetVersion is exact, the machine reads the same
+	// The rules in this paragraph apply to a target that is a repository: a target on
+	// the system of the repositories that the run configuration lists. The machine reads
+	// the harness file at this version, whether or not the run works on a branch of its
+	// work item. At this version, the machine composes the harness section of that file
+	// when the section has extends or lists at least one module. The machine applies the
+	// qory version that the file requires, the worktree section and the tiers at this
+	// version too. After the compose, the machine works at this version, or checks out
+	// the branch of the run's work item and works on that branch. The run documents
+	// contain no branch: the machine reads the branch from the control plane. An agent
+	// may change, on that branch, the harness file of the target or a file that the
+	// compose reads. A run composes that change only when the TargetVersion of that run
+	// contains the change. Because TargetVersion is exact, the machine reads the same
 	// file that the control plane read.
 	//
 	// The value is the exact version that the read returned, never a name that can point
