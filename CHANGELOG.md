@@ -27,8 +27,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   credential host that an `egress_hosts` entry cannot be, such as `localhost` or a single
   label.
 - The module requires Go 1.27.3 or later (`go 1.27.3` in `go.mod`), because Forager does.
-  An integration that requires this module builds with Go 1.27.3 or later. `go.yml` sets
-  `GOTOOLCHAIN` to `go1.27.3+auto`, because its image has Go 1.27.2.
+  An integration that requires this module builds with Go 1.27.3 or later. `go.yml` runs
+  its job in `ghcr.io/qoryai/ci-images:golang-1.27.4`, by digest, which has Go 1.27.4,
+  and `mise.toml` pins Go 1.27.4 for development.
 - Run documents have no top-level `stack` and no `stack_reference`, members that this
   module had after 0.3.0 and before this release. A reader takes the harness from the
   harness file of the target at `target_version`, or from `harness`, as Added describes.
