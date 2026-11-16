@@ -51,9 +51,6 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `GET /v1/grants` when the adapter starts, follow the `grant` entries, and match the
   adapter's state to that copy. Accept a connect pass for a live connection, which adds
   or replaces the grant of one external account.
-- If an adapter follows the adapter contract as this module had it after 0.3.0, accept
-  change feed entries of the kind `watch`, because `changes.schema.json` refuses an entry
-  of a kind it does not list.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, add two
   members, because the schemas require them. In each grant report, `POST /v1/grants`,
   send `account`, `{ref, title}`: `ref` is the external account's id at the source, and
