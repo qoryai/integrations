@@ -3,6 +3,7 @@ package contracts
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -163,33 +164,63 @@ type HarnessSection struct {
 }
 
 // UnmarshalJSON reads a harness section, and returns an error for a kind of Bind that
-// is not agents, commands or skills, for a kind whose value is null, for a list on a
-// role of the kind commands or skills, and for an empty list: each fails
-// documents.schema.json.
+// is not agents, commands or skills, for a kind whose value is null, for a role whose
+// value is null, for a list on a role of the kind commands or skills, for an empty
+// list, and for a null item of a list: each fails documents.schema.json.
 func (s *HarnessSection) UnmarshalJSON(b []byte) error {
+	// A section that does not read as raw roles fails the decode below, which returns
+	// that error.
+	var raw struct {
+		Bind map[string]map[string]json.RawMessage `json:"bind"`
+	}
+	if json.Unmarshal(b, &raw) == nil {
+		if err := checkBind(raw.Bind); err != nil {
+			return err
+		}
+	}
 	type harnessSection HarnessSection
 	var v harnessSection
 	if err := json.Unmarshal(b, &v); err != nil {
 		return err
 	}
-	for _, k := range slices.Sorted(maps.Keys(v.Bind)) {
+	*s = HarnessSection(v)
+	return nil
+}
+
+// checkBind returns the error of [HarnessSection.UnmarshalJSON] for the first kind, in
+// order, and then the first role of it, in order, that fails documents.schema.json for
+// one of the reasons that method lists, and nil for none.
+func checkBind(bind map[string]map[string]json.RawMessage) error {
+	for _, k := range slices.Sorted(maps.Keys(bind)) {
 		switch {
 		case k != "agents" && k != "commands" && k != "skills":
 			return fmt.Errorf("use agents, commands or skills as a bind kind, not %q", k)
-		case v.Bind[k] == nil:
+		case bind[k] == nil:
 			return fmt.Errorf("set the bind kind %q to an object of roles to names, not null", k)
 		}
-		for _, role := range slices.Sorted(maps.Keys(v.Bind[k])) {
-			switch names := v.Bind[k][role].Names; {
-			case names == nil:
+		for _, role := range slices.Sorted(maps.Keys(bind[k])) {
+			at := k + "." + role
+			x := bytes.TrimSpace(bind[k][role])
+			if string(x) == "null" {
+				return fmt.Errorf("set the bind role %q to one name or a list of names, not null", at)
+			}
+			var items []json.RawMessage
+			if len(x) == 0 || x[0] != '[' || json.Unmarshal(x, &items) != nil {
+				continue
+			}
+			switch {
 			case k != "agents":
-				return fmt.Errorf("set the bind role %s.%q to one name, not a list: only an agents role can be a group", k, role)
-			case len(names) == 0:
-				return fmt.Errorf("write one name or more in the list of the bind role agents.%q: the list is empty", role)
+				return fmt.Errorf("set the bind role %q to one name, not a list: only an agents role can be a group", at)
+			case len(items) == 0:
+				return fmt.Errorf("write one name or more in the list of the bind role %q: the list is empty", at)
+			}
+			for i, item := range items {
+				if string(bytes.TrimSpace(item)) == "null" {
+					return fmt.Errorf("set item %d of the list of the bind role %q to a name, not null", i+1, at)
+				}
 			}
 		}
 	}
-	*s = HarnessSection(v)
 	return nil
 }
 
@@ -197,8 +228,8 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 // name of the one entry that fills the role, or, for a group role of the kind agents, a
 // list of the names of the agents that fill it. Name is set for the first form, and
 // Names, not nil, for the second, in the order written. A list of one name is a list:
-// qory reads it as a group role with one member, and the compose of qory fails for it
-// on a role that is not a group in the module manifests.
+// qory reads it as a group role with one member, and qory's compose fails for it on a
+// role that is not a group in the module manifests.
 type BindValue struct {
 	Name  string
 	Names []string
@@ -213,13 +244,24 @@ func (v BindValue) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON reads a name, or a list of names. An empty list reads as Names set to
-// an empty list, not nil.
+// an empty list, not nil. It returns an error for null and for a null item of a list:
+// both fail documents.schema.json.
 func (v *BindValue) UnmarshalJSON(b []byte) error {
 	b = bytes.TrimSpace(b)
+	if string(b) == "null" {
+		return errors.New("set a bind role to one name or a list of names, not null")
+	}
 	if len(b) > 0 && b[0] == '[' {
-		names := []string{}
-		if err := json.Unmarshal(b, &names); err != nil {
+		var items []*string
+		if err := json.Unmarshal(b, &items); err != nil {
 			return fmt.Errorf("set a bind role to one name or a list of names: %w", err)
+		}
+		names := make([]string, 0, len(items))
+		for i, item := range items {
+			if item == nil {
+				return fmt.Errorf("set item %d of the list of a bind role to a name, not null", i+1)
+			}
+			names = append(names, *item)
 		}
 		*v = BindValue{Names: names}
 		return nil

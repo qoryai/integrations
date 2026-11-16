@@ -651,7 +651,7 @@
       }
     },
     "harness_bind_agent_roles": {
-      "description": "The roles of the kind agents of a bind, each to the name of the one agent that fills the role, or, for a group role, to the list of the agents that fill it, at least 1, such as reviewers: [copy-reviewer, legal-reviewer]. A name may appear twice in a list, and qory keeps it once. This schema accepts a list for any agents role; the compose of qory fails for a list on a role that is not a group in the module manifests, and for a name on a group role.",
+      "description": "The roles of the kind agents of a bind, each to the name of the one agent that fills the role, or, for a group role, to the list of the agents that fill it, at least 1, such as reviewers: [copy-reviewer, legal-reviewer]. A name may appear twice in a list, and qory keeps it once. This schema accepts a list for any agents role; qory's compose fails for a list on a role that is not a group in the module manifests, and for a name on a group role.",
       "type": "object",
       "propertyNames": {
         "pattern": "^[^/\\\\@ .][^/\\\\@ ]*$"
