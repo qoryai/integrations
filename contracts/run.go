@@ -48,11 +48,11 @@ type Documents struct {
 	// "read", "write-no-push" or "write". With "read", the run gets a read credential
 	// and works on a copy of the target that the agent cannot change. With
 	// "write-no-push", the run gets a read credential and a copy that the agent may
-	// change, and the run sends nothing back to the target and has no Submit. With
-	// "write", the run gets a write credential, the run sends the agent's changes to the
-	// target, and only a run with "write" may have Submit. On a target that is a
-	// repository, the copy is a checkout and a change is a commit. The machine's
-	// credential integration narrows the run's access to it.
+	// change, and the run sends nothing back to the target. With "write", the run gets
+	// a write credential, the run sends the agent's changes to the target, and only a
+	// run with "write" may have Submit. On a target that is a repository, the copy is a
+	// checkout and a change is a commit. The machine's credential integration narrows
+	// the run's access to it.
 	Access string  `json:"access,omitempty"`
 	Target *Target `json:"target,omitempty"`
 	// TargetVersion is set only with Target, and never for the step prebuild: the
@@ -314,8 +314,8 @@ func (v *BindValue) UnmarshalJSON(b []byte) error {
 // defines.
 type HarnessWorkflow struct {
 	// Access is the access level the workflow declares for what a run of it works on,
-	// "read", "write-no-push" or "write", as the doc of [Documents.Access] states, and
-	// empty for read.
+	// "read", "write-no-push" or "write", as the description of access of the run
+	// documents states ([Documents.Access]), and empty for read.
 	Access string `json:"access,omitempty"`
 	// TimeLimit is how long a run of the workflow may run, counted from the run's open,
 	// as a Go duration above zero, such as 7h or 45m, and empty when the workflow sets

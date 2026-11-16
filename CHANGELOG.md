@@ -13,8 +13,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   this `adapter.schema.json`. A control plane that checks the start-up against an
   earlier copy refuses the member, `invalid_request`. Update a reader of the run
   documents to this `documents.schema.json` before the control plane writes
-  `submit_module`, `submit` or the `access` `write-no-push` there: a reader that checks
-  the run documents against an earlier copy refuses each of them.
+  `submit_module`, `submit`, or `write-no-push` in `access` or in the `access` of a
+  workflow in `harness` there: a reader that checks the run documents against an
+  earlier copy refuses each of them.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
