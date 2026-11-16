@@ -117,8 +117,8 @@ type Documents struct {
 	// takes from [Adapter.SubmitModule] of the forge's adapter. The machine appends it
 	// after the modules of the harness it composes, whether Harness is set or nil, and
 	// the control plane never also lists it in Harness. The description of submit_module
-	// in documents.schema.json states what the machine does when the composed harness
-	// lists a module of the same name.
+	// in documents.schema.json states what the machine does when a module that it
+	// composes has the same name.
 	SubmitModule *SubmitModule `json:"submit_module,omitempty"`
 }
 
