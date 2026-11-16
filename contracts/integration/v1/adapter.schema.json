@@ -35,7 +35,7 @@
       ]
     },
     "sync": {
-      "description": "How often the adapter pulls changes from the source by default, and the shortest interval it allows. minimum_interval is at most default_interval; the schema cannot say so, and the control plane refuses a sync that breaks it, invalid_request. A person may change the interval in the control plane, and the control plane appends a sync entry to the change feed (changes.schema.json).",
+      "description": "How often the adapter pulls changes from the source by default, and the shortest interval it allows. minimum_interval is at most default_interval; the schema cannot express that, and the control plane refuses a sync that breaks it, invalid_request. A person may change the interval in the control plane, and the control plane appends a sync entry to the change feed (changes.schema.json).",
       "type": "object",
       "additionalProperties": false,
       "required": ["default_interval", "minimum_interval", "sends_changes"],
@@ -59,7 +59,7 @@
       }
     },
     "description": {
-      "description": "What the adapter's program prints for <program> describe (description.schema.json), the whole document, the settings schema included. The control plane records the source role's item_noun, items and collection_noun from the latest start-up. A description without a source role leaves them at their defaults, which also hold before the adapter's first start-up: ticket and tickets, a source that reports items, and the control plane's word for a collection. A description that breaks any rule of description.schema.json, those no schema can express included, is refused, invalid_request, and a body without description is refused as a body without any other required member is. The description's limits apply to its value as the body carries it, and its numbers follow description.schema.json, not the integer rule of definitions.schema.json. The control plane matches nothing in it against the adapter, which it knows only by its access key.",
+      "description": "What the adapter's program prints for <program> describe (description.schema.json), the whole document, the settings schema included. The control plane records the source role's item_noun, items and collection_noun from the latest start-up. A description without a source role leaves them at their defaults, which also apply before the adapter's first start-up: ticket and tickets, a source that reports items, and the control plane's word for a collection. A description that breaks any rule of description.schema.json, those no schema can express included, is refused, invalid_request, and a body without description is refused as a body without any other required member is. The description's limits apply to its value as it is in the body, and its numbers follow description.schema.json, not the integer rule of definitions.schema.json. The control plane matches nothing in it against the adapter, which it knows only by its access key.",
       "$ref": "description.schema.json"
     },
     "submit_module": {

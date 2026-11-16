@@ -309,7 +309,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The `source` role may contain `targets: true`: the adapter's collections can have a
   target, a place where a run's changes go. An adapter with `targets` handles a
   `run-credential` call with purpose `work` for any of its collections that has a target,
-  under the rules of `run-credential.schema.json`. This holds whatever source the run's
+  under the rules of `run-credential.schema.json`. This applies whatever source the run's
   work item came from, and also when the work item came from no item at a source. The
   control plane offers the collections of an adapter with `targets` as places for a run's
   changes, and does not offer them when `targets` is absent. In both cases, the control

@@ -15,14 +15,14 @@ import (
 )
 
 // Version is the document format of integration/v1 and provisioner/v1: every request
-// body of both contracts carries it, and so do the change feed's answer, the claim
+// body of both contracts contains it, and so do the change feed's answer, the claim
 // answer, the connect pass's payload and the setup pass's payload.
 // It is 1 for as long as those contracts are v1. For integration/v1, a change that
 // breaks a reader is a new contract, integration/v2, not a new Version inside v1.
 const Version = 1
 
 // Revision is the integration contract's revision, which X-Qory-Contract-Version
-// carries as a decimal integer. It counts additions alone: each addition to
+// contains as a decimal integer. It counts additions alone: each addition to
 // integration/v1 raises it. Additions made before revision 1 is released are part of
 // revision 1. A change that breaks a reader is a new contract, integration/v2, not a
 // new revision.
@@ -119,7 +119,7 @@ const MaxRequest = 1 << 20
 // 3339 in UTC with whole seconds.
 const TimeLayout = "2006-01-02T15:04:05Z"
 
-// FormatTime writes a moment as the documents hold it, [TimeLayout], in UTC.
+// FormatTime writes a moment in the form of the documents, [TimeLayout], in UTC.
 func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 
 // Adapter is the body of POST /v1/adapter, adapter.schema.json, which an adapter sends
@@ -227,7 +227,7 @@ func (s SourceItems) MarshalJSON() ([]byte, error) {
 // Item is one item of work at the source. Key is the item's name as people say it at
 // its source, such as #1231, short within its collection, 1 to 64 characters, shown as
 // text and never compared or parsed; empty, the adapter gives none. A nil Labels
-// marshals as an empty list, and a nil StateReason as null. Truncated names the fields
+// marshals as an empty list, and a nil StateReason as null. Truncated lists the fields
 // the adapter cut to fit the contract's limits: "title", "body" or "filed_by.name", cut
 // at a code-point boundary, or "labels", some cut to 100 characters or those past the
 // 100th left out; nil, the adapter cut none.
@@ -287,7 +287,7 @@ func (s SourceItemComments) MarshalJSON() ([]byte, error) {
 }
 
 // Comment is one comment on an item; Deleted marks one deleted at the source.
-// Truncated names the text fields the adapter cut at a code-point boundary to fit the
+// Truncated lists the text fields the adapter cut at a code-point boundary to fit the
 // contract's limit, "body" or "author.name"; nil, the adapter cut none. CommentID is set
 // only on the comment the adapter posted for the comment entry with CommentID; the
 // control plane matches the sent comment to the comment it stored by that id. Empty, the
@@ -358,7 +358,7 @@ const (
 	ChangeSync       = "sync"
 )
 
-// Change is one entry of the change feed, of the kind Kind names. A work_item entry has
+// Change is one entry of the change feed, of the kind set in Kind. A work_item entry has
 // WorkItemID, Ref, Status "taken_in" or "undone", and URL; a comment entry is a
 // comment a person wrote in the control plane, which the adapter posts on the item Ref,
 // and has CommentID, Ref, AuthorName and Body; a collection entry has
@@ -606,7 +606,7 @@ func (p AdapterSecretsPlaintext) MarshalJSON() ([]byte, error) {
 // Check reports the first rule of adapter-secrets-plaintext.schema.json that the
 // plaintext breaks and that the schema does not express: each name appears once, and
 // each value is 1 to [SecretValueMaxBytes] bytes of UTF-8 without a NUL. The message
-// names the secret and never contains a value.
+// contains the secret's name and never a value.
 func (p AdapterSecretsPlaintext) Check() error {
 	seen := map[string]bool{}
 	for _, e := range p.Secrets {
@@ -670,7 +670,7 @@ func (g Grants) MarshalJSON() ([]byte, error) {
 	return json.Marshal(plain(g))
 }
 
-// GrantEntry is one grant of the control plane's copy: the connection that holds it and
+// GrantEntry is one grant of the control plane's copy: the connection that has it and
 // the grant's ref.
 type GrantEntry struct {
 	ConnectionID string `json:"connection_id"`

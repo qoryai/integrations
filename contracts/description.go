@@ -17,9 +17,9 @@ const (
 	// DescriptionMaxBytes is the most bytes a description's raw document takes, 256 KiB.
 	DescriptionMaxBytes = 262144
 	// DescriptionMaxStringBytes is the most bytes of UTF-8 a string of a description,
-	// a member name included, holds.
+	// a member name included, has.
 	DescriptionMaxStringBytes = 16384
-	// DescriptionMaxValues is the most JSON values a description holds in all: the
+	// DescriptionMaxValues is the most JSON values a description contains in all: the
 	// document itself, each array entry and each member's value count one each, and
 	// member names none.
 	DescriptionMaxValues = 4096
@@ -52,12 +52,12 @@ type GuidePart struct {
 
 // CheckDescription reports the first rule of description.schema.json that a
 // description's raw bytes break and that no schema can express: the bytes are at most
-// [DescriptionMaxBytes] and are UTF-8; no string holds a \u escape of a lone surrogate;
-// no object repeats a member, at any depth; no string, a member name included, holds
-// more than [DescriptionMaxStringBytes] bytes of UTF-8; the document holds at most
-// [DescriptionMaxValues] JSON values; and it nests arrays and objects at most
-// [DescriptionMaxDepth] levels deep. It checks b before any decoder reads it leniently,
-// and leaves the schema's rules to the schema.
+// [DescriptionMaxBytes] and are UTF-8; no string contains a \u escape of a lone
+// surrogate; no object repeats a member, at any depth; no string, a member name
+// included, has more than [DescriptionMaxStringBytes] bytes of UTF-8; the document
+// contains at most [DescriptionMaxValues] JSON values; and it nests arrays and objects
+// at most [DescriptionMaxDepth] levels deep. It checks b before any decoder reads it
+// leniently, and leaves the schema's rules to the schema.
 func CheckDescription(b []byte) error {
 	if len(b) > DescriptionMaxBytes {
 		return fmt.Errorf("the document is %d bytes, more than %d (256 KiB)", len(b), DescriptionMaxBytes)

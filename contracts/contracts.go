@@ -9,7 +9,7 @@
 // control plane, expands a declared integration from it. [Guide] is the step-by-step
 // help of a description's source role.
 //
-// The contract also holds the requests an adapter, the program that reads a source of
+// The contract also contains the requests an adapter, the program that reads a source of
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
 // start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
 // and [ConnectionsDisconnect], the change feed [Changes] it reads back, the
@@ -26,25 +26,25 @@
 // github.com/qoryai/forager/accesskey signs a request (Request.Message,
 // Key.SignRequest): the headers X-Qory-Access-Key-Id, X-Qory-Instance-Id,
 // X-Qory-Contract-Version and X-Qory-Signature-Ed25519; a GET also sends and signs
-// X-Qory-Timestamp, and a POST signs its raw body, whose time gives its freshness.
+// X-Qory-Timestamp, and a POST signs its raw body, whose time is checked for freshness.
 //
 // X-Qory-Contract-Version is the revision of the contract the adapter implements,
 // [Revision] here, and the control plane refuses one that is missing, sent twice, not a
 // decimal integer, or a revision it does not serve, 400 unsupported_contract_version.
-// The control plane's answer holds only the members, and the change feed only the entry
-// kinds, that the named revision defines: an entry of a kind newer than that revision is
-// skipped for that adapter, not sent, and the feed's cursor still moves past it, so a
-// replay from the start stays in step. The header alone never selects what an adapter
-// accepts: every answer whose content the revision bounds names that revision in its
-// signed body, as [Changes] does in Revision, and the adapter refuses one that names
-// another revision than the one it implements and sent, applies no entry of it, and
-// neither sends nor stores the answer's cursor. An answer's signature covers its body
-// and is bound to the request's signature, so the revision the answer was built for is
-// signed. So the answers' schemas stay strict, refusing a member they do not define and
-// an entry of a kind they do not know, and an addition to the contract never breaks an
-// adapter already deployed. The Forager contract makes additions safe the other way,
-// with lenient answers whose unknown members are ignored; both conventions are safe, and
-// they apply to different contracts.
+// The control plane's answer contains only the members, and the change feed only the
+// entry kinds, that the named revision defines: an entry of a kind newer than that
+// revision is skipped for that adapter, not sent, and the feed's cursor still moves
+// past it, so a replay from the start stays in step. The header alone never selects
+// what an adapter accepts: every answer whose content the revision bounds contains that
+// revision in its signed body, as [Changes] does in Revision, and the adapter refuses
+// one that contains another revision than the one it implements and sent, applies no
+// entry of it, and neither sends nor stores the answer's cursor. An answer's signature
+// covers its body and is bound to the request's signature, so the revision the answer
+// was built for is signed. So the answers' schemas stay strict, refusing a member they
+// do not define and an entry of a kind they do not know, and an addition to the
+// contract never breaks an adapter already deployed. The Forager contract makes
+// additions safe the other way, with lenient answers whose unknown members are ignored;
+// both conventions are safe, and they apply to different contracts.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;
@@ -70,15 +70,15 @@
 // never splits or drops items because of an unsigned 413. An unsigned 429 is not a 429:
 // the adapter ignores its Retry-After and backs off as it does for any failed request.
 // A POST whose Content-Type is not application/json is refused 415
-// unsupported_media_type; a GET carries no body and no Content-Type, and is never
+// unsupported_media_type; a GET has no body and no Content-Type, and is never
 // refused 415. A POST body is application/json. An integer is written without a
 // fraction or an exponent, and no object repeats a member, at any depth; the control
 // plane refuses either, 400 invalid_request. The numbers inside the description member
 // of POST /v1/adapter follow description.schema.json instead, and may have a fraction
 // or an exponent; no object inside it repeats a member either. A POST whose schema
-// names no answer body is answered, on success, with a signed 204 and no body. The
+// defines no answer body is answered, on success, with a signed 204 and no body. The
 // adapter's access key is the integration's, enrolled once for the instance. An
-// organisation reaches the adapter only through a connection, and no request names an
+// organisation reaches the adapter only through a connection, and no request refers to an
 // organisation or a workspace. forager/accesskey is the reference signer; an adapter
 // may sign to this text itself.
 //
@@ -108,7 +108,7 @@
 // [RunCredential] for a resource that it reads with a [ReadPublic].
 // See resolve-answer.schema.json for the rule.
 //
-// The provisioner contract holds the requests with which a node pool's starter, the
+// The provisioner contract contains the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its
 // [ClaimAnswer], whose run code and gateway URL it passes to the machine it creates,
 // says it created the machine, [Dispatched], gives the dispatch back before
@@ -118,11 +118,11 @@
 // [MachineEnd]. The starter signs them with the pool's access key, a key of the pool
 // kind enrolled for the node pool.
 // They are signed, retried and refused with a [Refusal] exactly as the integration
-// contract's requests above, and the claim answer names the revision it was built
+// contract's requests above, and the claim answer contains the revision it was built
 // for, [ProvisionerRevision] here, in Revision, as [Changes] does. The machine
 // redeems the run code for the run key and the run's documents.
 //
-// The run contract holds the run's documents, documents.schema.json: one object, whose
+// The run contract contains the run's documents, documents.schema.json: one object, whose
 // Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types. The object is the documents member of Forager's run answer: the machine
 // receives it, signed, in the 201 of the run code's redemption, and Forager passes it
 // on unread. It is a document, not a request.
@@ -132,7 +132,7 @@
 // explore. The inputs are a document of a step, not a request, and the signature of
 // the run's documents covers them.
 //
-// The machines contract holds the protocol of a machine adapter, a program that makes
+// The machines contract contains the protocol of a machine adapter, a program that makes
 // and deletes machines at one vendor, which the provisioner runs as `<adapter>
 // <command> --settings FILE`. Each command, check, make, list, log and delete, reads one
 // request on standard input, [MachinesCheck] say, and writes one answer on standard

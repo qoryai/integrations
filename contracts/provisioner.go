@@ -1,12 +1,12 @@
 package contracts
 
-// ProvisionerRevision is the provisioner contract's revision, which
-// X-Qory-Contract-Version carries on its requests as a decimal integer, and which
-// [ClaimAnswer] names in Revision. It counts additions alone: each addition to
+// ProvisionerRevision is the provisioner contract's revision: X-Qory-Contract-Version
+// contains it on the contract's requests as a decimal integer, and [ClaimAnswer]
+// contains it in Revision. It counts additions alone: each addition to
 // provisioner/v1 raises it. Additions made before revision 1 is released are part of
 // revision 1. A change that breaks a reader is a new contract, provisioner/v2, not a
 // new revision. The control plane serves this revision alone and refuses a request
-// that names another, 400 unsupported_contract_version. The claim answer's run code
+// that contains another, 400 unsupported_contract_version. The claim answer's run code
 // and gateway URL are part of it.
 const ProvisionerRevision = 1
 

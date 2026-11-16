@@ -94,7 +94,7 @@ func TestTheModelProviderDefinitionsHoldTheirRules(t *testing.T) {
 }
 
 // TestAModelProviderIsRefusedForTheRuleInItsName pins the reason of each invalid
-// model_provider description whose refusal does not name it: the same document is
+// model_provider description whose refusal does not contain it: the same document is
 // accepted once the one part its name points to is fixed.
 func TestAModelProviderIsRefusedForTheRuleInItsName(t *testing.T) {
 	schema := compile(t, "description.schema.json")
