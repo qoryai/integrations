@@ -51,6 +51,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `GET /v1/grants` when the adapter starts, follow the `grant` entries, and match the
   adapter's state to that copy. Accept a connect pass for a live connection, which adds
   or replaces the grant of one external account.
+- If an adapter follows the adapter contract as this module had it after 0.3.0, accept
+  change feed entries of the kind `watch`, because `changes.schema.json` refuses an entry
+  of a kind it does not list.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, add two
   members, because the schemas require them. In each grant report, `POST /v1/grants`,
   send `account`, `{ref, title}`: `ref` is the external account's id at the source, and
@@ -194,10 +197,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/connections/disconnect`, `POST /v1/grants/end` and
   `POST /v1/work-items/changes/failed`, and the change feed
   `GET /v1/work-items/changes`, with the entry kinds `work_item`, `comment`,
-  `collection`, `grant` and `sync`. The adapter signs each request with its access key as
-  `github.com/qoryai/forager/accesskey` signs one, sends the revision in
+  `collection`, `grant`, `sync` and `watch`. The adapter signs each request with its
+  access key as `github.com/qoryai/forager/accesskey` signs one, sends the revision in
   `X-Qory-Contract-Version`, and checks each signed answer under a server key it pinned at
   enrolment. `refusal.schema.json` lists the refusals.
+- The change feed entry kind `watch`, with `work_item_id` and `url`, the work item's
+  page in the control plane. The control plane writes a `watch` entry whenever a run
+  stores a submission version, in the feed of the adapter of the run's target
+  collection, whatever source the work item came from. In Go, `ChangeWatch` is added.
 - In the change feed, entries for one item, the `work_item` and `comment` entries with
   the same `ref`, apply in cursor order. While the adapter retries an entry that failed,
   it may apply a later entry first when neither entry changes what the other depends on,
