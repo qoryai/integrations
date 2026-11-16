@@ -113,6 +113,14 @@ type Documents struct {
 	// environment image. A run of the step prebuild has exactly one of
 	// EnvironmentDestination and EnvironmentImage.
 	EnvironmentImage string `json:"environment_image,omitempty"`
+	// SubmitModule is set only with Workflow and with Access "write": the harness module
+	// that ships the submit program of the forge of the target, which the control plane
+	// takes from [Adapter.SubmitModule] of the forge's adapter. The machine appends it
+	// after the modules of the harness it composes, whether Harness is set or nil, and
+	// the control plane never also lists it in Harness. The description of submit_module
+	// in documents.schema.json states what the machine does when a module that it
+	// composes has the same name.
+	SubmitModule *SubmitModule `json:"submit_module,omitempty"`
 }
 
 // HarnessDocument is the run's harness, documents.schema.json: the harness document
@@ -335,6 +343,18 @@ type HarnessSource struct {
 	Ref    string `json:"ref"`
 	Path   string `json:"path,omitempty"`
 	Module string `json:"module,omitempty"`
+}
+
+// SubmitModule is the harness module that ships the submit program of a forge, the
+// module whose manifest declares submit_program: the submit_module of the run
+// documents, documents.schema.json, and of the adapter's start-up, adapter.schema.json.
+// It has the shape of a [HarnessModule] with no Exclude, Only or Variant, and its
+// Source.Ref is a full commit hash, 40 or 64 lower-case hexadecimal digits: the schemas
+// refuse a branch name, a tag and a short hash.
+type SubmitModule struct {
+	// Name is the name of the module, which the manifest of the module must declare.
+	Name   string        `json:"name,omitempty"`
+	Source HarnessSource `json:"source"`
 }
 
 // HarnessSelection is parts of a module, by kind, the exclude or only of a
