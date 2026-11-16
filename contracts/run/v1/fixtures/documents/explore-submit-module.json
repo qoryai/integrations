@@ -40,6 +40,10 @@
       "module": "forge-submit"
     }
   },
+  "submit": {
+    "type": "code-change",
+    "send": "end_of_run"
+  },
   "inputs": {
     "version": 1,
     "work_item": {

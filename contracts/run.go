@@ -121,6 +121,12 @@ type Documents struct {
 	// in documents.schema.json states what the machine does when a module that it
 	// composes has the same name.
 	SubmitModule *SubmitModule `json:"submit_module,omitempty"`
+	// Submit is set exactly when SubmitModule is set: the submit step of the run, which
+	// the control plane writes from the process version of the workspace. On a run with
+	// a run code, qory takes the submit step only from Submit, never from process.yaml.
+	// The description of submit in documents.schema.json states what qory does when
+	// process.yaml has a different submit.
+	Submit *Submit `json:"submit,omitempty"`
 }
 
 // HarnessDocument is the run's harness, documents.schema.json: the harness document
@@ -355,6 +361,20 @@ type SubmitModule struct {
 	// Name is the name of the module, which the manifest of the module must declare.
 	Name   string        `json:"name,omitempty"`
 	Source HarnessSource `json:"source"`
+}
+
+// Submit is the submit step of a run, the submit of the run documents,
+// documents.schema.json: Type and Send, both required.
+type Submit struct {
+	// Type is the artifact type of the submission: the name of a structured entry of
+	// artifact_types of the process. The name is lower-case letters and digits in groups
+	// joined by single hyphens, 1 to 64 characters. The control plane checks that
+	// artifact_types has the entry when it records the process version.
+	Type string `json:"type"`
+	// Send is when the submit step sends the submission: "end_of_run" at the end of the
+	// run, or "after_gate", which stores the submission and sends nothing before the
+	// gate of the stage passes.
+	Send string `json:"send"`
 }
 
 // HarnessSelection is parts of a module, by kind, the exclude or only of a
