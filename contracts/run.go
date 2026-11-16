@@ -46,13 +46,13 @@ type Documents struct {
 	Inputs json.RawMessage `json:"inputs"`
 	// Access is set exactly when Target is: what the run may do on its target,
 	// "read", "write-no-push" or "write". With "read", the run gets a read credential
-	// and a read-only checkout of the target. With "write-no-push", the run gets a read
-	// credential and a writable checkout, in which the agent may change and commit
-	// files, and the run has no push step and no Submit, so nothing that the agent
-	// changes reaches the target. With "write", the run gets a write credential and a
-	// writable checkout, its push step sends the agent's commits to the target, and
-	// only a run with "write" may have Submit. The machine's credential integration
-	// narrows the run's access to it.
+	// and works on a copy of the target that the agent cannot change. With
+	// "write-no-push", the run gets a read credential and a copy that the agent may
+	// change, and the run sends nothing back to the target and has no Submit. With
+	// "write", the run gets a write credential, the run sends the agent's changes to the
+	// target, and only a run with "write" may have Submit. On a target that is a
+	// repository, the copy is a checkout and a change is a commit. The machine's
+	// credential integration narrows the run's access to it.
 	Access string  `json:"access,omitempty"`
 	Target *Target `json:"target,omitempty"`
 	// TargetVersion is set only with Target, and never for the step prebuild: the
