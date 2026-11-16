@@ -133,6 +133,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-watch-url-http.json":                          {"changes", "/changes/0/url pattern"},
 		"changes-watch-without-url.json":                       {"changes", "/changes/0 required url"},
 		"changes-watch-with-ref.json":                          {"changes", "/changes/0 additionalProperties"},
+		"changes-watch-work-item-id-wrong-prefix.json":         {"changes", "/changes/0/work_item_id pattern"},
 		"changes-without-revision.json":                        {"changes", "/ required revision"},
 		"changes-comment-id-wrong-prefix.json":                 {"changes", "/changes/0/comment_id pattern"},
 		"changes-comment-body-empty.json":                      {"changes", "/changes/0/body minLength"},

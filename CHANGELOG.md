@@ -204,7 +204,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The change feed entry kind `watch`, with `work_item_id` and `url`, the work item's
   page in the control plane. The control plane writes a `watch` entry whenever a run
   stores a submission version, in the feed of the adapter of the run's target
-  collection, whatever source the work item came from. In Go, `ChangeWatch` is added.
+  collection, whatever source the work item came from, and also when the work item came
+  from no item at a source. In Go, `ChangeWatch` is added.
 - In the change feed, entries for one item, the `work_item` and `comment` entries with
   the same `ref`, apply in cursor order. While the adapter retries an entry that failed,
   it may apply a later entry first when neither entry changes what the other depends on,
