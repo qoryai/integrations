@@ -96,15 +96,19 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-answer-model-choice-undefined-member.json": func(m map[string]any) {
 			delete(m["model_choice"].(map[string]any), "time_limit_minutes")
 		},
-		"next-session-request-verdict.json":           func(m map[string]any) { delete(m, "verdict") },
-		"next-session-request-session-0.json":         func(m map[string]any) { m["session"] = json.Number("1") },
-		"next-session-request-session-string.json":    func(m map[string]any) { m["session"] = json.Number("1") },
-		"next-session-request-state-paused.json":      func(m map[string]any) { m["state"] = "failed" },
-		"next-session-request-state-unknown.json":     func(m map[string]any) { m["state"] = "succeeded" },
-		"next-session-request-without-reason.json":    func(m map[string]any) { m["reason"] = nil },
-		"next-session-request-reason-upper-case.json": func(m map[string]any) { m["reason"] = "timeout" },
-		"next-session-request-undefined-member.json":  func(m map[string]any) { delete(m, "attempt") },
-		"next-session-request-without-session.json":   func(m map[string]any) { m["session"] = json.Number("1") },
+		"next-session-request-verdict.json":                             func(m map[string]any) { delete(m, "verdict") },
+		"next-session-request-session-0.json":                           func(m map[string]any) { m["session"] = json.Number("1") },
+		"next-session-request-session-string.json":                      func(m map[string]any) { m["session"] = json.Number("1") },
+		"next-session-request-state-paused.json":                        func(m map[string]any) { m["state"] = "failed" },
+		"next-session-request-state-unknown.json":                       func(m map[string]any) { m["state"] = "succeeded" },
+		"next-session-request-without-reason.json":                      func(m map[string]any) { m["reason"] = nil },
+		"next-session-request-reason-upper-case.json":                   func(m map[string]any) { m["reason"] = nil },
+		"next-session-request-undefined-member.json":                    func(m map[string]any) { delete(m, "attempt") },
+		"next-session-request-cancelled-without-reason.json":            func(m map[string]any) { m["reason"] = "stopped" },
+		"next-session-request-reason-timeout-state-failed.json":         func(m map[string]any) { m["state"] = "cancelled" },
+		"next-session-request-reason-interrupted-state-succeeded.json":  func(m map[string]any) { m["state"] = "cancelled" },
+		"next-session-request-reason-gateway-lost-state-cancelled.json": func(m map[string]any) { m["state"] = "failed" },
+		"next-session-request-without-session.json":                     func(m map[string]any) { m["session"] = json.Number("1") },
 	}
 	n := 0
 	for _, f := range runFiles(t, "fixtures/invalid") {
@@ -214,6 +218,57 @@ func TestTheNextSessionTypesMarshalToTheirSchemas(t *testing.T) {
 			if !reflect.DeepEqual(back, want) {
 				t.Errorf("%s is written back as %s", f, out)
 			}
+		}
+	}
+}
+
+// TestAnAnswerWithNoShapeIsNotWritten pins that [contracts.NextSessionAnswer] returns an
+// error, and writes nothing, for a Next that is neither "session" nor "end", the empty
+// Next included, and for a session answer with no Inputs, which the schema refuses
+// as null.
+func TestAnAnswerWithNoShapeIsNotWritten(t *testing.T) {
+	inputs := json.RawMessage(`{"version":1}`)
+	for name, a := range map[string]contracts.NextSessionAnswer{
+		"no Next":                  {Session: 2, Workflow: "build", TimeLimitMinutes: 60, Inputs: inputs},
+		"an unknown Next":          {Next: "pause"},
+		"a session without Inputs": {Next: contracts.NextSessionKindSession, Session: 2, Workflow: "build", TimeLimitMinutes: 60},
+	} {
+		if b, err := json.Marshal(a); err == nil {
+			t.Errorf("%s is written as %s", name, b)
+		}
+	}
+	if _, err := json.Marshal(contracts.NextSessionAnswer{Next: contracts.NextSessionKindEnd}); err != nil {
+		t.Errorf("an end is refused: %v", err)
+	}
+}
+
+// TestTheNextSessionStateAndReasonRules pins the rules of the request that
+// dev.qory.session.exited sets and that do not depend on its exit_code: a cancelled
+// session has a reason, timeout and interrupted are for a cancelled session only, and
+// gateway_lost is for a failed session only. The rules that depend on the exit_code, a
+// succeeded or failed session with no reason, are not in the schema, because the request
+// has no exit_code: a failed session with the reason of a refused join is accepted.
+func TestTheNextSessionStateAndReasonRules(t *testing.T) {
+	schema := compileRun(t, runSchema("next-session-request"))
+	str := func(s string) *string { return &s }
+	for _, c := range []struct {
+		state  string
+		reason *string
+		ok     bool
+	}{
+		{"cancelled", str("timeout"), true}, {"cancelled", str("interrupted"), true},
+		{"cancelled", str("stopped"), true}, {"cancelled", nil, false},
+		{"failed", str("timeout"), false}, {"succeeded", str("interrupted"), false},
+		{"failed", str("gateway_lost"), true}, {"succeeded", str("gateway_lost"), false},
+		{"cancelled", str("gateway_lost"), false},
+		{"failed", str("image_user_root"), true}, {"failed", nil, true}, {"succeeded", nil, true},
+	} {
+		b, err := json.Marshal(contracts.NextSessionRequest{Session: 1, State: c.state, Reason: c.reason})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(schema, b); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", b, err, c.ok)
 		}
 	}
 }

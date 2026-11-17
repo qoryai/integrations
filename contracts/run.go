@@ -92,7 +92,8 @@ type Documents struct {
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
 	// SharedRun is true when qory sends the next-session request after each session
 	// and runs the session that the answer sets. False and absent in the JSON are the
-	// same: qory sends no request, and the run has session 1 only. It is set only for the step explore.
+	// same: qory sends no request, and the run has session 1 only. It is set only for
+	// the step explore.
 	SharedRun bool `json:"shared_run,omitempty"`
 	// FullSuite is true when session 1 runs the full test suite after the agent ends.
 	// False and absent in the JSON are the same. The flag of each later session is the
@@ -480,8 +481,9 @@ type WorkItem struct {
 
 // RunSettings is the run's run_settings, documents.schema.json: the runtime and
 // model settings the job composes the agent's harness with, the settings of session 1.
-// Runtime is the runtime of every session of the run. It contains no key or secret. With no provider chosen, Model, Effort, ProviderModels and Tiers are empty:
-// the run uses the gateway's configured key and the runtime's default model. Effort
+// Runtime is the runtime of every session of the run. It contains no key or secret.
+// With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
+// uses the gateway's configured key and the runtime's default model. Effort
 // and Tiers are set only with Model, and ProviderModels is set exactly when Model is.
 // The control plane guarantees four rules that the schema cannot check: the ids in
 // ProviderModels are unique; Effort is listed for Model in ProviderModels; each tier's
@@ -508,8 +510,9 @@ type RunSettings struct {
 	Tiers *Tiers `json:"tiers,omitempty"`
 }
 
-// ModelChoice is a model_choice of the next-session answer, run/v1 documents.schema.json:
-// the model, effort, provider models and tiers of one session after session 1. Its
+// ModelChoice is a model_choice of the next-session answer, run/v1
+// documents.schema.json: the model, effort, provider models and tiers of one session
+// after session 1. Its
 // members are those of [RunSettings] with the same meaning and no Runtime, because
 // every session of the run uses the runtime of RunSettings. With no provider chosen,
 // the four members are empty, and the four rules that [RunSettings] lists for the
@@ -532,9 +535,12 @@ type ModelChoice struct {
 // after a session of the run ended, to ask for the next session. It has no verdict: the
 // control plane reads the newest verdict that the run stored after the previous step.
 // What qory posts for a red full suite after the session comes before the request, so
-// the newest verdict is read after that post. qory sends it after each session that did not
-// pause, for a run whose documents have SharedRun. The transport of the call is set
-// outside the schema.
+// the newest verdict is read after that post. qory sends it after each session that
+// did not pause, for a run whose documents have SharedRun. State and Reason follow the
+// rules of the session's dev.qory.session.exited that do not depend on its exit_code:
+// a cancelled session has a reason; the reasons timeout and interrupted are for a
+// cancelled session only; and the reason gateway_lost is for a failed session only.
+// The transport of the call is set outside the schema.
 type NextSessionRequest struct {
 	// Session is Forager's number of the session that ended, from 1, as in its
 	// dev.qory.session.exited.
@@ -549,11 +555,11 @@ type NextSessionRequest struct {
 
 // NextSessionAnswer is the answer to the next-session request, run/v1
 // next-session-answer.schema.json: the next session of the run, with Next
-// [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and no
-// other member. The session shape has Session, Workflow, TimeLimitMinutes, FullSuite and
-// Inputs, and optionally ModelChoice and ModelCredential. MarshalJSON writes the members
-// of the shape that Next selects, and no member of the other shape. Reading takes the
-// members of either shape and leaves the others at their zero values.
+// [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and
+// no other member. The session shape has Session, Workflow, TimeLimitMinutes,
+// FullSuite and Inputs, and optionally ModelChoice and ModelCredential. MarshalJSON
+// writes the members of the shape that Next selects, and no member of the other shape.
+// Reading takes the members of either shape and leaves the others at their zero values.
 type NextSessionAnswer struct {
 	// Next is the kind of the answer: "session" or "end".
 	Next string `json:"next"`
@@ -565,9 +571,10 @@ type NextSessionAnswer struct {
 	// ModelChoice is the model choice of the session, nil when no provider is chosen:
 	// the session uses the gateway's configured key and the runtime's default model.
 	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
-	// ModelCredential is the credential of the run that the session joins with, in the
-	// form <the provider's public id>-<its place from 1>, and empty when no provider is
-	// chosen.
+	// ModelCredential is the credential of the run that the session joins with, such as
+	// <the provider's public id>-<its place from 1>, and empty when no provider is
+	// chosen. The schema checks only the pattern of a credential's name in Forager's
+	// policy.
 	ModelCredential string `json:"model_credential,omitempty"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 15 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
@@ -584,13 +591,21 @@ const (
 )
 
 // MarshalJSON writes a. For Next "end" it writes {"next":"end"} and nothing else. For
-// any other Next it writes the members of the session shape, and writes full_suite
-// when it is false.
+// Next "session" it writes the members of the session shape, and writes full_suite
+// when it is false. It returns an error for any other Next, the empty Next included,
+// and for a session answer whose Inputs is empty, which would be written as null.
 func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
-	if a.Next == NextSessionKindEnd {
+	switch a.Next {
+	case NextSessionKindEnd:
 		return json.Marshal(struct {
 			Next string `json:"next"`
 		}{a.Next})
+	case NextSessionKindSession:
+		if len(a.Inputs) == 0 {
+			return nil, errors.New("set Inputs of a session answer to the input of the session, an object with a version")
+		}
+	default:
+		return nil, fmt.Errorf("set Next of an answer to %q or %q, not %q", NextSessionKindSession, NextSessionKindEnd, a.Next)
 	}
 	return json.Marshal(struct {
 		Next             string          `json:"next"`
@@ -601,7 +616,8 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		TimeLimitMinutes int             `json:"time_limit_minutes"`
 		FullSuite        bool            `json:"full_suite"`
 		Inputs           json.RawMessage `json:"inputs"`
-	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelCredential, a.TimeLimitMinutes, a.FullSuite, a.Inputs})
+	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelCredential,
+		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
 }
 
 // ProviderModel is one model of the run's provider, an entry of

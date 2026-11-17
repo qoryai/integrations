@@ -36,7 +36,7 @@
           "$ref": "https://qory.dev/contracts/run/v1/documents.schema.json#/$defs/model_choice"
         },
         "model_credential": {
-          "description": "The credential of the run that the session joins with, in the form <the provider's public id>-<its place from 1>, such as example-provider-1. A credential of the start key's provider is the active key of that provider's group. Absent when no provider is chosen.",
+          "description": "The credential of the run that the session joins with, such as <the provider's public id>-<its place from 1>: example-provider-1. The schema checks only the pattern of a credential's name in Forager's policy. A credential of the start key's provider is the active key of that provider's group. Absent when no provider is chosen.",
           "$ref": "https://qory.dev/contracts/forager/v1/policy.schema.json#/properties/credentials/items/properties/name"
         },
         "time_limit_minutes": {

@@ -132,13 +132,19 @@ change what an existing reader or program relies on, and notes it under Upgradin
   members of both fails. `{"next": "session", ...}` has `session`, the control plane's
   number of the session in the run; `workflow`; `time_limit_minutes`; `full_suite`;
   `inputs`; and optionally `model_choice` and `model_credential`. `{"next": "end"}` has
-  no other member. The transport of the call is set outside the schemas. In Go, `NextSessionRequest`, `NextSessionAnswer`, `NextSessionKindSession` and
+  no other member. The transport of the call is set outside the schemas. In Go,
+  `NextSessionRequest`, `NextSessionAnswer`, `NextSessionKindSession` and
   `NextSessionKindEnd` are added.
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
   `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning, and
   no `runtime`, because every session uses the runtime of `run_settings`.
-  `model_credential` is the name of a credential of the run, in the form of the
-  provider's public id, a hyphen and the key's place from 1.
+  `model_credential` is the name of a credential of the run, such as the provider's
+  public id, a hyphen and the key's place from 1; the schema checks only the pattern of
+  a credential's name in Forager's policy.
+- The next-session request follows the rules of `dev.qory.session.exited` for `state`
+  and `reason` that do not depend on its `exit_code`: a `cancelled` session has a
+  `reason`, the reasons `timeout` and `interrupted` are for a `cancelled` session only,
+  and the reason `gateway_lost` is for a `failed` session only.
 - The run documents of the step `explore` can contain `time_limit_minutes`,
   `shared_run` and `full_suite`, and `contracts.Documents` has them as `TimeLimitMinutes`,
   `SharedRun` and `FullSuite`. The run documents are the documents of session 1.
