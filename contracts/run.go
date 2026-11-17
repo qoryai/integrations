@@ -654,8 +654,8 @@ const (
 	// EndCodePushNotRecorded: qory pushed the run's commits, and the control plane has
 	// no record of the push.
 	EndCodePushNotRecorded EndCode = "push_not_recorded"
-	// EndCodeEnvironmentImageMissing: the environment image that the prebuild starts the
-	// target image from is not in the registry.
+	// EndCodeEnvironmentImageMissing: the prebuild's environment image (`environment_image`
+	// in the run documents) is not in the registry.
 	EndCodeEnvironmentImageMissing EndCode = "environment_image_missing"
 )
 

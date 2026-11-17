@@ -131,7 +131,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `prebuilt_image_too_large` (the image of the target is larger than
   `largest_prebuilt_image_bytes`), `push_not_recorded` (qory pushed the run's commits
   and the control plane has no record of the push) and `environment_image_missing` (the
-  environment image that the prebuild starts the target image from is not in the
+  prebuild's environment image, `environment_image` in the run documents, is not in the
   registry). A `reason` that is not in the list
   passes the schema, as a newer qory may send a code that an older reader does not
   know. One of the end codes with a `state` other than `failed` fails, and so does a
