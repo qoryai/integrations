@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/run/v1/next-session-answer.schema.json",
   "title": "Next-session answer",
-  "description": "The answer to the next-session request, next-session-request.schema.json: either the next session of the run, with next session, or the end of the run, with next end. The next session has session, workflow, time_limit_minutes, full_suite and inputs, and optionally model_choice and model_credential; the end has next only. An answer with the members of both shapes is refused. The transport of this call is set outside this schema.",
+  "description": "The answer to the next-session request, next-session-request.schema.json: either the next session of the run, with next session, or the end of the run, with next end. The next session has session, workflow, time_limit_minutes, full_suite and inputs, and optionally model_choice and model_credential; the end has next only. An answer with the members of both shapes is refused. It answers a request that qory sends through Forager's link, which the gateway forwards to the control plane.",
   "type": "object",
   "oneOf": [
     {

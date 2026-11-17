@@ -540,7 +540,8 @@ type ModelChoice struct {
 // rules of the session's dev.qory.session.exited that do not depend on its exit_code:
 // a cancelled session has a reason; the reasons timeout and interrupted are for a
 // cancelled session only; and the reason gateway_lost is for a failed session only.
-// The transport of the call is set outside the schema.
+// qory sends the request through Forager's link, and the gateway forwards it to the
+// control plane. A container cannot send it.
 type NextSessionRequest struct {
 	// Session is Forager's number of the session that ended, from 1, as in its
 	// dev.qory.session.exited.

@@ -370,12 +370,15 @@ func TestTheModelChoiceIsTheModelMembersOfRunSettings(t *testing.T) {
 	}
 }
 
-// TestTheNextSessionSchemasLeaveTheTransportOpen pins that the description of each
-// next-session schema contains the sentence that the transport is set outside the
-// schema once, and contains no path, method or status.
-func TestTheNextSessionSchemasLeaveTheTransportOpen(t *testing.T) {
-	const sentence = "The transport of this call is set outside this schema."
-	for _, name := range []string{"next-session-request", "next-session-answer"} {
+// TestTheNextSessionSchemasNameTheLink pins that the description of each next-session
+// schema says once that the request goes through Forager's link, and contains no path,
+// method or status.
+func TestTheNextSessionSchemasNameTheLink(t *testing.T) {
+	sentences := map[string]string{
+		"next-session-request": "qory sends the request through Forager's link, and the gateway forwards it to the control plane. A container cannot send it.",
+		"next-session-answer":  "It answers a request that qory sends through Forager's link, which the gateway forwards to the control plane.",
+	}
+	for name, sentence := range sentences {
 		doc, err := contracts.RunDocument(name + ".schema.json")
 		if err != nil {
 			t.Fatal(err)
