@@ -360,8 +360,8 @@ func strs(n int, format string) string {
 	return "[" + strings.Join(l, ", ") + "]"
 }
 
-// TestRuntimesHoldTheirRules pins runtimes of an API to the rules its schema states,
-// with a value at each edge accepted and a value past it refused: 1 to 16 names, none
+// TestRuntimesHoldTheirRules pins runtimes of an API to the rules of its
+// schema, with a value at each edge accepted and a value past it refused: 1 to 16 names, none
 // twice, each 1 to 64 characters of lower-case letters, digits and hyphens that starts
 // with a letter. An API without runtimes is accepted.
 func TestRuntimesHoldTheirRules(t *testing.T) {
@@ -396,7 +396,7 @@ func TestRuntimesHoldTheirRules(t *testing.T) {
 	}
 }
 
-// TestPathsHoldTheirRules pins paths of an API to the rules its schema states, with a
+// TestPathsHoldTheirRules pins paths of an API to the rules of its schema, with a
 // value at each edge accepted and a value past it refused: 1 to 32 paths, none twice,
 // each in Forager's path grammar. An API without paths is accepted.
 func TestPathsHoldTheirRules(t *testing.T) {
@@ -432,8 +432,8 @@ func TestPathsHoldTheirRules(t *testing.T) {
 	}
 }
 
-// TestOAuthRefreshHoldsItsRules pins oauth_refresh of an API to the rules its schema
-// states: url and client_id required, scope optional, no other member; url as
+// TestOAuthRefreshHoldsItsRules pins oauth_refresh of an API to the rules of its
+// schema: url and client_id required, scope optional, no other member; url as
 // $defs/endpoint defines it; client_id 1 to 128 characters with no white space; scope 1
 // to 256 characters; and oauth_refresh only with an auth whose oauth is true. An API
 // without oauth_refresh is accepted.
@@ -482,8 +482,8 @@ func TestOAuthRefreshHoldsItsRules(t *testing.T) {
 	}
 }
 
-// TestKeyLifetimeDaysHoldsItsRules pins key_lifetime_days of model_provider to the rules
-// its schema states, with a value at each edge accepted and a value past it refused: an
+// TestKeyLifetimeDaysHoldsItsRules pins key_lifetime_days of model_provider to the rules of
+// its schema, with a value at each edge accepted and a value past it refused: an
 // integer from 1 to 3650. A provider without key_lifetime_days is accepted.
 func TestKeyLifetimeDaysHoldsItsRules(t *testing.T) {
 	schema := compile(t, "description.schema.json")
@@ -513,7 +513,7 @@ func TestKeyLifetimeDaysHoldsItsRules(t *testing.T) {
 	}
 }
 
-// TestVendorHoldsItsRules pins vendor of a description to the rules its schema states,
+// TestVendorHoldsItsRules pins vendor of a description to the rules of its schema,
 // with a value at each edge accepted and a value past it refused: a line as $defs/line
 // defines it, of 1 to 40 characters. A description without vendor is accepted.
 func TestVendorHoldsItsRules(t *testing.T) {
