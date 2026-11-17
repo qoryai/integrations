@@ -558,8 +558,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The contract describes `domains` as applying only to where work comes from: a
   credential of the `credential` role reaches a run in a workspace of any domain.
 - The tier map of the run documents, `run_settings.tiers`, has the tiers `light`,
-  `balanced` and `thinking`. `fast` is no longer a tier. `contracts.Tiers` has the member
-  `Balanced`.
+  `balanced` and `thinking`. `contracts.Tiers` has the member `Balanced`.
 - When a node pool's starter created no machine for a dispatch, the machine log,
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the
