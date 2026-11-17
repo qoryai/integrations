@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/run/v1/outcome.schema.json",
-  "title": "Run outcome",
-  "description": "A run's outcome: how the run ended. It has state, and optionally reason and exit_code, the members of Forager's dev.qory.run.exited, https://qory.dev/contracts/forager/v1/events/run.exited.schema.json. This schema checks the values of reason and exit_code as that event does. qory sets reason to say why a run failed, and $defs end_codes lists the four codes that it sets, each with its cause in plain words. The list contains no advice and no action text: what each reader does for a code is the control plane's text. The list is closed in this contract and open on the wire: a reason that is not in the list passes this schema, as a newer qory may send a code that an older reader does not know. A reason in the list is valid only with state failed, so an outcome with state succeeded or cancelled and one of those codes is refused. An outcome with a member this schema does not define, such as message or action, is refused.",
+  "title": "Run end",
+  "description": "A run's end: how the run ended. It is not Forager's run-outcome.schema.json, the body with which a run's starter says how the run ended. It has state, and optionally reason and exit_code, the members of Forager's dev.qory.run.exited, https://qory.dev/contracts/forager/v1/events/run.exited.schema.json. This schema checks the values of reason and exit_code as that event does. qory sets reason to say why a run failed, and $defs end_codes lists the four codes that it sets, each with its cause in plain words. The list contains no advice and no action text: what each reader does for a code is the control plane's text. The list is closed in this contract and open on the wire: a reason that is not in the list passes this schema, as a newer qory may send a code that an older reader does not know. A reason in the list is valid only with state failed, so an outcome with state succeeded or cancelled and one of those codes is refused. An outcome with a member this schema does not define, such as message or action, is refused.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -36,7 +36,7 @@
       ]
     },
     "reason": {
-      "description": "Why the run ended, the reason of the run's dev.qory.run.exited: a code, a lower-case letter, then lower-case letters, digits and underscores, up to 64 characters. Any code of that pattern passes. The codes of $defs end_codes are the ones qory sets for a failed run.",
+      "description": "Why the run ended, the reason of the run's dev.qory.run.exited: a code, a lower-case letter, then lower-case letters, digits and underscores, up to 64 characters. Any code of that pattern passes. The codes of $defs end_codes are the ones qory sets for a failed run. Forager drops a reserved reason from a starter's outcome and keeps the outcome.",
       "$ref": "https://qory.dev/contracts/forager/v1/events/run.exited.schema.json#/properties/reason"
     },
     "exit_code": {
@@ -46,7 +46,7 @@
   },
   "$defs": {
     "end_codes": {
-      "description": "The end codes: the codes that qory sets in reason, each with the cause of the end in plain words. A code is a lower-case letter, then lower-case letters, digits and underscores, up to 64 characters, and none is one of Forager's reserved reasons. The causes are what happened and contain no advice and no action text. The list is closed here and open on the wire.",
+      "description": "The end codes: the codes that qory sets in reason, each with the cause of the end in plain words. A code is a lower-case letter, then lower-case letters, digits and underscores, up to 64 characters, and none is one of Forager's reserved reasons. The causes are what happened.",
       "type": "string",
       "oneOf": [
         {
@@ -55,11 +55,11 @@
         },
         {
           "const": "push_refused",
-          "description": "A push of the run's commits was refused with status 403. The run's push proxy refuses a push that is not a plain push to the push_ref of the push credential, and a push to a path for which the push credential has no item. The forge refuses a push that the permission of the push credential or a branch rule does not allow."
+          "description": "A push of the run's commits was refused with status 403. One of: the run's push proxy refuses a push that is not a plain push to the push_ref of the push credential; the push credential has no item for the path of the push; the forge refuses a push that the permission of the push credential or a branch rule does not allow."
         },
         {
           "const": "prebuilt_image_too_large",
-          "description": "The image that the build made from the repository is larger than largest_prebuilt_image_bytes of the run documents, measured before qory adds Chromium, ffmpeg and the parsers, so the build ended."
+          "description": "The image that the build made from the repository is larger than largest_prebuilt_image_bytes of the run documents, measured before qory adds Chromium, ffmpeg and the parsers, so qory removes the image."
         },
         {
           "const": "push_not_recorded",

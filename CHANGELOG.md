@@ -122,23 +122,21 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
-- The run contract has a run's outcome, `outcome.schema.json`: `state` (`succeeded`,
-  `failed` or `cancelled`), and optionally `reason` and `exit_code`, as Forager's
-  `dev.qory.run.exited` has them. qory sets `reason` to one of four end codes to say why a
-  run failed, and the schema lists each with its cause in plain words:
+- The run contract has a run's end, `outcome.schema.json`, titled Run end: `state`
+  (`succeeded`, `failed` or `cancelled`), and optionally `reason` and `exit_code`, as
+  Forager's `dev.qory.run.exited` has them. qory sets `reason` to one of four end codes
+  to say why a run failed, and the schema lists each with its cause in plain words:
   `push_credential_missing` (the run's configuration has no credential with the purpose
   `push`), `push_refused` (a push of the run's commits was refused with status 403),
   `prebuilt_image_too_large` (the image of the repository is larger than
   `largest_prebuilt_image_bytes`) and `push_not_recorded` (qory pushed the run's commits
-  and the control plane has no record of the push). The list has no advice and no action
-  text: what a reader does for a code is the control plane's text. The list is closed in
-  this contract and open on the wire: a `reason` that is not in the list passes the
-  schema, as a newer qory may send a code that an older reader does not know. One of the
-  four codes with a `state` other than `failed` fails, and so does a member the schema
-  does not define, such as `message` or `action`. None of the four is one of Forager's
-  reserved reasons. In Go, `RunOutcome`, `EndCode` and `EndCodePushCredentialMissing`,
-  `EndCodePushRefused`, `EndCodePrebuiltImageTooLarge` and `EndCodePushNotRecorded` are
-  added.
+  and the control plane has no record of the push). A `reason` that is not in the list
+  passes the schema, as a newer qory may send a code that an older reader does not
+  know. One of the four codes with a `state` other than `failed` fails, and so does a
+  member the schema does not define, such as `message` or `action`. None of the four is
+  one of Forager's reserved reasons. In Go, `RunOutcome`, `EndCode` and
+  `EndCodePushCredentialMissing`, `EndCodePushRefused`, `EndCodePrebuiltImageTooLarge`
+  and `EndCodePushNotRecorded` are added.
 - The run contract has the next-session call, for a run of several sessions on one
   machine. After each session that did not pause, qory sends a request,
   `next-session-request.schema.json`: `session`, Forager's number of the session that

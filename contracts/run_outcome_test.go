@@ -90,8 +90,8 @@ func TestTheEndCodesAreTheSchemasList(t *testing.T) {
 			t.Errorf("the cause of %q does not contain %q: %s", code, cause, text)
 		}
 	}
-	if len(entries) != 4 {
-		t.Errorf("the schema lists %d end codes, want 4", len(entries))
+	if len(entries) != len(endCodes) {
+		t.Errorf("the schema lists %d end codes, and the Go constants are %d", len(entries), len(endCodes))
 	}
 }
 

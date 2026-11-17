@@ -621,17 +621,14 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
 }
 
-// RunOutcome is a run's outcome, run/v1 outcome.schema.json: how the run ended. State,
-// Reason and ExitCode are the members of Forager's dev.qory.run.exited. The type has no
-// member for advice or an action text: what each reader does for a code is the control
-// plane's text.
+// RunOutcome is a run's end, run/v1 outcome.schema.json, titled Run end: how the run
+// ended. State, Reason and ExitCode are the members of Forager's dev.qory.run.exited.
+// It is not the body of Forager's run-outcome.schema.json.
 type RunOutcome struct {
 	// State is how the run ended: "succeeded", "failed" or "cancelled".
 	State string `json:"state"`
 	// Reason is the reason of the run's dev.qory.run.exited, empty for none. qory sets one
-	// of the [EndCode] values, with State "failed", to say why a run failed. Any other
-	// code of the reason pattern passes the schema, so a reader may meet a code that it
-	// does not know.
+	// of the [EndCode] values, with State "failed", to say why a run failed.
 	Reason string `json:"reason,omitempty"`
 	// ExitCode is the run's exit code, from -1, and nil for none. A nil ExitCode is left
 	// out, and a pointer to 0 is written as 0.
