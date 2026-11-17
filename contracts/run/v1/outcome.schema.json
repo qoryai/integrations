@@ -67,7 +67,7 @@
         },
         {
           "const": "environment_image_missing",
-          "description": "The prebuild's environment image (`environment_image` in the run documents) is not in the registry."
+          "description": "The prebuild's environment image, environment_image of the run documents, is not in the registry."
         },
         {
           "const": "push_head_changed",
