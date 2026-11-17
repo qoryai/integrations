@@ -654,6 +654,9 @@ const (
 	// EndCodePushNotRecorded: qory pushed the run's commits, and the control plane has
 	// no record of the push.
 	EndCodePushNotRecorded EndCode = "push_not_recorded"
+	// EndCodeEnvironmentImageMissing: the environment image that the prebuild starts the
+	// target image from is not in the registry.
+	EndCodeEnvironmentImageMissing EndCode = "environment_image_missing"
 )
 
 // ProviderModel is one model of the run's provider, an entry of

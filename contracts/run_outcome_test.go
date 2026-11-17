@@ -18,10 +18,11 @@ import (
 // endCodes are the codes of [contracts.EndCode], each with the cause that
 // outcome.schema.json shows for it, as a text that its description must contain.
 var endCodes = map[contracts.EndCode]string{
-	contracts.EndCodePushCredentialMissing: "no credential with the purpose push",
-	contracts.EndCodePushRefused:           "refused with status 403",
-	contracts.EndCodePrebuiltImageTooLarge: "larger than largest_prebuilt_image_bytes",
-	contracts.EndCodePushNotRecorded:       "the control plane has no record of the push",
+	contracts.EndCodePushCredentialMissing:   "no credential with the purpose push",
+	contracts.EndCodePushRefused:             "refused with status 403",
+	contracts.EndCodePrebuiltImageTooLarge:   "larger than largest_prebuilt_image_bytes",
+	contracts.EndCodePushNotRecorded:         "the control plane has no record of the push",
+	contracts.EndCodeEnvironmentImageMissing: "is not in the registry",
 }
 
 // schemaEndCodes reads $defs end_codes of outcome.schema.json: the definition, and the
@@ -305,16 +306,18 @@ func TestTheOutcomeTypeMarshalsToItsSchema(t *testing.T) {
 func TestAnInvalidOutcomeFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 	failed := func(m map[string]any) { m["state"] = "failed" }
 	repairs := map[string]func(m map[string]any){
-		"outcome-end-code-succeeded.json":      failed,
-		"outcome-end-code-cancelled.json":      failed,
-		"outcome-reason-empty.json":            func(m map[string]any) { delete(m, "reason") },
-		"outcome-reason-upper-case.json":       func(m map[string]any) { m["reason"] = "push_exploded" },
-		"outcome-end-code-member.json":         func(m map[string]any) { delete(m, "end_code") },
-		"outcome-message.json":                 func(m map[string]any) { delete(m, "message") },
-		"outcome-action.json":                  func(m map[string]any) { delete(m, "action") },
-		"outcome-without-state.json":           failed,
-		"outcome-state-unknown.json":           failed,
-		"outcome-exit-code-below-minus-1.json": func(m map[string]any) { m["exit_code"] = json.Number("-1") },
+		"outcome-end-code-succeeded.json":                  failed,
+		"outcome-end-code-cancelled.json":                  failed,
+		"outcome-environment-image-missing-succeeded.json": failed,
+		"outcome-environment-image-missing-cancelled.json": failed,
+		"outcome-reason-empty.json":                        func(m map[string]any) { delete(m, "reason") },
+		"outcome-reason-upper-case.json":                   func(m map[string]any) { m["reason"] = "push_exploded" },
+		"outcome-end-code-member.json":                     func(m map[string]any) { delete(m, "end_code") },
+		"outcome-message.json":                             func(m map[string]any) { delete(m, "message") },
+		"outcome-action.json":                              func(m map[string]any) { delete(m, "action") },
+		"outcome-without-state.json":                       failed,
+		"outcome-state-unknown.json":                       failed,
+		"outcome-exit-code-below-minus-1.json":             func(m map[string]any) { m["exit_code"] = json.Number("-1") },
 	}
 	schema := compileRun(t, runSchema("outcome"))
 	n := 0
