@@ -678,7 +678,7 @@ const (
 	EndCodeRepositoryCheckFailed EndCode = "repository_check_failed"
 	// EndCodeForgeUnreachable: qory could not reach the forge of the run's repository.
 	EndCodeForgeUnreachable EndCode = "forge_unreachable"
-	// EndCodeHistoryRewritten: the commit that the run's branch is at does not descend from
+	// EndCodeHistoryRewritten: the HEAD of the run's working folder does not descend from
 	// the commit that the run started from, so a push would not be a fast-forward.
 	EndCodeHistoryRewritten EndCode = "history_rewritten"
 	// EndCodeRunAPIFailed: a call from qory to the run API failed.

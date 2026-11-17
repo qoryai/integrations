@@ -99,7 +99,7 @@
         },
         {
           "const": "history_rewritten",
-          "description": "The commit that the run's branch is at does not descend from the commit that the run started from, so a push would not be a fast-forward."
+          "description": "The HEAD of the run's working folder does not descend from the commit that the run started from, so a push would not be a fast-forward."
         },
         {
           "const": "run_api_failed",

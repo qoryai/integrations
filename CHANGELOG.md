@@ -139,15 +139,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   used), `machine_setup_invalid` (the machine cannot run the step, or has no registry),
   `target_fetch_failed` (qory could not fetch the target of the run),
   `repository_check_failed` (a git or folder step on the run's repository failed),
-  `forge_unreachable` (qory could not reach the forge), `history_rewritten` (the run's
-  branch does not descend from the commit that the run started from, so a push would not
-  be a fast-forward), `run_api_failed` (a call from qory to the run API failed) and
-  `prebuild_failed` (a prebuild failed: its build, the pull of its base image, or the
-  push or verification of the image it built). A `reason` that is not in the list passes
-  the schema, as a newer qory may send a code that an older reader does not know. One of
-  the end codes with a `state` other than `failed` fails, and so does a member the
-  schema does not define, such as `message` or `action`. None of them is one of
-  Forager's reserved reasons. In Go, `RunOutcome`, `EndCode` and a constant for each
+  `forge_unreachable` (qory could not reach the forge), `history_rewritten` (the HEAD of
+  the run's working folder does not descend from the commit that the run started from,
+  so a push would not be a fast-forward), `run_api_failed` (a call from qory to the run
+  API failed) and `prebuild_failed` (a prebuild failed: its build, the pull of its base
+  image, or the push or verification of the image it built). A `reason` that is not in
+  the list passes the schema, as a newer qory may send a code that an older reader does
+  not know. One of the end codes with a `state` other than `failed` fails, and so does a
+  member the schema does not define, such as `message` or `action`. None of them is one
+  of Forager's reserved reasons. In Go, `RunOutcome`, `EndCode` and a constant for each
   code are added, named `EndCode` and the code in camel case, such as
   `EndCodePushHeadChanged`.
 - The run contract has the next-session call, for a run of several sessions on one
