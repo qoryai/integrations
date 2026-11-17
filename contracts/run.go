@@ -648,7 +648,7 @@ const (
 	EndCodePushCredentialMissing EndCode = "push_credential_missing"
 	// EndCodePushRefused: a push of the run's commits was refused with status 403.
 	EndCodePushRefused EndCode = "push_refused"
-	// EndCodePrebuiltImageTooLarge: the image of the repository is larger than
+	// EndCodePrebuiltImageTooLarge: the image of the target is larger than
 	// [Documents.LargestPrebuiltImageBytes].
 	EndCodePrebuiltImageTooLarge EndCode = "prebuilt_image_too_large"
 	// EndCodePushNotRecorded: qory pushed the run's commits, and the control plane has

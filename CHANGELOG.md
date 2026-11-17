@@ -128,7 +128,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   to say why a run failed, and the schema lists each with its cause in plain words:
   `push_credential_missing` (the run's configuration has no credential with the purpose
   `push`), `push_refused` (a push of the run's commits was refused with status 403),
-  `prebuilt_image_too_large` (the image of the repository is larger than
+  `prebuilt_image_too_large` (the image of the target is larger than
   `largest_prebuilt_image_bytes`) and `push_not_recorded` (qory pushed the run's commits
   and the control plane has no record of the push). A `reason` that is not in the list
   passes the schema, as a newer qory may send a code that an older reader does not
