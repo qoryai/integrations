@@ -132,7 +132,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   members of both fails. `{"next": "session", ...}` has `session`, the control plane's
   number of the session in the run; `workflow`; `time_limit_minutes`; `full_suite`;
   `inputs`; and optionally `model_choice` and `model_credential`. `{"next": "end"}` has
-  no other member. The transport of the call is set outside the schemas. In Go,
+  no other member. qory sends the request through Forager's link, and the gateway forwards
+  it to the control plane; a container cannot send it. In Go,
   `NextSessionRequest`, `NextSessionAnswer`, `NextSessionKindSession` and
   `NextSessionKindEnd` are added.
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
