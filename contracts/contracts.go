@@ -123,9 +123,13 @@
 // redeems the run code for the run key and the run's documents.
 //
 // The run contract contains the run's documents, documents.schema.json: one object, whose
-// Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types. The object is the documents member of Forager's run answer: the machine
-// receives it, signed, in the 201 of the run code's redemption, and Forager passes it
-// on unread. It is a document, not a request.
+// Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types.
+// The object is the documents member of Forager's run answer: the machine receives it,
+// signed, in the 201 of the run code's redemption, and Forager passes it on unread. It
+// is a document, not a request. The run contract also contains the next-session call of
+// a run of several sessions: next-session-request.schema.json, whose Go type is
+// [NextSessionRequest], and next-session-answer.schema.json, whose Go type is
+// [NextSessionAnswer].
 //
 // The explore contract contains one schema, inputs.schema.json, which defines the
 // inputs member of the run's documents, run/v1 documents.schema.json, for the step
@@ -215,7 +219,7 @@ var FS = must(fs.Sub(embedded, "integration/v1"))
 // schemas and the fixtures.
 var ProvisionerFS = must(fs.Sub(embedded, "provisioner/v1"))
 
-// RunFS is the run contract's directory, rooted at run/v1: the schema and the
+// RunFS is the run contract's directory, rooted at run/v1: the schemas and the
 // fixtures.
 var RunFS = must(fs.Sub(embedded, "run/v1"))
 
@@ -267,10 +271,11 @@ func CompileProvisioner(name string) (*jsonschema.Schema, error) {
 }
 
 // CompileRun compiles one schema of the run contract by its path under run/v1,
-// "documents.schema.json" say. The path may end in a fragment,
-// "documents.schema.json#/$defs/target" say, which compiles that definition. A schema
-// it refers to, of the integration contract or of the Forager contract, is read from
-// [FS] or the forager module's contracts.FS by its $id, so nothing is fetched.
+// "documents.schema.json" or "next-session-request.schema.json" say. The path may end in
+// a fragment, "documents.schema.json#/$defs/target" say, which compiles that
+// definition. A schema it refers to, of this contract, of the integration contract or
+// of the Forager contract, is read from [RunFS], [FS] or the forager module's
+// contracts.FS by its $id, so nothing is fetched.
 func CompileRun(name string) (*jsonschema.Schema, error) {
 	return compile(RunBase, RunFS, name)
 }
