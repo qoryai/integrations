@@ -218,12 +218,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `key_lifetime_days` is `365`.
 - `descriptions/openai.json` describes the OpenAI API key provider: the Responses API at
   `https://api.openai.com/v1`, a bearer key that starts with `sk-`, and four GPT models.
-  Its endpoint and host follow OpenAI's API reference; no run used them before
-  2026-11-13.
+  The endpoint and host follow OpenAI's API reference. No run with an API key has used
+  them.
 - `descriptions/openai-subscription.json` describes the OpenAI subscription provider: a
   ChatGPT plan's sign-in from Codex, for the `codex` runtime, on the Responses API at
-  `https://chatgpt.com/backend-api/codex`, with `limit_windows` `five_hour` and
-  `seven_day`, the refresh at `https://auth.openai.com/oauth/token`, and eight GPT models.
+  `https://chatgpt.com/backend-api/codex`, with `paths` `/backend-api/codex/*`,
+  `limit_windows` `five_hour` and `seven_day`, the refresh at
+  `https://auth.openai.com/oauth/token`, and eight GPT models. Its `auth` sets
+  `account_header` `chatgpt-account-id` and `account_claim`, the pointer to the account
+  id in the access token, as Forager's `auth.schema.json` defines them.
 - A description in the data form has no `program_version`: it is a file that no program
   prints, its one role is `model_provider`, and its settings have no member `writeOnly`.
   `descriptions/` contains the data descriptions of seven model providers, and the `name`
