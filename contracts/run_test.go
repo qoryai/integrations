@@ -134,6 +134,12 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-access-admin.json":                               {"documents", "/access enum"},
 		"documents-prebuild-without-image-destination.json":         {"documents", "/ required image_destination"},
 		"documents-explore-with-image-destination.json":             {"documents", "/image_destination ; /step const"},
+		"documents-explore-with-largest-image.json":                 {"documents", "/largest_prebuilt_image_bytes "},
+		"documents-largest-image-zero.json":                         {"documents", "/largest_prebuilt_image_bytes minimum"},
+		"documents-largest-image-negative.json":                     {"documents", "/largest_prebuilt_image_bytes minimum"},
+		"documents-largest-image-fraction.json":                     {"documents", "/largest_prebuilt_image_bytes type"},
+		"documents-largest-image-string.json":                       {"documents", "/largest_prebuilt_image_bytes type"},
+		"documents-largest-image-above-int64.json":                  {"documents", "/largest_prebuilt_image_bytes maximum"},
 		"documents-image-destination-tag.json":                      {"documents", "/image_destination pattern"},
 		"documents-image-destination-digest.json":                   {"documents", "/image_destination pattern"},
 		"documents-image-destination-path-upper-case.json":          {"documents", "/image_destination pattern"},
@@ -819,6 +825,7 @@ func mustDocument(t *testing.T, s string) any {
 // documents.schema.json.
 func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	target := &contracts.Target{System: "code.example.com", Path: "acme/shop"}
+	largestImage := int64(5368709120)
 	ads := &contracts.Target{System: "ads.example.com", Path: "accounts/1234"}
 	item := contracts.WorkItem{ID: "wi_1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
 	hidden, shown := true, false
@@ -882,6 +889,11 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 			Inputs: json.RawMessage(`{"version":1,"environment_ref":"env-3f2a91c4"}`), Access: "read", Target: target,
 			ImageDestination: "registry.example.com/targets/0123456789abcdef",
 			EnvironmentImage: "registry.example.com/environments/0123456789abcdef@sha256:" + strings.Repeat("3f", 32)}},
+		{"documents", contracts.Documents{Step: "prebuild", Domain: "software",
+			Inputs: json.RawMessage(`{"version":1,"environment_ref":"env-3f2a91c4"}`), Access: "read", Target: target,
+			ImageDestination:          "registry.example.com/targets/0123456789abcdef",
+			EnvironmentDestination:    "registry.example.com/environments/0123456789abcdef",
+			LargestPrebuiltImageBytes: &largestImage}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
 			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item}},
 		{"documents/harness", harness},

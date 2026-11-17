@@ -135,6 +135,10 @@ type Documents struct {
 	// environment image. A run of the step prebuild has exactly one of
 	// EnvironmentDestination and EnvironmentImage.
 	EnvironmentImage string `json:"environment_image,omitempty"`
+	// LargestPrebuiltImageBytes is set only for the step prebuild: the largest size, in
+	// decimal bytes, that the target image of the build may have, at least 1 and within
+	// int64. When it is nil, the image has no size limit.
+	LargestPrebuiltImageBytes *int64 `json:"largest_prebuilt_image_bytes,omitempty"`
 	// SubmitModule is set only with Submit: the harness module that contains the submit
 	// program of the forge of the target, which the control plane takes from
 	// [Adapter.SubmitModule] of the forge's adapter when the start-up of the adapter has
