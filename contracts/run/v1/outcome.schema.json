@@ -72,6 +72,42 @@
         {
           "const": "push_head_changed",
           "description": "The branch head at the forge is not the commit that the run expected (its start commit, or its last push), or the branch is missing."
+        },
+        {
+          "const": "run_documents_invalid",
+          "description": "The run's documents, or the response to the run code, fail qory's validation."
+        },
+        {
+          "const": "harness_invalid",
+          "description": "The harness of the workspace cannot be used for the run: its source, fetch or composition fails, the workspace has none, it has no headless start, or its qory version does not fit."
+        },
+        {
+          "const": "machine_setup_invalid",
+          "description": "The machine cannot run the step: its forager.yaml, folders, home, proxies, image fit, runtime install, push verification or setup container fail, or this machine has no registry."
+        },
+        {
+          "const": "target_fetch_failed",
+          "description": "qory could not fetch the target of the run."
+        },
+        {
+          "const": "repository_check_failed",
+          "description": "A git or folder step on the run's repository failed before the run's work started."
+        },
+        {
+          "const": "forge_unreachable",
+          "description": "qory could not reach the forge of the run's repository."
+        },
+        {
+          "const": "history_rewritten",
+          "description": "The commit that the run's branch is at does not descend from the commit that the run started from, so a push would not be a fast-forward."
+        },
+        {
+          "const": "run_api_failed",
+          "description": "A call from qory to the run API failed."
+        },
+        {
+          "const": "prebuild_failed",
+          "description": "A prebuild failed before it produced an image."
         }
       ]
     }

@@ -660,6 +660,31 @@ const (
 	// EndCodePushHeadChanged: the branch head at the forge is not the commit that the run
 	// expected (its start commit, or its last push), or the branch is missing.
 	EndCodePushHeadChanged EndCode = "push_head_changed"
+	// EndCodeRunDocumentsInvalid: the run's documents, or the response to the run code, fail
+	// qory's validation.
+	EndCodeRunDocumentsInvalid EndCode = "run_documents_invalid"
+	// EndCodeHarnessInvalid: the harness of the workspace cannot be used for the run: its
+	// source, fetch or composition fails, the workspace has none, it has no headless start,
+	// or its qory version does not fit.
+	EndCodeHarnessInvalid EndCode = "harness_invalid"
+	// EndCodeMachineSetupInvalid: the machine cannot run the step: its forager.yaml,
+	// folders, home, proxies, image fit, runtime install, push verification or setup
+	// container fail, or this machine has no registry.
+	EndCodeMachineSetupInvalid EndCode = "machine_setup_invalid"
+	// EndCodeTargetFetchFailed: qory could not fetch the target of the run.
+	EndCodeTargetFetchFailed EndCode = "target_fetch_failed"
+	// EndCodeRepositoryCheckFailed: a git or folder step on the run's repository failed
+	// before the run's work started.
+	EndCodeRepositoryCheckFailed EndCode = "repository_check_failed"
+	// EndCodeForgeUnreachable: qory could not reach the forge of the run's repository.
+	EndCodeForgeUnreachable EndCode = "forge_unreachable"
+	// EndCodeHistoryRewritten: the commit that the run's branch is at does not descend from
+	// the commit that the run started from, so a push would not be a fast-forward.
+	EndCodeHistoryRewritten EndCode = "history_rewritten"
+	// EndCodeRunAPIFailed: a call from qory to the run API failed.
+	EndCodeRunAPIFailed EndCode = "run_api_failed"
+	// EndCodePrebuildFailed: a prebuild failed before it produced an image.
+	EndCodePrebuildFailed EndCode = "prebuild_failed"
 )
 
 // ProviderModel is one model of the run's provider, an entry of
