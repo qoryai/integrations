@@ -30,7 +30,7 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodeTargetFetchFailed:       "could not fetch the target",
 	contracts.EndCodeRepositoryCheckFailed:   "step on the run's repository failed",
 	contracts.EndCodeForgeUnreachable:        "could not reach the forge",
-	contracts.EndCodeHistoryRewritten:        "would not be a fast-forward",
+	contracts.EndCodeHistoryRewritten:        "HEAD of the run's working folder does not descend",
 	contracts.EndCodeRunAPIFailed:            "to the run API failed",
 	contracts.EndCodePrebuildFailed:          "the pull of its base image",
 }
