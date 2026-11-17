@@ -654,8 +654,8 @@ const (
 	// EndCodePushNotRecorded: qory pushed the run's commits, and the control plane has
 	// no record of the push.
 	EndCodePushNotRecorded EndCode = "push_not_recorded"
-	// EndCodeEnvironmentImageMissing: the prebuild's environment image (`environment_image`
-	// in the run documents) is not in the registry.
+	// EndCodeEnvironmentImageMissing: the prebuild's environment image
+	// ([Documents.EnvironmentImage]) is not in the registry.
 	EndCodeEnvironmentImageMissing EndCode = "environment_image_missing"
 	// EndCodePushHeadChanged: the branch head at the forge is not the commit that the run
 	// expected (its start commit, or its last push), or the branch is missing.
