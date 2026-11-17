@@ -37,9 +37,13 @@ const MaxInputs = 768 << 10
 // the harness file of the target does not set how the run starts. A run of the step
 // explore has WorkItem. A run of the step prebuild has Access, Target, ImageDestination
 // and exactly one of EnvironmentDestination and EnvironmentImage, and no TargetVersion,
-// WorkItem, RunSettings, Workflow, HarnessHidden or Harness. RunSettings is set only
-// for the step explore. Inputs is the step's input as the control plane wrote it, whose
-// shape belongs to the step's schema.
+// WorkItem, RunSettings, TimeLimitMinutes, SharedRun, FullSuite, Workflow,
+// HarnessHidden or Harness. RunSettings, TimeLimitMinutes, SharedRun and FullSuite are
+// set only for the step explore. The documents are the documents of session 1: its
+// Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With SharedRun, each
+// later session comes from the answer to the next-session request, as
+// [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
+// it, whose shape belongs to the step's schema.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -81,6 +85,20 @@ type Documents struct {
 	TargetVersion string       `json:"target_version,omitempty"`
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
 	RunSettings   *RunSettings `json:"run_settings,omitempty"`
+	// TimeLimitMinutes is the time limit of session 1, in minutes, from 15 to 1440,
+	// and 0 when the control plane sets none. The machine sets it as that session's
+	// time limit. The limit of each later session is the TimeLimitMinutes of the
+	// [NextSessionAnswer]. It is set only for the step explore.
+	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
+	// SharedRun is true when qory sends the next-session request after each session
+	// and runs the session that the answer sets. False and absent in the JSON are the
+	// same: qory sends no request, and the run has session 1 only. It is set only for
+	// the step explore.
+	SharedRun bool `json:"shared_run,omitempty"`
+	// FullSuite is true when session 1 runs the full test suite after the agent ends.
+	// False and absent in the JSON are the same. The flag of each later session is the
+	// FullSuite of the [NextSessionAnswer]. It is set only for the step explore.
+	FullSuite bool `json:"full_suite,omitempty"`
 	// Workflow is set exactly when HarnessHidden is: the workflow of the harness that
 	// the run starts, such as hello. qory starts the first of these that the harness
 	// has: the skill workflow-hello, the command workflow-hello, the skill hello, the
@@ -336,8 +354,8 @@ type HarnessWorkflow struct {
 	Access string `json:"access,omitempty"`
 	// TimeLimit is how long a run of the workflow may run, counted from the run's open,
 	// as a Go duration above zero, such as 7h or 45m, and empty when the workflow sets
-	// none. The run's run_settings.time_limit_minutes, when the control plane sets it,
-	// applies instead.
+	// none. The run's time_limit_minutes, when the control plane sets it, applies
+	// instead.
 	TimeLimit string `json:"time_limit,omitempty"`
 }
 
@@ -462,9 +480,10 @@ type WorkItem struct {
 }
 
 // RunSettings is the run's run_settings, documents.schema.json: the runtime and
-// model settings the job composes the agent's harness with. It contains no key or
-// secret. With no provider chosen, Model, Effort, ProviderModels and Tiers are empty:
-// the run uses the gateway's configured key and the runtime's default model. Effort
+// model settings the job composes the agent's harness with, the settings of session 1.
+// Runtime is the runtime of every session of the run. It contains no key or secret.
+// With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
+// uses the gateway's configured key and the runtime's default model. Effort
 // and Tiers are set only with Model, and ProviderModels is set exactly when Model is.
 // The control plane guarantees four rules that the schema cannot check: the ids in
 // ProviderModels are unique; Effort is listed for Model in ProviderModels; each tier's
@@ -489,10 +508,116 @@ type RunSettings struct {
 	ProviderModels []ProviderModel `json:"provider_models,omitempty"`
 	// Tiers is the tier map the control plane resolved for the run.
 	Tiers *Tiers `json:"tiers,omitempty"`
-	// TimeLimitMinutes is the time limit that the client set for the run, in minutes,
-	// from 15 to 1440, and 0 when the client set none. The machine sets it as the
-	// session's time limit.
+}
+
+// ModelChoice is a model_choice of the next-session answer, run/v1
+// documents.schema.json: the model, effort, provider models and tiers of one session
+// after session 1. Its
+// members are those of [RunSettings] with the same meaning and no Runtime, because
+// every session of the run uses the runtime of RunSettings. With no provider chosen,
+// the four members are empty, and the four rules that [RunSettings] lists for the
+// control plane apply to the members that are set.
+type ModelChoice struct {
+	// Model is the exact id of the model the session uses.
+	Model string `json:"model,omitempty"`
+	// Effort is the effort value the session uses with Model.
+	Effort string `json:"effort,omitempty"`
+	// ProviderModels are the models of the session's provider, as [RunSettings] has
+	// them. It is set exactly when Model is.
+	ProviderModels []ProviderModel `json:"provider_models,omitempty"`
+	// Tiers is the tier map the control plane resolved for the session. It is set only
+	// with Model.
+	Tiers *Tiers `json:"tiers,omitempty"`
+}
+
+// NextSessionRequest is the body of the next-session request, run/v1
+// next-session-request.schema.json: the request that qory sends to the control plane
+// after a session of the run ended, to ask for the next session. It has no verdict: the
+// control plane reads the newest verdict that the run stored after the previous step.
+// What qory posts for a red full suite after the session comes before the request, so
+// the newest verdict is read after that post. qory sends it after each session that
+// did not pause, for a run whose documents have SharedRun. State and Reason follow the
+// rules of the session's dev.qory.session.exited that do not depend on its exit_code:
+// a cancelled session has a reason; the reasons timeout and interrupted are for a
+// cancelled session only; and the reason gateway_lost is for a failed session only.
+// The transport of the call is set outside the schema.
+type NextSessionRequest struct {
+	// Session is Forager's number of the session that ended, from 1, as in its
+	// dev.qory.session.exited.
+	Session int `json:"session"`
+	// State is how the session ended: "succeeded", "failed" or "cancelled". A session
+	// that paused has no request.
+	State string `json:"state"`
+	// Reason is the reason of the session's dev.qory.session.exited, and nil, written
+	// as null, when that event has none.
+	Reason *string `json:"reason"`
+}
+
+// NextSessionAnswer is the answer to the next-session request, run/v1
+// next-session-answer.schema.json: the next session of the run, with Next
+// [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and
+// no other member. The session shape has Session, Workflow, TimeLimitMinutes,
+// FullSuite and Inputs, and optionally ModelChoice and ModelCredential. MarshalJSON
+// writes the members of the shape that Next selects, and no member of the other shape.
+// Reading takes the members of either shape and leaves the others at their zero values.
+type NextSessionAnswer struct {
+	// Next is the kind of the answer: "session" or "end".
+	Next string `json:"next"`
+	// Session is the control plane's sequence number of the session in the run, from 1.
+	// It is not Forager's number, which Forager assigns at the join.
+	Session int `json:"session,omitempty"`
+	// Workflow is the workflow that the session starts, as [Documents.Workflow].
+	Workflow string `json:"workflow,omitempty"`
+	// ModelChoice is the model choice of the session, nil when no provider is chosen:
+	// the session uses the gateway's configured key and the runtime's default model.
+	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
+	// ModelCredential is the credential of the run that the session joins with, such as
+	// <the provider's public id>-<its place from 1>, and empty when no provider is
+	// chosen. The schema checks only the pattern of a credential's name in Forager's
+	// policy.
+	ModelCredential string `json:"model_credential,omitempty"`
+	// TimeLimitMinutes is the time limit of the session, in minutes, from 15 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
+	// FullSuite is true when the session runs the full test suite after the agent ends.
+	FullSuite bool `json:"full_suite,omitempty"`
+	// Inputs is the input of the session, as [Documents.Inputs].
+	Inputs json.RawMessage `json:"inputs,omitempty"`
+}
+
+// The values of [NextSessionAnswer.Next].
+const (
+	NextSessionKindSession = "session"
+	NextSessionKindEnd     = "end"
+)
+
+// MarshalJSON writes a. For Next "end" it writes {"next":"end"} and nothing else. For
+// Next "session" it writes the members of the session shape, and writes full_suite
+// when it is false. It returns an error for any other Next, the empty Next included,
+// and for a session answer whose Inputs is empty, which would be written as null.
+func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
+	switch a.Next {
+	case NextSessionKindEnd:
+		return json.Marshal(struct {
+			Next string `json:"next"`
+		}{a.Next})
+	case NextSessionKindSession:
+		if len(a.Inputs) == 0 {
+			return nil, errors.New("set Inputs of a session answer to the input of the session, an object with a version")
+		}
+	default:
+		return nil, fmt.Errorf("set Next of an answer to %q or %q, not %q", NextSessionKindSession, NextSessionKindEnd, a.Next)
+	}
+	return json.Marshal(struct {
+		Next             string          `json:"next"`
+		Session          int             `json:"session"`
+		Workflow         string          `json:"workflow"`
+		ModelChoice      *ModelChoice    `json:"model_choice,omitempty"`
+		ModelCredential  string          `json:"model_credential,omitempty"`
+		TimeLimitMinutes int             `json:"time_limit_minutes"`
+		FullSuite        bool            `json:"full_suite"`
+		Inputs           json.RawMessage `json:"inputs"`
+	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelCredential,
+		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
 }
 
 // ProviderModel is one model of the run's provider, an entry of

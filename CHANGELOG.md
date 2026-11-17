@@ -122,6 +122,37 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- The run contract has the next-session call, for a run of several sessions on one
+  machine. After each session that did not pause, qory sends a request,
+  `next-session-request.schema.json`: `session`, Forager's number of the session that
+  ended, from 1; `state`, `succeeded`, `failed` or `cancelled`; and `reason`, the reason
+  of the session's `dev.qory.session.exited`, or `null`. The request has no verdict: the
+  control plane reads the newest verdict that the run stored after the previous step. The
+  answer, `next-session-answer.schema.json`, is one of two shapes, and an answer with the
+  members of both fails. `{"next": "session", ...}` has `session`, the control plane's
+  number of the session in the run; `workflow`; `time_limit_minutes`; `full_suite`;
+  `inputs`; and optionally `model_choice` and `model_credential`. `{"next": "end"}` has
+  no other member. The transport of the call is set outside the schemas. In Go,
+  `NextSessionRequest`, `NextSessionAnswer`, `NextSessionKindSession` and
+  `NextSessionKindEnd` are added.
+- `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
+  `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning, and
+  no `runtime`, because every session uses the runtime of `run_settings`.
+  `model_credential` is the name of a credential of the run, such as the provider's
+  public id, a hyphen and the key's place from 1; the schema checks only the pattern of
+  a credential's name in Forager's policy.
+- The next-session request follows the rules of `dev.qory.session.exited` for `state`
+  and `reason` that do not depend on its `exit_code`: a `cancelled` session has a
+  `reason`, the reasons `timeout` and `interrupted` are for a `cancelled` session only,
+  and the reason `gateway_lost` is for a `failed` session only.
+- The run documents of the step `explore` can contain `time_limit_minutes`,
+  `shared_run` and `full_suite`, and `contracts.Documents` has them as `TimeLimitMinutes`,
+  `SharedRun` and `FullSuite`. The run documents are the documents of session 1.
+  `time_limit_minutes` is the time limit of session 1, in minutes, from 15 to 1440.
+  `shared_run` is `true` when qory sends the next-session request after each session.
+  `full_suite` is `true` when session 1 runs the full test suite after the agent ends.
+  `shared_run` and `full_suite` left out are the same as `false`. A run of the step
+  `prebuild` has none of the three.
 - The run documents of the step `prebuild` can contain `largest_prebuilt_image_bytes`,
   and `contracts.Documents` has it as `LargestPrebuiltImageBytes`, an `*int64`: the
   largest size, in decimal bytes, that the target image of the build may have. It is an
@@ -444,8 +475,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,
-  `run_settings`, `workflow`, `harness_hidden`, `harness`, `image_destination`,
-  `environment_destination` and `environment_image` by step. `target_version` is the exact
+  `run_settings`, `time_limit_minutes`, `shared_run`, `full_suite`, `workflow`,
+  `harness_hidden`, `harness`, `image_destination`, `environment_destination` and
+  `environment_image` by step. `target_version` is the exact
   version at which the control plane checked for the harness file of the target.
   `harness` is present in three cases: that file is absent, its `harness` section has no
   `extends` and lists no module, or the file was not read. In each of these cases, the
@@ -502,6 +534,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Changed
 
+- `run_settings` has no `time_limit_minutes`. The time limit of session 1 is
+  `time_limit_minutes` in the run documents, with the same limits, 15 to 1440 minutes.
+  `contracts.RunSettings` has no `TimeLimitMinutes`.
 - The module requires Forager at its main commit b6ac9f0
   (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
 - The contract describes `domains` as applying only to where work comes from: a
