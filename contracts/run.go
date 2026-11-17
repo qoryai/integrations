@@ -672,7 +672,7 @@ type ProviderModel struct {
 // control plane maps apply.
 type Tiers struct {
 	Light    *Tier `json:"light,omitempty"`
-	Fast     *Tier `json:"fast,omitempty"`
+	Balanced *Tier `json:"balanced,omitempty"`
 	Thinking *Tier `json:"thinking,omitempty"`
 }
 
