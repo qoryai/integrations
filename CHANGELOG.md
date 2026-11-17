@@ -122,6 +122,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- The run documents of the step `prebuild` can contain `largest_prebuilt_image_bytes`,
+  and `contracts.Documents` has it as `LargestPrebuiltImageBytes`, an `*int64`: the
+  largest size, in decimal bytes, that the target image of the build may have. It is an
+  integer of at least 1 and at most 9223372036854775807. A run of any other step has no
+  `largest_prebuilt_image_bytes`. When it is absent, the image has no size limit.
 - The adapter's start-up, `adapter.schema.json`, and the run documents can contain
   `submit_module`: the harness module that contains a forge's submit program, the module
   whose manifest declares `submit_program`. It has the shape of a module of `harness`,
