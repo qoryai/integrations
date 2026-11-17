@@ -621,6 +621,44 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
 }
 
+// RunOutcome is a run's outcome, run/v1 outcome.schema.json: how the run ended. State,
+// Reason and ExitCode are the members of Forager's dev.qory.run.exited. The type has no
+// member for advice or an action text: what each reader does for a code is the control
+// plane's text.
+type RunOutcome struct {
+	// State is how the run ended: "succeeded", "failed" or "cancelled".
+	State string `json:"state"`
+	// Reason is the reason of the run's dev.qory.run.exited, empty for none. qory sets one
+	// of the [EndCode] values, with State "failed", to say why a run failed. Any other
+	// code of the reason pattern passes the schema, so a reader may meet a code that it
+	// does not know.
+	Reason string `json:"reason,omitempty"`
+	// ExitCode is the run's exit code, from -1, and nil for none. A nil ExitCode is left
+	// out, and a pointer to 0 is written as 0.
+	ExitCode *int `json:"exit_code,omitempty"`
+}
+
+// EndCode is a code that qory sets in [RunOutcome.Reason] to say why a run failed: a code
+// in the list of $defs end_codes of run/v1 outcome.schema.json, which shows each code's
+// cause in plain words. The schema refuses one of them with a State other than failed.
+type EndCode string
+
+// The end codes, with the cause of each: see outcome.schema.json for the words. None is
+// one of Forager's reserved reasons.
+const (
+	// EndCodePushCredentialMissing: the run's configuration has no credential with the
+	// purpose push, so qory pushed nothing.
+	EndCodePushCredentialMissing EndCode = "push_credential_missing"
+	// EndCodePushRefused: a push of the run's commits was refused with status 403.
+	EndCodePushRefused EndCode = "push_refused"
+	// EndCodePrebuiltImageTooLarge: the image of the repository is larger than
+	// [Documents.LargestPrebuiltImageBytes].
+	EndCodePrebuiltImageTooLarge EndCode = "prebuilt_image_too_large"
+	// EndCodePushNotRecorded: qory pushed the run's commits, and the control plane has
+	// no record of the push.
+	EndCodePushNotRecorded EndCode = "push_not_recorded"
+)
+
 // ProviderModel is one model of the run's provider, an entry of
 // run_settings.provider_models. Effort lists the effort values the model accepts, 1 to
 // 16, each listed once. An entry with no Effort means the model takes no effort value.

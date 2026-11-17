@@ -42,11 +42,11 @@ func runFiles(t *testing.T, dir string) []string {
 }
 
 // runSchemas are the schemas of the run contract: the files of run/v1.
-var runSchemas = []string{"documents", "next-session-answer", "next-session-request"}
+var runSchemas = []string{"documents", "next-session-answer", "next-session-request", "outcome"}
 
 // TestRunSchemaIsTheContract pins that run/v1 contains exactly documents.schema.json,
-// next-session-answer.schema.json and next-session-request.schema.json, each with the
-// $id RunBase/<file name>, and that each compiles.
+// next-session-answer.schema.json, next-session-request.schema.json and
+// outcome.schema.json, each with the $id RunBase/<file name>, and that each compiles.
 func TestRunSchemaIsTheContract(t *testing.T) {
 	entries, err := fs.ReadDir(contracts.RunFS, ".")
 	if err != nil {
@@ -58,7 +58,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 			got = append(got, e.Name())
 		}
 	}
-	want := "documents.schema.json,next-session-answer.schema.json,next-session-request.schema.json"
+	want := "documents.schema.json,next-session-answer.schema.json,next-session-request.schema.json,outcome.schema.json"
 	if strings.Join(got, ",") != want {
 		t.Errorf("run/v1 contains %v, want %s", got, want)
 	}
@@ -76,7 +76,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 }
 
 // TestRunFixturesValidate pins that each document under fixtures/<name>/ of the run
-// contract is accepted by <name>.schema.json, for the three schemas of the contract,
+// contract is accepted by <name>.schema.json, for the four schemas of the contract,
 // and that fixtures/ contains no other folder of valid documents.
 func TestRunFixturesValidate(t *testing.T) {
 	for _, name := range runSchemas {
@@ -173,6 +173,16 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"next-session-request-reason-interrupted-state-succeeded.json":  {"next-session-request", "/state const"},
 		"next-session-request-reason-gateway-lost-state-cancelled.json": {"next-session-request", "/state const"},
 		"next-session-request-without-session.json":                     {"next-session-request", "/ required session"},
+		"outcome-end-code-succeeded.json":                               {"outcome", "/state const"},
+		"outcome-end-code-cancelled.json":                               {"outcome", "/state const"},
+		"outcome-reason-empty.json":                                     {"outcome", "/reason pattern"},
+		"outcome-reason-upper-case.json":                                {"outcome", "/reason pattern"},
+		"outcome-end-code-member.json":                                  {"outcome", "/ additionalProperties"},
+		"outcome-message.json":                                          {"outcome", "/ additionalProperties"},
+		"outcome-action.json":                                           {"outcome", "/ additionalProperties"},
+		"outcome-without-state.json":                                    {"outcome", "/ required state"},
+		"outcome-state-unknown.json":                                    {"outcome", "/state enum"},
+		"outcome-exit-code-below-minus-1.json":                          {"outcome", "/exit_code minimum"},
 		"documents-access-without-target.json":                          {"documents", "/ dependentRequired/access"},
 		"documents-target-without-access.json":                          {"documents", "/ dependentRequired/target"},
 		"documents-prebuild-without-target.json":                        {"documents", "/ required access,target"},
