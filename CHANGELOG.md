@@ -130,15 +130,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `push`), `push_refused` (a push of the run's commits was refused with status 403),
   `prebuilt_image_too_large` (the image of the target is larger than
   `largest_prebuilt_image_bytes`), `push_not_recorded` (qory pushed the run's commits
-  and the control plane has no record of the push) and `environment_image_missing` (the
+  and the control plane has no record of the push), `environment_image_missing` (the
   prebuild's environment image, `environment_image` in the run documents, is not in the
-  registry). A `reason` that is not in the list
+  registry) and `push_head_changed` (the branch head at the forge is not the commit that
+  the run started from, or the branch is missing). A `reason` that is not in the list
   passes the schema, as a newer qory may send a code that an older reader does not
   know. One of the end codes with a `state` other than `failed` fails, and so does a
   member the schema does not define, such as `message` or `action`. None of them is
   one of Forager's reserved reasons. In Go, `RunOutcome`, `EndCode` and
   `EndCodePushCredentialMissing`, `EndCodePushRefused`, `EndCodePrebuiltImageTooLarge`,
-  `EndCodePushNotRecorded` and `EndCodeEnvironmentImageMissing` are added.
+  `EndCodePushNotRecorded`, `EndCodeEnvironmentImageMissing` and `EndCodePushHeadChanged`
+  are added.
 - The run contract has the next-session call, for a run of several sessions on one
   machine. After each session that did not pause, qory sends a request,
   `next-session-request.schema.json`: `session`, Forager's number of the session that

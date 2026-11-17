@@ -23,6 +23,7 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodePrebuiltImageTooLarge:   "larger than largest_prebuilt_image_bytes",
 	contracts.EndCodePushNotRecorded:         "the control plane has no record of the push",
 	contracts.EndCodeEnvironmentImageMissing: "is not in the registry",
+	contracts.EndCodePushHeadChanged:         "is not the commit that the run started from",
 }
 
 // schemaEndCodes reads $defs end_codes of outcome.schema.json: the definition, and the
@@ -310,6 +311,8 @@ func TestAnInvalidOutcomeFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"outcome-end-code-cancelled.json":                  failed,
 		"outcome-environment-image-missing-succeeded.json": failed,
 		"outcome-environment-image-missing-cancelled.json": failed,
+		"outcome-push-head-changed-succeeded.json":         failed,
+		"outcome-push-head-changed-cancelled.json":         failed,
 		"outcome-reason-empty.json":                        func(m map[string]any) { delete(m, "reason") },
 		"outcome-reason-upper-case.json":                   func(m map[string]any) { m["reason"] = "push_exploded" },
 		"outcome-end-code-member.json":                     func(m map[string]any) { delete(m, "end_code") },

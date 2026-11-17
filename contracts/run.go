@@ -657,6 +657,9 @@ const (
 	// EndCodeEnvironmentImageMissing: the prebuild's environment image (`environment_image`
 	// in the run documents) is not in the registry.
 	EndCodeEnvironmentImageMissing EndCode = "environment_image_missing"
+	// EndCodePushHeadChanged: the branch head at the forge is not the commit that the run
+	// started from, or the branch is missing.
+	EndCodePushHeadChanged EndCode = "push_head_changed"
 )
 
 // ProviderModel is one model of the run's provider, an entry of

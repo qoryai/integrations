@@ -68,6 +68,10 @@
         {
           "const": "environment_image_missing",
           "description": "The prebuild's environment image (`environment_image` in the run documents) is not in the registry."
+        },
+        {
+          "const": "push_head_changed",
+          "description": "The branch head at the forge is not the commit that the run started from, or the branch is missing."
         }
       ]
     }
