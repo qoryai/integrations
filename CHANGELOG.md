@@ -132,15 +132,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `largest_prebuilt_image_bytes`), `push_not_recorded` (qory pushed the run's commits
   and the control plane has no record of the push), `environment_image_missing` (the
   prebuild's environment image, `environment_image` in the run documents, is not in the
-  registry) and `push_head_changed` (the branch head at the forge is not the commit that
-  the run expected, its start commit or its last push, or the branch is missing). A `reason` that is not in the list
-  passes the schema, as a newer qory may send a code that an older reader does not
-  know. One of the end codes with a `state` other than `failed` fails, and so does a
-  member the schema does not define, such as `message` or `action`. None of them is
-  one of Forager's reserved reasons. In Go, `RunOutcome`, `EndCode` and
-  `EndCodePushCredentialMissing`, `EndCodePushRefused`, `EndCodePrebuiltImageTooLarge`,
-  `EndCodePushNotRecorded`, `EndCodeEnvironmentImageMissing` and `EndCodePushHeadChanged`
-  are added.
+  registry), `push_head_changed` (the branch head at the forge is not the commit that
+  the run expected, its start commit or its last push, or the branch is missing),
+  `run_documents_invalid` (the run's documents, or the response to the run code, fail
+  qory's validation), `harness_invalid` (the harness that the run composes cannot be
+  used), `machine_setup_invalid` (the machine cannot run the step, or has no registry),
+  `target_fetch_failed` (qory could not fetch the target of the run),
+  `repository_check_failed` (a git or folder step on the run's repository failed),
+  `forge_unreachable` (qory could not reach the forge), `history_rewritten` (the run's
+  branch does not descend from the commit that the run started from, so a push would not
+  be a fast-forward), `run_api_failed` (a call from qory to the run API failed) and
+  `prebuild_failed` (a prebuild failed: its build, the pull of its base image, or the
+  push or verification of the image it built). A `reason` that is not in the list passes
+  the schema, as a newer qory may send a code that an older reader does not know. One of
+  the end codes with a `state` other than `failed` fails, and so does a member the
+  schema does not define, such as `message` or `action`. None of them is one of
+  Forager's reserved reasons. In Go, `RunOutcome`, `EndCode` and a constant for each
+  code are added, named `EndCode` and the code in camel case, such as
+  `EndCodePushHeadChanged`.
 - The run contract has the next-session call, for a run of several sessions on one
   machine. After each session that did not pause, qory sends a request,
   `next-session-request.schema.json`: `session`, Forager's number of the session that
