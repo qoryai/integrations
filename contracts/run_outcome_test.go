@@ -25,14 +25,14 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodeEnvironmentImageMissing: "is not in the registry",
 	contracts.EndCodePushHeadChanged:         "is not the commit that the run expected",
 	contracts.EndCodeRunDocumentsInvalid:     "fail qory's validation",
-	contracts.EndCodeHarnessInvalid:          "cannot be used for the run",
+	contracts.EndCodeHarnessInvalid:          "cannot be used: its source",
 	contracts.EndCodeMachineSetupInvalid:     "this machine has no registry",
 	contracts.EndCodeTargetFetchFailed:       "could not fetch the target",
-	contracts.EndCodeRepositoryCheckFailed:   "failed before the run's work started",
+	contracts.EndCodeRepositoryCheckFailed:   "step on the run's repository failed",
 	contracts.EndCodeForgeUnreachable:        "could not reach the forge",
 	contracts.EndCodeHistoryRewritten:        "would not be a fast-forward",
 	contracts.EndCodeRunAPIFailed:            "to the run API failed",
-	contracts.EndCodePrebuildFailed:          "before it produced an image",
+	contracts.EndCodePrebuildFailed:          "the pull of its base image",
 }
 
 // schemaEndCodes reads $defs end_codes of outcome.schema.json: the definition, and the

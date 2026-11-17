@@ -663,9 +663,10 @@ const (
 	// EndCodeRunDocumentsInvalid: the run's documents, or the response to the run code, fail
 	// qory's validation.
 	EndCodeRunDocumentsInvalid EndCode = "run_documents_invalid"
-	// EndCodeHarnessInvalid: the harness of the workspace cannot be used for the run: its
-	// source, fetch or composition fails, the workspace has none, it has no headless start,
-	// or its qory version does not fit.
+	// EndCodeHarnessInvalid: the harness that the run composes, from the run documents or
+	// the target's harness file, cannot be used: its source, fetch or composition fails,
+	// neither has one, its qory version does not fit, or the runtime has no headless start
+	// for the workflow.
 	EndCodeHarnessInvalid EndCode = "harness_invalid"
 	// EndCodeMachineSetupInvalid: the machine cannot run the step: its forager.yaml,
 	// folders, home, proxies, image fit, runtime install, push verification or setup
@@ -673,8 +674,7 @@ const (
 	EndCodeMachineSetupInvalid EndCode = "machine_setup_invalid"
 	// EndCodeTargetFetchFailed: qory could not fetch the target of the run.
 	EndCodeTargetFetchFailed EndCode = "target_fetch_failed"
-	// EndCodeRepositoryCheckFailed: a git or folder step on the run's repository failed
-	// before the run's work started.
+	// EndCodeRepositoryCheckFailed: a git or folder step on the run's repository failed.
 	EndCodeRepositoryCheckFailed EndCode = "repository_check_failed"
 	// EndCodeForgeUnreachable: qory could not reach the forge of the run's repository.
 	EndCodeForgeUnreachable EndCode = "forge_unreachable"
@@ -683,7 +683,8 @@ const (
 	EndCodeHistoryRewritten EndCode = "history_rewritten"
 	// EndCodeRunAPIFailed: a call from qory to the run API failed.
 	EndCodeRunAPIFailed EndCode = "run_api_failed"
-	// EndCodePrebuildFailed: a prebuild failed before it produced an image.
+	// EndCodePrebuildFailed: a prebuild failed: its build, the pull of its base image, or
+	// the push or verification of the image it built.
 	EndCodePrebuildFailed EndCode = "prebuild_failed"
 )
 

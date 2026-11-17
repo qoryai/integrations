@@ -79,7 +79,7 @@
         },
         {
           "const": "harness_invalid",
-          "description": "The harness of the workspace cannot be used for the run: its source, fetch or composition fails, the workspace has none, it has no headless start, or its qory version does not fit."
+          "description": "The harness that the run composes, from the run documents or the target's harness file, cannot be used: its source, fetch or composition fails, neither has one, its qory version does not fit, or the runtime has no headless start for the workflow."
         },
         {
           "const": "machine_setup_invalid",
@@ -91,7 +91,7 @@
         },
         {
           "const": "repository_check_failed",
-          "description": "A git or folder step on the run's repository failed before the run's work started."
+          "description": "A git or folder step on the run's repository failed."
         },
         {
           "const": "forge_unreachable",
@@ -107,7 +107,7 @@
         },
         {
           "const": "prebuild_failed",
-          "description": "A prebuild failed before it produced an image."
+          "description": "A prebuild failed: its build, the pull of its base image, or the push or verification of the image it built."
         }
       ]
     }
