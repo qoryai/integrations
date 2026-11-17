@@ -131,6 +131,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-run-settings-model-without-provider-models.json":     {"documents", "/run_settings dependentRequired/model"},
 		"documents-run-settings-provider-models-without-model.json":     {"documents", "/run_settings dependentRequired/provider_models"},
 		"documents-run-settings-unknown-tier.json":                      {"documents", "/run_settings/tiers additionalProperties"},
+		"documents-run-settings-tier-fast.json":                         {"documents", "/run_settings/tiers additionalProperties"},
 		"documents-run-settings-undefined-member.json":                  {"documents", "/run_settings additionalProperties"},
 		"documents-run-settings-tier-without-model.json":                {"documents", "/run_settings/tiers/thinking required model"},
 		"documents-run-settings-effort-empty.json":                      {"documents", "/run_settings/provider_models/0/effort minItems"},
@@ -1525,8 +1526,9 @@ func TestRunSettingsReadFromTheFixture(t *testing.T) {
 		s.ProviderModels[1].ID != "example-small" || s.ProviderModels[1].Effort != nil {
 		t.Errorf("provider_models read as %+v", s.ProviderModels)
 	}
-	if s.Tiers == nil || s.Tiers.Light == nil || s.Tiers.Fast != nil || s.Tiers.Thinking == nil ||
+	if s.Tiers == nil || s.Tiers.Light == nil || s.Tiers.Balanced == nil || s.Tiers.Thinking == nil ||
 		s.Tiers.Light.Model != "example-small" || s.Tiers.Light.Effort != "" ||
+		s.Tiers.Balanced.Model != "example-large" || s.Tiers.Balanced.Effort != "" ||
 		s.Tiers.Thinking.Model != "example-large" || s.Tiers.Thinking.Effort != "max" {
 		t.Errorf("tiers read as %+v", s.Tiers)
 	}
