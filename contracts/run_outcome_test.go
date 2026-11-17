@@ -23,7 +23,7 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodePrebuiltImageTooLarge:   "larger than largest_prebuilt_image_bytes",
 	contracts.EndCodePushNotRecorded:         "the control plane has no record of the push",
 	contracts.EndCodeEnvironmentImageMissing: "is not in the registry",
-	contracts.EndCodePushHeadChanged:         "is not the commit that the run started from",
+	contracts.EndCodePushHeadChanged:         "is not the commit that the run expected",
 }
 
 // schemaEndCodes reads $defs end_codes of outcome.schema.json: the definition, and the

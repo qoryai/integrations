@@ -658,7 +658,7 @@ const (
 	// in the run documents) is not in the registry.
 	EndCodeEnvironmentImageMissing EndCode = "environment_image_missing"
 	// EndCodePushHeadChanged: the branch head at the forge is not the commit that the run
-	// started from, or the branch is missing.
+	// expected (its start commit, or its last push), or the branch is missing.
 	EndCodePushHeadChanged EndCode = "push_head_changed"
 )
 

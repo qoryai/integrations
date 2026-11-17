@@ -71,7 +71,7 @@
         },
         {
           "const": "push_head_changed",
-          "description": "The branch head at the forge is not the commit that the run started from, or the branch is missing."
+          "description": "The branch head at the forge is not the commit that the run expected (its start commit, or its last push), or the branch is missing."
         }
       ]
     }

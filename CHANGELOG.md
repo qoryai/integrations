@@ -133,7 +133,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   and the control plane has no record of the push), `environment_image_missing` (the
   prebuild's environment image, `environment_image` in the run documents, is not in the
   registry) and `push_head_changed` (the branch head at the forge is not the commit that
-  the run started from, or the branch is missing). A `reason` that is not in the list
+  the run expected, its start commit or its last push, or the branch is missing). A `reason` that is not in the list
   passes the schema, as a newer qory may send a code that an older reader does not
   know. One of the end codes with a `state` other than `failed` fails, and so does a
   member the schema does not define, such as `message` or `action`. None of them is
