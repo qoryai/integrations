@@ -9,7 +9,7 @@
 // control plane, expands a declared integration from it. [Guide] is the step-by-step
 // help of a description's source role.
 //
-// The contract also holds the requests an adapter, the program that reads a source of
+// The contract also contains the requests an adapter, the program that reads a source of
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
 // start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
 // and [ConnectionsDisconnect], the change feed [Changes] it reads back, the
@@ -26,60 +26,61 @@
 // github.com/qoryai/forager/accesskey signs a request (Request.Message,
 // Key.SignRequest): the headers X-Qory-Access-Key-Id, X-Qory-Instance-Id,
 // X-Qory-Contract-Version and X-Qory-Signature-Ed25519; a GET also sends and signs
-// X-Qory-Timestamp, and a POST signs its raw body, whose time gives its freshness.
+// X-Qory-Timestamp, and a POST signs its raw body, whose time is checked for freshness.
 //
 // X-Qory-Contract-Version is the revision of the contract the adapter implements,
 // [Revision] here, and the control plane refuses one that is missing, sent twice, not a
 // decimal integer, or a revision it does not serve, 400 unsupported_contract_version.
-// The control plane's answer holds only the members, and the change feed only the entry
-// kinds, that the named revision defines: an entry of a kind newer than that revision is
-// skipped for that adapter, not sent, and the feed's cursor still moves past it, so a
-// replay from the start stays in step. The header alone never selects what an adapter
-// accepts: every answer whose content the revision bounds names that revision in its
-// signed body, as [Changes] does in Revision, and the adapter refuses one that names
-// another revision than the one it implements and sent, applies no entry of it, and
-// neither sends nor stores the answer's cursor. An answer's signature covers its body
-// and is bound to the request's signature, so the revision the answer was built for is
-// signed. So the answers' schemas stay strict, refusing a member they do not define and
-// an entry of a kind they do not know, and an addition to the contract never breaks an
-// adapter already deployed. The Forager contract makes additions safe the other way,
-// with lenient answers whose unknown members are ignored; both conventions are safe, and
-// they apply to different contracts.
+// The control plane's answer contains only the members, and the change feed only the
+// entry kinds, that the named revision defines: an entry of a kind newer than that
+// revision is skipped for that adapter, not sent, and the feed's cursor still moves
+// past it, so a replay from the start stays in step. The header alone never selects
+// what an adapter accepts: every answer whose content the revision bounds contains that
+// revision in its signed body, as [Changes] does in Revision, and the adapter refuses
+// one that contains another revision than the one it implements and sent, applies no
+// entry of it, and neither sends nor stores the answer's cursor. An answer's signature
+// covers its body and is bound to the request's signature, so the revision the answer
+// was built for is signed. So the answers' schemas stay strict, refusing a member they
+// do not define and an entry of a kind they do not know, and an addition to the
+// contract never breaks an adapter already deployed. The Forager contract makes
+// additions safe the other way, with lenient answers whose unknown members are ignored;
+// both conventions are safe, and they apply to different contracts.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;
 // definitions.schema.json has the replay rule. That 401 is one uniform answer for
-// everything about who is asking, whose causes refusal.schema.json lists, and it tells
-// the adapter nothing about which cause applied. An X-Qory-Access-Key-Id,
-// X-Qory-Instance-Id, X-Qory-Signature-Ed25519 or X-Qory-Timestamp sent twice, or an
-// X-Qory-Instance-Id that is absent or outside its pattern, is refused 400 bad_request,
-// and only those are. A retry is a new request: the adapter builds it again, a POST with
-// a time and a GET with an X-Qory-Timestamp later than those of the request it retries,
-// and signs it again. Each GET an instance sends has an X-Qory-Timestamp later than
-// that of the previous GET it sent, so no two GETs of one instance have the same
-// signature, and an answer bound to one GET verifies for no other. A request sent again
-// unchanged has a signature the control plane has seen, and is refused, 401; an adapter
-// never takes that 401 as its access key being revoked. Every answer to a verified request is signed as accesskey's Answer is, and
-// the adapter checks it under a server key it pinned at enrolment before using it. A 401
-// is always unsigned. A 413, 415 or 400 bad_request may be unsigned, because the control
-// plane may decide them before it verifies the request's signature. Every other answer
-// is signed, and an adapter acts on no other unsigned answer. On an unsigned 401, 413,
-// 415 or 400 bad_request, the adapter changes no state: no cursor, no run, no key. It
-// treats the request as failed and sends it again, built anew, with backoff. It never
-// takes a 401 as revocation, and never splits or drops items because of an unsigned 413.
-// An unsigned 429 is not a 429: the adapter ignores its Retry-After and backs off as it
-// does for any failed request. A POST whose Content-Type is not application/json is
-// refused 415 unsupported_media_type; a GET carries no body and no Content-Type, and is
-// never refused 415. A POST body is application/json. An integer is written without a
+// everything about who is asking, whose causes refusal.schema.json lists, and nothing
+// in it shows which cause applied. An X-Qory-Access-Key-Id, X-Qory-Instance-Id,
+// X-Qory-Signature-Ed25519 or X-Qory-Timestamp sent twice, or an X-Qory-Instance-Id
+// that is absent or outside its pattern, is refused 400 bad_request, and only those
+// are. A retry is a new request: the adapter builds it again, a POST with a time and a
+// GET with an X-Qory-Timestamp later than those of the request it retries, and signs it
+// again. Each GET an instance sends has an X-Qory-Timestamp later than that of the
+// previous GET it sent, so no two GETs of one instance have the same signature, and an
+// answer bound to one GET verifies for no other. A request sent again unchanged has a
+// signature the control plane has seen, and is refused, 401; an adapter never takes
+// that 401 as its access key being revoked. Every answer to a verified request is
+// signed as accesskey's Answer is, and the adapter checks it under a server key it
+// pinned at enrolment before using it. A 401 is always unsigned. A 413, 415 or 400
+// bad_request may be unsigned, because the control plane may decide them before it
+// verifies the request's signature. Every other answer is signed, and an adapter acts
+// on no other unsigned answer. On an unsigned 401, 413, 415 or 400 bad_request, the
+// adapter changes no state: no cursor, no run, no key. It treats the request as failed
+// and sends it again, built anew, with backoff. It never takes a 401 as revocation, and
+// never splits or drops items because of an unsigned 413. An unsigned 429 is not a 429:
+// the adapter ignores its Retry-After and backs off as it does for any failed request.
+// A POST whose Content-Type is not application/json is refused 415
+// unsupported_media_type; a GET has no body and no Content-Type, and is never
+// refused 415. A POST body is application/json. An integer is written without a
 // fraction or an exponent, and no object repeats a member, at any depth; the control
 // plane refuses either, 400 invalid_request. The numbers inside the description member
-// of POST /v1/adapter follow description.schema.json instead, and may have a fraction or
-// an exponent; no object inside it repeats a member either. A POST whose schema names no
-// answer body is answered, on success, with a signed 204 and no body. The adapter's
-// access key is the integration's, enrolled once for the instance. An organisation
-// reaches the adapter only through a connection, and no request names an organisation or
-// a workspace. forager/accesskey is the reference signer; an adapter may sign to this
-// text itself.
+// of POST /v1/adapter follow description.schema.json instead, and may have a fraction
+// or an exponent; no object inside it repeats a member either. A POST whose schema
+// defines no answer body is answered, on success, with a signed 204 and no body. The
+// adapter's access key is the integration's, enrolled once for the instance. An
+// organisation reaches the adapter only through a connection, and no request refers to an
+// organisation or a workspace. forager/accesskey is the reference signer; an adapter
+// may sign to this text itself.
 //
 // The control plane also calls an adapter, at the call_url the adapter declares in its
 // start-up body: each call is a POST, a [Call], signed with the control plane's server
@@ -105,9 +106,9 @@
 // source only with a [Read]. It sends a [ReadPublic] only with ResourceRef set to the
 // PublicRef of a [Resolved] with Public set, under no grant, and never sends a
 // [RunCredential] for a resource that it reads with a [ReadPublic].
-// resolve-answer.schema.json states the rule.
+// See resolve-answer.schema.json for the rule.
 //
-// The provisioner contract holds the requests with which a node pool's starter, the
+// The provisioner contract contains the requests with which a node pool's starter, the
 // program that serves a node pool, claims a request for one machine, [Claim] and its
 // [ClaimAnswer], whose run code and gateway URL it passes to the machine it creates,
 // says it created the machine, [Dispatched], gives the dispatch back before
@@ -117,21 +118,25 @@
 // [MachineEnd]. The starter signs them with the pool's access key, a key of the pool
 // kind enrolled for the node pool.
 // They are signed, retried and refused with a [Refusal] exactly as the integration
-// contract's requests above, and the claim answer names the revision it was built
+// contract's requests above, and the claim answer contains the revision it was built
 // for, [ProvisionerRevision] here, in Revision, as [Changes] does. The machine
 // redeems the run code for the run key and the run's documents.
 //
-// The run contract holds the run's documents, documents.schema.json: one object, whose
-// Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types. The object is the documents member of Forager's run answer: the machine
-// receives it, signed, in the 201 of the run code's redemption, and Forager passes it
-// on unread. It is a document, not a request.
+// The run contract contains the run's documents, documents.schema.json: one object, whose
+// Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types.
+// The object is the documents member of Forager's run answer: the machine receives it,
+// signed, in the 201 of the run code's redemption, and Forager passes it on unread. It
+// is a document, not a request. The run contract also contains the next-session call of
+// a run of several sessions: next-session-request.schema.json, whose Go type is
+// [NextSessionRequest], and next-session-answer.schema.json, whose Go type is
+// [NextSessionAnswer].
 //
 // The explore contract contains one schema, inputs.schema.json, which defines the
 // inputs member of the run's documents, run/v1 documents.schema.json, for the step
 // explore. The inputs are a document of a step, not a request, and the signature of
 // the run's documents covers them.
 //
-// The machines contract holds the protocol of a machine adapter, a program that makes
+// The machines contract contains the protocol of a machine adapter, a program that makes
 // and deletes machines at one vendor, which the provisioner runs as `<adapter>
 // <command> --settings FILE`. Each command, check, make, list, log and delete, reads one
 // request on standard input, [MachinesCheck] say, and writes one answer on standard
@@ -214,7 +219,7 @@ var FS = must(fs.Sub(embedded, "integration/v1"))
 // schemas and the fixtures.
 var ProvisionerFS = must(fs.Sub(embedded, "provisioner/v1"))
 
-// RunFS is the run contract's directory, rooted at run/v1: the schema and the
+// RunFS is the run contract's directory, rooted at run/v1: the schemas and the
 // fixtures.
 var RunFS = must(fs.Sub(embedded, "run/v1"))
 
@@ -249,7 +254,8 @@ var trees = []struct {
 
 // Compile compiles one schema of the contract by its path under integration/v1,
 // "description.schema.json" say. A schema of the contract it refers to, such as
-// definitions.schema.json, is read from [FS] by its $id, a schema of the Forager contract
+// definitions.schema.json, is read from [FS] by its $id, a schema of the run contract,
+// such as documents.schema.json, from [RunFS] by its $id, a schema of the Forager contract
 // it refers to, such as auth.schema.json, from the forager module's contracts.FS by its
 // $id, and the JSON Schema meta-schema a description's settings are checked against is
 // the copy built into the compiler, so nothing is fetched.
@@ -265,10 +271,11 @@ func CompileProvisioner(name string) (*jsonschema.Schema, error) {
 }
 
 // CompileRun compiles one schema of the run contract by its path under run/v1,
-// "documents.schema.json" say. The path may end in a fragment,
-// "documents.schema.json#/$defs/target" say, which compiles that definition. A schema
-// it refers to, of the integration contract or of the Forager contract, is read from
-// [FS] or the forager module's contracts.FS by its $id, so nothing is fetched.
+// "documents.schema.json" or "next-session-request.schema.json" say. The path may end in
+// a fragment, "documents.schema.json#/$defs/target" say, which compiles that
+// definition. A schema it refers to, of this contract, of the integration contract or
+// of the Forager contract, is read from [RunFS], [FS] or the forager module's
+// contracts.FS by its $id, so nothing is fetched.
 func CompileRun(name string) (*jsonschema.Schema, error) {
 	return compile(RunBase, RunFS, name)
 }

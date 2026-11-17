@@ -27,7 +27,7 @@ var provisionerSchemas = []string{
 }
 
 // provisionerSchema is the path of the schema that the fixtures under fixtures/<name>,
-// and the invalid fixtures whose expected reason names name, validate against:
+// and the invalid fixtures whose expected reason contains name, validate against:
 // <name>.schema.json.
 func provisionerSchema(name string) string {
 	return name + ".schema.json"
@@ -69,8 +69,8 @@ func treeFiles(t *testing.T, fsys fs.FS, dir string) []string {
 }
 
 // TestProvisionerFixturesValidate pins that each document under fixtures/<name>/ of the
-// provisioner contract is accepted by the schema [provisionerSchema] gives for name, and
-// that every schema of the contract compiles.
+// provisioner contract is accepted by the schema that [provisionerSchema] returns for
+// name, and that every schema of the contract compiles.
 func TestProvisionerFixturesValidate(t *testing.T) {
 	for _, name := range provisionerSchemas {
 		compileProvisioner(t, name)
@@ -230,10 +230,10 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 // defines for machine_spec.
 var standard = contracts.MachineSpec{VCPUs: 4, MemoryMiB: 16384, DiskGiB: 100, Arch: "amd64"}
 
-// runCode is a run code in the form claim-answer.schema.json gives.
+// runCode is a run code in the form that claim-answer.schema.json defines.
 const runCode = "qecr_01JB8Z3K5Q7R9T2V4W6X8Y0A1C.uoES-kuj1vk0sq0qoGlmAg"
 
-// gatewayURL is a gateway URL in the form claim-answer.schema.json gives.
+// gatewayURL is a gateway URL in the form that claim-answer.schema.json defines.
 const gatewayURL = "https://gateway.example:8443"
 
 // TestAGatewayURLIsHostAndPort pins the gateway_url of claim-answer.schema.json:

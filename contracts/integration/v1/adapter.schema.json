@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/integration/v1/adapter.schema.json",
   "title": "Adapter start-up",
-  "description": "The body of the signed POST /v1/adapter, application/json, that an adapter sends each time it starts, and again once it is set up at its source: where a person is sent to connect the source, where an instance admin is sent to set the adapter up at its source while it is not, where the control plane calls the adapter, how often the adapter pulls changes from the source, and the description its program prints. On success the control plane answers a signed 204 with no body. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
+  "description": "The body of the signed POST /v1/adapter, application/json, that an adapter sends each time it starts, and again once it is set up at its source: where a person is sent to connect the source, where an instance admin is sent to set the adapter up at its source while it is not, where the control plane calls the adapter, how often the adapter pulls changes from the source, the description its program prints, and, for the adapter of a forge, the harness module that contains the forge's submit program. On success the control plane answers a signed 204 with no body. It is signed with the adapter's access key as definitions.schema.json describes. The control plane refuses a time more than 300 seconds from its clock, either way, or a request whose signature it has already seen, with an unsigned 401; definitions.schema.json has the replay rule. A member this schema does not define is refused, invalid_request.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "time", "connect_url", "sync", "description"],
@@ -28,14 +28,14 @@
       ]
     },
     "call_url": {
-      "description": "The base address at which the control plane calls the adapter (definitions.schema.json): an https URL with no query and no fragment, whose path ends with /. The control plane sends each call as a POST to call_url followed by the call's path, which the call's schema states. The adapter declares it when it serves calls. The control plane takes it from the latest start-up: absent, the control plane makes no call to the adapter.",
+      "description": "The base address at which the control plane calls the adapter (definitions.schema.json): an https URL with no query and no fragment, whose path ends with /. The control plane sends each call as a POST to call_url followed by the call's path, as given in the call's schema. The adapter declares it when it serves calls. The control plane takes it from the latest start-up: absent, the control plane makes no call to the adapter.",
       "allOf": [
         {"$ref": "definitions.schema.json#/$defs/url"},
         {"pattern": "^[^?#]*/$"}
       ]
     },
     "sync": {
-      "description": "How often the adapter pulls changes from the source by default, and the shortest interval it allows. minimum_interval is at most default_interval; the schema cannot say so, and the control plane refuses a sync that breaks it, invalid_request. A person may change the interval in the control plane, and the change feed tells the adapter (changes.schema.json, the sync kind).",
+      "description": "How often the adapter pulls changes from the source by default, and the shortest interval it allows. minimum_interval is at most default_interval; the schema cannot express that, and the control plane refuses a sync that breaks it, invalid_request. A person may change the interval in the control plane, and the control plane appends a sync entry to the change feed (changes.schema.json).",
       "type": "object",
       "additionalProperties": false,
       "required": ["default_interval", "minimum_interval", "sends_changes"],
@@ -59,8 +59,12 @@
       }
     },
     "description": {
-      "description": "What the adapter's program prints for <program> describe (description.schema.json), the whole document, the settings schema included. The control plane records the source role's item_noun, items and collection_noun from the latest start-up. A description without a source role leaves them at their defaults, which also hold before the adapter's first start-up: ticket and tickets, a source that reports items, and the control plane's word for a collection. A description that breaks any rule of description.schema.json, those no schema can express included, is refused, invalid_request, and a body without description is refused as a body without any other required member is. The description's limits apply to its value as the body carries it, and its numbers follow description.schema.json, not the integer rule of definitions.schema.json. The control plane matches nothing in it against the adapter, which it knows only by its access key.",
+      "description": "What the adapter's program prints for <program> describe (description.schema.json), the whole document, the settings schema included. The control plane records the source role's item_noun, items and collection_noun from the latest start-up. A description without a source role leaves them at their defaults, which also apply before the adapter's first start-up: ticket and tickets, a source that reports items, and the control plane's word for a collection. A description that breaks any rule of description.schema.json, those no schema can express included, is refused, invalid_request, and a body without description is refused as a body without any other required member is. The description's limits apply to its value as it is in the body, and its numbers follow description.schema.json, not the integer rule of definitions.schema.json. The control plane matches nothing in it against the adapter, which it knows only by its access key.",
       "$ref": "description.schema.json"
+    },
+    "submit_module": {
+      "description": "The harness module that contains the submit program of the forge that the adapter reads: the module whose manifest declares submit_program. It has the shape of submit_module of the run documents, https://qory.dev/contracts/run/v1/documents.schema.json: an optional name and a source, with no exclude, only or variant. The source's ref is a full commit hash, 40 or 64 lower-case hexadecimal digits. A branch name, a tag and a short hash are refused, so every run fetches the module at the commit in the start-up. The adapter's author updates the commit at each release of the module. The control plane takes submit_module from the latest start-up. It writes submit_module unchanged to the run documents of each run with submit, on a target that the adapter reaches. Absent, the start-up has no harness module with a submit program, and those run documents have no submit_module.",
+      "$ref": "https://qory.dev/contracts/run/v1/documents.schema.json#/$defs/submit_module"
     }
   }
 }

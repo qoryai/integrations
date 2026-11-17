@@ -130,6 +130,10 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-unknown-kind.json":                            {"changes", "/changes/0/kind enum"},
 		"changes-work-item-status-linked.json":                 {"changes", "/changes/0/status enum"},
 		"changes-work-item-url-http.json":                      {"changes", "/changes/0/url pattern"},
+		"changes-watch-url-http.json":                          {"changes", "/changes/0/url pattern"},
+		"changes-watch-without-url.json":                       {"changes", "/changes/0 required url"},
+		"changes-watch-with-ref.json":                          {"changes", "/changes/0 additionalProperties"},
+		"changes-watch-work-item-id-wrong-prefix.json":         {"changes", "/changes/0/work_item_id pattern"},
 		"changes-without-revision.json":                        {"changes", "/ required revision"},
 		"changes-comment-id-wrong-prefix.json":                 {"changes", "/changes/0/comment_id pattern"},
 		"changes-comment-body-empty.json":                      {"changes", "/changes/0/body minLength"},
@@ -206,6 +210,9 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-call-url-query.json":                          {"adapter", "/call_url pattern"},
 		"adapter-call-url-without-final-slash.json":            {"adapter", "/call_url pattern"},
 		"adapter-description-secrets-twice.json":               {"adapter", "/description/roles/source/secrets uniqueItems"},
+		"adapter-submit-module-ref-branch.json":                {"adapter", "/submit_module/source/ref pattern"},
+		"adapter-submit-module-ref-short.json":                 {"adapter", "/submit_module/source/ref pattern"},
+		"adapter-submit-module-exclude.json":                   {"adapter", "/submit_module/exclude "},
 		"grant-without-pass-nonce.json":                        {"grant", "/ required pass_nonce"},
 		"grant-without-account.json":                           {"grant", "/ required account"},
 		"grant-end-without-grant-ref.json":                     {"grant-end", "/ required grant_ref"},
@@ -249,6 +256,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"read-answer-content-and-not-found.json":               {"read-answer", "/content "},
 		"read-answer-without-content-or-found.json":            {"read-answer", "/ required content"},
 		"run-credential-access-admin.json":                     {"run-credential", "/access enum"},
+		"run-credential-access-write-no-push.json":             {"run-credential", "/access enum"},
 		"run-credential-purpose-other.json":                    {"run-credential", "/purpose enum"},
 		"run-credential-without-resources.json":                {"run-credential", "/resources minItems; /resources minItems"},
 		"run-credential-work-two-resources.json":               {"run-credential", "/resources maxItems"},
@@ -417,6 +425,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: contracts.ChangeSync},
 			{Kind: contracts.ChangeSync, Interval: &interval},
 			{Kind: contracts.ChangeComment, CommentID: "sc_7k2m9q4v1x8z3c5d", Ref: "TRK-1", AuthorName: "Dana Example", Body: "Seen too."},
+			{Kind: contracts.ChangeWatch, WorkItemID: "wi_1", URL: "https://control.example.com/work-items/wi_1"},
 		}}},
 		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, CommentID: "sc_7k2m9q4v1x8z3c5d", Reason: "too_long"}},
 		{"connect-pass", contracts.ConnectPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
@@ -435,6 +444,11 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
 			CallURL: "https://adapter.example.com/calls/", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
 			Description: read(t, "fixtures/example-tracker.json")}},
+		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
+			Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60}, Description: read(t, "fixtures/example-tracker.json"),
+			SubmitModule: &contracts.SubmitModule{Name: "forge-submit", Source: contracts.HarnessSource{
+				Git: "https://code.example.com/example-org/forge-module", Ref: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4",
+				Module: "forge-submit"}}}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 		{"refusal", contracts.Refusal{Error: "grant_taken"}},
 		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
@@ -503,8 +517,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 
 // TestCollectionItemsRoundTrips decodes a listing whose second collection has items:
 // false into SourceCollections, and pins that Items is nil where the listing leaves
-// items out, points to false where it says false, and marshals back to a document that
-// source-collections.schema.json accepts.
+// items out, points to false where the listing has false, and marshals back to a
+// document that source-collections.schema.json accepts.
 func TestCollectionItemsRoundTrips(t *testing.T) {
 	var s contracts.SourceCollections
 	if err := json.Unmarshal(read(t, "fixtures/adapter/source-collections/code-host-items-false.json"), &s); err != nil {
@@ -572,7 +586,7 @@ func TestAdapterDescriptionRoundTrips(t *testing.T) {
 }
 
 // TestAdapterSetupURLRoundTrips decodes the start-up fixture with a setup_url into
-// Adapter, and pins that SetupURL holds it and that it marshals back to a document
+// Adapter, and pins that SetupURL is set to it and that it marshals back to a document
 // adapter.schema.json accepts, with the same setup_url; and that an Adapter without a
 // SetupURL marshals no setup_url member.
 func TestAdapterSetupURLRoundTrips(t *testing.T) {
@@ -615,11 +629,65 @@ func TestAdapterSetupURLRoundTrips(t *testing.T) {
 	}
 }
 
+// TestAdapterSubmitModuleRoundTrips decodes the start-up fixture with a submit_module
+// into Adapter, and pins that SubmitModule has its name and source, that it marshals back
+// to a document adapter.schema.json accepts, with the same submit_module, and that an
+// Adapter without a SubmitModule marshals no submit_module member.
+func TestAdapterSubmitModuleRoundTrips(t *testing.T) {
+	const name = "fixtures/adapter/adapter/code-host-submit-module.json"
+	var a contracts.Adapter
+	if err := json.Unmarshal(read(t, name), &a); err != nil {
+		t.Fatal(err)
+	}
+	want := contracts.SubmitModule{Name: "forge-submit", Source: contracts.HarnessSource{
+		Git: "https://code.example.com/example-org/forge-module", Ref: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4",
+		Module: "forge-submit"}}
+	if a.SubmitModule == nil || *a.SubmitModule != want {
+		t.Fatalf("%s decodes submit_module as %+v", name, a.SubmitModule)
+	}
+	schema := compile(t, "adapter.schema.json")
+	b, err := json.Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(schema, b); err != nil {
+		t.Errorf("%s marshals back to %s, which adapter.schema.json refuses: %v", name, b, err)
+	}
+	var doc, fixture map[string]json.RawMessage
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(read(t, name), &fixture); err != nil {
+		t.Fatal(err)
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, fixture["submit_module"]); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(doc["submit_module"], compact.Bytes()) {
+		t.Errorf("%s marshals back submit_module as %s, want %s", name, doc["submit_module"], compact.Bytes())
+	}
+	a.SubmitModule = nil
+	if b, err = json.Marshal(a); err != nil {
+		t.Fatal(err)
+	}
+	doc = nil
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := doc["submit_module"]; ok {
+		t.Errorf("an adapter without a submit module marshals to %s, with a submit_module member", b)
+	}
+	if err := validate(schema, b); err != nil {
+		t.Errorf("an adapter without a submit module marshals to %s, which adapter.schema.json refuses: %v", b, err)
+	}
+}
+
 // TestASetupURLIsRefusedForItsFragmentOrState pins the reason of each invalid start-up
 // fixture whose setup_url breaks a "not" of adapter.schema.json, which the refusal
-// itself does not name: the same document is accepted once the fragment is taken out, or
-// the query parameter state, written plainly or percent-encoded, bare or with a value, is
-// named otherwise.
+// itself does not contain: the same document is accepted once the fragment is taken
+// out, or the query parameter state, written plainly or percent-encoded, bare or with a
+// value, is named otherwise.
 func TestASetupURLIsRefusedForItsFragmentOrState(t *testing.T) {
 	schema := compile(t, "adapter.schema.json")
 	for name, fix := range map[string][2]string{
@@ -738,10 +806,10 @@ func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
 // TestADescriptionsNumbersFollowTheDescriptionContract pins that the numbers of an
 // adapter start-up's description member follow description.schema.json, not the integer
 // rule: fixtures/adapter/adapter/settings-numbers.json, whose description's settings
-// schema holds 1e3 and 0.5, is accepted by adapter.schema.json and by the strict check,
-// its description member is accepted by CheckDescription, and the integer rule over the
-// whole body refuses it. It also pins that every start-up fixture's description member
-// is accepted by CheckDescription.
+// schema contains 1e3 and 0.5, is accepted by adapter.schema.json and by the strict
+// check, its description member is accepted by CheckDescription, and the integer rule
+// over the whole body refuses it. It also pins that every start-up fixture's
+// description member is accepted by CheckDescription.
 func TestADescriptionsNumbersFollowTheDescriptionContract(t *testing.T) {
 	const name = "fixtures/adapter/adapter/settings-numbers.json"
 	b := read(t, name)
@@ -771,8 +839,8 @@ var externalWords = []string{"github", "issue", "pull", "repositor", "installati
 
 // TestTheAdapterSchemasNameNoExternalSystem walks every schema of the adapter, those of
 // the provisioner and explore contracts and description.schema.json among them, and fails on a member name, a required name, a
-// const or an enum value that holds an external system's word, or is app. The fixtures'
-// data are not checked.
+// const or an enum value that contains an external system's word, or is app. The
+// fixtures' data are not checked.
 func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
 	check := func(name, where, word string) {
 		w := strings.ToLower(word)
@@ -1328,7 +1396,7 @@ func TestEmptyListsMarshalAsEmptyLists(t *testing.T) {
 // strictJSON reports the first member an object repeats, at any depth, and the first
 // number written with a fraction or an exponent: the two rules of definitions.schema.json
 // that the control plane checks on a request's raw bytes, and that no schema can express,
-// since a parsed document holds 900.0 as the integer 900 and keeps one member of a name.
+// since a parsed document has 900.0 as the integer 900 and keeps one member of a name.
 // Every number of a request of the schema is an integer, except inside the description
 // member of an adapter start-up, whose numbers follow description.schema.json: for the
 // schema adapter, the integer rule is checked on the body without that member.
@@ -1392,7 +1460,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 }
 
 // TestACallURLIsRefusedForItsOneFault pins the reason of each invalid start-up fixture
-// whose call_url breaks one of its two patterns, which the refusal does not tell apart:
+// whose call_url breaks one of its two patterns, with the same refusal for both:
 // the same document is accepted once the one fault is fixed. It also pins that the
 // start-up fixture with a call_url decodes into Adapter with CallURL set, and that an
 // Adapter without a CallURL marshals no call_url member.
@@ -2087,7 +2155,7 @@ func TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
 // connect-return/linked-live-connection.json, with the same connection_id and nonce.
 // Whether the connection is pending or live, and whether the grant is already linked to
 // another live connection, are the control plane's and the adapter's checks, which
-// connect-return.schema.json states and no schema expresses.
+// connect-return.schema.json describes and no schema expresses.
 func TestAConnectFlowOnALiveConnectionHasTheSameShape(t *testing.T) {
 	var p contracts.ConnectPass
 	var r contracts.ConnectReturn

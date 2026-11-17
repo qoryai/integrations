@@ -11,15 +11,15 @@ import (
 	"github.com/qoryai/integrations/internal/rawjson"
 )
 
-// The limits of a description that description.schema.json states in words, since a
+// The limits of a description that description.schema.json has only in words, since a
 // schema cannot express them.
 const (
 	// DescriptionMaxBytes is the most bytes a description's raw document takes, 256 KiB.
 	DescriptionMaxBytes = 262144
-	// DescriptionMaxStringBytes is the most bytes of UTF-8 a string of a description,
-	// a member name included, holds.
+	// DescriptionMaxStringBytes is the most bytes of UTF-8 in a string of a
+	// description, a member name included.
 	DescriptionMaxStringBytes = 16384
-	// DescriptionMaxValues is the most JSON values a description holds in all: the
+	// DescriptionMaxValues is the most JSON values a description contains in all: the
 	// document itself, each array entry and each member's value count one each, and
 	// member names none.
 	DescriptionMaxValues = 4096
@@ -52,12 +52,12 @@ type GuidePart struct {
 
 // CheckDescription reports the first rule of description.schema.json that a
 // description's raw bytes break and that no schema can express: the bytes are at most
-// [DescriptionMaxBytes] and are UTF-8; no string holds a \u escape of a lone surrogate;
-// no object repeats a member, at any depth; no string, a member name included, holds
-// more than [DescriptionMaxStringBytes] bytes of UTF-8; the document holds at most
-// [DescriptionMaxValues] JSON values; and it nests arrays and objects at most
-// [DescriptionMaxDepth] levels deep. It checks b before any decoder reads it leniently,
-// and leaves the schema's rules to the schema.
+// [DescriptionMaxBytes] and are UTF-8; no string contains a \u escape of a lone
+// surrogate; no object repeats a member, at any depth; no string, a member name
+// included, has more than [DescriptionMaxStringBytes] bytes of UTF-8; the document
+// contains at most [DescriptionMaxValues] JSON values; and it nests arrays and objects
+// at most [DescriptionMaxDepth] levels deep. It checks b before any decoder reads it
+// leniently, and leaves the schema's rules to the schema.
 func CheckDescription(b []byte) error {
 	if len(b) > DescriptionMaxBytes {
 		return fmt.Errorf("the document is %d bytes, more than %d (256 KiB)", len(b), DescriptionMaxBytes)
@@ -231,7 +231,7 @@ var exactHost = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z
 var numberLabel = regexp.MustCompile(`(^|\.)([0-9]+|0x[0-9a-f]*)$`)
 
 // endpointHost returns the host of endpoint, the URL endpoint of model_provider
-// apis[i], as [urlHost] reads it, or an error that states why. These hosts are a
+// apis[i], as [urlHost] reads it, or an error that shows why. These hosts are a
 // subset of the hosts Forager's policy.EndpointHost reads, so a gateway reads the host
 // of every endpoint this accepts.
 func endpointHost(endpoint string, i int) (string, error) {
@@ -243,7 +243,7 @@ func endpointHost(endpoint string, i int) (string, error) {
 }
 
 // urlHost returns the host of raw, a URL as $defs/endpoint of description.schema.json
-// defines it, or an error that states why. The host is in exactHost's form, and a host
+// defines it, or an error that shows why. The host is in exactHost's form, and a host
 // whose last label is a number is a canonical IPv4 address, four decimal parts from 0
 // to 255 with no leading zero; a port, when one is written, is from 1 to 65535.
 func urlHost(raw string) (string, error) {

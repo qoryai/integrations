@@ -42,7 +42,7 @@ func compileMachines(t *testing.T, name string) *jsonschema.Schema {
 	return s
 }
 
-// TestMachinesSchemasAreTheContract pins that machines/v1 holds exactly the eleven
+// TestMachinesSchemasAreTheContract pins that machines/v1 contains exactly the eleven
 // schemas, that each has the $id MachinesBase/<file>, and that each compiles.
 func TestMachinesSchemasAreTheContract(t *testing.T) {
 	entries, err := fs.ReadDir(contracts.MachinesFS, ".")
@@ -206,7 +206,7 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 }
 
 // TestAnIDOfADashIsRefusedForTheDashAlone pins that the invalid fixtures whose id is
-// exactly -, whose refusal names no keyword, are refused by the not of the id alone.
+// exactly -, whose refusal contains no keyword, are refused by the not of the id alone.
 func TestAnIDOfADashIsRefusedForTheDashAlone(t *testing.T) {
 	for _, c := range []struct{ fixture, schema string }{
 		{"make-answer-id-dash.json", "make-answer"},

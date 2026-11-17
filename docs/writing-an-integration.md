@@ -79,7 +79,7 @@ and [§Settings](../contracts/integration/v1/README.md#settings).
 
 ## Layout
 
-Each integration is one repository. It holds:
+Each integration is one repository. It contains:
 
 - its README,
 - its program, under `cmd/<program>/`,

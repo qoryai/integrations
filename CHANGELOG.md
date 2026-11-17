@@ -9,6 +9,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Upgrading
 
+- Before an adapter sends `submit_module` in its start-up, update the control plane to
+  this `adapter.schema.json`. A control plane that checks the start-up against an
+  earlier copy refuses the member, `invalid_request`. Update a reader of the run
+  documents to this `documents.schema.json` before the control plane writes
+  `submit_module`, `submit`, or `write-no-push` in `access` or in the `access` of a
+  workflow in `harness` there: a reader that checks the run documents against an
+  earlier copy refuses each of them.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
@@ -27,8 +34,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   credential host that an `egress_hosts` entry cannot be, such as `localhost` or a single
   label.
 - The module requires Go 1.27.3 or later (`go 1.27.3` in `go.mod`), because Forager does.
-  An integration that requires this module builds with Go 1.27.3 or later. `go.yml` sets
-  `GOTOOLCHAIN` to `go1.27.3+auto`, because its image has Go 1.27.2.
+  An integration that requires this module builds with Go 1.27.3 or later. `go.yml` runs
+  its job in `ghcr.io/qoryai/ci-images:golang-1.27.4`, by digest. That image has Go
+  1.27.4, and `go.yml` sets `GOTOOLCHAIN` to `go1.27.4+auto`, so a job downloads a newer
+  Go when the `go.mod` of the calling repository requires one.
 - Run documents have no top-level `stack` and no `stack_reference`, members that this
   module had after 0.3.0 and before this release. A reader takes the harness from the
   harness file of the target at `target_version`, or from `harness`, as Added describes.
@@ -105,9 +114,83 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `X-Qory-Contract-Version` defines after the cursor; read the next entries from its
   `cursor`. In Go, `ChangeComment`, `Change.CommentID`, `Change.AuthorName`,
   `Change.Body`, `Comment.CommentID` and `ChangesFailed` are added.
+- If a program builds or reads the `bind` of the `harness` of the run documents in Go,
+  use `BindValue` for each role. `HarnessSection.Bind` is a
+  `map[string]map[string]BindValue`; after 0.3.0 and before this release it was a
+  `map[string]map[string]string`. Set `BindValue.Name` for a role that is not a group,
+  and `BindValue.Names` for a group role, which a list of agents fills.
 
 ### Added
 
+- The run contract has the next-session call, for a run of several sessions on one
+  machine. After each session that did not pause, qory sends a request,
+  `next-session-request.schema.json`: `session`, Forager's number of the session that
+  ended, from 1; `state`, `succeeded`, `failed` or `cancelled`; and `reason`, the reason
+  of the session's `dev.qory.session.exited`, or `null`. The request has no verdict: the
+  control plane reads the newest verdict that the run stored after the previous step. The
+  answer, `next-session-answer.schema.json`, is one of two shapes, and an answer with the
+  members of both fails. `{"next": "session", ...}` has `session`, the control plane's
+  number of the session in the run; `workflow`; `time_limit_minutes`; `full_suite`;
+  `inputs`; and optionally `model_choice` and `model_credential`. `{"next": "end"}` has
+  no other member. qory sends the request through Forager's link, and the gateway forwards
+  it to the control plane; a container cannot send it. In Go,
+  `NextSessionRequest`, `NextSessionAnswer`, `NextSessionKindSession` and
+  `NextSessionKindEnd` are added.
+- `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
+  `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning, and
+  no `runtime`, because every session uses the runtime of `run_settings`.
+  `model_credential` is the name of a credential of the run, such as the provider's
+  public id, a hyphen and the key's place from 1; the schema checks only the pattern of
+  a credential's name in Forager's policy.
+- The next-session request follows the rules of `dev.qory.session.exited` for `state`
+  and `reason` that do not depend on its `exit_code`: a `cancelled` session has a
+  `reason`, the reasons `timeout` and `interrupted` are for a `cancelled` session only,
+  and the reason `gateway_lost` is for a `failed` session only.
+- The run documents of the step `explore` can contain `time_limit_minutes`,
+  `shared_run` and `full_suite`, and `contracts.Documents` has them as `TimeLimitMinutes`,
+  `SharedRun` and `FullSuite`. The run documents are the documents of session 1.
+  `time_limit_minutes` is the time limit of session 1, in minutes, from 15 to 1440.
+  `shared_run` is `true` when qory sends the next-session request after each session.
+  `full_suite` is `true` when session 1 runs the full test suite after the agent ends.
+  `shared_run` and `full_suite` left out are the same as `false`. A run of the step
+  `prebuild` has none of the three.
+- The run documents of the step `prebuild` can contain `largest_prebuilt_image_bytes`,
+  and `contracts.Documents` has it as `LargestPrebuiltImageBytes`, an `*int64`: the
+  largest size, in decimal bytes, that the target image of the build may have. It is an
+  integer of at least 1 and at most 9223372036854775807. A run of any other step has no
+  `largest_prebuilt_image_bytes`. When it is absent, the image has no size limit.
+- The adapter's start-up, `adapter.schema.json`, and the run documents can contain
+  `submit_module`: the harness module that contains a forge's submit program, the module
+  whose manifest declares `submit_program`. It has the shape of a module of `harness`,
+  `{name, source}`, with `name` optional and no `exclude`, `only` or `variant`. Its
+  `source.ref` is a full commit hash, 40 or 64 lower-case hexadecimal digits; a branch
+  name, a tag and a short hash fail the schema. `ref` in the other sources of `harness`
+  stays any version. The adapter of a forge sends `submit_module` in its start-up. The
+  control plane writes it to the run documents only for a run with `submit`. It does so
+  whether `harness` is present or absent. A run of the step `prebuild` has no
+  `submit_module`. The machine appends the module after the modules of the harness it
+  composes. For the rule when a composed module has the same name as
+  `submit_module`, see the description of `submit_module` in `documents.schema.json`. In
+  Go, `SubmitModule`, `Adapter.SubmitModule` and `Documents.SubmitModule` are added.
+- The run documents can contain `submit`: the settings of the submit step of the run,
+  with `type` and `send`, both required, and no other member. `type` is the name of the
+  artifact type of the submission: lower-case letters and digits in groups joined by
+  single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`. The
+  control plane writes `submit` whenever the process version of the workspace has one.
+  `submit` is present only on a run with `workflow` and with `access` `write`, and never
+  on a run of the step `prebuild`. Run documents can have `submit` without
+  `submit_module`, but not `submit_module` without `submit`. With `submit` and no
+  `submit_module`, qory runs the submit step and records the draft of each repository as
+  `{"none": "no-program"}`. On a run with a run code, qory takes the settings of the
+  submit step only from `submit`, never from `process.yaml`. If `process.yaml` has a
+  different `submit`, qory prints one line with both values and uses `submit` of the run
+  documents. A run that a person starts with no run code has no `submit` and no submit
+  step. In Go, `Submit` and `Documents.Submit` are added.
+- `access` in the run documents, and `access` of a workflow in `harness`, can be
+  `write-no-push`: the run gets a read credential and a copy of the target that the
+  agent may change, and the run sends nothing back to the target and has no `submit`.
+  A call with the path `run-credential` whose purpose is `work` has the access `read`
+  for such a run.
 - A description can declare the role `model_provider`. The role lists the provider's APIs
   in `apis`, each with its `format`, `endpoint` and `auth`, where `oauth` marks a
   subscription access token, and optional `key_prefixes`; and the `models` a new provider
@@ -170,10 +253,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/connections/disconnect`, `POST /v1/grants/end` and
   `POST /v1/work-items/changes/failed`, and the change feed
   `GET /v1/work-items/changes`, with the entry kinds `work_item`, `comment`,
-  `collection`, `grant` and `sync`. The adapter signs each request with its access key as
-  `github.com/qoryai/forager/accesskey` signs one, sends the revision in
+  `collection`, `grant`, `sync` and `watch`. The adapter signs each request with its
+  access key as `github.com/qoryai/forager/accesskey` signs one, sends the revision in
   `X-Qory-Contract-Version`, and checks each signed answer under a server key it pinned at
   enrolment. `refusal.schema.json` lists the refusals.
+- The change feed entry kind `watch`, with `work_item_id` and `url`, the work item's
+  page in the control plane. The control plane writes a `watch` entry whenever a run
+  stores a submission version, in the feed of the adapter of the run's target
+  collection, whatever source the work item came from, and also when the work item came
+  from no item at a source. In Go, `ChangeWatch` is added.
 - In the change feed, entries for one item, the `work_item` and `comment` entries with
   the same `ref`, apply in cursor order. While the adapter retries an entry that failed,
   it may apply a later entry first when neither entry changes what the other depends on,
@@ -285,7 +373,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The `source` role may contain `targets: true`: the adapter's collections can have a
   target, a place where a run's changes go. An adapter with `targets` handles a
   `run-credential` call with purpose `work` for any of its collections that has a target,
-  under the rules of `run-credential.schema.json`. This holds whatever source the run's
+  under the rules of `run-credential.schema.json`. This applies whatever source the run's
   work item came from, and also when the work item came from no item at a source. The
   control plane offers the collections of an adapter with `targets` as places for a run's
   changes, and does not offer them when `targets` is absent. In both cases, the control
@@ -410,16 +498,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,
-  `run_settings`, `workflow`, `harness_hidden`, `harness`, `image_destination`,
-  `environment_destination` and `environment_image` by step. `target_version` is the exact
+  `run_settings`, `time_limit_minutes`, `shared_run`, `full_suite`, `workflow`,
+  `harness_hidden`, `harness`, `image_destination`, `environment_destination` and
+  `environment_image` by step. `target_version` is the exact
   version at which the control plane checked for the harness file of the target.
-  `harness` is present when that file is absent, when its `harness` section has no
-  `extends` and lists no module, or when the file was not read, and the machine then
-  composes `harness`. The registry host of `image_destination`,
+  `harness` is present in three cases: that file is absent, its `harness` section has no
+  `extends` and lists no module, or the file was not read. In each of these cases, the
+  machine composes `harness`. The registry host of `image_destination`,
   `environment_destination` and `environment_image` is lower case only, and a Docker Hub
   host is refused. `workflow` and each name in `harness.workflows` are a lower-case
   letter, then up to 54 lower-case letters, digits and hyphens, so that
-  `workflow-<name>` stays within 64 characters.
+  `workflow-<name>` stays within 64 characters. The rest of this entry applies to a
+  target that is a repository, as described under `target_version`. The machine
+  composes the harness file of the target at `target_version` when its `harness`
+  section has `extends` or lists a module. A branch of the run's work item does not
+  change that version. If the run works on such a branch, the machine checks it out after
+  the compose. An agent may change, on that branch, the harness file of the target or a
+  file that the compose reads. A run composes that change only when the run's
+  `target_version` contains the change.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
   `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
@@ -431,9 +527,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
   `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
   `agents`, `commands` or `skills`, to its roles, each to the name of one entry of that
-  kind: `bind: {agents: {developer: web-developer}}`. In Go, `HarnessSection.Bind` is a
-  `map[string]map[string]string`, and decoding a `HarnessSection` returns an error for a
-  bind kind other than `agents`, `commands` or `skills`, or one whose value is null.
+  kind: `bind: {agents: {developer: web-developer}}`. A group role of the kind `agents`,
+  a role that several agents fill, takes a list of 1 or more agents, as in qory's
+  `qory.yaml`: `bind: {agents: {reviewers: [copy-reviewer, legal-reviewer]}}`. A name may
+  appear twice in a list. A list on a `commands` or `skills` role and an empty list fail
+  the schema. A list on any `agents` role passes it; qory's compose fails for a list on
+  a role that is not a group in the module manifests. In Go,
+  `HarnessSection.Bind` is a `map[string]map[string]BindValue`: `BindValue.Name` is set
+  for a name, and `BindValue.Names` for a list, and each is written back in the form it
+  was read in. Decoding a `HarnessSection` returns an error for a bind kind other than
+  `agents`, `commands` or `skills`, for one whose value is null, for a role whose value
+  is null, for a list on a `commands` or `skills` role, for an empty list, and for a null
+  item of a list.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that
@@ -441,7 +546,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   nothing fetched. Go types such as `Adapter`, `Grant`, `RunCredential`, `Claim`,
   `Documents` and `MachinesMake` marshal to the documents that their schemas accept.
   `CheckDescription`, `CheckModelProvider` and `CheckEgressHosts` check the rules of a
-  description that its schema states only in words.
+  description that its schema describes only in words.
 - `conformance.Description` also checks a description's `model_provider` role and
   `egress_hosts`, and refuses an API `auth` of the scheme `header` whose header
   conformance reserves, as `conformance.Credential` refuses one in an `apply` entry.
@@ -452,10 +557,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Changed
 
+- `run_settings` has no `time_limit_minutes`. The time limit of session 1 is
+  `time_limit_minutes` in the run documents, with the same limits, 15 to 1440 minutes.
+  `contracts.RunSettings` has no `TimeLimitMinutes`.
 - The module requires Forager at its main commit b6ac9f0
   (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
-- The contract states that `domains` applies only to where work comes from: a credential
-  of the `credential` role reaches a run in a workspace of any domain.
+- The contract describes `domains` as applying only to where work comes from: a
+  credential of the `credential` role reaches a run in a workspace of any domain.
 - When a node pool's starter created no machine for a dispatch, the machine log,
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the

@@ -187,6 +187,11 @@ The feed answer has at least one entry whenever the feed has an entry of a kind 
 revision in the request's `X-Qory-Contract-Version` defines after the cursor. The
 adapter reads the next entries from the feed answer's `cursor`.
 
+The control plane writes a `watch` entry, with `work_item_id` and `url`, whenever a run
+stores a submission version. It writes the entry in the feed of the adapter of the run's
+target collection, whatever source the work item came from, and also when the work item
+came from no item at a source.
+
 A person can write a comment in the control plane on a work item taken in from an item
 at the source. The comment reaches the source in four steps:
 

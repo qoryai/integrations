@@ -15,14 +15,14 @@ import (
 )
 
 // Version is the document format of integration/v1 and provisioner/v1: every request
-// body of both contracts carries it, and so do the change feed's answer, the claim
+// body of both contracts contains it, and so do the change feed's answer, the claim
 // answer, the connect pass's payload and the setup pass's payload.
 // It is 1 for as long as those contracts are v1. For integration/v1, a change that
 // breaks a reader is a new contract, integration/v2, not a new Version inside v1.
 const Version = 1
 
 // Revision is the integration contract's revision, which X-Qory-Contract-Version
-// carries as a decimal integer. It counts additions alone: each addition to
+// contains as a decimal integer. It counts additions alone: each addition to
 // integration/v1 raises it. Additions made before revision 1 is released are part of
 // revision 1. A change that breaks a reader is a new contract, integration/v2, not a
 // new revision.
@@ -64,8 +64,8 @@ var ErrCallMethod = errors.New("a call is a POST, and no other method")
 
 // Call is one call of the control plane to the adapter, as its signature covers it. The
 // message is six lines joined by a line feed, with none after the last: [CallDomain], the
-// adapter id, the instance id, the method in upper case, the call's path as its schema
-// states it, such as resolve, and the raw body.
+// adapter id, the instance id, the method in upper case, the call's path as given in
+// its schema, such as resolve, and the raw body.
 type Call struct {
 	AdapterID  string
 	InstanceID string
@@ -119,7 +119,7 @@ const MaxRequest = 1 << 20
 // 3339 in UTC with whole seconds.
 const TimeLayout = "2006-01-02T15:04:05Z"
 
-// FormatTime writes a moment as the documents hold it, [TimeLayout], in UTC.
+// FormatTime writes a moment in the form the documents use, [TimeLayout], in UTC.
 func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 
 // Adapter is the body of POST /v1/adapter, adapter.schema.json, which an adapter sends
@@ -131,14 +131,18 @@ func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 // document `<program> describe` prints for the adapter's program, description.schema.json,
 // sent whole: the same JSON document, which json.Marshal writes compacted and with <, >
 // and & escaped. A nil Description marshals as null, which adapter.schema.json refuses.
+// SubmitModule is set only by the adapter of a forge: the harness module that contains
+// the forge's submit program, whose source's ref is a full commit hash. The control
+// plane writes it as [Documents.SubmitModule]. Nil, the start-up has no submit_module.
 type Adapter struct {
-	Version     int             `json:"version"`
-	Time        string          `json:"time"`
-	ConnectURL  string          `json:"connect_url"`
-	SetupURL    string          `json:"setup_url,omitempty"`
-	CallURL     string          `json:"call_url,omitempty"`
-	Sync        Sync            `json:"sync"`
-	Description json.RawMessage `json:"description"`
+	Version      int             `json:"version"`
+	Time         string          `json:"time"`
+	ConnectURL   string          `json:"connect_url"`
+	SetupURL     string          `json:"setup_url,omitempty"`
+	CallURL      string          `json:"call_url,omitempty"`
+	Sync         Sync            `json:"sync"`
+	Description  json.RawMessage `json:"description"`
+	SubmitModule *SubmitModule   `json:"submit_module,omitempty"`
 }
 
 // Sync is how often an adapter pulls changes from the source, in seconds, and whether
@@ -223,7 +227,7 @@ func (s SourceItems) MarshalJSON() ([]byte, error) {
 // Item is one item of work at the source. Key is the item's name as people say it at
 // its source, such as #1231, short within its collection, 1 to 64 characters, shown as
 // text and never compared or parsed; empty, the adapter gives none. A nil Labels
-// marshals as an empty list, and a nil StateReason as null. Truncated names the fields
+// marshals as an empty list, and a nil StateReason as null. Truncated lists the fields
 // the adapter cut to fit the contract's limits: "title", "body" or "filed_by.name", cut
 // at a code-point boundary, or "labels", some cut to 100 characters or those past the
 // 100th left out; nil, the adapter cut none.
@@ -283,7 +287,7 @@ func (s SourceItemComments) MarshalJSON() ([]byte, error) {
 }
 
 // Comment is one comment on an item; Deleted marks one deleted at the source.
-// Truncated names the text fields the adapter cut at a code-point boundary to fit the
+// Truncated lists the text fields the adapter cut at a code-point boundary to fit the
 // contract's limit, "body" or "author.name"; nil, the adapter cut none. CommentID is set
 // only on the comment the adapter posted for the comment entry with CommentID; the
 // control plane matches the sent comment to the comment it stored by that id. Empty, the
@@ -301,8 +305,8 @@ type Comment struct {
 	Truncated  []string `json:"truncated,omitempty"`
 }
 
-// CommentsComplete says a request's comments are all of the item's comments, read from
-// Since.
+// CommentsComplete is present when a request's comments are all of the item's
+// comments, read from Since.
 type CommentsComplete struct {
 	Since string `json:"since"`
 }
@@ -352,15 +356,18 @@ const (
 	ChangeCollection = "collection"
 	ChangeGrant      = "grant"
 	ChangeSync       = "sync"
+	ChangeWatch      = "watch"
 )
 
-// Change is one entry of the change feed, of the kind Kind names. A work_item entry has
+// Change is one entry of the change feed, of the kind set in Kind. A work_item entry has
 // WorkItemID, Ref, Status "taken_in" or "undone", and URL; a comment entry is a
 // comment a person wrote in the control plane, which the adapter posts on the item Ref,
 // and has CommentID, Ref, AuthorName and Body; a collection entry has
 // CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
-// adapter's declared default. It marshals with the members of its kind alone.
+// adapter's declared default; a watch entry, which the control plane writes when a run
+// whose target collection is one of the adapter's collections stores a submission
+// version, has WorkItemID and URL. It marshals with the members of its kind alone.
 //
 // AuthorName is plain text, and the control plane sends it as it is, with no escaping.
 // The adapter writes it as plain text: it escapes each character or sequence that the
@@ -425,6 +432,12 @@ func (c Change) MarshalJSON() ([]byte, error) {
 			Kind     string `json:"kind"`
 			Interval *int   `json:"interval"`
 		}{c.Kind, c.Interval})
+	case ChangeWatch:
+		return json.Marshal(struct {
+			Kind       string `json:"kind"`
+			WorkItemID string `json:"work_item_id"`
+			URL        string `json:"url"`
+		}{c.Kind, c.WorkItemID, c.URL})
 	}
 	return nil, fmt.Errorf("the change feed defines no kind %q", c.Kind)
 }
@@ -602,7 +615,7 @@ func (p AdapterSecretsPlaintext) MarshalJSON() ([]byte, error) {
 // Check reports the first rule of adapter-secrets-plaintext.schema.json that the
 // plaintext breaks and that the schema does not express: each name appears once, and
 // each value is 1 to [SecretValueMaxBytes] bytes of UTF-8 without a NUL. The message
-// names the secret and never contains a value.
+// contains the secret's name and never a value.
 func (p AdapterSecretsPlaintext) Check() error {
 	seen := map[string]bool{}
 	for _, e := range p.Secrets {
@@ -666,7 +679,7 @@ func (g Grants) MarshalJSON() ([]byte, error) {
 	return json.Marshal(plain(g))
 }
 
-// GrantEntry is one grant of the control plane's copy: the connection that holds it and
+// GrantEntry is one grant of the control plane's copy: the connection that has it and
 // the grant's ref.
 type GrantEntry struct {
 	ConnectionID string `json:"connection_id"`
@@ -684,21 +697,20 @@ const RunCredentialTokenMaxBytes = 16384
 // RunCredential is the body of the call with the path [RunCredentialPath],
 // run-credential.schema.json: a credential for one run covering Resources, with
 // Access "read" or "write" and Purpose "harness" or "work". Access is "read" for
-// Purpose "harness". run-credential.schema.json states the runs for which the control
+// Purpose "harness". run-credential.schema.json lists the runs for which the control
 // plane uses a harness credential. GrantRef is set for Purpose "harness" and empty for
-// Purpose "work". ConnectionID is set for Purpose
-// "work" and empty for Purpose "harness": it is the connection of the run's target
-// collection, as the control plane holds it for the run's organisation, a live
-// connection of that organisation when the call is sent. For a work call, the adapter
-// checks that the collection is a live collection under ConnectionID in its state, and
-// does not look the connection up from the ref; it uses only a grant that the control
-// plane's copy of grants, [Grants], has under ConnectionID, that covers the collection
-// and allows Access, and never a grant of another connection. It never uses a grant
-// that it keeps only while it sends that grant's report again.
-// Resources has 1 to 64 resource refs for Purpose "harness", each the ResourceRef of a
-// [Resolved], as the adapter answered it, never its PublicRef. For Purpose "work", it
-// has exactly one: the ref of the collection of the run's target, as the adapter listed
-// it, which for a target from an item is the item's collection.
+// Purpose "work". ConnectionID is set for Purpose "work" and empty for Purpose
+// "harness": it is the connection of the run's target collection, as the control plane
+// holds it for the run's organisation, a live connection of that organisation when the
+// call is sent. For a work call, the adapter checks that the collection is a live
+// collection under ConnectionID in its state, and does not look the connection up from
+// the ref; it uses only a grant that the control plane's copy of grants, [Grants], has
+// under ConnectionID, that covers the collection and allows Access, and never a grant
+// of another connection. It never uses a grant that it keeps only while it sends that
+// grant's report again. Resources has 1 to 64 resource refs for Purpose "harness", each
+// the ResourceRef of a [Resolved], as the adapter answered it, never its PublicRef. For
+// Purpose "work", it has exactly one: the ref of the collection of the run's target, as
+// the adapter listed it, which for a target from an item is the item's collection.
 type RunCredential struct {
 	Version      int      `json:"version"`
 	Time         string   `json:"time"`
@@ -780,8 +792,9 @@ type Resolve struct {
 // [ResolvePath], resolve-answer.schema.json: one result for each address of the call, in
 // the call's order. The control plane uses a result only under a grant that the run may
 // use, or, for a result with Public set, without a grant and only to send a
-// [ReadPublic], as resolve-answer.schema.json states. It treats every other result as
-// covered: false, or, when Public is set, as a result with Public set and no GrantRef.
+// [ReadPublic], as described in resolve-answer.schema.json. It treats every other
+// result as covered: false, or, when Public is set, as a result with Public set and no
+// GrantRef.
 // Under an assignment, it sends a [RunCredential] only when the adapter's
 // credential_scope is resource, with Resources set to the assigned source's resource
 // alone; when credential_scope is grant, it reads the assigned source only with a

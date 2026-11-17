@@ -94,7 +94,7 @@ func TestTheModelProviderDefinitionsHoldTheirRules(t *testing.T) {
 }
 
 // TestAModelProviderIsRefusedForTheRuleInItsName pins the reason of each invalid
-// model_provider description whose refusal does not name it: the same document is
+// model_provider description whose refusal does not contain it: the same document is
 // accepted once the one part its name points to is fixed.
 func TestAModelProviderIsRefusedForTheRuleInItsName(t *testing.T) {
 	schema := compile(t, "description.schema.json")
@@ -179,8 +179,8 @@ func TestAModelProviderHoldsItsCaps(t *testing.T) {
 	}
 }
 
-// TestAnAPIHoldsItsRules pins the apis of model_provider to the rules their schema
-// states, with a value at each edge accepted and a value past it refused: 1 to 4 APIs;
+// TestAnAPIHoldsItsRules pins the apis of model_provider to the rules of their
+// schema, with a value at each edge accepted and a value past it refused: 1 to 4 APIs;
 // an endpoint that is https, with a host, an optional port and path, and no user
 // information, query or fragment, at most 2048 characters; an auth whose oauth is true
 // and beside bearer alone; and 1 to 4 key prefixes, none twice, each 1 to 32 characters
@@ -273,8 +273,8 @@ func TestAnAPIHoldsItsRules(t *testing.T) {
 	check("an API without auth", `{"format": "gemini", "endpoint": `+url+`}`, "/roles/model_provider/apis/0 required auth")
 }
 
-// TestLimitWindowsHoldTheirRules pins limit_windows of model_provider to the rules its
-// schema states, with a value at each edge accepted and a value past it refused: 1 to
+// TestLimitWindowsHoldTheirRules pins limit_windows of model_provider to the rules of
+// its schema, with a value at each edge accepted and a value past it refused: 1 to
 // 11 names, none twice, each 1 to 64 characters of lower-case letters, digits and
 // underscores that starts with a letter. A provider without limit_windows is accepted.
 func TestLimitWindowsHoldTheirRules(t *testing.T) {
@@ -625,7 +625,7 @@ func static(endpoint string) string {
 
 // TestCheckModelProviderHoldsTheRulesTheSchemaDoesNotCheck pins the rules of the
 // model_provider role that the schema does not check: each refused document is accepted
-// by the schema and refused by CheckModelProvider with a message that states the rule;
+// by the schema and refused by CheckModelProvider with a message that contains the rule;
 // an endpoint whose host or port a gateway cannot read is refused by CheckModelProvider
 // and CheckEgressHosts alike, beside endpoints at the edges that are accepted; every
 // description under fixtures keeps the rules; and two APIs with two formats, the

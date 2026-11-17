@@ -466,10 +466,10 @@ func TestTheReaderRefusesWhatTheSchemaCannotSee(t *testing.T) {
 	}
 }
 
-// TestCheckDescriptionHoldsTheWordedLimits pins each limit description.schema.json
-// states in words, at the limit and one past it: the raw bytes, a string's and a member
-// name's bytes of UTF-8, counted in bytes and not characters, the values, and the levels
-// of nesting.
+// TestCheckDescriptionHoldsTheWordedLimits pins each limit that description.schema.json
+// has only in words, at the limit and one past it: the raw bytes, a string's and a
+// member name's bytes of UTF-8, counted in bytes and not characters, the values, and
+// the levels of nesting.
 func TestCheckDescriptionHoldsTheWordedLimits(t *testing.T) {
 	e := "é"                       // two bytes of UTF-8
 	values := func(n int) string { // the object, its member's array, and n-2 entries
