@@ -76,7 +76,8 @@ func CheckDescription(b []byte) error {
 // CheckModelProvider reports the first rule of the model_provider role of
 // description.schema.json that a description breaks and that the schema does not
 // express: no two entries of apis have the same format; an API endpoint that is a URL,
-// the url of each oauth_refresh, and each of the four urls of each oauth_device, each have a host and port as [urlHost] reads them;
+// the url of each oauth_refresh, and each of the four urls of each oauth_device, each
+// have a host and port as [urlHost] reads them;
 // each entry of an API's paths is a path that Forager's policy.ValidPath accepts and
 // that policy.UnclearPath does not report, since the gateway denies a request path
 // with such a part before it reads any credential's paths, so the entry would match

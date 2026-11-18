@@ -547,6 +547,36 @@ func TestOAuthDeviceHoldsItsRules(t *testing.T) {
 	}
 }
 
+// TestTheAcmeSubscriptionFixtureHasOAuthDevice pins that fixtures/acme-subscription.json
+// sets oauth_device with its four members, so that a valid description with the member
+// stays among the fixtures that TestDescriptionFixturesValidate accepts.
+func TestTheAcmeSubscriptionFixtureHasOAuthDevice(t *testing.T) {
+	doc, err := contracts.Document("fixtures/acme-subscription.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, _ := doc.(map[string]any)
+	roles, _ := d["roles"].(map[string]any)
+	role, _ := roles["model_provider"].(map[string]any)
+	apis, _ := role["apis"].([]any)
+	if len(apis) != 1 {
+		t.Fatalf("%d APIs, want 1", len(apis))
+	}
+	api, _ := apis[0].(map[string]any)
+	device, ok := api["oauth_device"].(map[string]any)
+	if !ok {
+		t.Fatal("the API has no oauth_device")
+	}
+	for _, member := range []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"} {
+		if u, ok := device[member].(string); !ok || !strings.HasPrefix(u, "https://") {
+			t.Errorf("oauth_device %s is %v, want an https URL", member, device[member])
+		}
+	}
+	if len(device) != 4 {
+		t.Errorf("oauth_device has %d members, want 4", len(device))
+	}
+}
+
 // TestCheckModelProviderReadsTheOAuthDeviceURLHosts pins that CheckModelProvider refuses
 // each of the four urls of an oauth_device whose host or port the control plane cannot
 // read, which the schema accepts, names the member, and accepts urls at the edges.

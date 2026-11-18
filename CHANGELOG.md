@@ -121,13 +121,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 - An API of `model_provider` can set `oauth_device`, next to `oauth_refresh`, in
   `description.schema.json`: the four URLs with which the control plane signs a person
-  in with the OAuth device code flow. `usercode_url` is where the control plane asks
-  for a user code, `poll_url` is where it polls until the person approves,
+  in with the OAuth device code flow. `usercode_url` is where the control plane sends
+  the request for a user code, `poll_url` is where it polls until the person approves,
   `verification_url` is the page where the person enters the code, and `redirect_uri`
   is the redirect URI of the code exchange. Each is an https URL, as for `url` of
   `oauth_refresh`, and all four are required. `oauth_device` is allowed only with
   `oauth_refresh`, and it has no client id: the sign-in uses the `client_id` of
-  `oauth_refresh`, and sends the code exchange to its `url`.
+  `oauth_refresh`, and sends the code exchange to the `url` of `oauth_refresh`.
   `contracts.CheckModelProvider` refuses an `oauth_device` URL whose host or port the
   control plane cannot read. A description without `oauth_device` is unchanged.
   `descriptions/openai-subscription.json` sets it for OpenAI's device code sign-in, and
@@ -372,7 +372,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `https://api.openai.com/v1`, a bearer key that starts with `sk-`, and six GPT models.
   The endpoint and host follow OpenAI's API reference.
 - `descriptions/openai-subscription.json` describes the OpenAI subscription provider: a
-  ChatGPT plan's sign-in from Codex, for the `codex` runtime, on the Responses API at
+  ChatGPT plan's sign-in, for the `codex` runtime, on the Responses API at
   `https://chatgpt.com/backend-api/codex`, with `paths` `/backend-api/codex/*`,
   `limit_windows` `five_hour` and `seven_day`, the refresh at
   `https://auth.openai.com/oauth/token`, and ten GPT models. Its `auth` sets
