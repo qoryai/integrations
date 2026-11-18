@@ -570,8 +570,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
   `workflows` in `qory-stack.yaml`, so the stack declares the access level of each of its
   workflows. A section that defines a stack, without `extends`, takes no target: the
-  machine composes it for `run_settings.runtime`, or, when the run documents have no
-  `run_settings`, for the default runtime of the machine. A section with `extends` takes
+  machine composes it for the runtime of the session: `run_settings.runtime` for session
+  1; for a later session, the `runtime` of its `model_choice`, or `run_settings.runtime`
+  when it has none; and, when the run documents have no `run_settings`, the default
+  runtime of the machine. A section with `extends` takes
   the workflows of its base, and the schema rejects `workflows` in it. In Go,
   `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
   `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
