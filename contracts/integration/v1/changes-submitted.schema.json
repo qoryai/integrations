@@ -60,7 +60,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["number", "url", "title", "state", "action"],
-      "if": {"properties": {"state": {"enum": ["closed", "merged"]}}},
+      "if": {"properties": {"state": {"enum": ["closed", "merged"]}}, "required": ["state"]},
       "then": {"properties": {"action": {"const": "kept"}}},
       "properties": {
         "number": {"description": "The draft's number on the forge, 1 or more. It may differ from the number in the entry, which is a hint: see draft.number in changes.schema.json.", "type": "integer", "minimum": 1},

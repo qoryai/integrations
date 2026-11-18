@@ -175,7 +175,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   asked for and the lines do not make, and prints at most 20 lines of standard error,
   each prefixed `qory run: submit program: `. The contract has the rules of the marked
   block and of the title. In Go, `ParseSubmitLines`, `ReadSubmitRun`,
-  `MarkedDescription`, `NextTitle` and the constants of the names are added.
+  `MarkedDescription`, `NextTitle` and the constants of the input and key names are
+  added.
 - The run contract has a run's end, `outcome.schema.json`, titled Run end: `state`
   (`succeeded`, `failed` or `cancelled`), and optionally `reason` and `exit_code`, as
   Forager's `dev.qory.run.exited` has them. qory sets `reason` to one of the end codes

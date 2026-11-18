@@ -104,9 +104,10 @@ that is not valid and reads the lines around it. These lines are not valid:
 - a `commit_url` for a commit that qory did not give the program;
 - a value that breaks its rule in the table;
 - a `draft_` line when `QORY_SUBMIT_DRAFT` is `none`;
-- each `draft_` line of a draft that lacks one of the five lines, or whose `draft_action` is
-  not `kept` while `draft_state` is `closed` or `merged`: qory records no draft, and lists
-  the lines that it left out.
+- each `draft_` line of a draft that lacks one of the five lines: qory records no draft,
+  and lists the lines that it left out;
+- the `draft_action` line of a draft whose `draft_state` is `closed` or `merged`, when it is not
+  `kept`: qory records no draft.
 
 A blank line is left out and is not an error. Diagnostics go to standard error.
 
@@ -194,7 +195,7 @@ A repository on a forge whose draft is a merge request prints
 addresses. A draft that a person closed or merged is in
 [`fixtures/output/closed-kept.txt`](fixtures/output/closed-kept.txt) and
 [`fixtures/output/merged-kept.txt`](fixtures/output/merged-kept.txt): `draft_state` is `closed`
-or `merged`, and `draft_action` is `kept`. The directory `fixtures/output/` also holds
+or `merged`, and `draft_action` is `kept`. The directory `fixtures/output/` also contains
 `invalid-` files, each with a line that qory leaves out, and the test checks the reason
 for each.
 

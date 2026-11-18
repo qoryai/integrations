@@ -24,14 +24,14 @@ func submitFile(t *testing.T, name string) string {
 }
 
 // the commits that the output fixtures list, and the base: the same ids as in the
-// fixtures, which carry no other commit.
+// fixtures, which have no other commit.
 const (
 	commitBase = "3e2d1c0b9a8f7e6d5c4b3a291807f6e5d4c3b2a1"
 	commitMade = "9f8e7d6c5b4a39281706f5e4d3c2b1a09f8e7d6c"
 )
 
 // TestTheSubmitProgramNamesAreInTheReadme pins that the README of the contract lists
-// each input variable and each key of a result line that the Go constants name, once in
+// each input variable and each key of a result line that the Go constants define, once in
 // its table, and no other QORY_SUBMIT_ variable or key, so a rename changes the
 // constants and the README together.
 func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
@@ -48,11 +48,11 @@ func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
 		}
 	}
 	if !slices.Equal(rows, inputs) {
-		t.Errorf("the table of inputs lists %v, and the constants name %v", rows, inputs)
+		t.Errorf("the table of inputs lists %v, and the constants define %v", rows, inputs)
 	}
 	for _, name := range regexp.MustCompile("QORY_[A-Z_]+").FindAllString(readme, -1) {
 		if !slices.Contains(inputs, name) {
-			t.Errorf("the README names %s, which no constant has", name)
+			t.Errorf("the README mentions %s, which no constant has", name)
 		}
 	}
 	keys := []string{
@@ -66,7 +66,7 @@ func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
 		}
 	}
 	if !slices.Equal(rows, keys) {
-		t.Errorf("the table of keys lists %v, and the constants name %v", rows, keys)
+		t.Errorf("the table of keys lists %v, and the constants define %v", rows, keys)
 	}
 	for _, want := range []string{
 		contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd, contracts.SubmitLinePrefix,
@@ -230,7 +230,7 @@ func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 		}
 	}
 	if invalid != 23 {
-		t.Errorf("fixtures/output holds %d invalid- files, and the test expects 23", invalid)
+		t.Errorf("fixtures/output contains %d invalid- files, and the test expects 23", invalid)
 	}
 }
 
@@ -555,7 +555,7 @@ func TestTheSubmissionExamplesAreOneForEachTarget(t *testing.T) {
 	}
 }
 
-// TestTheFeedDescribesTheMarkers pins that the submission entry's description names the
+// TestTheFeedDescribesTheMarkers pins that the submission entry's description mentions the
 // two marker lines of the submit program contract, so an adapter and a program use the
 // same ones.
 func TestTheFeedDescribesTheMarkers(t *testing.T) {

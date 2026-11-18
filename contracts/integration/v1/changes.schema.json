@@ -169,7 +169,7 @@
         },
         "commit": {"description": "The head of branch: the last entry of commits.", "$ref": "definitions.schema.json#/$defs/commit_id"},
         "commits": {
-          "description": "Each commit from the base to the head, oldest first, 1 to 100, ending in commit. The adapter gives each one its address.",
+          "description": "Each commit from the base to the head, oldest first, 1 to 100, ending in commit. The adapter builds the address of each one.",
           "type": "array",
           "minItems": 1,
           "maxItems": 100,
@@ -184,7 +184,7 @@
           }
         },
         "draft": {
-          "description": "What to do with the draft of the repository. Absent after a session that did not pass, when the run wrote no text, and when the session escalated: the adapter then only gives the commits their addresses.",
+          "description": "What to do with the draft of the repository. Absent after a session that did not pass, when the run wrote no text, and when the session escalated: the adapter then only builds the address of each commit.",
           "type": "object",
           "additionalProperties": false,
           "required": ["action"],

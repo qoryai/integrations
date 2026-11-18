@@ -1417,7 +1417,7 @@ func TestRunSettingsReadFromTheFixture(t *testing.T) {
 
 // TestASubmitModuleIsNoMemberOfAnyDocument pins that the run documents and the adapter's
 // start-up refuse a submit_module member: the submit program of a run with no run code is
-// found in the composed harness, so neither document carries a module for it.
+// found in the composed harness, so neither document has a module for it.
 func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 	module := map[string]any{"source": map[string]any{
 		"git": "https://code.example.com/example-org/forge-module",
