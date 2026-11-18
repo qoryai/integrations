@@ -197,8 +197,8 @@ came from no item at a source.
 
 A submission is the work item's branch at its head commit, with the commits that the run
 made. When a run stores a submission version, the forge's adapter, an adapter whose
-`source` role has `targets: true`, reads it from the change feed and puts it on the
-forge. The adapter runs no program. The steps:
+`source` role has `submissions: true`, reads it from the change feed and puts it on
+the forge. The adapter runs no program. The steps:
 
 1. The control plane stores the submission version and writes a `submission` entry to
    the feed of the adapter of the run's target collection (`changes.schema.json`). The

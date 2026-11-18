@@ -29,24 +29,25 @@
       "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
     },
     "branch_name": {
-      "description": "A branch name that git accepts after refs/heads/, 1 to 255 characters: it does not start with a hyphen or a slash, has no space or control character, none of ~ ^ : ? * [ \\, no .. or // or @{, no segment that starts with a dot or ends in .lock, and does not end in a dot or a slash.",
+      "description": "A branch name that git accepts after refs/heads/, 1 to 255 characters: it does not start with a hyphen or a slash, is not @ alone, has no space or control character, none of ~ ^ : ? * [ \\, no .. or // or @{, no segment that starts with a dot or ends in .lock, and does not end in a dot or a slash. Git limits a name in bytes, which a schema cannot count, so the limit here is 255 characters; a name of 255 characters that has more than 255 bytes may still be refused by the forge.",
       "type": "string",
       "maxLength": 255,
       "pattern": "^[^\\x00-\\x20\\x7f~^:?*\\[\\\\/-][^\\x00-\\x20\\x7f~^:?*\\[\\\\]*$",
-      "not": {"pattern": "\\.\\.|//|@\\{|(^|/)\\.|\\.lock(/|$)|[./]$"}
+      "not": {"pattern": "\\.\\.|//|@\\{|(^|/)\\.|\\.lock(/|$)|[./]$|^@$"}
     },
     "repository_path": {
-      "description": "The path of a repository on its system, such as acme/shop: at most 200 characters of segments joined by slashes, each of letters, digits and the characters . _ -, with no segment . or .. or .git.",
+      "description": "The path of a repository on its system, such as acme/shop: at most 200 characters of segments joined by slashes, each of letters, digits and the characters . _ -, with no segment that is exactly . or .. or .git. A segment that ends in .git, such as shop.git, is allowed: git does not refuse it.",
       "type": "string",
       "maxLength": 200,
       "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
       "not": {"pattern": "(^|/)(\\.\\.?|\\.[Gg][Ii][Tt])(/|$)"}
     },
     "draft_title": {
-      "description": "The title of a draft, 1 to 256 characters on one line, with no control character.",
+      "description": "The title of a draft, 1 to 256 characters on one line, by the rule of a prose line (description.schema.json, $defs.line): no control character, no bidirectional control, no line or paragraph separator and none of the invisible format characters that rule lists. It has at least one character that is not a space: U+0020, U+00A0, U+1680, U+2000 to U+200A, U+202F, U+205F or U+3000.",
       "type": "string",
       "maxLength": 256,
-      "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+      "pattern": "[^ \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]",
+      "$ref": "description.schema.json#/$defs/line"
     },
     "time": {
       "description": "RFC 3339 in UTC with whole seconds: hours 00 to 23, minutes and seconds 00 to 59, so never a leap second.",

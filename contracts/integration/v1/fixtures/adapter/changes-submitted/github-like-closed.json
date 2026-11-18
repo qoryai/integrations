@@ -1,7 +1,7 @@
 {
   "version": 1,
   "time": "2026-11-18T12:00:00Z",
-  "submission_id": "av_7k2m9q4v1x8z3c5d",
+  "submission_id": "av_3c5d7k2m9q4v1x8z",
   "targets": [
     {
       "system": "code.example.com",
@@ -25,8 +25,11 @@
         }
       ],
       "draft": {
-        "none": "no-program",
-        "number": 3
+        "number": 34,
+        "url": "https://code.example.com/acme/shop/pull/34",
+        "title": "Show delivery dates at checkout",
+        "state": "closed",
+        "action": "kept"
       }
     }
   ]

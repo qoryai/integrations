@@ -298,7 +298,7 @@ func TestTheSubmissionExamplesAreOneForEachTarget(t *testing.T) {
 	if two[1].Targets[0].Draft.Action != "update" || two[1].Targets[0].Draft.Number != 34 {
 		t.Error("the second version does not update draft 34")
 	}
-	for _, name := range []string{"github-like.json", "gitlab-like.json", "without-draft.json", "draft-none.json"} {
+	for _, name := range []string{"github-like.json", "gitlab-like.json", "without-draft.json", "github-like-closed.json", "gitlab-like-merged.json"} {
 		if err := validate(compile(t, "changes-submitted.schema.json"), read(t, "fixtures/adapter/changes-submitted/"+name)); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}

@@ -284,20 +284,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-prebuild-with-target-version.json":                   {"documents", "/target_version "},
 		"documents-workflow-without-harness-or-target-version.json":     {"documents", "/ required harness; / required target_version"},
 		"documents-work-item-url-http.json":                             {"documents", "/work_item/url pattern"},
-		"documents-submit-module-ref-branch.json":                       {"documents", "/submit_module/source/ref pattern"},
-		"documents-submit-module-ref-short.json":                        {"documents", "/submit_module/source/ref pattern"},
-		"documents-submit-module-ref-tag.json":                          {"documents", "/submit_module/source/ref pattern"},
-		"documents-submit-module-ref-upper-case.json":                   {"documents", "/submit_module/source/ref pattern"},
-		"documents-submit-module-exclude.json":                          {"documents", "/submit_module/exclude "},
-		"documents-submit-module-only.json":                             {"documents", "/submit_module/only "},
-		"documents-submit-module-variant.json":                          {"documents", "/submit_module/variant "},
-		"documents-submit-module-path-and-module.json":                  {"documents", "/submit_module/source ; /submit_module/source "},
-		"documents-submit-module-without-source.json":                   {"documents", "/submit_module required source"},
-		"documents-submit-module-access-read.json":                      {"documents", "/access const"},
-		"documents-submit-module-access-write-no-push.json":             {"documents", "/access const"},
-		"documents-submit-module-without-workflow.json":                 {"documents", "/ dependentRequired/submit; / dependentRequired/submit_module"},
-		"documents-submit-module-without-target.json":                   {"documents", "/ dependentRequired/submit_module; / dependentRequired/submit"},
-		"documents-prebuild-with-submit-module.json":                    {"documents", "/ dependentRequired/submit_module; /submit_module "},
 		"documents-submit-undefined-member.json":                        {"documents", "/submit additionalProperties"},
 		"documents-submit-type-upper-case.json":                         {"documents", "/submit/type pattern"},
 		"documents-submit-type-underscore.json":                         {"documents", "/submit/type pattern"},
@@ -308,7 +294,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-submit-access-read.json":                             {"documents", "/access const"},
 		"documents-submit-access-write-no-push.json":                    {"documents", "/access const"},
 		"documents-submit-without-workflow.json":                        {"documents", "/ dependentRequired/submit"},
-		"documents-submit-module-without-submit.json":                   {"documents", "/ dependentRequired/submit_module"},
 		"documents-prebuild-with-submit.json":                           {"documents", "/ dependentRequired/submit; /submit ; /access const"},
 	}
 	got := runFiles(t, "fixtures/invalid")
@@ -340,7 +325,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 }
 
 // TestAPrebuildIsRefusedForEachRunMemberAlone pins that the invalid run documents of
-// the step prebuild that have workflow, harness_hidden, harness, submit_module, submit,
+// the step prebuild that have workflow, harness_hidden, harness, submit,
 // time_limit_minutes, shared_run or full_suite are refused for that member alone: the
 // same documents without it are accepted.
 func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
@@ -349,7 +334,6 @@ func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
 		{"documents-prebuild-with-workflow.json", "workflow"},
 		{"documents-prebuild-with-harness-hidden.json", "harness_hidden"},
 		{"documents-prebuild-with-harness.json", "harness"},
-		{"documents-prebuild-with-submit-module.json", "submit_module"},
 		{"documents-prebuild-with-submit.json", "submit"},
 		{"documents-prebuild-with-time-limit-minutes.json", "time_limit_minutes"},
 		{"documents-prebuild-with-shared-run.json", "shared_run"},
@@ -411,105 +395,14 @@ func TestAHarnessIsRefusedForItsHarnessAlone(t *testing.T) {
 	}
 }
 
-// TestASubmitModuleIsRefusedForItsSubmitModuleAlone pins that each invalid fixture of
-// the run contract, and of the adapter contract, whose name starts with
-// documents-submit-module- or adapter-submit-module- and whose refusal is at
-// /submit_module, is refused for its submit_module and for nothing else: the same
-// document with the submit_module of a valid fixture is accepted. The refused values
-// are a branch name, a tag, a short hash and an upper-case hash as the ref, exclude,
-// only, variant, both path and module, and no source.
-func TestASubmitModuleIsRefusedForItsSubmitModuleAlone(t *testing.T) {
-	for _, c := range []struct {
-		prefix, valid, schema string
-		files                 []string
-		read                  func(string) (any, error)
-		compile               func(string) (*jsonschema.Schema, error)
-	}{
-		{"documents-submit-module-", "fixtures/documents/explore-submit-module-without-harness.json", "documents.schema.json",
-			runFiles(t, "fixtures/invalid"), contracts.RunDocument, contracts.CompileRun},
-		{"adapter-submit-module-", "fixtures/adapter/adapter/code-host-submit-module.json", "adapter.schema.json",
-			files(t, "fixtures/adapter/invalid"), contracts.Document, contracts.Compile},
-	} {
-		schema, err := c.compile(c.schema)
-		if err != nil {
-			t.Fatal(err)
-		}
-		valid, err := c.read(c.valid)
-		if err != nil {
-			t.Fatal(err)
-		}
-		module := valid.(map[string]any)["submit_module"]
-		n := 0
-		for _, f := range c.files {
-			if !strings.HasPrefix(path.Base(f), c.prefix) {
-				continue
-			}
-			doc, err := c.read(f)
-			if err != nil {
-				t.Fatal(err)
-			}
-			v, ok := schema.Validate(doc).(*jsonschema.ValidationError)
-			if !ok {
-				t.Errorf("%s is accepted", f)
-				continue
-			}
-			if !strings.HasPrefix(strings.Join(leaves(v), "; "), "/submit_module") {
-				continue
-			}
-			n++
-			doc.(map[string]any)["submit_module"] = module
-			if err := schema.Validate(doc); err != nil {
-				t.Errorf("%s with the submit_module of %s is refused: %v", f, c.valid, err)
-			}
-		}
-		if n == 0 {
-			t.Errorf("no invalid fixture starts with %s and is refused at /submit_module", c.prefix)
-		}
-	}
-}
-
-// TestTheTwoSubmitModulesAreOneDefinition pins that submit_module of adapter.schema.json
-// refers to $defs/submit_module of the run documents, so the adapter's start-up and the
-// run documents accept and refuse the same modules, and that the general
-// $defs/harness_source of the run documents takes any ref, a branch name included.
-func TestTheTwoSubmitModulesAreOneDefinition(t *testing.T) {
-	doc, err := contracts.Document("adapter.schema.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	property := doc.(map[string]any)["properties"].(map[string]any)["submit_module"].(map[string]any)
-	if want := contracts.RunBase + "/documents.schema.json#/$defs/submit_module"; property["$ref"] != want {
-		t.Errorf("submit_module of adapter.schema.json refers to %v, want %s", property["$ref"], want)
-	}
-	source := compileRun(t, runSchema("documents/harness_source"))
-	pinned := compileRun(t, runSchema("documents/harness_pinned_source"))
-	for ref, isPinned := range map[string]bool{
-		"main":    false,
-		"v1.2.0":  false,
-		"3f2a91c": false,
-		"3F2A91C4D5E6F708192A3B4C5D6E7F8091A2B3C4": false,
-		"3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4": true,
-		strings.Repeat("9c", 32):                   true,
-		strings.Repeat("9c", 21):                   false,
-	} {
-		v := map[string]any{"git": "https://code.example.com/example-org/forge-module", "ref": ref}
-		if err := source.Validate(v); err != nil {
-			t.Errorf("harness_source refuses the ref %q: %v", ref, err)
-		}
-		if err := pinned.Validate(v); (err == nil) != isPinned {
-			t.Errorf("harness_pinned_source with the ref %q: %v, want accepted %v", ref, err, isPinned)
-		}
-	}
-}
-
 // TestASubmitIsRefusedForItsSubmitAlone pins that each invalid fixture refused at
 // /submit is refused for its submit and for nothing else: the same documents with the
-// submit of documents/explore-submit-module.json are accepted. The refused values are a
+// submit of documents/explore-submit-with-harness.json are accepted. The refused values are a
 // member other than type and send, a type in upper case, with an underscore or of 65
 // characters, a send other than end_of_run and after_gate, and no type or no send.
 func TestASubmitIsRefusedForItsSubmitAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
-	valid, err := contracts.RunDocument("fixtures/documents/explore-submit-module.json")
+	valid, err := contracts.RunDocument("fixtures/documents/explore-submit-with-harness.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -537,59 +430,16 @@ func TestASubmitIsRefusedForItsSubmitAlone(t *testing.T) {
 		}
 		doc.(map[string]any)["submit"] = submit
 		if err := schema.Validate(doc); err != nil {
-			t.Errorf("%s with the submit of documents/explore-submit-module.json is refused: %v", fixture, err)
+			t.Errorf("%s with the submit of documents/explore-submit-with-harness.json is refused: %v", fixture, err)
 		}
 	}
 }
 
-// TestSubmitModuleRequiresSubmit pins that run documents with submit and submit_module
-// are accepted, that the same documents without submit_module are accepted, that the
-// same documents without submit are refused, and that the documents without both are
-// accepted.
-func TestSubmitModuleRequiresSubmit(t *testing.T) {
-	schema := compileRun(t, runSchema("documents"))
-	for _, f := range []string{
-		"fixtures/documents/explore-submit-module.json",
-		"fixtures/documents/explore-submit-module-without-harness.json",
-	} {
-		read := func() map[string]any {
-			doc, err := contracts.RunDocument(f)
-			if err != nil {
-				t.Fatal(err)
-			}
-			return doc.(map[string]any)
-		}
-		doc := read()
-		if doc["submit"] == nil || doc["submit_module"] == nil {
-			t.Fatalf("%s does not have both submit and submit_module", f)
-		}
-		if err := schema.Validate(doc); err != nil {
-			t.Errorf("%s is refused: %v", f, err)
-		}
-		doc = read()
-		delete(doc, "submit_module")
-		if err := schema.Validate(doc); err != nil {
-			t.Errorf("%s without submit_module is refused: %v", f, err)
-		}
-		doc = read()
-		delete(doc, "submit")
-		if schema.Validate(doc) == nil {
-			t.Errorf("%s without submit is accepted", f)
-		}
-		doc = read()
-		delete(doc, "submit")
-		delete(doc, "submit_module")
-		if err := schema.Validate(doc); err != nil {
-			t.Errorf("%s without submit and submit_module is refused: %v", f, err)
-		}
-	}
-}
-
-// TestASubmitWithoutSubmitModuleIsRefusedForOneRuleAlone pins that run documents with
-// submit and no submit_module are refused on a run with access read, on a run with access
-// write-no-push and on a run with no workflow, and for that alone: the same documents
-// with access write, or with workflow and harness_hidden, are accepted.
-func TestASubmitWithoutSubmitModuleIsRefusedForOneRuleAlone(t *testing.T) {
+// TestASubmitIsRefusedForOneRuleAlone pins that run documents with submit are refused on
+// a run with access read, on a run with access write-no-push and on a run with no
+// workflow, and for that alone: the same documents with access write, or with workflow
+// and harness_hidden, are accepted.
+func TestASubmitIsRefusedForOneRuleAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	for _, c := range []struct {
 		fixture string
@@ -607,8 +457,8 @@ func TestASubmitWithoutSubmitModuleIsRefusedForOneRuleAlone(t *testing.T) {
 			t.Fatal(err)
 		}
 		doc := v.(map[string]any)
-		if doc["submit"] == nil || doc["submit_module"] != nil {
-			t.Errorf("%s does not have submit without submit_module", c.fixture)
+		if doc["submit"] == nil {
+			t.Errorf("%s does not have submit", c.fixture)
 			continue
 		}
 		if schema.Validate(doc) == nil {
@@ -955,9 +805,6 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	definedBare := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
 		Modules: []contracts.HarnessModule{{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0"}}},
 	}}
-	const forge = "https://code.example.com/example-org/forge-module"
-	submit := contracts.SubmitModule{Name: "forge-submit",
-		Source: contracts.HarnessSource{Git: forge, Ref: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4", Module: "forge-submit"}}
 	step := contracts.Submit{Type: "code-change", Send: "end_of_run"}
 	values := []struct {
 		schema string
@@ -1003,18 +850,15 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 			Workflow: "hello", HarnessHidden: &shown, Harness: harness}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
 			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, Harness: full}},
-		{"documents/submit_module", submit},
-		{"documents/submit_module", contracts.SubmitModule{Source: contracts.HarnessSource{Git: forge,
-			Ref: strings.Repeat("9c", 32), Path: "modules/forge-submit"}}},
 		{"documents/submit", step},
 		{"documents/submit", contracts.Submit{Type: "customer-facts", Send: "after_gate"}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target,
 			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, Workflow: "build",
-			HarnessHidden: &shown, SubmitModule: &submit, Submit: &step}},
+			HarnessHidden: &shown, Submit: &step}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target, WorkItem: &item,
-			Workflow: "build", HarnessHidden: &shown, Harness: harness, SubmitModule: &submit, Submit: &step}},
+			Workflow: "build", HarnessHidden: &shown, Harness: harness, Submit: &step}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target,
 			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, Workflow: "build",
@@ -1233,15 +1077,14 @@ func TestProviderModelsHaveAtMost256Entries(t *testing.T) {
 }
 
 // TestTheRunDocumentsReadIntoTheirGoTypes pins that the target, work_item,
-// run_settings, harness, submit_module and submit of each run documents fixture read into
+// run_settings, harness and submit of each run documents fixture read into
 // their Go types and are written back as the fixture's bytes, compacted, that a fixture
 // without target has no access and no target_version either, that a fixture with workflow
 // has harness or target_version, that at least one fixture has a harness with bind, that
-// at least one fixture has submit_module with harness and one without, that at least one
-// fixture has submit and no submit_module, and that the fixtures with submit have each
-// value of send.
+// at least one fixture has submit with harness and one without, and that the fixtures
+// with submit have each value of send.
 func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
-	n, harnesses, binds, alone := 0, 0, 0, 0
+	n, harnesses, binds := 0, 0, 0
 	submits := map[bool]int{}
 	sends := map[string]int{}
 	for _, f := range runFiles(t, "fixtures/documents") {
@@ -1273,22 +1116,16 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 				binds++
 			}
 		}
-		if d.SubmitModule != nil {
-			submits[d.Harness != nil]++
-		}
 		if d.Submit != nil {
+			submits[d.Harness != nil]++
 			sends[d.Submit.Send]++
-			if d.SubmitModule == nil {
-				alone++
-			}
 		}
 		for name, v := range map[string]any{
-			"target":        &contracts.Target{},
-			"work_item":     &contracts.WorkItem{},
-			"run_settings":  &contracts.RunSettings{},
-			"harness":       &contracts.HarnessDocument{},
-			"submit_module": &contracts.SubmitModule{},
-			"submit":        &contracts.Submit{},
+			"target":       &contracts.Target{},
+			"work_item":    &contracts.WorkItem{},
+			"run_settings": &contracts.RunSettings{},
+			"harness":      &contracts.HarnessDocument{},
+			"submit":       &contracts.Submit{},
 		} {
 			raw, ok := members[name]
 			if !ok {
@@ -1321,11 +1158,8 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 		t.Error("fixtures/documents has no harness with bind")
 	}
 	if submits[true] == 0 || submits[false] == 0 {
-		t.Errorf("fixtures/documents has %d documents with submit_module and harness, and %d with submit_module and no harness; want 1 or more of each",
+		t.Errorf("fixtures/documents has %d documents with submit and harness, and %d with submit and no harness; want 1 or more of each",
 			submits[true], submits[false])
-	}
-	if alone == 0 {
-		t.Error("fixtures/documents has no documents with submit and no submit_module")
 	}
 	if sends["end_of_run"] == 0 || sends["after_gate"] == 0 {
 		t.Errorf("fixtures/documents has %d documents with the send end_of_run, and %d with after_gate; want 1 or more of each",
@@ -1578,5 +1412,49 @@ func TestRunSettingsReadFromTheFixture(t *testing.T) {
 	}
 	if err := validate(compileRun(t, runSchema("documents/run_settings")), out); err != nil {
 		t.Errorf("run_settings marshal to a document its definition refuses: %v", err)
+	}
+}
+
+// TestNoRunDocumentsMemberNamesASubmitModule pins that the run documents and the adapter's
+// start-up refuse a submit_module member: the submit program of a run with no run code is
+// found in the composed harness, so neither document carries a module for it.
+func TestNoRunDocumentsMemberNamesASubmitModule(t *testing.T) {
+	module := map[string]any{"source": map[string]any{
+		"git": "https://code.example.com/example-org/forge-module",
+		"ref": strings.Repeat("9c", 20)}}
+	valid, err := contracts.RunDocument("fixtures/documents/explore-submit-with-harness.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := compileRun(t, runSchema("documents"))
+	if err := schema.Validate(valid); err != nil {
+		t.Fatalf("explore-submit-with-harness.json is refused: %v", err)
+	}
+	valid.(map[string]any)["submit_module"] = module
+	v, ok := schema.Validate(valid).(*jsonschema.ValidationError)
+	if !ok {
+		t.Fatal("run documents with a submit_module are accepted")
+	}
+	if r := strings.Join(leaves(v), "; "); r != "/ additionalProperties" {
+		t.Errorf("run documents with a submit_module are refused for %q, want %q", r, "/ additionalProperties")
+	}
+	adapter, err := contracts.Document("fixtures/adapter/adapter/code-host.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start, err := contracts.Compile("adapter.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := start.Validate(adapter); err != nil {
+		t.Fatalf("code-host.json is refused: %v", err)
+	}
+	adapter.(map[string]any)["submit_module"] = module
+	v, ok = start.Validate(adapter).(*jsonschema.ValidationError)
+	if !ok {
+		t.Fatal("an adapter start-up with a submit_module is accepted")
+	}
+	if r := strings.Join(leaves(v), "; "); r != "/ additionalProperties" {
+		t.Errorf("an adapter start-up with a submit_module is refused for %q, want %q", r, "/ additionalProperties")
 	}
 }

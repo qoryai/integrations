@@ -25,7 +25,11 @@
         }
       ],
       "draft": {
-        "none": "rate_limited"
+        "number": 34,
+        "url": "https://code.example.com/acme/shop/pull/34",
+        "title": "Show delivery dates at checkout",
+        "state": "archived",
+        "action": "opened"
       }
     }
   ]

@@ -131,18 +131,14 @@ func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 // document `<program> describe` prints for the adapter's program, description.schema.json,
 // sent whole: the same JSON document, which json.Marshal writes compacted and with <, >
 // and & escaped. A nil Description marshals as null, which adapter.schema.json refuses.
-// SubmitModule is set only by the adapter of a forge: the harness module that contains
-// the forge's submit program, whose source's ref is a full commit hash. The control
-// plane writes it as [Documents.SubmitModule]. Nil, the start-up has no submit_module.
 type Adapter struct {
-	Version      int             `json:"version"`
-	Time         string          `json:"time"`
-	ConnectURL   string          `json:"connect_url"`
-	SetupURL     string          `json:"setup_url,omitempty"`
-	CallURL      string          `json:"call_url,omitempty"`
-	Sync         Sync            `json:"sync"`
-	Description  json.RawMessage `json:"description"`
-	SubmitModule *SubmitModule   `json:"submit_module,omitempty"`
+	Version     int             `json:"version"`
+	Time        string          `json:"time"`
+	ConnectURL  string          `json:"connect_url"`
+	SetupURL    string          `json:"setup_url,omitempty"`
+	CallURL     string          `json:"call_url,omitempty"`
+	Sync        Sync            `json:"sync"`
+	Description json.RawMessage `json:"description"`
 }
 
 // Sync is how often an adapter pulls changes from the source, in seconds, and whether
@@ -539,9 +535,9 @@ type ChangesSubmitted struct {
 	Targets      []SubmittedTarget `json:"targets"`
 }
 
-// SubmittedTarget is the reply for one repository of a submission entry: the
-// address of the Base commit and of each commit, and the Draft, nil when the entry's
-// repository had no draft.
+// SubmittedTarget is the reply for one target of a submission entry: the address of
+// the Base commit and of each commit, and the Draft, nil exactly when the entry's
+// target had no draft.
 type SubmittedTarget struct {
 	System  string          `json:"system"`
 	Path    string          `json:"path"`
@@ -556,43 +552,28 @@ type CommitAddress struct {
 	CommitURL string `json:"commit_url"`
 }
 
-// The states and actions of a [SubmittedDraft], and the reason it has none.
+// The states and actions of a [SubmittedDraft].
 const (
-	DraftStateDraft = "draft"
-	DraftStateOpen  = "open"
-	DraftOpened     = "opened"
-	DraftUpdated    = "updated"
-	DraftKept       = "kept"
-	DraftNoProgram  = "no-program"
+	DraftStateDraft  = "draft"
+	DraftStateOpen   = "open"
+	DraftStateClosed = "closed"
+	DraftStateMerged = "merged"
+	DraftOpened      = "opened"
+	DraftUpdated     = "updated"
+	DraftKept        = "kept"
 )
 
 // SubmittedDraft is the draft after the adapter's call: Number, URL, Title, State
-// [DraftStateDraft] or [DraftStateOpen], and Action [DraftOpened], [DraftUpdated] or
-// [DraftKept]; or None, the reason it made no draft, [DraftNoProgram], with the other
-// members empty. It marshals the members of one of the two forms.
+// [DraftStateDraft], [DraftStateOpen], [DraftStateClosed] or [DraftStateMerged], and
+// Action [DraftOpened], [DraftUpdated] or [DraftKept]. A draft that a person closed or
+// merged is reported with [DraftKept] and its real state, and the adapter does not edit
+// it. Number may differ from the number in the entry: it is a hint.
 type SubmittedDraft struct {
-	Number int
-	URL    string
-	Title  string
-	State  string
-	Action string
-	None   string
-}
-
-// MarshalJSON writes the draft with its five members, or {"none": ...} when None is set.
-func (d SubmittedDraft) MarshalJSON() ([]byte, error) {
-	if d.None != "" {
-		return json.Marshal(struct {
-			None string `json:"none"`
-		}{d.None})
-	}
-	return json.Marshal(struct {
-		Number int    `json:"number"`
-		URL    string `json:"url"`
-		Title  string `json:"title"`
-		State  string `json:"state"`
-		Action string `json:"action"`
-	}{d.Number, d.URL, d.Title, d.State, d.Action})
+	Number int    `json:"number"`
+	URL    string `json:"url"`
+	Title  string `json:"title"`
+	State  string `json:"state"`
+	Action string `json:"action"`
 }
 
 // ConnectPass is the payload of a connect pass, connect-pass.schema.json.

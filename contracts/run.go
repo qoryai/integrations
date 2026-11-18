@@ -157,21 +157,11 @@ type Documents struct {
 	// decimal bytes, that the target image of the build may have, at least 1 and within
 	// int64. When it is nil, the image has no size limit.
 	LargestPrebuiltImageBytes *int64 `json:"largest_prebuilt_image_bytes,omitempty"`
-	// SubmitModule is set only with Submit: the harness module that contains the submit
-	// program of the forge of the target, which the control plane takes from
-	// [Adapter.SubmitModule] of the forge's adapter when the start-up of the adapter has
-	// one. The machine appends it after the modules of the harness it composes, whether
-	// Harness is set or nil, and the control plane never also lists it in Harness. For
-	// what the machine does when a module that it composes has the same name, see
-	// submit_module in documents.schema.json.
-	SubmitModule *SubmitModule `json:"submit_module,omitempty"`
 	// Submit is set only with Workflow and with Access "write": the settings of the
 	// submit step of the run, which the control plane writes whenever the process version
-	// of the workspace has one. With Submit and a nil SubmitModule, qory runs the submit
-	// step and records the draft of each repository as {"none": "no-program"}.
-	// On a run with a run code, qory takes the settings of the submit step only from
-	// Submit, never from process.yaml. For what qory does when process.yaml has a
-	// different submit, see submit in documents.schema.json.
+	// of the workspace has one. On a run with a run code, qory takes the settings of the
+	// submit step only from Submit, never from process.yaml. For what qory does when
+	// process.yaml has a different submit, see submit in documents.schema.json.
 	Submit *Submit `json:"submit,omitempty"`
 }
 
@@ -396,18 +386,6 @@ type HarnessSource struct {
 	Ref    string `json:"ref"`
 	Path   string `json:"path,omitempty"`
 	Module string `json:"module,omitempty"`
-}
-
-// SubmitModule is the harness module that contains the submit program of a forge, the
-// module whose manifest declares submit_program: the submit_module of the run
-// documents, documents.schema.json, and of the adapter's start-up, adapter.schema.json.
-// It has the shape of a [HarnessModule] with no Exclude, Only or Variant, and its
-// Source.Ref is a full commit hash, 40 or 64 lower-case hexadecimal digits: the schemas
-// refuse a branch name, a tag and a short hash.
-type SubmitModule struct {
-	// Name is the name of the module, which the manifest of the module must declare.
-	Name   string        `json:"name,omitempty"`
-	Source HarnessSource `json:"source"`
 }
 
 // Submit is the settings of the submit step of a run, the submit of the run documents,
