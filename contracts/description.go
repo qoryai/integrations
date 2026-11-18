@@ -1,12 +1,14 @@
 package contracts
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/qoryai/forager/policy"
 	"github.com/qoryai/integrations/internal/rawjson"
@@ -58,7 +60,10 @@ type GuidePart struct {
 // included, has more than [DescriptionMaxStringBytes] bytes of UTF-8; the document
 // contains at most [DescriptionMaxValues] JSON values; and it nests arrays and objects
 // at most [DescriptionMaxDepth] levels deep. It checks b before any decoder reads it
-// leniently, and leaves the schema's rules to the schema.
+// leniently, and leaves the schema's rules to the schema, with one exception: it also
+// refuses an oauth_device that the schema refuses too, one without oauth_refresh and one
+// with an http URL, so that the message starts with the fix and not with a schema path
+// ([checkOAuthDevice]).
 func CheckDescription(b []byte) error {
 	if len(b) > DescriptionMaxBytes {
 		return fmt.Errorf("the document is %d bytes, more than %d (256 KiB)", len(b), DescriptionMaxBytes)
@@ -66,11 +71,50 @@ func CheckDescription(b []byte) error {
 	if err := rawjson.Text(b); err != nil {
 		return err
 	}
-	return rawjson.Check(b, rawjson.Rules{
+	if err := rawjson.Check(b, rawjson.Rules{
 		MaxStringBytes: DescriptionMaxStringBytes,
 		MaxValues:      DescriptionMaxValues,
 		MaxDepth:       DescriptionMaxDepth,
-	})
+	}); err != nil {
+		return err
+	}
+	var doc any
+	if json.Unmarshal(b, &doc) != nil {
+		return nil
+	}
+	return checkOAuthDevice(doc)
+}
+
+// oauthDeviceURLs are the four URL members of oauth_device, in the order that
+// checkOAuthDevice reads them.
+var oauthDeviceURLs = []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"}
+
+// checkOAuthDevice refuses, in the first API that breaks either rule, an oauth_device
+// without an oauth_refresh, and an oauth_device URL that starts with http:// and not
+// https://. The schema refuses both too ("dependentRequired" and "pattern"), but its
+// message names a schema keyword; this one starts with the fix. doc is any decoded
+// description: a value of another shape is left to the schema.
+func checkOAuthDevice(doc any) error {
+	d, _ := doc.(map[string]any)
+	roles, _ := d["roles"].(map[string]any)
+	role, _ := roles["model_provider"].(map[string]any)
+	apis, _ := role["apis"].([]any)
+	for i, a := range apis {
+		api, _ := a.(map[string]any)
+		device, ok := api["oauth_device"].(map[string]any)
+		if !ok {
+			continue
+		}
+		if _, ok := api["oauth_refresh"]; !ok {
+			return fmt.Errorf("Add oauth_refresh to model_provider apis[%d]: oauth_device takes its client_id and url from it.", i)
+		}
+		for _, member := range oauthDeviceURLs {
+			if u, ok := device[member].(string); ok && strings.HasPrefix(strings.ToLower(u), "http://") {
+				return fmt.Errorf("Change the oauth_device %s %q of model_provider apis[%d] to an https URL.", member, u, i)
+			}
+		}
+	}
+	return nil
 }
 
 // CheckModelProvider reports the first rule of the model_provider role of
@@ -116,7 +160,7 @@ func CheckModelProvider(doc any) error {
 			}
 		}
 		device, _ := api["oauth_device"].(map[string]any)
-		for _, member := range []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"} {
+		for _, member := range oauthDeviceURLs {
 			if u, ok := device[member].(string); ok {
 				if _, err := urlHost(u); err != nil {
 					return fmt.Errorf("change the oauth_device %s %q of model_provider apis[%d]: the control plane cannot read its host or port: %w", member, u, i, err)

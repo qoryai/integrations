@@ -286,7 +286,7 @@
           }
         },
         "oauth_device": {
-          "description": "Where the control plane signs in to this API with the OAuth device code flow, so that a person approves the login in a browser on another device or page. The control plane sends a POST with a JSON body that has client_id to usercode_url, shows the person the user code from the response and verification_url, polls poll_url until the person approves, and sends the authorization code and code verifier from that answer, with redirect_uri, to the url of oauth_refresh. It is allowed only with oauth_refresh, and it has no client id: the client id is the client_id of oauth_refresh. Absent, the control plane has no sign-in for this API.",
+          "description": "Where the control plane signs in to this API with the OAuth device code flow, so that a person approves the login in a browser on another device or page. The control plane sends a POST with a JSON body that has client_id to usercode_url, shows the person the user code from the response and verification_url, polls poll_url until the person approves, and sends the authorization code and code verifier from that response, with redirect_uri, to the url of oauth_refresh. It is allowed only with oauth_refresh, and it has no client id: the client id is the client_id of oauth_refresh. Absent, the control plane has no sign-in for this API.",
           "type": "object",
           "additionalProperties": false,
           "required": ["usercode_url", "poll_url", "verification_url", "redirect_uri"],

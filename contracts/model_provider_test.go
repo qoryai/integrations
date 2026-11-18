@@ -547,6 +547,78 @@ func TestOAuthDeviceHoldsItsRules(t *testing.T) {
 	}
 }
 
+// TestCheckDescriptionRefusesAnUnusableOAuthDevice pins that CheckDescription, which runs
+// before the schema in conformance, refuses an oauth_device without oauth_refresh and an
+// oauth_device URL over http with a message that starts with the fix, at the index of
+// the API and with the member and the value of the URL, and that the schema refuses
+// the same documents. Other oauth_device mistakes are left to the schema.
+func TestCheckDescriptionRefusesAnUnusableOAuthDevice(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	good := map[string]string{
+		"usercode_url":     "https://auth.acme.example/device/usercode",
+		"poll_url":         "https://auth.acme.example/device/token",
+		"verification_url": "https://auth.acme.example/device",
+		"redirect_uri":     "https://auth.acme.example/device/callback",
+	}
+	order := []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"}
+	device := func(member, value string) string {
+		var l []string
+		for _, k := range order {
+			v := good[k]
+			if k == member {
+				v = value
+			}
+			l = append(l, `"`+k+`": "`+v+`"`)
+		}
+		return `, "oauth_device": {` + strings.Join(l, ", ") + `}`
+	}
+	refresh := `, "oauth_refresh": {"url": "https://auth.acme.example/oauth/token", "client_id": "acme-cli"}`
+	// api0 is a valid first API of the format openai-chat; the API under test is the
+	// second one, at index 1, or the first one, at index 0.
+	api0 := `{"format": "openai-chat", "endpoint": "https://chat.acme.example", "auth": {"scheme": "bearer"}}`
+	api := func(members string) string {
+		return `{"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": {"scheme": "bearer", "oauth": true}` + members + `}`
+	}
+	doc := func(apis ...string) string { return provider(strings.Join(apis, ", ")) }
+	cases := []struct{ name, doc, want string }{
+		{"without oauth_refresh, at index 0", doc(api(device("", ""))),
+			"Add oauth_refresh to model_provider apis[0]: oauth_device takes its client_id and url from it."},
+		{"without oauth_refresh, at index 1", doc(api0, api(device("", ""))),
+			"Add oauth_refresh to model_provider apis[1]: oauth_device takes its client_id and url from it."},
+	}
+	for _, member := range order {
+		value := "http://auth.acme.example/device/x"
+		cases = append(cases,
+			struct{ name, doc, want string }{"an http " + member, doc(api(refresh + device(member, value))),
+				`Change the oauth_device ` + member + ` "` + value + `" of model_provider apis[0] to an https URL.`},
+			struct{ name, doc, want string }{"an http " + member + ", at index 1", doc(api0, api(refresh+device(member, value))),
+				`Change the oauth_device ` + member + ` "` + value + `" of model_provider apis[1] to an https URL.`})
+	}
+	for _, tc := range cases {
+		if err := contracts.CheckDescription([]byte(tc.doc)); err == nil || err.Error() != tc.want {
+			t.Errorf("%s: CheckDescription returns %v, want %q", tc.name, err, tc.want)
+		}
+		d, err := jsonschema.UnmarshalJSON(strings.NewReader(tc.doc))
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if schema.Validate(d) == nil {
+			t.Errorf("%s: the schema accepts it", tc.name)
+		}
+	}
+	for _, tc := range []struct{ name, doc string }{
+		{"the four https URLs", doc(api(refresh + device("", "")))},
+		{"no oauth_device", doc(api(refresh))},
+		{"an https URL with http in the path", doc(api(refresh + device("poll_url", "https://auth.acme.example/http://x")))},
+		{"an ftp URL, which the schema refuses", doc(api(refresh + device("poll_url", "ftp://auth.acme.example/x")))},
+		{"an undefined member, which the schema refuses", doc(api(refresh + strings.Replace(device("", ""), "}", `, "client_id": "acme-cli"}`, 1)))},
+	} {
+		if err := contracts.CheckDescription([]byte(tc.doc)); err != nil {
+			t.Errorf("%s: CheckDescription returns %v", tc.name, err)
+		}
+	}
+}
+
 // TestTheAcmeSubscriptionFixtureHasOAuthDevice pins that fixtures/acme-subscription.json
 // sets oauth_device with its four members, so that a valid description with the member
 // stays among the fixtures that TestDescriptionFixturesValidate accepts.

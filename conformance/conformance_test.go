@@ -357,6 +357,26 @@ func TestADescriptionKeepsTheModelProviderRules(t *testing.T) {
 	}
 }
 
+// TestAnUnusableOAuthDeviceIsRefusedWithTheFix pins that Description and DataDescription
+// refuse an oauth_device without oauth_refresh, and an oauth_device URL over http, with
+// the fix as the first words after the form, and not with the schema's refusal, which
+// they would otherwise report first.
+func TestAnUnusableOAuthDeviceIsRefusedWithTheFix(t *testing.T) {
+	for name, want := range map[string]string{
+		"fixtures/invalid/description-model-provider-oauth-device-without-oauth-refresh.json": "Add oauth_refresh to model_provider apis[0]: oauth_device takes its client_id and url from it.",
+		"fixtures/invalid/description-model-provider-oauth-device-poll-url-http.json":         `Change the oauth_device poll_url "http://auth.acme-cloud.example/device/token" of model_provider apis[0] to an https URL.`,
+	} {
+		b := fixtures(t, "fixtures/invalid")[name]
+		if err := conformance.Description(b); err == nil || err.Error() != "describe: "+want {
+			t.Errorf("%s: Description returns %v, want %q", name, err, "describe: "+want)
+		}
+		data := bytes.Replace(b, []byte(`"program_version": "0.1.0",`), nil, 1)
+		if err := conformance.DataDescription(data); err == nil || err.Error() != "data description: "+want {
+			t.Errorf("%s: DataDescription returns %v, want %q", name, err, "data description: "+want)
+		}
+	}
+}
+
 // TestAModelProviderSetsNoReservedHeader pins that Description and DataDescription
 // refuse the auth of a model_provider API whose header conformance reserves: a
 // reserved name, compared in lower case, and a name with a reserved prefix, in the
