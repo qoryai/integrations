@@ -33,8 +33,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `conformance.Description` also refuses a credential host with `*.` in front, and a
   credential host that an `egress_hosts` entry cannot be, such as `localhost` or a single
   label.
-- The module requires Go 1.27.3 or later (`go 1.27.3` in `go.mod`), because Forager does.
-  An integration that requires this module builds with Go 1.27.3 or later. `go.yml` runs
+- The module requires Go 1.27.4 or later (`go 1.27.4` in `go.mod`), because Forager does.
+  An integration that requires this module builds with Go 1.27.4 or later. `go.yml` runs
   its job in `ghcr.io/qoryai/ci-images:golang-1.27.4`, by digest. That image has Go
   1.27.4, and `go.yml` sets `GOTOOLCHAIN` to `go1.27.4+auto`, so a job downloads a newer
   Go when the `go.mod` of the calling repository requires one.
@@ -235,10 +235,42 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a key's `use_up_to_percent`. Without `limit_windows`, the provider's keys take no
   `use_up_to_percent`. In `descriptions/claude-subscription.json`, `limit_windows` is
   `["five_hour", "seven_day"]`.
+- Five optional members describe model keys further. An API of `model_provider` can
+  list `runtimes`, the runtimes that may use its key, each a name in Forager's
+  `runtimes.json`; `paths`, the paths of the endpoint's host that the gateway sets the
+  key on, which the control plane copies unchanged into `paths` of `api_credential`;
+  and, only with `oauth: true`, `oauth_refresh`, with the `url`, `client_id` and
+  optional `scope` with which the control plane refreshes an OAuth login. The
+  `model_provider` role can set `key_lifetime_days`, from 1 to 3650: the days a key
+  stays valid, counted from the time the key was added; the control plane warns 14 days
+  before the end. A description can set `vendor`, the vendor's name in lines the control
+  plane shows, such as `Anthropic rejected it on <date time>.`.
+  `contracts.CheckModelProvider` refuses an `oauth_refresh` `url` whose host or port
+  the control plane cannot read. It refuses an entry of `paths` that Forager's
+  `policy.ValidPath` refuses, such as a path with a space character or with `{` or `}`
+  anywhere but in a segment written exactly `{}`, and an entry that Forager's
+  `policy.UnclearPath` reports: a path with an empty, `.` or `..` segment, a backslash,
+  an encoded slash, backslash, dot or percent sign, or a control character, which the
+  gateway denies in a request path. The schema's pattern for `paths` is Forager's
+  `credential_paths` pattern. Every description in `descriptions/` sets `vendor`; in
+  `descriptions/claude-subscription.json`, `runtimes` is `["claude"]` and
+  `key_lifetime_days` is `365`.
+- `descriptions/openai.json` describes the OpenAI API key provider: the Responses API at
+  `https://api.openai.com/v1`, a bearer key that starts with `sk-`, and six GPT models.
+  The endpoint and host follow OpenAI's API reference.
+- `descriptions/openai-subscription.json` describes the OpenAI subscription provider: a
+  ChatGPT plan's sign-in from Codex, for the `codex` runtime, on the Responses API at
+  `https://chatgpt.com/backend-api/codex`, with `paths` `/backend-api/codex/*`,
+  `limit_windows` `five_hour` and `seven_day`, the refresh at
+  `https://auth.openai.com/oauth/token`, and ten GPT models. Its `auth` sets
+  `account_header` `chatgpt-account-id` and `account_claim`, the pointer to the account
+  id in the access token, as Forager's `auth.schema.json` defines them. Its
+  `description` says that the subscription is for personal use only and links OpenAI's
+  terms, as `descriptions/claude-subscription.json` does for Anthropic's.
 - A description in the data form has no `program_version`: it is a file that no program
   prints, its one role is `model_provider`, and its settings have no member `writeOnly`.
-  `descriptions/` contains the data descriptions of five model providers, and the `name`
-  of each is its file name without `.json`.
+  `descriptions/` contains the data descriptions of seven model providers, and the
+  `name` of each is its file name without `.json`.
 - A description can list `egress_hosts`, every host that runs of the integration reach:
   each entry is an exact lower-case host, or `{"setting": "<name>"}` for the host of the
   URL in a string setting that is not a secret. Each host of the `credential` role and of

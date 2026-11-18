@@ -31,6 +31,7 @@ from it.
 | `version` | `1`, the contract's version |
 | `name` | the integration's name, `^[a-z0-9][a-z0-9_-]{0,63}$`: the key it is declared under, such as `github`, unless the machine chooses another. The key is the name of the gateway's credential, `^[a-z0-9][a-z0-9_.-]{0,63}$`, and of a program Qory publishes, `qory-<key>`, so the name is the credential's grammar without the dot, which in a program's name reads as an extension |
 | `title`, `description` | human text, for a form or a listing; `description` may be absent |
+| `vendor` | the vendor's name, 1 to 40 characters, such as `Anthropic`, for lines the control plane shows, such as `Anthropic rejected it on <date time>.`; a line may start with it, and the control plane then writes its first letter in upper case; may be absent |
 | `domains` | the domains the integration works with, each a domain name, `^[a-z][a-z0-9-]{0,63}$`, such as `software`, the domain of software work; at least one and none twice; may be absent |
 | `program_version` | the program's version, a string, such as `0.1.0` |
 | `settings` | a JSON Schema, draft 2020-12, of type `object`: the settings document the program takes |

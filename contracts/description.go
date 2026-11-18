@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/qoryai/forager/policy"
 	"github.com/qoryai/integrations/internal/rawjson"
 )
 
@@ -74,12 +75,15 @@ func CheckDescription(b []byte) error {
 
 // CheckModelProvider reports the first rule of the model_provider role of
 // description.schema.json that a description breaks and that the schema does not
-// express: no two entries of apis have the same format; an API endpoint that is a URL
-// has a host and port as [endpointHost] reads them; an API endpoint that is a setting
-// is the name of a property of settings whose type is string and that is not marked
-// writeOnly; and no two entries of models have the same id. doc is the
-// description as a schema validates it, after the schema accepts it. A description
-// with no model_provider role keeps every rule.
+// express: no two entries of apis have the same format; an API endpoint that is a URL,
+// and the url of each oauth_refresh, each have a host and port as [urlHost] reads them;
+// each entry of an API's paths is a path that Forager's policy.ValidPath accepts and
+// that policy.UnclearPath does not report, since the gateway denies a request path
+// with such a part before it reads any credential's paths, so the entry would match
+// nothing; an API endpoint that is a setting is the name of a property of settings
+// whose type is string and that is not marked writeOnly; and no two entries of models
+// have the same id. doc is the description as a schema validates it, after the schema
+// accepts it. A description with no model_provider role keeps every rule.
 func CheckModelProvider(doc any) error {
 	d, _ := doc.(map[string]any)
 	roles, _ := d["roles"].(map[string]any)
@@ -102,6 +106,22 @@ func CheckModelProvider(doc any) error {
 		if endpoint, ok := api["endpoint"].(string); ok {
 			if _, err := endpointHost(endpoint, i); err != nil {
 				return err
+			}
+		}
+		refresh, _ := api["oauth_refresh"].(map[string]any)
+		if u, ok := refresh["url"].(string); ok {
+			if _, err := urlHost(u); err != nil {
+				return fmt.Errorf("change the oauth_refresh url %q of model_provider apis[%d]: the control plane cannot read its host or port: %w", u, i, err)
+			}
+		}
+		paths, _ := api["paths"].([]any)
+		for j, p := range paths {
+			path, _ := p.(string)
+			if !policy.ValidPath(path) {
+				return fmt.Errorf("change the path %q of model_provider apis[%d] paths[%d]: a path has no *, ? or # except a final *, no space character, and a { or } only in a segment written exactly {}, as the gateway reads it", path, i, j)
+			}
+			if policy.UnclearPath(path) {
+				return fmt.Errorf("change the path %q of model_provider apis[%d] paths[%d]: it has an empty, \".\" or \"..\" segment, a backslash, an encoded slash, backslash, dot or percent sign, or a control character, which the gateway denies in a request path, so the path matches no request", path, i, j)
 			}
 		}
 	}
@@ -225,31 +245,38 @@ var exactHost = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z
 var numberLabel = regexp.MustCompile(`(^|\.)([0-9]+|0x[0-9a-f]*)$`)
 
 // endpointHost returns the host of endpoint, the URL endpoint of model_provider
-// apis[i], or an error that shows why it has none. The host is in exactHost's form, and
-// a host whose last label is a number is a canonical IPv4 address, four decimal parts
-// from 0 to 255 with no leading zero; a port, when one is written, is from 1 to 65535.
-// These hosts are a subset of the hosts Forager's policy.EndpointHost reads, so a
-// gateway reads the host of every endpoint this accepts.
+// apis[i], as [urlHost] reads it, or an error that shows why. These hosts are a
+// subset of the hosts Forager's policy.EndpointHost reads, so a gateway reads the host
+// of every endpoint this accepts.
 func endpointHost(endpoint string, i int) (string, error) {
-	fail := func(why string) error {
-		return fmt.Errorf("the endpoint %q of model_provider apis[%d] has no host a gateway can read: %s", endpoint, i, why)
-	}
-	u, err := url.Parse(endpoint)
+	host, err := urlHost(endpoint)
 	if err != nil {
-		return "", fail(err.Error())
+		return "", fmt.Errorf("the endpoint %q of model_provider apis[%d] has no host a gateway can read: %w", endpoint, i, err)
+	}
+	return host, nil
+}
+
+// urlHost returns the host of raw, a URL as $defs/endpoint of description.schema.json
+// defines it, or an error that shows why. The host is in exactHost's form, and a host
+// whose last label is a number is a canonical IPv4 address, four decimal parts from 0
+// to 255 with no leading zero; a port, when one is written, is from 1 to 65535.
+func urlHost(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", err
 	}
 	host := u.Hostname()
 	if !exactHost.MatchString(host) {
-		return "", fail(fmt.Sprintf("the host %q is not labels joined by dots, each 1 to 63 lower-case letters, digits and hyphens that starts and ends with a letter or a digit", host))
+		return "", fmt.Errorf("the host %q is not labels joined by dots, each 1 to 63 lower-case letters, digits and hyphens that starts and ends with a letter or a digit", host)
 	}
 	if numberLabel.MatchString(host) {
 		if a, err := netip.ParseAddr(host); err != nil || !a.Is4() {
-			return "", fail(fmt.Sprintf("the host %q ends in a number and is not an IPv4 address of four decimal parts from 0 to 255, each with no leading zero", host))
+			return "", fmt.Errorf("the host %q ends in a number and is not an IPv4 address of four decimal parts from 0 to 255, each with no leading zero", host)
 		}
 	}
 	if port := u.Port(); port != "" {
 		if n, err := strconv.Atoi(port); err != nil || n < 1 || n > 65535 {
-			return "", fail(fmt.Sprintf("the port %q is not a number from 1 to 65535", port))
+			return "", fmt.Errorf("the port %q is not a number from 1 to 65535", port)
 		}
 	}
 	return host, nil
