@@ -549,11 +549,11 @@ func TestOAuthDeviceHoldsItsRules(t *testing.T) {
 
 // TestCheckDescriptionRefusesAnUnusableOAuthDevice pins that CheckDescription, which runs
 // before the schema in conformance, refuses an oauth_device without oauth_refresh and an
-// oauth_device URL string that does not start with https:// (http://, ftp://, //host/path,
-// a bare host, a path, an empty string) with a message that starts with the fix, at the
-// index of the API and with the member and the value of the URL, and that the schema
-// refuses the same documents. A missing or non-string member, an HTTPS:// URL and other
-// oauth_device mistakes are left to the schema.
+// oauth_device URL string that does not start with https:// in lower case (http://,
+// HTTPS://, ftp://, //host/path, a bare host, a path, an empty string) with a message
+// that starts with the fix, at the index of the API and with the member and the value
+// of the URL, and that the schema refuses the same documents. A missing or non-string
+// member and other oauth_device mistakes are left to the schema.
 func TestCheckDescriptionRefusesAnUnusableOAuthDevice(t *testing.T) {
 	schema := compile(t, "description.schema.json")
 	good := map[string]string{
@@ -589,7 +589,7 @@ func TestCheckDescriptionRefusesAnUnusableOAuthDevice(t *testing.T) {
 			"Add oauth_refresh to model_provider apis[1]: oauth_device takes its client_id and url from it."},
 	}
 	for _, member := range order {
-		for _, value := range []string{"http://auth.acme.example/device/x", "ftp://auth.acme.example/device/x", "//auth.acme.example/device/x", "auth.acme.example", "/device/x", ""} {
+		for _, value := range []string{"http://auth.acme.example/device/x", "ftp://auth.acme.example/device/x", "//auth.acme.example/device/x", "auth.acme.example", "/device/x", "", "HTTPS://auth.acme.example/device/x"} {
 			cases = append(cases,
 				struct{ name, doc, want string }{member + " " + value, doc(api(refresh + device(member, value))),
 					`Change the oauth_device ` + member + ` "` + value + `" of model_provider apis[0] to an https URL.`},
@@ -613,7 +613,6 @@ func TestCheckDescriptionRefusesAnUnusableOAuthDevice(t *testing.T) {
 		{"the four https URLs", doc(api(refresh + device("", "")))},
 		{"no oauth_device", doc(api(refresh))},
 		{"an https URL with http in the path", doc(api(refresh + device("poll_url", "https://auth.acme.example/http://x")))},
-		{"an HTTPS:// URL, which the schema refuses", doc(api(refresh + device("poll_url", "HTTPS://auth.acme.example/x")))},
 		{"a missing member, which the schema refuses", doc(api(refresh + strings.Replace(device("", ""), `"poll_url": "`+good["poll_url"]+`", `, "", 1)))},
 		{"a member that is not a string, which the schema refuses", doc(api(refresh + strings.Replace(device("", ""), `"`+good["poll_url"]+`"`, "5", 1)))},
 		{"an undefined member, which the schema refuses", doc(api(refresh + strings.Replace(device("", ""), "}", `, "client_id": "acme-cli"}`, 1)))},
