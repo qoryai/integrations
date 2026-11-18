@@ -70,7 +70,7 @@ func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
 	}
 	for _, want := range []string{
 		contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd, contracts.SubmitLinePrefix,
-		"`" + contracts.SubmitDraftOpen + "`", "`" + contracts.SubmitDraftUpdate + "`", "`" + contracts.SubmitDraftNone + "`",
+		"`" + contracts.DraftOpen + "`", "`" + contracts.DraftUpdate + "`", "`" + contracts.SubmitDraftNone + "`",
 	} {
 		if !strings.Contains(readme, want) {
 			t.Errorf("the README does not contain %q", want)
@@ -143,7 +143,7 @@ func TestTheOutputFixturesAreRead(t *testing.T) {
 		{"closed-kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "closed", 34, 2},
 		{"merged-kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "merged", 34, 2},
 	} {
-		for _, draft := range []string{contracts.SubmitDraftOpen, contracts.SubmitDraftUpdate} {
+		for _, draft := range []string{contracts.DraftOpen, contracts.DraftUpdate} {
 			r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+c.file), c.system, draft, given)
 			if len(r.Invalid) != 0 {
 				t.Errorf("%s: invalid lines %v", c.file, r.Invalid)
@@ -198,7 +198,7 @@ func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 		"invalid-url-javascript.txt":        {2, "not an https URL", 4, false},
 		"invalid-url-upper-case-scheme.txt": {2, "not an https URL", 4, false},
 		"invalid-state-archived.txt":        {4, "state is none of", 4, false},
-		"invalid-state-merged.txt":          {5, "closed or merged has the action kept", 0, false},
+		"invalid-merged-not-kept.txt":       {5, "closed or merged has the action kept", 0, false},
 		"invalid-action-closed.txt":         {5, "action is none of", 4, false},
 		"invalid-title-257-characters.txt":  {3, "257 characters, over the limit of 256", 4, false},
 		"invalid-title-all-spaces.txt":      {3, "only spaces", 4, false},
@@ -207,7 +207,7 @@ func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 		"invalid-draft-without-action.txt":  {0, "", 4, false},
 	}
 	for file, want := range cases {
-		r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+file), hostCode, contracts.SubmitDraftOpen, given)
+		r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+file), hostCode, contracts.DraftOpen, given)
 		broken := 0
 		if want.line > 0 {
 			broken = 1
@@ -295,7 +295,7 @@ func TestAnAddressHasTheRuleOfTheSchema(t *testing.T) {
 			if key == contracts.SubmitKeyCommitURL {
 				line = key + " " + commitMade + " " + c.addr + "\n"
 			}
-			r := contracts.ParseSubmitLines(line, hostCode, contracts.SubmitDraftOpen, given)
+			r := contracts.ParseSubmitLines(line, hostCode, contracts.DraftOpen, given)
 			recorded := len(r.CommitURLs) == 1
 			if key == contracts.SubmitKeyDraftURL {
 				// A lone valid address is left out because the draft is not whole.
@@ -308,12 +308,12 @@ func TestAnAddressHasTheRuleOfTheSchema(t *testing.T) {
 	}
 	// An empty value is not a line with a value.
 	for _, line := range []string{"draft_url \n", "draft_url\n", "commit_url \n", "commit_url " + commitMade + " \n"} {
-		if r := contracts.ParseSubmitLines(line, hostCode, contracts.SubmitDraftOpen, given); len(r.Invalid) != 1 {
+		if r := contracts.ParseSubmitLines(line, hostCode, contracts.DraftOpen, given); len(r.Invalid) != 1 {
 			t.Errorf("%q: %+v, want one invalid line", line, r)
 		}
 	}
 	// A 7-bit DEL in the address is a control character.
-	if r := contracts.ParseSubmitLines("draft_url https://code.example.com/a\x7f\n", hostCode, contracts.SubmitDraftOpen, given); len(r.Invalid) != 1 || !strings.Contains(r.Invalid[0].Reason, "control character") {
+	if r := contracts.ParseSubmitLines("draft_url https://code.example.com/a\x7f\n", hostCode, contracts.DraftOpen, given); len(r.Invalid) != 1 || !strings.Contains(r.Invalid[0].Reason, "control character") {
 		t.Errorf("an address with DEL: %+v", r)
 	}
 }
@@ -344,7 +344,7 @@ func TestATitleHasTheRuleOfTheSchema(t *testing.T) {
 		{"a space inside", "Show  dates", true},
 		{"bytes that are not UTF-8", "Show\xffdates", false},
 	} {
-		r := contracts.ParseSubmitLines("draft_title "+c.title+"\n", hostCode, contracts.SubmitDraftOpen, given)
+		r := contracts.ParseSubmitLines("draft_title "+c.title+"\n", hostCode, contracts.DraftOpen, given)
 		// A lone valid title makes an incomplete draft: it is recorded as one line left out for that.
 		refused := len(r.Invalid) == 1 && !strings.Contains(r.Invalid[0].Reason, "needs five lines")
 		if refused == c.ok {
@@ -370,13 +370,13 @@ func TestADraftLineFollowsTheInput(t *testing.T) {
 		}
 	}
 	// An update whose draft number was a hint: the program printed another number.
-	r = contracts.ParseSubmitLines(strings.Replace(out, "draft_number 34", "draft_number 41", 1), hostCode, contracts.SubmitDraftUpdate, given)
+	r = contracts.ParseSubmitLines(strings.Replace(out, "draft_number 34", "draft_number 41", 1), hostCode, contracts.DraftUpdate, given)
 	if r.Draft == nil || r.Draft.Number != 41 {
 		t.Errorf("an update that printed another number: %+v", r)
 	}
 	// Three of the five draft lines: none is recorded, and each is listed.
 	partial := "draft_number 34\ndraft_state draft\ndraft_action opened\n"
-	r = contracts.ParseSubmitLines(partial, hostCode, contracts.SubmitDraftOpen, given)
+	r = contracts.ParseSubmitLines(partial, hostCode, contracts.DraftOpen, given)
 	if r.Draft != nil || len(r.Invalid) != 3 || !strings.Contains(r.Invalid[0].Reason, "draft_url, draft_title is missing") {
 		t.Errorf("a partial draft: %+v", r)
 	}
@@ -389,7 +389,7 @@ func TestADraftLineFollowsTheInput(t *testing.T) {
 				without = append(without, l)
 			}
 		}
-		r = contracts.ParseSubmitLines(strings.Join(without, "\n")+"\n", hostCode, contracts.SubmitDraftOpen, given)
+		r = contracts.ParseSubmitLines(strings.Join(without, "\n")+"\n", hostCode, contracts.DraftOpen, given)
 		if r.Draft != nil || len(r.Invalid) != 4 {
 			t.Errorf("without line %d: %+v", i+1, r)
 		}
@@ -483,7 +483,7 @@ func TestADescriptionIsMarked(t *testing.T) {
 	}
 	for _, name := range []string{"open", "update-keeps-text-around", "markers-removed", "start-marker-removed",
 		"stray-start-marker-first-round", "stray-start-marker-second-round", "end-marker-before-start", "crlf-body-without-markers",
-		"crlf-multi-line-text", "crlf-multi-line-text-appended", "mixed-endings-first-crlf", "mixed-endings-first-lf"} {
+		"crlf-multi-line-text", "crlf-multi-line-text-appended", "mixed-endings-first-crlf", "mixed-endings-first-lf", "update-empty-description"} {
 		if !seen[name] {
 			t.Errorf("fixtures/description has no case %q", name)
 		}
@@ -532,11 +532,11 @@ func TestATitleChangesOnlyWhileItIsThePreviousOne(t *testing.T) {
 	}
 }
 
-// TestTheSubmissionExamplesAreOneForEachTarget pins that the feed has an entry for a forge
+// TestTheSubmissionExamplesAreOneForEachForgeKind pins that the feed has an entry for a forge
 // whose draft is a pull request and one for a forge whose draft is a merge request, on
 // two hosts, that the first version has no previous_title, and that the entry of the
 // second version has the text.title of the first.
-func TestTheSubmissionExamplesAreOneForEachTarget(t *testing.T) {
+func TestTheSubmissionExamplesAreOneForEachForgeKind(t *testing.T) {
 	type entry struct {
 		Kind          string  `json:"kind"`
 		SubmissionID  string  `json:"submission_id"`
@@ -696,7 +696,7 @@ func TestAKeyKeepsItsFirstValidLine(t *testing.T) {
 		{"number of 9 digits", "draft_number 123456789\n" + rest, 123456789, nil},
 		{"number of 10 digits", "draft_number 1234567890\n" + rest, 0, []int{1, 2, 3, 4, 5}},
 	} {
-		r := contracts.ParseSubmitLines(c.output, hostCode, contracts.SubmitDraftOpen, given)
+		r := contracts.ParseSubmitLines(c.output, hostCode, contracts.DraftOpen, given)
 		var lines []int
 		for _, e := range r.Invalid {
 			lines = append(lines, e.Line)
@@ -732,7 +732,7 @@ func TestAKeyKeepsItsFirstValidLine(t *testing.T) {
 // number when a line is left out as it is read and others as a draft that is not whole.
 func TestTheLeftOutLinesAreInTheOrderOfTheirNumbers(t *testing.T) {
 	out := "draft_number 34\nbogus\ndraft_state draft\n\ndraft_title\n"
-	r := contracts.ParseSubmitLines(out, hostCode, contracts.SubmitDraftOpen, given)
+	r := contracts.ParseSubmitLines(out, hostCode, contracts.DraftOpen, given)
 	var lines []int
 	for _, e := range r.Invalid {
 		lines = append(lines, e.Line)

@@ -22,21 +22,31 @@ of the run documents or of the adapter's start-up: neither document mentions the
 
 qory runs the program once for each repository of the submission, with the arguments of
 `submit_program` and no other, and sets these environment variables. Each value is on one
-line, except where the table shows another form.
+line, except where the table shows another form. Only a write run gets a draft.
 
 | Variable | Value |
 |---|---|
 | `QORY_SUBMIT_SYSTEM` | the host name of the repository's system, such as `code.example.com` |
 | `QORY_SUBMIT_PATH` | the repository's path on the system, such as `acme/shop` |
-| `QORY_SUBMIT_BRANCH` | the branch that the run pushed, `qory/` and the work item's public id: the head of the draft |
+| `QORY_SUBMIT_BRANCH` | the head of the draft, a branch that qory has already pushed when the program starts: with a work item, `qory/` and the work item's public id; with none, as on a local `qory run`, the branch that qory makes for the run, `qory/run-<run id>` |
 | `QORY_SUBMIT_BASE_BRANCH` | the branch that the draft is based on. Unset when qory did not read it; a program that has `QORY_SUBMIT_DRAFT` `open` or `update` and no base branch exits with status 2 |
 | `QORY_SUBMIT_BASE_COMMIT` | the commit that the run started at, 40 or 64 lower-case hexadecimal digits |
 | `QORY_SUBMIT_COMMITS` | the run's commits from the base to the head, oldest first: full commit ids joined by single spaces, 1 to 100 |
-| `QORY_SUBMIT_DRAFT` | `open`, `update` or `none` |
+| `QORY_SUBMIT_DRAFT` | `open`, `update` or `none`. `none` when the run has no hand-off text |
 | `QORY_SUBMIT_DRAFT_NUMBER` | the number of the draft to update, a hint: the program finds the draft from the branch when the forge has no draft with that number. Set exactly when `QORY_SUBMIT_DRAFT` is `update` |
-| `QORY_SUBMIT_TITLE` | the title of the draft, 1 to 256 characters on one line. Unset when `QORY_SUBMIT_DRAFT` is `none` |
-| `QORY_SUBMIT_PREVIOUS_TITLE` | the title of the previous submission version of the work item. Unset on the first version, and when that version had no text; the program then leaves the draft's title as it is |
-| `QORY_SUBMIT_DESCRIPTION_FILE` | the path of a UTF-8 file with the run's text for the description, at most 20000 characters, over several lines. Unset when `QORY_SUBMIT_DRAFT` is `none` |
+| `QORY_SUBMIT_TITLE` | the title of the draft, from the run's hand-off text, 1 to 256 characters on one line. Unset when `QORY_SUBMIT_DRAFT` is `none` |
+| `QORY_SUBMIT_PREVIOUS_TITLE` | the title of the previous submission version of the work item. Set only with a work item: unset on the first version, when that version had no text, and on a local run, which has no work item and so no previous version. The program then leaves the draft's title as it is |
+| `QORY_SUBMIT_DESCRIPTION_FILE` | the path of a UTF-8 file with the description text from the run's hand-off text, at most 20000 characters, over several lines, with no marker line: the program adds the markers. Unset when `QORY_SUBMIT_DRAFT` is `none` |
+
+qory pushes the branch before it runs the program, on every run, and the program pushes
+nothing. On a local run, which has no work item, qory pushes `qory/run-<run id>` with
+the person's git login. Before each push qory checks the run's commits as it does for a
+run that it starts from a run code: for a key or a value of the run's secrets, and for a
+change to a file that the session may not change (`outcome.schema.json`, the end codes
+`push_key_found` and `push_scope_refused`). If a check refuses, qory pushes nothing and
+runs no program. After a push that succeeded, the program only opens or updates the
+draft, so exit status 1 means that a call to the forge failed, and the program never
+exits with a push failure.
 
 The description is a file because it has several lines. Standard input is an empty file
 such as `/dev/null`: a command that reads it gets end of file at once. A program that
@@ -79,7 +89,7 @@ line.
 
 | Key | Value |
 |---|---|
-| `draft_number` | the draft's number: digits only, 1 to 9 of them, 1 or more |
+| `draft_number` | the draft's number: 1 to 9 digits, no leading zero |
 | `draft_url` | the draft's address |
 | `draft_title` | the draft's title after the call, 1 to 256 characters |
 | `draft_state` | `draft` while the forge shows the draft as not ready for review, `open` once it shows it as ready, `closed` when a person closed it without merging, `merged` once it is merged |
@@ -190,6 +200,8 @@ but spaces, tabs or a carriage return.
    replaces.
 3. For an `update`, if no such pair exists, as when a person removed a marker, the
    program keeps the description whole and adds a blank line and the new block at the end.
+   When the description is empty, the block alone is the new description, with no blank
+   line before it.
 4. The new block uses the line ending of the description: CRLF when the first line ending
    of the description is CRLF, otherwise LF. Only the line endings that the program adds
    use it: the ones next to the two marker lines, and the blank line before a block added

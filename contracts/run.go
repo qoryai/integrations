@@ -158,9 +158,9 @@ type Documents struct {
 	// int64. When it is nil, the image has no size limit.
 	LargestPrebuiltImageBytes *int64 `json:"largest_prebuilt_image_bytes,omitempty"`
 	// Submit is set only with Workflow and with Access "write": the settings of the
-	// submit step of the run, which the control plane writes whenever the process version
+	// submission of the run, which the control plane writes whenever the process version
 	// of the workspace has one. On a run with a run code, qory takes the settings of the
-	// submit step only from Submit, never from process.yaml. For what qory does when
+	// submission only from Submit, never from process.yaml. For what qory does when
 	// process.yaml has a different submit, see submit in documents.schema.json.
 	Submit *Submit `json:"submit,omitempty"`
 }
@@ -388,7 +388,7 @@ type HarnessSource struct {
 	Module string `json:"module,omitempty"`
 }
 
-// Submit is the settings of the submit step of a run, the submit of the run documents,
+// Submit is the settings of the submission of a run, the submit of the run documents,
 // documents.schema.json: Type and Send, both required.
 type Submit struct {
 	// Type is the artifact type of the submission: the name of a structured entry of
@@ -396,9 +396,9 @@ type Submit struct {
 	// joined by single hyphens, 1 to 64 bytes. The schema cannot check that
 	// artifact_types has that entry.
 	Type string `json:"type"`
-	// Send is when the submit step sends the submission. With "end_of_run", the submit
-	// step sends the submission at the end of the run. With "after_gate", the submit step
-	// stores the submission and sends it after the gate of the stage passes.
+	// Send is when the control plane writes the submission entry to the change feed. With
+	// "end_of_run", it writes the entry at the end of the run. With "after_gate", it stores
+	// the submission and writes the entry after the gate of the stage passes.
 	Send string `json:"send"`
 }
 

@@ -699,7 +699,7 @@
       }
     },
     "submit": {
-      "description": "The settings of the submit step of the run: type and send, both required, and no other member. The control plane writes submit whenever the process version of the workspace has one. submit is present only on a run with workflow and with access write. submit sets the type and the send of the submission that the run stores. On a run with a run code, qory takes these two settings only from submit of the run documents, never from process.yaml. If the process.yaml of the composed harness has a different submit, qory prints one line with both values and uses submit of the run documents. On that run, the adapter of the forge opens the draft from the submission entry, and no submit program runs. A run that a person starts with no run code has no run documents, so it has no submit. That run runs the submit program of the composed harness, which qory finds as submit-program/README.md describes. A run of the step prebuild has no submit.",
+      "description": "The settings of the submission of the run: type and send, both required, and no other member. The control plane writes submit whenever the process version of the workspace has one. submit is present only on a run with workflow and with access write. submit sets the type and the send of the submission that the run stores. On a run with a run code, qory takes these two settings only from submit of the run documents, never from process.yaml. If the process.yaml of the composed harness has a different submit, qory prints one line with both values and uses submit of the run documents. On that run, the adapter of the forge opens the draft from the submission entry, and no submit program runs. A run that a person starts with no run code has no run documents, so it has no submit. That run runs the submit program of the composed harness, which qory finds as submit-program/README.md describes. A run of the step prebuild has no submit.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -714,7 +714,7 @@
           "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
         },
         "send": {
-          "description": "When the submit step sends the submission. With end_of_run, the submit step sends the submission at the end of the run. With after_gate, the submit step stores the submission and sends it after the gate of the stage passes.",
+          "description": "When the control plane writes the submission entry to the change feed. With end_of_run, it writes the entry at the end of the run. With after_gate, it stores the submission and writes the entry after the gate of the stage passes.",
           "type": "string",
           "enum": [
             "end_of_run",

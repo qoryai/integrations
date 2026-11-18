@@ -206,10 +206,12 @@ forge on a port other than 443 is not a target. The steps:
 
 1. The control plane stores the submission version and writes a `submission` entry to
    the feed of the adapter of the run's target collection (`changes.schema.json`). The
-   entry has `submission_id`, `targets` and, when the session passed, `text`. Each
-   target has `system`, `path`, `branch`, `base` (`commit` and `branch`), the head
-   `commit`, `commits` (each with `commit` and the ledger `step`) and, only when the
-   session passed, `draft`: `{action: open}` or `{action: update, number}`. A draft is a
+   entry has `submission_id`, `targets` and `text`. Each target has `system`, `path`,
+   `branch`, `base` (`commit` and `branch`), the head `commit`, `commits` (each with
+   `commit` and the ledger `step`) and `draft`: `{action: open}` or
+   `{action: update, number}`. `text` and `draft` are absent after a session that did
+   not pass, when the run wrote no text, and when the session escalated: the adapter then
+   only builds the address of each commit. A draft is a
    pull request or a merge request that people can still change before it is ready.
    The entry is the same for every forge, so one adapter opens a pull request and
    another a merge request from it.
@@ -239,7 +241,7 @@ forge on a port other than 443 is not a target. The steps:
    present, is the ref of the source item that the work item was taken from, for an
    adapter that links the draft to that item.
 4. The adapter sends `POST /v1/work-items/changes/submitted`
-   (`changes-submitted.schema.json`) with `submission_id` and, for each target, the
+   (`changes-submitted.schema.json`) with `submission_id` and, for each target that did not fail, the
    `commit_url` of each commit and of the base, and, for a target that had `draft`,
    `draft`: `{number, url, title, state, action}`. `state` is `draft`, `open`, `closed` or
    `merged`. A draft that a person closed or merged has the action `kept`. The `number`
@@ -257,8 +259,10 @@ forge on a port other than 443 is not a target. The steps:
 | `branch_gone` | the forge returned that the branch or its base branch does not exist |
 | `too_long` | the title or the description is longer than the forge's limit for a draft |
 
-On a run with no run code, `qory run` makes the same calls with a submit program that
-uses the login of the forge's command line that the person made. The
+On a run with no run code, `qory run` runs a submit program that makes the calls to the
+forge of steps 2 and 3 with the login of the forge's command line that the person made.
+The program sends nothing to the control plane: only the adapter sends
+`changes/submitted`. The
 [submit program contract](../../run/v1/submit-program/README.md) lists its inputs and its
 result lines, and has the rules of the block and of the title in the same words.
 

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "time": "2026-11-18T12:00:00Z",
-  "submission_id": "av_5d7k2m9q4v1x8z3c",
+  "submission_id": "av_7k2m9q4v1x8z3c5d",
   "targets": [
     {
       "system": "git.example.net",
@@ -27,7 +27,7 @@
       "draft": {
         "number": 7,
         "url": "https://git.example.net/acme/shop/-/merge_requests/7",
-        "title": "Show delivery dates at checkout",
+        "title": "Show delivery dates",
         "state": "merged",
         "action": "kept"
       }

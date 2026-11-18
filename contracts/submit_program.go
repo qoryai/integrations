@@ -25,7 +25,9 @@ const (
 	SubmitEnvSystem = "QORY_SUBMIT_SYSTEM"
 	// SubmitEnvPath is the repository's path on its system, such as acme/shop.
 	SubmitEnvPath = "QORY_SUBMIT_PATH"
-	// SubmitEnvBranch is the branch that the run pushed, the head of the draft.
+	// SubmitEnvBranch is the head of the draft: with a work item, qory/ and the work item's
+	// public id, which the run pushed; with none, the branch that qory makes for the run,
+	// qory/run-<run id>, which the program pushes.
 	SubmitEnvBranch = "QORY_SUBMIT_BRANCH"
 	// SubmitEnvBaseBranch is the branch that the draft is based on. Unset when qory did
 	// not read it.
@@ -35,11 +37,11 @@ const (
 	// SubmitEnvCommits is the commits of the run, from the base to the head, oldest
 	// first, full commit ids joined by single spaces.
 	SubmitEnvCommits = "QORY_SUBMIT_COMMITS"
-	// SubmitEnvDraft is what to do with the draft: SubmitDraftOpen, SubmitDraftUpdate or
+	// SubmitEnvDraft is what to do with the draft: DraftOpen, DraftUpdate or
 	// SubmitDraftNone.
 	SubmitEnvDraft = "QORY_SUBMIT_DRAFT"
 	// SubmitEnvDraftNumber is the number of the draft to update. Set exactly with
-	// SubmitDraftUpdate.
+	// DraftUpdate.
 	SubmitEnvDraftNumber = "QORY_SUBMIT_DRAFT_NUMBER"
 	// SubmitEnvTitle is the title of the draft. Set unless SubmitDraftNone.
 	SubmitEnvTitle = "QORY_SUBMIT_TITLE"
@@ -52,12 +54,9 @@ const (
 	SubmitEnvDescriptionFile = "QORY_SUBMIT_DESCRIPTION_FILE"
 )
 
-// The values of [SubmitEnvDraft].
-const (
-	SubmitDraftOpen   = "open"
-	SubmitDraftUpdate = "update"
-	SubmitDraftNone   = "none"
-)
+// SubmitDraftNone is the value of [SubmitEnvDraft] for no draft. The other two values are
+// [DraftOpen] and [DraftUpdate], the actions of a submission entry.
+const SubmitDraftNone = "none"
 
 // The keys of the result lines that the program prints on standard output, each line
 // "<key> <value>", and for [SubmitKeyCommitURL] "<key> <commit> <address>".

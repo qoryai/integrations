@@ -128,20 +128,22 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `description`) and `targets`, 1 to 20, each system and path once. A target has
   `system`, `path`, `branch`, `base` (`commit` and `branch`), the head `commit`,
   `commits`, 1 to 100, each with `commit` and `step`, and `draft`, `{action: open}` or
-  `{action: update, number}`, only after a session that passed. With `open`, the adapter
-  first looks for a draft from `branch` in any state. The `number` of an update is a
-  hint: when the forge has no such draft, the adapter finds the draft from `branch`. The
-  adapter edits a draft only while it is `draft` or `open`. The run's text sits in the
-  draft's description between the lines `<!-- qory:start -->` and `<!-- qory:end -->`:
-  an update takes the first end marker line that has a start marker line before it and
-  the last start marker line before that end line, replaces the text from the start line
-  to the end marker with the new block, keeps the rest, and adds a new block at the end
-  when no such pair exists. The new block uses the description's line ending, CRLF or
-  LF, only for the line endings that the adapter adds; the ones inside the text stay as
-  given. An update changes the draft's title only while it equals
-  `previous_title`, the title of the previous version. In Go, `ChangeSubmission`,
-  `SubmissionText`, `SubmissionTarget`, `SubmissionBase`, `SubmissionCommit`,
-  `DraftRequest`, and the `Change` members `SubmissionID`, `PreviousTitle`, `Text` and
+  `{action: update, number}`. `text` and `draft` are absent after a session that did not
+  pass, when the run wrote no text, and when the session escalated: the adapter then
+  only builds the address of each commit. With `open`, the adapter first looks for a
+  draft from `branch` in any state. The `number` of an update is a hint: when the forge
+  has no such draft, the adapter finds the draft from `branch`. The adapter edits a
+  draft only while it is `draft` or `open`. The run's text sits in the draft's
+  description between the lines `<!-- qory:start -->` and `<!-- qory:end -->`: an update
+  takes the first end marker line that has a start marker line before it and the last
+  start marker line before that end line, replaces the text from the start line to the
+  end marker with the new block, keeps the rest, and adds a new block at the end when no
+  such pair exists. The new block uses the description's line ending, CRLF or LF, only
+  for the line endings that the adapter adds; the ones inside the text stay as given. An
+  update changes the draft's title only while it equals `previous_title`, the title of
+  the previous version. In Go, `ChangeSubmission`, `SubmissionText`, `SubmissionTarget`,
+  `SubmissionBase`, `SubmissionCommit`, `DraftRequest` with its actions `DraftOpen` and
+  `DraftUpdate`, and the `Change` members `SubmissionID`, `PreviousTitle`, `Text` and
   `Targets` are added.
 - The `source` role may contain `submissions: true`: the adapter takes submissions from
   the control plane. The control plane writes a `submission` entry only for an adapter
@@ -152,41 +154,56 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `targets: true` still offers the collections as places for a run's changes and gates
   the `watch` entry.
 - The adapter reports a submission entry with `POST /v1/work-items/changes/submitted`
-  (`changes-submitted.schema.json`): for each target, the address of each commit and of
-  the base, and, for a target that had `draft`, `draft`, `{number, url, title, state,
-  action}`. `state` is `draft`, `open`, `closed` or `merged`. A draft that a person
-  closed or merged is reported with the action `kept` and is not edited. `number` may
-  differ from the entry's. A failure that trying again cannot fix goes to `POST
+  (`changes-submitted.schema.json`): for each target that did not fail, the address of
+  each commit and of the base, and, for a target that had `draft`, `draft`, `{number,
+  url, title, state, action}`. `state` is `draft`, `open`, `closed` or `merged`. A draft
+  that a person closed or merged is reported with the action `kept` and is not edited.
+  `number` may differ from the entry's. A target that failed goes only to `POST
   /v1/work-items/changes/failed`, which takes `comment_id`, or `submission_id` with
   `system` and `path`, and for a submission the reason `not_permitted`, `unreachable`,
   `branch_gone` or `too_long`. In Go, `ChangesSubmitted`, `SubmittedTarget`,
-  `CommitAddress` and `SubmittedDraft` are added, and `ChangesFailed` has
-  `SubmissionID`, `System` and `Path`.
+  `CommitAddress` and `SubmittedDraft` are added, with the states `DraftStateDraft`,
+  `DraftStateOpen`, `DraftStateClosed` and `DraftStateMerged` and the actions
+  `DraftOpened`, `DraftUpdated` and `DraftKept`, and `ChangesFailed` has `SubmissionID`,
+  `System` and `Path`.
 - The submit program contract, `contracts/run/v1/submit-program/README.md`, is for the
   program that `qory run` runs on a run with no run code, with the login of the forge's
   command line that the person made. A run's draft is opened by the adapter from the
   submission entry, and qory runs the module's submit program only on a run with no run
   code. qory finds the program in the composed harness: the `submit_program` key,
   `{command: [<path>, <argument>, ...]}`, of the manifest of the forge's module, with
-  the path relative to the module. qory sets the environment variables
-  `QORY_SUBMIT_SYSTEM`, `QORY_SUBMIT_PATH`, `QORY_SUBMIT_BRANCH`,
+  the path relative to the module. Only a write run gets a draft. qory pushes the branch
+  before it runs the program, with the check for keys and for files outside the
+  session's scope that a run from a run code has (`push_key_found`,
+  `push_scope_refused`); if a check refuses, qory pushes nothing and runs no program.
+  The program pushes nothing. qory sets the environment variables `QORY_SUBMIT_SYSTEM`,
+  `QORY_SUBMIT_PATH`, `QORY_SUBMIT_BRANCH` (with no work item, `qory/run-<run id>`),
   `QORY_SUBMIT_BASE_BRANCH`, `QORY_SUBMIT_BASE_COMMIT`, `QORY_SUBMIT_COMMITS`,
-  `QORY_SUBMIT_DRAFT`, `QORY_SUBMIT_DRAFT_NUMBER`, `QORY_SUBMIT_TITLE`,
-  `QORY_SUBMIT_PREVIOUS_TITLE` and `QORY_SUBMIT_DESCRIPTION_FILE`, and sets standard
+  `QORY_SUBMIT_DRAFT` (`none` when the run has no hand-off text),
+  `QORY_SUBMIT_DRAFT_NUMBER`, `QORY_SUBMIT_TITLE`, `QORY_SUBMIT_PREVIOUS_TITLE` (unset
+  on a run with no work item) and `QORY_SUBMIT_DESCRIPTION_FILE`, and sets standard
   input to an empty file such as `/dev/null`. The program prints lines of the form
   `draft_number 34`, with the keys `draft_number`, `draft_url`, `draft_title`,
   `draft_state` and `draft_action`, and `commit_url <commit> <address>`, so it needs no
-  JSON tool. qory records the valid lines after exit 0, 1 or 2. Exit 3 means the person
-  has no login of the forge's command line: the program prints as its first line on
-  standard error, for a forge whose command line is `gh`, "Run `gh auth login`, then
-  `qory run` again.", and qory records `login-needed`. A program that runs more than 120
-  seconds is stopped and recorded as `program-timeout`, with no exit status and no line
-  read. For a draft that it asked for and the program did not make, qory records
-  `program-failed` with the exit status. qory prints at most 20 lines of standard error,
-  each prefixed `qory run: submit program: `. The contract has the rules of the marked
-  block and of the title. In Go, `ParseSubmitLines`, `ReadSubmitRun`, `SubmitEnd`,
-  `MarkedDescription`, `NextTitle` and the constants of the input and key names are
-  added.
+  JSON tool. qory records the valid lines after exit 0, 1 or 2. With
+  `QORY_SUBMIT_DRAFT=none`, qory records no draft and no failure. Exit 3 means the
+  person has no login of the forge's command line: the program prints as its first line
+  on standard error, for a forge whose command line is `gh`, "Run `gh auth login`, then
+  `qory run` again.", and qory records `login-needed` with exit 3. A program that runs
+  more than 120 seconds is stopped and recorded as `program-timeout`, with no exit
+  status and no line read. A program that did not start, or ended on a signal or another
+  status, is recorded as `program-failed` with exit 1 and no line read. For a draft that
+  it asked for and the program did not make, qory records `program-failed` with the exit
+  status. qory prints at most 20 lines of standard error, each prefixed `qory run:
+  submit program: `. The contract has the rules of the marked block and of the title. In
+  Go, these are added: `ParseSubmitLines`, `ReadSubmitRun`, `MarkedDescription` and
+  `NextTitle`; the types `SubmitResult`, `SubmitLineError`, `SubmitRecord`,
+  `SubmitFailure` and `SubmitEnd`; the input names `SubmitEnv*` and `SubmitDraftNone`;
+  the key names `SubmitKey*`; `SubmitMarkerStart` and `SubmitMarkerEnd`;
+  `SubmitPrintedLines` and `SubmitLinePrefix`; the exit statuses `SubmitExitDone`,
+  `SubmitExitForge`, `SubmitExitInput` and `SubmitExitLogin`; `SubmitTimeLimit` and
+  `SubmitLoginLine`; and the reasons `SubmitProgramFailed`, `SubmitProgramTimeout` and
+  `SubmitLoginNeeded`.
 - The run contract has a run's end, `outcome.schema.json`, titled Run end: `state`
   (`succeeded`, `failed` or `cancelled`), and optionally `reason` and `exit_code`, as
   Forager's `dev.qory.run.exited` has them. qory sets `reason` to one of the end codes
@@ -257,20 +274,21 @@ change what an existing reader or program relies on, and notes it under Upgradin
   largest size, in decimal bytes, that the target image of the build may have. It is an
   integer of at least 1 and at most 9223372036854775807. A run of any other step has no
   `largest_prebuilt_image_bytes`. When it is absent, the image has no size limit.
-- The run documents can contain `submit`: the settings of the submit step of the run,
+- The run documents can contain `submit`: the settings of the submission of the run,
   with `type` and `send`, both required, and no other member. `type` is the name of the
   artifact type of the submission: lower-case letters and digits in groups joined by
-  single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`. The control
-  plane writes `submit` whenever the process version of the workspace has one. `submit`
-  is present only on a run with `workflow` and with `access` `write`, and never on a run
-  of the step `prebuild`. `submit` sets the `type` and the `send` of the submission that
-  the run stores. On a run with a run code, qory takes these two settings only from
-  `submit`, never from `process.yaml`. If `process.yaml` has a different `submit`, qory
-  prints one line with both values and uses `submit` of the run documents. On that run,
-  the adapter of the forge opens the draft from the submission entry, and no submit
-  program runs. A run that a person starts with no run code has no run documents, so it
-  has no `submit`; it runs the submit program of the composed harness. In Go, `Submit`
-  and `Documents.Submit` are added.
+  single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`: the control
+  plane writes the submission entry at the end of the run or after the gate of the stage
+  passes. The control plane writes `submit` whenever the process version of the
+  workspace has one. `submit` is present only on a run with `workflow` and with `access`
+  `write`, and never on a run of the step `prebuild`. `submit` sets the `type` and the
+  `send` of the submission that the run stores. On a run with a run code, qory takes
+  these two settings only from `submit`, never from `process.yaml`. If `process.yaml`
+  has a different `submit`, qory prints one line with both values and uses `submit` of
+  the run documents. On that run, the adapter of the forge opens the draft from the
+  submission entry, and no submit program runs. A run that a person starts with no run
+  code has no run documents, so it has no `submit`; it runs the submit program of the
+  composed harness. In Go, `Submit` and `Documents.Submit` are added.
 - `access` in the run documents, and `access` of a workflow in `harness`, can be
   `write-no-push`: the run gets a read credential and a copy of the target that the
   agent may change, and the run sends nothing back to the target and has no `submit`.
@@ -665,6 +683,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the
   machine log and revision 1 of the provisioner contract stay as they are.
+
+### Removed
+
+- `submit_module` is no member of the adapter's start-up (`adapter.schema.json`) or of
+  the run documents (`documents.schema.json`), and `$defs/submit_module` and
+  `$defs/harness_pinned_source` are gone. A run with a run code has no submit program;
+  the forge's adapter opens the draft from the submission entry. In Go, `SubmitModule`,
+  `Adapter.SubmitModule` and `Documents.SubmitModule` are removed.
 
 ## [0.3.0] - 2026-10-12
 
