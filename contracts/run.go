@@ -191,9 +191,11 @@ type HarnessDocument struct {
 // and takes the workflows of the base, so it has no Workflows. A section without Extends
 // defines a stack: it requires Modules, at least 1, and may have Workflows, in which the
 // stack declares the access level of each of its workflows. A section that defines a
-// stack, without Extends, takes no target: the machine composes it for
-// RunSettings.Runtime, or, when the run documents have no RunSettings, for the default
-// runtime of the machine. Either kind may have Bind, Extensions, Name and Description.
+// stack, without Extends, takes no target: the machine composes it for the runtime of
+// the session: for session 1, RunSettings.Runtime; for a later session, the Runtime of
+// its [ModelChoice], or RunSettings.Runtime when that is empty; and, when the run
+// documents have no RunSettings, the default runtime of the machine. Either kind may
+// have Bind, Extensions, Name and Description.
 type HarnessSection struct {
 	// Name is the name of the harness.
 	Name string `json:"name,omitempty"`
