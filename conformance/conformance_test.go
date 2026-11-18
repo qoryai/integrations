@@ -358,15 +358,19 @@ func TestADescriptionKeepsTheModelProviderRules(t *testing.T) {
 }
 
 // TestAnUnusableOAuthDeviceIsRefusedWithTheFix pins that Description and DataDescription
-// refuse an oauth_device without oauth_refresh, and an oauth_device URL over http, with
+// refuse an oauth_device without oauth_refresh, and an oauth_device URL that is not an https address, with
 // the fix as the first words after the form, and not with the schema's refusal, which
 // they would otherwise report first.
 func TestAnUnusableOAuthDeviceIsRefusedWithTheFix(t *testing.T) {
 	for name, want := range map[string]string{
 		"fixtures/invalid/description-model-provider-oauth-device-without-oauth-refresh.json": "Add oauth_refresh to model_provider apis[0]: oauth_device takes its client_id and url from it.",
 		"fixtures/invalid/description-model-provider-oauth-device-poll-url-http.json":         `Change the oauth_device poll_url "http://auth.acme-cloud.example/device/token" of model_provider apis[0] to an https URL.`,
+		"ftp": `Change the oauth_device poll_url "ftp://auth.acme-cloud.example/device/token" of model_provider apis[0] to an https URL.`,
 	} {
 		b := fixtures(t, "fixtures/invalid")[name]
+		if name == "ftp" {
+			b = bytes.Replace(fixtures(t, "fixtures/invalid")["fixtures/invalid/description-model-provider-oauth-device-poll-url-http.json"], []byte(`"http://auth.acme-cloud.example/device/token"`), []byte(`"ftp://auth.acme-cloud.example/device/token"`), 1)
+		}
 		if err := conformance.Description(b); err == nil || err.Error() != "describe: "+want {
 			t.Errorf("%s: Description returns %v, want %q", name, err, "describe: "+want)
 		}

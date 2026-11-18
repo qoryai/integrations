@@ -130,8 +130,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `oauth_refresh`, and sends the code exchange to the `url` of `oauth_refresh`.
   `contracts.CheckModelProvider` refuses an `oauth_device` URL whose host or port the
   control plane cannot read. `contracts.CheckDescription` refuses an `oauth_device`
-  without `oauth_refresh`, and an `oauth_device` URL over http, with a message that
-  starts with the fix. A description without `oauth_device` is unchanged.
+  without `oauth_refresh`, and an `oauth_device` URL that is not an https address, with
+  a message that starts with the fix. A description without `oauth_device` is unchanged.
   `descriptions/openai-subscription.json` sets it for OpenAI's device code sign-in, and
   its `description` now starts with "Runs use your ChatGPT subscription through a
   sign-in that Qory Apiary makes with OpenAI's device code."

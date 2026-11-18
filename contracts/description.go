@@ -62,7 +62,7 @@ type GuidePart struct {
 // at most [DescriptionMaxDepth] levels deep. It checks b before any decoder reads it
 // leniently, and leaves the schema's rules to the schema, with one exception: it also
 // refuses an oauth_device that the schema refuses too, one without oauth_refresh and one
-// with an http URL, so that the message starts with the fix and not with a schema path
+// with a URL that does not start with https://, so that the message starts with the fix and not with a schema path
 // ([checkOAuthDevice]).
 func CheckDescription(b []byte) error {
 	if len(b) > DescriptionMaxBytes {
@@ -90,10 +90,13 @@ func CheckDescription(b []byte) error {
 var oauthDeviceURLs = []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"}
 
 // checkOAuthDevice refuses, in the first API that breaks either rule, an oauth_device
-// without an oauth_refresh, and an oauth_device URL that starts with http:// and not
-// https://. The schema refuses both too ("dependentRequired" and "pattern"), but its
-// message names a schema keyword; this one starts with the fix. doc is any decoded
-// description: a value of another shape is left to the schema.
+// without an oauth_refresh, and an oauth_device URL string that does not start with
+// https://, compared in lower case: http://, ftp://, //host/path, a bare host, a relative
+// path and "". The schema refuses both too ("dependentRequired" and "pattern"), but its
+// message names a schema keyword; this one starts with the fix. A member that is missing
+// or not a string, and any other rule of the URL, is left to the schema and to
+// CheckModelProvider. doc is any decoded description: a value of another shape is left
+// to the schema.
 func checkOAuthDevice(doc any) error {
 	d, _ := doc.(map[string]any)
 	roles, _ := d["roles"].(map[string]any)
@@ -109,7 +112,7 @@ func checkOAuthDevice(doc any) error {
 			return fmt.Errorf("Add oauth_refresh to model_provider apis[%d]: oauth_device takes its client_id and url from it.", i)
 		}
 		for _, member := range oauthDeviceURLs {
-			if u, ok := device[member].(string); ok && strings.HasPrefix(strings.ToLower(u), "http://") {
+			if u, ok := device[member].(string); ok && !strings.HasPrefix(strings.ToLower(u), "https://") {
 				return fmt.Errorf("Change the oauth_device %s %q of model_provider apis[%d] to an https URL.", member, u, i)
 			}
 		}
