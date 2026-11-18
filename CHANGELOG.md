@@ -134,20 +134,21 @@ change what an existing reader or program relies on, and notes it under Upgradin
   draft from `branch` in any state. The adapter finds a draft by its head branch,
   `branch`, and the repository only, never by `base.branch`. With several drafts on the
   branch, the adapter takes the entry's `draft.number` when it is among them, otherwise
-  the newest open one. The `number` of an update is a hint: when the forge has no such
-  draft, the adapter finds the draft from `branch`. The adapter edits a draft only while
-  it is `draft` or `open`. The run's text sits in the draft's description between the
-  lines `<!-- qory:start -->` and `<!-- qory:end -->`: an update takes the first end
-  marker line that has a start marker line before it and the last start marker line
-  before that end line, replaces the text from the start line to the end marker with the
-  new block, keeps the rest, and adds a new block at the end when no such pair exists.
-  The new block uses the description's line ending, CRLF or LF, only for the line
-  endings that the adapter adds; the ones inside the text stay as given. An update
-  changes the draft's title only while it equals `previous_title`, the title of the
-  previous version. In Go, `ChangeSubmission`, `SubmissionText`, `SubmissionTarget`,
-  `SubmissionBase`, `SubmissionCommit`, `DraftRequest` with its actions `DraftOpen` and
-  `DraftUpdate`, and the `Change` members `SubmissionID`, `PreviousTitle`, `Text` and
-  `Targets` are added.
+  the not-closed, not-merged draft with the highest number; with none, the closed or
+  merged one with the highest number, reported as kept. The `number` of an update is a
+  hint: when the forge has no such draft, the adapter finds the draft from `branch`. The
+  adapter edits a draft only while it is `draft` or `open`. The run's text sits in the
+  draft's description between the lines `<!-- qory:start -->` and `<!-- qory:end -->`:
+  an update takes the first end marker line that has a start marker line before it and
+  the last start marker line before that end line, replaces the text from the start line
+  to the end marker with the new block, keeps the rest, and adds a new block at the end
+  when no such pair exists. The new block uses the description's line ending, CRLF or
+  LF, only for the line endings that the adapter adds; the ones inside the text stay as
+  given. An update changes the draft's title only while it equals `previous_title`, the
+  title of the previous version. In Go, `ChangeSubmission`, `SubmissionText`,
+  `SubmissionTarget`, `SubmissionBase`, `SubmissionCommit`, `DraftRequest` with its
+  actions `DraftOpen` and `DraftUpdate`, and the `Change` members `SubmissionID`,
+  `PreviousTitle`, `Text` and `Targets` are added.
 - The `source` role may contain `submissions: true`: the adapter takes submissions from
   the control plane. The control plane writes a `submission` entry only for an adapter
   that sets it, whatever source the work item came from, and also when the work item

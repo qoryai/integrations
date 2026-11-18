@@ -610,8 +610,8 @@ func TestTheFeedSaysWhichDraftOfSeveralIsTaken(t *testing.T) {
 	d, _ := node(t, "changes.schema.json", "/$defs/submission")["description"].(string)
 	readme := strings.Join(strings.Fields(string(read(t, "README.md"))), " ")
 	for _, c := range []struct{ where, text, want string }{
-		{"the submission entry", d, "With several drafts on the branch, the adapter takes the entry's draft.number when it is among them, otherwise the newest open one."},
-		{"the README", readme, "With several drafts on the branch, the adapter takes the entry's `draft.number` when it is among them, otherwise the newest open one."},
+		{"the submission entry", d, "With several drafts on the branch, the adapter takes the entry's draft.number when it is among them, otherwise the not-closed, not-merged draft with the highest number; with none, the closed or merged one with the highest number, reported as kept."},
+		{"the README", readme, "With several drafts on the branch, the adapter takes the entry's `draft.number` when it is among them, otherwise the not-closed, not-merged draft with the highest number; with none, the closed or merged one with the highest number, reported as kept."},
 	} {
 		if !strings.Contains(c.text, c.want) {
 			t.Errorf("%s does not contain %q", c.where, c.want)
