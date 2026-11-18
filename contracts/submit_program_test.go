@@ -143,22 +143,20 @@ func TestTheOutputFixturesAreRead(t *testing.T) {
 		{"closed-kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "closed", 34, 2},
 		{"merged-kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "merged", 34, 2},
 	} {
-		for _, draft := range []string{contracts.DraftOpen} {
-			r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+c.file), c.system, draft, given)
-			if len(r.Invalid) != 0 {
-				t.Errorf("%s: invalid lines %v", c.file, r.Invalid)
-			}
-			d := r.Draft
-			if d == nil {
-				t.Errorf("%s: no draft", c.file)
-				continue
-			}
-			if d.Number != c.number || d.URL != c.url || d.Title != "Show delivery dates at checkout" || d.State != c.state || d.Action != c.action {
-				t.Errorf("%s: draft %+v", c.file, *d)
-			}
-			if len(r.CommitURLs) != c.commits {
-				t.Errorf("%s: %d addresses, want %d", c.file, len(r.CommitURLs), c.commits)
-			}
+		r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+c.file), c.system, contracts.DraftOpen, given)
+		if len(r.Invalid) != 0 {
+			t.Errorf("%s: invalid lines %v", c.file, r.Invalid)
+		}
+		d := r.Draft
+		if d == nil {
+			t.Errorf("%s: no draft", c.file)
+			continue
+		}
+		if d.Number != c.number || d.URL != c.url || d.Title != "Show delivery dates at checkout" || d.State != c.state || d.Action != c.action {
+			t.Errorf("%s: draft %+v", c.file, *d)
+		}
+		if len(r.CommitURLs) != c.commits {
+			t.Errorf("%s: %d addresses, want %d", c.file, len(r.CommitURLs), c.commits)
 		}
 	}
 	r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/commits-only.txt"), hostCode, contracts.SubmitDraftNone, given)

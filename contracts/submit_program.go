@@ -25,8 +25,10 @@ const (
 	SubmitEnvSystem = "QORY_SUBMIT_SYSTEM"
 	// SubmitEnvPath is the repository's path on its system, such as acme/shop.
 	SubmitEnvPath = "QORY_SUBMIT_PATH"
-	// SubmitEnvBranch is the head of the draft: the branch that qory makes for the run,
-	// qory/run-<run id>, which qory has already pushed when the program starts.
+	// SubmitEnvBranch is the head of the draft: the branch that qory makes for the run and
+	// has already pushed when the program starts. The name is qory/run-<run id>, then
+	// qory/run-<run id>-2, -3 and so on while that name is taken, or qory-run-<run id>
+	// when a branch named qory exists, so a program reads it and assumes no name.
 	SubmitEnvBranch = "QORY_SUBMIT_BRANCH"
 	// SubmitEnvBaseBranch is the branch that the draft is based on. Unset when qory did
 	// not read it.

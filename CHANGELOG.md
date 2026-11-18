@@ -173,9 +173,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   code. qory finds the program in the composed harness: the `submit_program` key,
   `{command: [<path>, <argument>, ...]}`, of the manifest of the forge's module, with
   the path relative to the module. A run with no run code has no work item and no
-  earlier submission. Only a write run gets a draft. qory pushes the branch
-  `qory/run-<run id>` before it runs the program, with the check for keys and for files
-  outside the session's scope that a run from a run code has (`push_key_found`,
+  earlier submission. Only a write run gets a draft. qory pushes the run's branch before
+  it runs the program: `qory/run-<run id>`, or `qory/run-<run id>-2`, `-3` and so on
+  when that name is taken, or `qory-run-<run id>` when a branch named `qory` exists, so
+  the program reads the name from `QORY_SUBMIT_BRANCH`, with the check for keys and for
+  files outside the session's scope that a run from a run code has (`push_key_found`,
   `push_scope_refused`); if a check refuses, qory pushes nothing and runs no program.
   The program pushes nothing, and opens a draft or edits the draft that it finds from
   the branch. qory sets the environment variables `QORY_SUBMIT_SYSTEM`,

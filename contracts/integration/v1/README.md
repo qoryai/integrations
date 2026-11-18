@@ -261,7 +261,7 @@ forge on a port other than 443 is not a target. The steps:
 
 On a run with no run code, `qory run` runs a submit program with the login of the forge's
 command line that the person made. That run has no work item and no earlier submission,
-so the program opens a draft from the branch `qory/run-<run id>`, which qory has pushed,
+so the program opens a draft from the branch that qory made for the run and pushed (`QORY_SUBMIT_BRANCH`, `qory/run-<run id>` unless that name is taken),
 or edits the draft that it finds there, and builds the address of each commit as in step
 2. The program sends nothing to the control plane: only the adapter sends
 `changes/submitted`. The [submit program contract](../../run/v1/submit-program/README.md)

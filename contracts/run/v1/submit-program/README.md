@@ -28,7 +28,7 @@ line, except where the table shows another form. Only a write run gets a draft.
 |---|---|
 | `QORY_SUBMIT_SYSTEM` | the host name of the repository's system, such as `code.example.com` |
 | `QORY_SUBMIT_PATH` | the repository's path on the system, such as `acme/shop` |
-| `QORY_SUBMIT_BRANCH` | the branch that qory makes for the run, `qory/run-<run id>`: the head of the draft, already pushed when the program starts |
+| `QORY_SUBMIT_BRANCH` | the branch that qory makes for the run: `qory/run-<run id>`, or `qory/run-<run id>-2`, `-3` and so on when that name is taken, or `qory-run-<run id>` when a branch named `qory` exists. The head of the draft, already pushed when the program starts; the program reads it and assumes no name |
 | `QORY_SUBMIT_BASE_BRANCH` | the branch that the draft is based on. Unset when qory did not read it; a program that has `QORY_SUBMIT_DRAFT` `open` and no base branch exits with status 2 |
 | `QORY_SUBMIT_BASE_COMMIT` | the commit that the run started at, 40 or 64 lower-case hexadecimal digits |
 | `QORY_SUBMIT_COMMITS` | the run's commits from the base to the head, oldest first: full commit ids joined by single spaces, 1 to 100 |
@@ -36,15 +36,17 @@ line, except where the table shows another form. Only a write run gets a draft.
 | `QORY_SUBMIT_TITLE` | the title of the draft, from the run's hand-off text, 1 to 256 characters on one line. Unset when `QORY_SUBMIT_DRAFT` is `none` |
 | `QORY_SUBMIT_DESCRIPTION_FILE` | the path of a UTF-8 file with the description text from the run's hand-off text, at most 20000 characters, over several lines, with no marker line: the program adds the markers. Unset when `QORY_SUBMIT_DRAFT` is `none` |
 
-A run with no run code has no work item and no earlier submission. qory pushes
-`qory/run-<run id>` with the person's git login before it runs the program, and the
-program pushes nothing. Before each push qory checks the run's commits as it does for a
-run that it starts from a run code: for a key or a value of the run's secrets, and for a
-change to a file that the session may not change (`outcome.schema.json`, the end codes
-`push_key_found` and `push_scope_refused`). If a check refuses, qory pushes nothing and
-runs no program. After a push that succeeded, the program only opens or edits the
-draft, so exit status 1 means that a call to the forge failed, and the program never
-exits with a push failure.
+A run with no run code has no work item and no earlier submission. qory pushes the run's
+branch with the person's git login before it runs the program, and the program pushes
+nothing. The branch is `qory/run-<run id>`, `qory/run-<run id>-2`, `-3` and so on when
+that name is taken, or `qory-run-<run id>` when a branch named `qory` exists, so a program
+reads the name from `QORY_SUBMIT_BRANCH`. Before each push qory checks the run's commits
+as it does for a run that it starts from a run code: for a key or a value of the run's
+secrets, and for a change to a file that the session may not change
+(`outcome.schema.json`, the end codes `push_key_found` and `push_scope_refused`). If a
+check refuses, qory pushes nothing and runs no program. After a push that succeeded, the
+program only opens or edits the draft, so exit status 1 means that a call to the forge
+failed, and the program never exits with a push failure.
 
 The description is a file because it has several lines. Standard input is an empty file
 such as `/dev/null`: a command that reads it gets end of file at once. A program that
