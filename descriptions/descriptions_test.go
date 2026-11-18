@@ -317,6 +317,8 @@ func TestTheOpenAIDescriptionsAreAsAgreed(t *testing.T) {
 			Format: "openai-responses", Endpoint: "https://api.openai.com/v1",
 			Auth: map[string]any{"scheme": "bearer"}, Prefixes: []any{"sk-"},
 		}, "null", []model{
+			{"gpt-6.2-astra", "GPT-6.2 Astra", five},
+			{"gpt-6.2-sol", "GPT-6.2 Sol", five},
 			{"gpt-6-astra", "GPT-6 Astra", five},
 			{"gpt-6.1-sol", "GPT-6.1 Sol", five},
 			{"gpt-6.1-terra", "GPT-6.1 Terra", none},
@@ -328,6 +330,8 @@ func TestTheOpenAIDescriptionsAreAsAgreed(t *testing.T) {
 			Paths: []any{"/backend-api/codex/*"}, Runtimes: []any{"codex"},
 			OAuthRefr: map[string]any{"url": "https://auth.openai.com/oauth/token", "client_id": "app_EMoamEEZ73f0CkXaXp7hrann"},
 		}, `["five_hour","seven_day"]`, []model{
+			{"gpt-6.2-sol", "GPT-6.2 Sol", six},
+			{"gpt-6.2-astra", "GPT-6.2 Astra", six},
 			{"gpt-6.1-sol", "GPT-6.1 Sol", six},
 			{"gpt-6-astra", "GPT-6 Astra", six},
 			{"gpt-6.1-terra", "GPT-6.1 Terra", six},

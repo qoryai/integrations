@@ -12,6 +12,8 @@
         {"format": "openai-responses", "endpoint": "https://api.openai.com/v1", "auth": {"scheme": "bearer"}, "key_prefixes": ["sk-"]}
       ],
       "models": [
+        {"id": "gpt-6.2-astra", "title": "GPT-6.2 Astra", "effort": ["low", "medium", "high", "xhigh", "max"]},
+        {"id": "gpt-6.2-sol", "title": "GPT-6.2 Sol", "effort": ["low", "medium", "high", "xhigh", "max"]},
         {"id": "gpt-6-astra", "title": "GPT-6 Astra", "effort": ["low", "medium", "high", "xhigh", "max"]},
         {"id": "gpt-6.1-sol", "title": "GPT-6.1 Sol", "effort": ["low", "medium", "high", "xhigh", "max"]},
         {"id": "gpt-6.1-terra", "title": "GPT-6.1 Terra", "effort": ["none", "low", "medium", "high", "xhigh", "max"]},
