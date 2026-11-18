@@ -119,6 +119,20 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- An API of `model_provider` can set `oauth_device`, next to `oauth_refresh`, in
+  `description.schema.json`: the four URLs with which the control plane signs a person
+  in with the OAuth device code flow. `usercode_url` is where the control plane asks
+  for a user code, `poll_url` is where it polls until the person approves,
+  `verification_url` is the page where the person enters the code, and `redirect_uri`
+  is the redirect URI of the code exchange. Each is an https URL, as for `url` of
+  `oauth_refresh`, and all four are required. `oauth_device` is allowed only with
+  `oauth_refresh`, and it has no client id: the sign-in uses the `client_id` of
+  `oauth_refresh`, and sends the code exchange to its `url`.
+  `contracts.CheckModelProvider` refuses an `oauth_device` URL whose host or port the
+  control plane cannot read. A description without `oauth_device` is unchanged.
+  `descriptions/openai-subscription.json` sets it for OpenAI's device code sign-in, and
+  its `description` now starts with "Runs use your ChatGPT subscription through a
+  sign-in that Qory Apiary makes with OpenAI's device code."
 - The change feed has the entry kind `submission` (`changes.schema.json`): the control
   plane writes one for each submission version that a run stores, in the feed of an
   adapter whose `source` role has `submissions: true`, so that the forge's adapter opens

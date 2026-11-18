@@ -280,6 +280,7 @@ func TestTheOpenAIDescriptionsAreAsAgreed(t *testing.T) {
 		Paths     any    `json:"paths"`
 		Runtimes  any    `json:"runtimes"`
 		OAuthRefr any    `json:"oauth_refresh"`
+		OAuthDev  any    `json:"oauth_device"`
 	}
 	type model struct {
 		ID     string   `json:"id"`
@@ -329,6 +330,12 @@ func TestTheOpenAIDescriptionsAreAsAgreed(t *testing.T) {
 			Auth:  map[string]any{"scheme": "bearer", "oauth": true, "account_header": "chatgpt-account-id", "account_claim": claim},
 			Paths: []any{"/backend-api/codex/*"}, Runtimes: []any{"codex"},
 			OAuthRefr: map[string]any{"url": "https://auth.openai.com/oauth/token", "client_id": "app_EMoamEEZ73f0CkXaXp7hrann"},
+			OAuthDev: map[string]any{
+				"usercode_url":     "https://auth.openai.com/api/accounts/deviceauth/usercode",
+				"poll_url":         "https://auth.openai.com/api/accounts/deviceauth/token",
+				"verification_url": "https://auth.openai.com/codex/device",
+				"redirect_uri":     "https://auth.openai.com/deviceauth/callback",
+			},
 		}, `["five_hour","seven_day"]`, []model{
 			{"gpt-6.1-sol", "GPT-6.1 Sol", six},
 			{"gpt-6.2-sol", "GPT-6.2 Sol", six},
@@ -462,6 +469,23 @@ func TestTheAgreedMembersAreSet(t *testing.T) {
 		if refresh != tc.refresh {
 			t.Errorf("%s: oauth_refresh url is %q, want %q", tc.file, refresh, tc.refresh)
 		}
+	}
+}
+
+// TestTheOpenAISubscriptionDescriptionStartsWithTheDeviceSignIn pins the first sentence of
+// the description text of the OpenAI subscription provider, which the control plane
+// shows to the admin who adds the provider. It says how the sign-in is made, which is the
+// oauth_device flow of the API.
+func TestTheOpenAISubscriptionDescriptionStartsWithTheDeviceSignIn(t *testing.T) {
+	var d struct {
+		Description string `json:"description"`
+	}
+	if err := json.Unmarshal(read(t, "openai-subscription.json"), &d); err != nil {
+		t.Fatal(err)
+	}
+	const want = "Runs use your ChatGPT subscription through a sign-in that Qory Apiary makes with OpenAI's device code."
+	if !strings.HasPrefix(d.Description, want+" ") {
+		t.Errorf("the description %q does not start with %q", d.Description, want)
 	}
 }
 
