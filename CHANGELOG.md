@@ -195,6 +195,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `full_suite` is `true` when session 1 runs the full test suite after the agent ends.
   `shared_run` and `full_suite` left out are the same as `false`. A run of the step
   `prebuild` has none of the three.
+- The run documents of every run of the step `explore` contain `run_settings`, and
+  `contracts.Documents.RunSettings` is set for each of them. A run of the step
+  `prebuild` has no `run_settings`. The runtime of session 1 is `run_settings.runtime`,
+  and the runtime of a later session is the `runtime` of its `model_choice`, or
+  `run_settings.runtime` when it has none.
 - The run documents of the step `prebuild` can contain `largest_prebuilt_image_bytes`,
   and `contracts.Documents` has it as `LargestPrebuiltImageBytes`, an `*int64`: the
   largest size, in decimal bytes, that the target image of the build may have. It is an
@@ -574,8 +579,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   workflows. A section that defines a stack, without `extends`, takes no target: the
   machine composes it for the runtime of the session: `run_settings.runtime` for session
   1; for a later session, the `runtime` of its `model_choice`, or `run_settings.runtime`
-  when it has none; and, when the run documents have no `run_settings`, the default
-  runtime of the machine. A section with `extends` takes
+  when it has none. A section with `extends` takes
   the workflows of its base, and the schema rejects `workflows` in it. In Go,
   `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
   `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,

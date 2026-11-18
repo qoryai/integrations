@@ -35,11 +35,11 @@ const MaxInputs = 768 << 10
 // If the machine's qory version does not meet that requirement, the run stops. It reads
 // none of the other machine keys of that file and none of its git and env sections, so
 // the harness file of the target does not set how the run starts. A run of the step
-// explore has WorkItem. A run of the step prebuild has Access, Target, ImageDestination
-// and exactly one of EnvironmentDestination and EnvironmentImage, and no TargetVersion,
-// WorkItem, RunSettings, TimeLimitMinutes, SharedRun, FullSuite, Workflow,
-// HarnessHidden or Harness. RunSettings, TimeLimitMinutes, SharedRun and FullSuite are
-// set only for the step explore. The documents are the documents of session 1: its
+// explore has WorkItem and RunSettings. A run of the step prebuild has Access, Target,
+// ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
+// no TargetVersion, WorkItem, RunSettings, TimeLimitMinutes, SharedRun, FullSuite,
+// Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun and FullSuite are set
+// only for the step explore. The documents are the documents of session 1: its
 // Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With SharedRun, each
 // later session comes from the answer to the next-session request, as
 // [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
@@ -193,8 +193,7 @@ type HarnessDocument struct {
 // stack declares the access level of each of its workflows. A section that defines a
 // stack, without Extends, takes no target: the machine composes it for the runtime of
 // the session: for session 1, RunSettings.Runtime; for a later session, the Runtime of
-// its [ModelChoice], or RunSettings.Runtime when that is empty; and, when the run
-// documents have no RunSettings, the default runtime of the machine. Either kind may
+// its [ModelChoice], or RunSettings.Runtime when that is empty. Either kind may
 // have Bind, Extensions, Name and Description.
 type HarnessSection struct {
 	// Name is the name of the harness.
@@ -484,7 +483,8 @@ type WorkItem struct {
 // RunSettings is the run's run_settings, documents.schema.json: the runtime and
 // model settings the job composes the agent's harness with, the settings of session 1.
 // Runtime is the runtime of session 1 and of each later session whose [ModelChoice] has
-// no Runtime. It contains no key or secret.
+// no Runtime. Each run of the step explore has RunSettings, and a run of the step
+// prebuild has none. RunSettings contains no key or secret.
 // With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
 // uses the gateway's configured key and the runtime's default model. Effort
 // and Tiers are set only with Model, and ProviderModels is set exactly when Model is.
