@@ -512,9 +512,11 @@ func (c Change) MarshalJSON() ([]byte, error) {
 // comment entry with CommentID, for Reason "item_gone", "not_permitted", "too_long" or
 // "unreachable", or to put a repository of the submission entry with SubmissionID on
 // the forge, the repository System and Path, for Reason "not_permitted", "unreachable",
-// "branch_gone", "too_long" or "forge_refused". A report has CommentID, or SubmissionID with System and
-// Path, never both. For a comment, the control plane marks the comment not posted and
-// stores Reason; for a repository, it stores Reason with the submission version.
+// "branch_gone", "too_long" or "forge_refused". A report has CommentID, or SubmissionID
+// with System and Path, never both. For a comment, the control plane marks the comment
+// not posted and stores Reason; for a repository, it stores Reason, and Detail when it is
+// set, with the submission version. Detail is for a repository only: one line of 1 to
+// 1000 characters, what to do first, then the forge's status and message.
 type ChangesFailed struct {
 	Version      int    `json:"version"`
 	Time         string `json:"time"`
@@ -523,6 +525,7 @@ type ChangesFailed struct {
 	System       string `json:"system,omitempty"`
 	Path         string `json:"path,omitempty"`
 	Reason       string `json:"reason"`
+	Detail       string `json:"detail,omitempty"`
 }
 
 // ChangesSubmitted is the body of POST /v1/work-items/changes/submitted,

@@ -165,11 +165,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
   (the forge timed out, could not be reached, or returned a busy or 5xx status until the
   retries ended), `branch_gone`, `too_long` or `forge_refused` (the forge refused a
   request with a status that no other reason covers, such as 400, or 422 for another
-  cause than a missing branch or a length limit). In Go, `ChangesSubmitted`,
+  cause than a missing branch or a length limit). A failure of a submission may have
+  `detail`, one line of 1 to 1000 characters with what to do first, then the forge's
+  status and message; the adapter never puts an access token, a secret or a header in
+  it, and a failure of a comment has no `detail`. In Go, `ChangesSubmitted`,
   `SubmittedTarget`, `CommitAddress` and `SubmittedDraft` are added, with the states
   `DraftStateDraft`, `DraftStateOpen`, `DraftStateClosed` and `DraftStateMerged` and the
   actions `DraftOpened`, `DraftUpdated` and `DraftKept`, and `ChangesFailed` has
-  `SubmissionID`, `System` and `Path`.
+  `SubmissionID`, `System`, `Path` and `Detail`.
 - The submit program contract, `contracts/run/v1/submit-program/README.md`, is for the
   program that `qory run` runs on a run with no run code, with the login of the forge's
   command line that the person made. A run's draft is opened by the adapter from the

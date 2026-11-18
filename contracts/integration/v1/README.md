@@ -251,7 +251,10 @@ forge on a port other than 443 is not a target. The steps:
    stores the addresses and the draft.
 5. After a failure that trying again cannot fix, or when its retries end, the adapter
    sends `POST /v1/work-items/changes/failed` (`changes-failed.schema.json`) with
-   `submission_id`, `system`, `path` and `reason`.
+   `submission_id`, `system`, `path`, `reason` and, optionally, `detail`: one line of 1
+   to 1000 characters with what to do first, then the forge's status and message. The
+   adapter never puts an access token, a secret or a header in `detail`. A report about
+   a comment has no `detail`.
 
 | `reason` | Meaning |
 |---|---|
@@ -259,7 +262,7 @@ forge on a port other than 443 is not a target. The steps:
 | `unreachable` | each request to the forge timed out, failed to connect, or returned a busy status or a 5xx status, until the adapter's retries ended |
 | `branch_gone` | the forge returned that the branch or its base branch does not exist |
 | `too_long` | the title or the description is longer than the forge's limit for a draft |
-| `forge_refused` | the forge refused a request with a status that no other reason covers, such as 400, or 422 for a cause other than a missing branch or a length limit, so the same request fails again |
+| `forge_refused` | the forge refused a request with a status that no other reason covers, such as 400, or 422 for a cause other than a missing branch or a length limit, so the same request fails again. The adapter gives the forge's status and message in `detail`, with the fix first |
 
 On a run with no run code, `qory run` runs a submit program with the login of the forge's
 command line that the person made. That run has no work item and no earlier submission,

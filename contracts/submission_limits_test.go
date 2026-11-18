@@ -184,3 +184,49 @@ func title(s string) func(doc, target map[string]any) {
 func replyTitle(s string) func(doc, target map[string]any) {
 	return func(_, tg map[string]any) { tg["draft"].(map[string]any)["title"] = s }
 }
+
+// TestAFailureDetailHasTheRuleOfALine pins the detail of a failure report of a
+// submission at the value on each side: 1000 and 1001 characters, a line break, the
+// next-line control, the line separator, a bidirectional override and a zero-width
+// space, and that a report about a comment takes no detail.
+func TestAFailureDetailHasTheRuleOfALine(t *testing.T) {
+	schema := compile(t, "changes-failed.schema.json")
+	submission := func(detail string) []byte {
+		b, err := json.Marshal(map[string]any{"version": 1, "time": "2026-11-18T12:00:00Z",
+			"submission_id": "av_7k2m9q4v1x8z3c5d", "system": "code.example.com", "path": "acme/shop",
+			"reason": "forge_refused", "detail": detail})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	for _, c := range []struct {
+		name   string
+		detail string
+		ok     bool
+	}{
+		{"1 character", "a", true},
+		{"1000 characters", strings.Repeat("a", 1000), true},
+		{"1001 characters", strings.Repeat("a", 1001), false},
+		{"empty", "", false},
+		{"a status and a message", "Shorten the title, then run again. The forge returned 422: title is too long.", true},
+		{"a line feed", "a\nb", false},
+		{"a carriage return", "a\rb", false},
+		{"a next line", "a\u0085b", false},
+		{"a line separator", "a\u2028b", false},
+		{"a right-to-left override", "a\u202eb", false},
+		{"a zero-width space", "a\u200bb", false},
+	} {
+		if err := validate(schema, submission(c.detail)); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	for _, reason := range []string{"not_permitted", "unreachable", "branch_gone", "too_long", "forge_refused"} {
+		b, _ := json.Marshal(map[string]any{"version": 1, "time": "2026-11-18T12:00:00Z",
+			"submission_id": "av_7k2m9q4v1x8z3c5d", "system": "code.example.com", "path": "acme/shop",
+			"reason": reason, "detail": "Run again. The forge returned 400."})
+		if err := validate(schema, b); err != nil {
+			t.Errorf("%s with detail: %v", reason, err)
+		}
+	}
+}
