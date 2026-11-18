@@ -165,7 +165,7 @@ func TestTheOutputFixturesAreRead(t *testing.T) {
 // each as a line of a draft that is not whole.
 func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 	const whole = "the draft needs five lines"
-	for file, want := range map[string]struct {
+	cases := map[string]struct {
 		line   int    // the line that breaks a rule, 0 when the draft only lacks a line
 		reason string // why that line is left out
 		others int    // the lines left out beside it, because the draft is not whole
@@ -194,7 +194,8 @@ func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 		"invalid-title-no-break-space.txt":  {3, "only spaces", 4, false},
 		"invalid-title-bad-utf8.txt":        {3, "not UTF-8", 4, false},
 		"invalid-draft-without-action.txt":  {0, "", 4, false},
-	} {
+	}
+	for file, want := range cases {
 		r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+file), hostCode, contracts.SubmitDraftOpen, given)
 		broken := 0
 		if want.line > 0 {
@@ -229,8 +230,8 @@ func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 			invalid++
 		}
 	}
-	if invalid != 23 {
-		t.Errorf("fixtures/output contains %d invalid- files, and the test expects 23", invalid)
+	if invalid != len(cases) {
+		t.Errorf("fixtures/output contains %d invalid- files, and the test lists %d", invalid, len(cases))
 	}
 }
 
@@ -451,7 +452,8 @@ func TestADescriptionIsMarked(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"open", "update-keeps-text-around", "markers-removed", "start-marker-removed",
-		"stray-start-marker-first-round", "stray-start-marker-second-round", "end-marker-before-start", "crlf-body-without-markers"} {
+		"stray-start-marker-first-round", "stray-start-marker-second-round", "end-marker-before-start", "crlf-body-without-markers",
+		"crlf-multi-line-text", "crlf-multi-line-text-appended", "mixed-endings-first-crlf", "mixed-endings-first-lf"} {
 		if !seen[name] {
 			t.Errorf("fixtures/description has no case %q", name)
 		}
@@ -485,6 +487,8 @@ func TestATitleChangesOnlyWhileItIsThePreviousOne(t *testing.T) {
 		{"unchanged title", "Show dates", "Show dates", "Show delivery dates", "", "Show delivery dates"},
 		{"edited title", "Show dates (urgent)", "Show dates", "Show delivery dates", "", "Show dates (urgent)"},
 		{"no previous title", "Show dates", "", "Show delivery dates", "", "Show dates"},
+		{"empty title, no previous title", "", "", "Show delivery dates", "", ""},
+		{"empty title, a previous title", "", "Show dates", "Show delivery dates", "", ""},
 		{"same title again", "Show dates", "Show dates", "Show dates", "", "Show dates"},
 		{"forge text before the title", "Prefix: Show dates", "Show dates", "Show delivery dates", "Prefix: ", "Prefix: Show delivery dates"},
 		{"forge text, edited title", "Prefix: Show dates (urgent)", "Show dates", "Show delivery dates", "Prefix: ", "Prefix: Show dates (urgent)"},
@@ -568,5 +572,142 @@ func TestTheFeedDescribesTheMarkers(t *testing.T) {
 	text := node(t, "changes.schema.json", "/$defs/submission/properties/text/properties/description")
 	if text["maxLength"] != json.Number("20000") {
 		t.Errorf("the description's limit is %v", text["maxLength"])
+	}
+}
+
+// gatingTexts are the places that state that a submission entry reaches only an adapter whose
+// source role has submissions: true, by where they are. A README section has its white
+// space collapsed to single spaces.
+func gatingTexts(t *testing.T) map[string]string {
+	t.Helper()
+	str := func(m map[string]any) string { d, _ := m["description"].(string); return d }
+	readme := string(read(t, "README.md"))
+	section := func(heading string) string {
+		i := strings.Index(readme, "\n## "+heading+"\n")
+		if i < 0 {
+			t.Fatalf("README.md has no section %q", heading)
+		}
+		rest := readme[i+1:]
+		if j := strings.Index(rest[3:], "\n## "); j >= 0 {
+			rest = rest[:j+3]
+		}
+		return strings.Join(strings.Fields(rest), " ")
+	}
+	return map[string]string{
+		"the feed's description":  str(root(t, "changes.schema.json")),
+		"the submission entry":    str(node(t, "changes.schema.json", "/$defs/submission")),
+		"the submissions flag":    str(node(t, "description.schema.json", "/properties/roles/properties/source/properties/submissions")),
+		"the targets flag":        str(node(t, "description.schema.json", "/properties/roles/properties/source/properties/targets")),
+		"the feed section":        section("Change feed and comments"),
+		"the Submissions section": section("Submissions"),
+	}
+}
+
+// root is the top object of a schema of the contract.
+func root(t *testing.T, name string) map[string]any {
+	t.Helper()
+	doc, err := contracts.Document(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return doc.(map[string]any)
+}
+
+// missingGating lists the places in texts that do not contain submissions: true.
+func missingGating(texts map[string]string) []string {
+	var missing []string
+	for place, text := range texts {
+		if !strings.Contains(text, "submissions: true") && !strings.Contains(text, "`submissions: true`") {
+			missing = append(missing, place)
+		}
+	}
+	slices.Sort(missing)
+	return missing
+}
+
+// TestTheSubmissionsFlagIsInEachPlaceThatGatesTheEntry pins that the feed's description,
+// the submission entry, the flag's text, the text of targets and the integration README
+// each mention that the entry needs submissions: true, and that removing the phrase from a
+// copy of any one place is found.
+func TestTheSubmissionsFlagIsInEachPlaceThatGatesTheEntry(t *testing.T) {
+	texts := gatingTexts(t)
+	if missing := missingGating(texts); len(missing) != 0 {
+		t.Fatalf("no mention of submissions: true in %v", missing)
+	}
+	for place, text := range texts {
+		copied := map[string]string{}
+		for k, v := range texts {
+			copied[k] = v
+		}
+		copied[place] = strings.ReplaceAll(text, "submissions: true", "")
+		missing := missingGating(copied)
+		if !slices.Contains(missing, place) {
+			t.Errorf("without the phrase in %s, the check finds %v", place, missing)
+		}
+	}
+	if d := texts["the targets flag"]; !strings.Contains(d, "watch") {
+		t.Error("the text of targets does not mention that it gates the watch entry")
+	}
+}
+
+// TestAKeyKeepsItsFirstValidLine pins that, for a draft key and for a commit, the first
+// valid line stays, a later valid line is left out, and an earlier line that is not valid
+// does not count.
+func TestAKeyKeepsItsFirstValidLine(t *testing.T) {
+	const rest = "draft_url https://code.example.com/acme/shop/pull/34\ndraft_title Show dates\ndraft_state draft\ndraft_action opened\n"
+	for _, c := range []struct {
+		name, output string
+		number       int
+		invalid      []int
+	}{
+		{"number, invalid then valid", "draft_number 0\ndraft_number 34\n" + rest, 34, []int{1}},
+		{"number, valid then valid", "draft_number 34\ndraft_number 35\n" + rest, 34, []int{2}},
+		{"number, valid then invalid", "draft_number 34\ndraft_number 0\n" + rest, 34, []int{2}},
+		{"number of 9 digits", "draft_number 123456789\n" + rest, 123456789, nil},
+		{"number of 10 digits", "draft_number 1234567890\n" + rest, 0, []int{1, 2, 3, 4, 5}},
+	} {
+		r := contracts.ParseSubmitLines(c.output, hostCode, contracts.SubmitDraftOpen, given)
+		var lines []int
+		for _, e := range r.Invalid {
+			lines = append(lines, e.Line)
+		}
+		if !slices.Equal(lines, c.invalid) {
+			t.Errorf("%s: lines %v are left out, want %v", c.name, lines, c.invalid)
+		}
+		if (r.Draft != nil) != (c.number != 0) || (r.Draft != nil && r.Draft.Number != c.number) {
+			t.Errorf("%s: draft %+v, want number %d", c.name, r.Draft, c.number)
+		}
+	}
+	good := "https://code.example.com/acme/shop/commit/" + commitMade
+	for _, c := range []struct {
+		name, output string
+		want         string
+		invalid      []int
+	}{
+		{"invalid then valid", "commit_url " + commitMade + " http://code.example.com/x\ncommit_url " + commitMade + " " + good + "\n", good, []int{1}},
+		{"valid then valid", "commit_url " + commitMade + " " + good + "\ncommit_url " + commitMade + " " + good + "x\n", good, []int{2}},
+	} {
+		r := contracts.ParseSubmitLines(c.output, hostCode, contracts.SubmitDraftNone, given)
+		var lines []int
+		for _, e := range r.Invalid {
+			lines = append(lines, e.Line)
+		}
+		if !slices.Equal(lines, c.invalid) || r.CommitURLs[commitMade] != c.want {
+			t.Errorf("%s: lines %v are left out and the address is %q, want %v and %q", c.name, lines, r.CommitURLs[commitMade], c.invalid, c.want)
+		}
+	}
+}
+
+// TestTheLeftOutLinesAreInTheOrderOfTheirNumbers pins that Invalid is sorted by line
+// number when a line is left out as it is read and others as a draft that is not whole.
+func TestTheLeftOutLinesAreInTheOrderOfTheirNumbers(t *testing.T) {
+	out := "draft_number 34\nbogus\ndraft_state draft\n\ndraft_title\n"
+	r := contracts.ParseSubmitLines(out, hostCode, contracts.SubmitDraftOpen, given)
+	var lines []int
+	for _, e := range r.Invalid {
+		lines = append(lines, e.Line)
+	}
+	if want := []int{1, 2, 3, 5}; !slices.Equal(lines, want) {
+		t.Errorf("lines %v are left out, want %v: %v", lines, want, r.Invalid)
 	}
 }

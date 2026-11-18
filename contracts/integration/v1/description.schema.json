@@ -120,7 +120,7 @@
               "const": true
             },
             "submissions": {
-              "description": "true: the source takes submissions from the control plane. The control plane writes a submission entry to the change feed (changes.schema.json) for each submission version that a run stores for a target in one of the source's collections, and the adapter puts the commits' addresses and, where the entry asks for it, a draft on the forge. This applies whatever source the run's work item came from, and also when the work item came from no item at a source. Absent, the source takes no submission from the control plane: the control plane writes no submission entry for the source. An adapter that does not set submissions: true never receives a submission entry. The flag does not replace targets: true, which offers the collections as places for a run's changes.",
+              "description": "true: the source takes submissions from the control plane. The control plane writes a submission entry to the change feed (changes.schema.json) for each submission version that a run stores for a target in one of the source's collections, and the adapter puts the commits' addresses and, where the entry asks for it, a draft on the forge. This applies whatever source the run's work item came from, and also when the work item came from no item at a source. Absent, the source takes no submission from the control plane: the control plane writes no submission entry for the source. An adapter that does not set submissions: true never receives a submission entry. A run's submission goes to the adapter of the run's target collection, and only an adapter with targets: true offers collections as targets, so a source with submissions: true also has targets: true.",
               "const": true
             },
             "targets": {
@@ -148,6 +148,7 @@
               "items": {"$ref": "#/$defs/apply"}
             }
           },
+          "dependentRequired": {"submissions": ["targets"]},
           "if": {"required": ["items"]},
           "then": {"not": {"anyOf": [{"required": ["item_noun"]}, {"required": ["comments"]}]}}
         },

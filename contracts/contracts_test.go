@@ -135,6 +135,7 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		"fixtures/invalid/description-source-targets-string.json":                          "/roles/source/targets const",
 		"fixtures/invalid/description-source-submissions-false.json":                       "/roles/source/submissions const",
 		"fixtures/invalid/description-source-submissions-string.json":                      "/roles/source/submissions const",
+		"fixtures/invalid/description-source-submissions-without-targets.json":             "/roles/source dependentRequired/submissions",
 		"fixtures/invalid/description-source-apply-host-wildcard.json":                     "/roles/source/apply/0/hosts/0 pattern; /roles/source/apply/0/hosts/0 pattern; /roles/source/apply/0/hosts/0 pattern",
 		"fixtures/invalid/description-source-apply-header-without-header.json":             "/roles/source/apply/0 required header",
 		"fixtures/invalid/description-source-apply-username-with-bearer.json":              "/roles/source/apply/0 ",

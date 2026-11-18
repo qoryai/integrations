@@ -223,10 +223,15 @@ forge on a port other than 443 is not a target. The steps:
    draft only while it is `draft` or `open`; a draft that a person closed or merged stays
    as it is. The draft's description has one block between the lines
    `<!-- qory:start -->` and `<!-- qory:end -->`, and `text.description` is the content
-   of that block. On an update, the adapter replaces the block, the last start marker
-   line before the first end marker line that has one, and keeps the rest of the
-   description. If there is no such pair, as when a person removed a marker, the adapter
-   adds a blank line and a new block at the end. On an update, the adapter sets the title
+   of that block. On an update, the adapter takes the first end marker line that has a
+   start marker line before it, and the last start marker line before that end line. It
+   replaces the text from the start line to the end marker with the new block, and keeps
+   the rest of the description. If there is no such pair, as when a person removed a
+   marker, the adapter adds a blank line and a new block at the end. The new block uses
+   the line ending of the description, CRLF when its first line ending is CRLF and
+   otherwise LF, for the line endings that the adapter adds: the ones next to the two
+   marker lines, and the blank line before a block added at the end. The line endings
+   inside `text.description` stay as given. On an update, the adapter sets the title
    to `text.title` only while the draft's title equals `previous_title`, the
    `text.title` of the previous version; a title that a person edited stays. If the
    forge adds a text before the title of a draft that is not ready, the adapter compares
@@ -239,8 +244,8 @@ forge on a port other than 443 is not a target. The steps:
    `draft`: `{number, url, title, state, action}`. `state` is `draft`, `open`, `closed` or
    `merged`. A draft that a person closed or merged has the action `kept`. The `number`
    may differ from the entry's. The reply has `draft` exactly when the entry's target had
-   it; the control plane refuses a reply that does not, 400. The control plane stores
-   them.
+   a draft; the control plane refuses a reply that does not, 400. The control plane
+   stores the addresses and the draft.
 5. After a failure that trying again cannot fix, or when its retries end, the adapter
    sends `POST /v1/work-items/changes/failed` (`changes-failed.schema.json`) with
    `submission_id`, `system`, `path` and `reason`.
@@ -314,7 +319,7 @@ with `items: false` has no items, and its `source` role has no `comments`.
 |---|---|---|
 | `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential`; `example-source-apply-bearer.json`, a source role with an apply item of the scheme `bearer` whose paths are templates with `{target.path}` and a path without it; `example-source-apply-basic.json`, one with an apply item of the scheme `basic` and its `username`; `example-source-apply-header.json`, one with an apply item of the scheme `header` and its `header`, on a DNS name and an IPv4 address; `example-source-guide.json`, a source role with a `guide`: a `setup` part with `before`, three `steps` and `after`, and a `connect` part with two `steps` alone; `example-source-targets.json`, a source role with `targets: true`; `example-source-submissions.json`, a source role with `targets: true` and `submissions: true`; `example-source-comments.json`, a source role with `comments: true` | `description.schema.json` |
 | `fixtures/adapter/<name>/` | the requests and answers of the adapter, named by their schema; among them `changes/submission-github-like.json` and `changes/submission-gitlab-like.json`, a submission entry that opens a draft on one host and one that updates a draft on another, `changes/submission-two-versions.json`, a first version with no `previous_title` and a second that has the title of the first, `changes-submitted/github-like.json` and `changes-submitted/gitlab-like.json`, the replies, and `changes-failed/submission-*.json`, one for each reason of a submission | `<name>.schema.json` |
-| `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define; `description-source-comments-false.json`, `comments: false`; `description-source-submissions-false.json`, `submissions: false`; `description-source-submissions-string.json`, `submissions` as the string `"true"`; and `description-source-items-false-with-comments.json`, `comments` beside `items: false` | `description.schema.json`, expecting a failure |
+| `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define; `description-source-comments-false.json`, `comments: false`; `description-source-submissions-false.json`, `submissions: false`; `description-source-submissions-string.json`, `submissions` as the string `"true"`; `description-source-submissions-without-targets.json`, `submissions: true` with no `targets`; and `description-source-items-false-with-comments.json`, `comments` beside `items: false` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.
 

@@ -357,7 +357,9 @@ func submitAddress(addr, system string) error {
 //
 // The block is [SubmitMarkerStart], a line ending, text, a line ending and
 // [SubmitMarkerEnd]. The line ending is CRLF when the first line ending of existing is
-// CRLF, otherwise LF. A line is a marker line when it is the marker followed by nothing
+// CRLF, otherwise LF. Only the line endings that this function adds use it: the ones
+// next to the marker lines, and the blank line before a block added at the end. The line
+// endings inside text stay as given. A line is a marker line when it is the marker followed by nothing
 // but spaces, tabs or a carriage return. The end line is the first end marker line that
 // has a start marker line before it, and the start line is the last start marker line
 // before the end line. The block replaces the text from the start of the start line to

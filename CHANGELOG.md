@@ -10,9 +10,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
 ### Upgrading
 
 - Update a reader of the run documents to this `documents.schema.json` before the
-  control plane writes `submit`, or `write-no-push` in `access` or in the `access` of a
-  workflow in `harness`, there: a reader that checks the run documents against an
-  earlier copy refuses each of them.
+  control plane writes `submit`, `write-no-push` in `access`, or `write-no-push` in the
+  `access` of a workflow in `harness`, to the run documents: a reader that checks the
+  run documents against an earlier copy refuses each of them.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
@@ -133,9 +133,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   hint: when the forge has no such draft, the adapter finds the draft from `branch`. The
   adapter edits a draft only while it is `draft` or `open`. The run's text sits in the
   draft's description between the lines `<!-- qory:start -->` and `<!-- qory:end -->`:
-  an update replaces the last start marker line before the first end marker line that
-  has one, with the lines between them, keeps the rest, and adds a new block at the end
-  when no such pair exists. An update changes the draft's title only while it equals
+  an update takes the first end marker line that has a start marker line before it and
+  the last start marker line before that end line, replaces the text from the start line
+  to the end marker with the new block, keeps the rest, and adds a new block at the end
+  when no such pair exists. The new block uses the description's line ending, CRLF or
+  LF, only for the line endings that the adapter adds; the ones inside the text stay as
+  given. An update changes the draft's title only while it equals
   `previous_title`, the title of the previous version. In Go, `ChangeSubmission`,
   `SubmissionText`, `SubmissionTarget`, `SubmissionBase`, `SubmissionCommit`,
   `DraftRequest`, and the `Change` members `SubmissionID`, `PreviousTitle`, `Text` and
@@ -144,8 +147,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   the control plane. The control plane writes a `submission` entry only for an adapter
   that sets it, whatever source the work item came from, and also when the work item
   came from no item at a source. An adapter that does not set `submissions: true` never
-  receives a `submission` entry. `targets: true` still offers the collections as places
-  for a run's changes and gates the `watch` entry.
+  receives a `submission` entry. A source with `submissions: true` also has `targets:
+  true`, because the run's target collection is one that `targets: true` offers.
+  `targets: true` still offers the collections as places for a run's changes and gates
+  the `watch` entry.
 - The adapter reports a submission entry with `POST /v1/work-items/changes/submitted`
   (`changes-submitted.schema.json`): for each target, the address of each commit and of
   the base, and, for a target that had `draft`, `draft`, `{number, url, title, state,
@@ -167,16 +172,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `QORY_SUBMIT_SYSTEM`, `QORY_SUBMIT_PATH`, `QORY_SUBMIT_BRANCH`,
   `QORY_SUBMIT_BASE_BRANCH`, `QORY_SUBMIT_BASE_COMMIT`, `QORY_SUBMIT_COMMITS`,
   `QORY_SUBMIT_DRAFT`, `QORY_SUBMIT_DRAFT_NUMBER`, `QORY_SUBMIT_TITLE`,
-  `QORY_SUBMIT_PREVIOUS_TITLE` and `QORY_SUBMIT_DESCRIPTION_FILE`, and opens standard
-  input on an empty file. The program prints lines of the form `draft_number 34`, with
-  the keys `draft_number`, `draft_url`, `draft_title`, `draft_state` and `draft_action`,
-  and `commit_url <commit> <address>`, so it needs no JSON tool. qory records the valid
-  lines after exit 0, 1 or 2, `program-failed` with the exit status for a draft that it
-  asked for and the lines do not make, and prints at most 20 lines of standard error,
-  each prefixed `qory run: submit program: `. The contract has the rules of the marked
-  block and of the title. In Go, `ParseSubmitLines`, `ReadSubmitRun`,
-  `MarkedDescription`, `NextTitle` and the constants of the input and key names are
-  added.
+  `QORY_SUBMIT_PREVIOUS_TITLE` and `QORY_SUBMIT_DESCRIPTION_FILE`, and sets standard
+  input to an empty file such as `/dev/null`. The program prints lines of the form
+  `draft_number 34`, with the keys `draft_number`, `draft_url`, `draft_title`,
+  `draft_state` and `draft_action`, and `commit_url <commit> <address>`, so it needs no
+  JSON tool. qory records the valid lines after exit 0, 1 or 2, `program-failed` with
+  the exit status for a draft that it asked for and the lines do not make, and prints at
+  most 20 lines of standard error, each prefixed `qory run: submit program: `. The
+  contract has the rules of the marked block and of the title. In Go,
+  `ParseSubmitLines`, `ReadSubmitRun`, `MarkedDescription`, `NextTitle` and the
+  constants of the input and key names are added.
 - The run contract has a run's end, `outcome.schema.json`, titled Run end: `state`
   (`succeeded`, `failed` or `cancelled`), and optionally `reason` and `exit_code`, as
   Forager's `dev.qory.run.exited` has them. qory sets `reason` to one of the end codes
@@ -253,11 +258,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
   single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`. The control
   plane writes `submit` whenever the process version of the workspace has one. `submit`
   is present only on a run with `workflow` and with `access` `write`, and never on a run
-  of the step `prebuild`. On a run with a run code, qory takes the settings of the
-  submit step only from `submit`, never from `process.yaml`. If `process.yaml` has a
-  different `submit`, qory prints one line with both values and uses `submit` of the run
-  documents. A run that a person starts with no run code has no `submit` and no submit
-  step. In Go, `Submit` and `Documents.Submit` are added.
+  of the step `prebuild`. `submit` sets the `type` and the `send` of the submission that
+  the run stores. On a run with a run code, qory takes these two settings only from
+  `submit`, never from `process.yaml`. If `process.yaml` has a different `submit`, qory
+  prints one line with both values and uses `submit` of the run documents. On that run,
+  the adapter of the forge opens the draft from the submission entry, and no submit
+  program runs. A run that a person starts with no run code has no run documents, so it
+  has no `submit`; it runs the submit program of the composed harness. In Go, `Submit`
+  and `Documents.Submit` are added.
 - `access` in the run documents, and `access` of a workflow in `harness`, can be
   `write-no-push`: the run gets a read credential and a copy of the target that the
   agent may change, and the run sends nothing back to the target and has no `submit`.

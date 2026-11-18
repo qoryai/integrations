@@ -38,10 +38,11 @@ line, except where the table shows another form.
 | `QORY_SUBMIT_PREVIOUS_TITLE` | the title of the previous submission version of the work item. Unset on the first version, and when that version had no text; the program then leaves the draft's title as it is |
 | `QORY_SUBMIT_DESCRIPTION_FILE` | the path of a UTF-8 file with the run's text for the description, at most 20000 characters, over several lines. Unset when `QORY_SUBMIT_DRAFT` is `none` |
 
-The description is a file because it has several lines. Standard input is open and empty
-(`/dev/null`): a program that starts `gh` or `git` passes its standard input on, and the
-first command that reads it would take the text. `gh pr create` and `gh pr edit` read a
-body from a file with `--body-file`.
+The description is a file because it has several lines. Standard input is an empty file
+such as `/dev/null`: a command that reads it gets end of file at once. A program that
+starts `gh` or `git` passes its standard input on, so no command waits for input or takes
+the text from it. `gh pr create` and `gh pr edit` read a body from a file with
+`--body-file`.
 
 With `QORY_SUBMIT_DRAFT` `none`, as after a session that did not pass, the program makes no
 draft and prints only the address of each commit. qory leaves out each draft line that a
@@ -100,7 +101,8 @@ that is not valid and reads the lines around it. These lines are not valid:
 
 - a key that the table does not list, or a key with no value;
 - a line with a control character, or a last line with no line feed;
-- a second line with a `draft_` key, or a second line for a commit: the first line stays;
+- a second valid line with a `draft_` key, or a second valid line for a commit: the first
+  valid line stays, and an earlier line that is not valid does not count;
 - a `commit_url` for a commit that qory did not give the program;
 - a value that breaks its rule in the table;
 - a `draft_` line when `QORY_SUBMIT_DRAFT` is `none`;
@@ -124,7 +126,21 @@ that the program ran for. It records nothing for `QORY_SUBMIT_DRAFT` `none`.
 | 2 | the program could not use its inputs: the valid lines, and `program-failed` with `exit` 2 for a draft that they do not make |
 | another status, or the program did not start | nothing from the lines; the draft is `program-failed` with `exit` 1 |
 
+The contract sets no time limit for the program. qory may stop a program that runs too
+long. A program that qory stopped ends without exit status 0, 1 or 2, so qory records it
+as another status: `program-failed` with `exit` 1, and reads no line.
+
+A reader of qory's record cannot tell a program that did not start, or ended with another
+status, from a program that exited with status 1 and printed no draft: both are
+`program-failed` with `exit` 1. qory prints a different message on standard error for
+each.
+
+A program that exits with status 1 or 2 and has printed a whole draft is recorded as a
+success: the draft is recorded as for exit 0, and the record keeps no exit status. qory
+does not flag a commit that has no `commit_url` line.
+
 `contracts.ReadSubmitRun` is the same rule in Go.
+
 ## What qory prints
 
 qory prints at most 20 lines of the program's standard error, with secrets masked and
@@ -158,7 +174,10 @@ but spaces, tabs or a carriage return.
 3. For an `update`, if no such pair exists, as when a person removed a marker, the
    program keeps the description whole and adds a blank line and the new block at the end.
 4. The new block uses the line ending of the description: CRLF when the first line ending
-   of the description is CRLF, otherwise LF.
+   of the description is CRLF, otherwise LF. Only the line endings that the program adds
+   use it: the ones next to the two marker lines, and the blank line before a block added
+   at the end. The line endings inside the text of `QORY_SUBMIT_DESCRIPTION_FILE` stay as
+   given.
 
 `contracts.MarkedDescription` is the same rule in Go, and `fixtures/description/` contains
 plain-text cases: for each case, the draft's description before (`existing.md`), the text
