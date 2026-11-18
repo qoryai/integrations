@@ -24,7 +24,7 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodePushNotRecorded:         "the control plane has no record of the push",
 	contracts.EndCodeEnvironmentImageMissing: "is not in the registry",
 	contracts.EndCodePushHeadChanged:         "is not the commit that the run expected",
-	contracts.EndCodePushScopeRefused:        "outside the scope that the session's plan allowed",
+	contracts.EndCodePushScopeRefused:        "changes a file that the session may not change",
 	contracts.EndCodeRunDocumentsInvalid:     "fail qory's validation",
 	contracts.EndCodeHarnessInvalid:          "cannot be used: its source",
 	contracts.EndCodeMachineSetupInvalid:     "this machine has no registry",
