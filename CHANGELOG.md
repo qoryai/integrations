@@ -170,11 +170,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `NextSessionRequest`, `NextSessionAnswer`, `NextSessionKindSession` and
   `NextSessionKindEnd` are added.
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
-  `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning, and
-  no `runtime`, because every session uses the runtime of `run_settings`.
+  `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning.
   `model_credential` is the name of a credential of the run, such as the provider's
   public id, a hyphen and the key's place from 1; the schema checks only the pattern of
   a credential's name in Forager's policy.
+- A session after session 1 may choose its runtime: `model_choice` gains `runtime`
+  (`ModelChoice.Runtime` in Go), a runtime name in Forager's runtime descriptor, as
+  `run_settings.runtime`. A `model_choice` without `runtime` runs the session on the
+  runtime of `run_settings`, and `runtime` can be its only member: the session runs on
+  that runtime with the gateway's configured key and that runtime's default model. The
+  `runtime` of `run_settings` is the runtime of session 1 and of each later session
+  whose `model_choice` has none.
 - The next-session request follows the rules of `dev.qory.session.exited` for `state`
   and `reason` that do not depend on its `exit_code`: a `cancelled` session has a
   `reason`, the reasons `timeout` and `interrupted` are for a `cancelled` session only,
