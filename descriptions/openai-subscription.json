@@ -15,9 +15,9 @@
          "oauth_refresh": {"url": "https://auth.openai.com/oauth/token", "client_id": "app_EMoamEEZ73f0CkXaXp7hrann"}}
       ],
       "models": [
+        {"id": "gpt-6.1-sol", "title": "GPT-6.1 Sol", "effort": ["low", "medium", "high", "xhigh", "max", "ultra"]},
         {"id": "gpt-6.2-sol", "title": "GPT-6.2 Sol", "effort": ["low", "medium", "high", "xhigh", "max", "ultra"]},
         {"id": "gpt-6.2-astra", "title": "GPT-6.2 Astra", "effort": ["low", "medium", "high", "xhigh", "max", "ultra"]},
-        {"id": "gpt-6.1-sol", "title": "GPT-6.1 Sol", "effort": ["low", "medium", "high", "xhigh", "max", "ultra"]},
         {"id": "gpt-6-astra", "title": "GPT-6 Astra", "effort": ["low", "medium", "high", "xhigh", "max", "ultra"]},
         {"id": "gpt-6.1-terra", "title": "GPT-6.1 Terra", "effort": ["low", "medium", "high", "xhigh", "max", "ultra"]},
         {"id": "gpt-6-sol", "title": "GPT-6 Sol", "effort": ["low", "medium", "high", "xhigh", "max", "ultra"]},

@@ -317,9 +317,9 @@ func TestTheOpenAIDescriptionsAreAsAgreed(t *testing.T) {
 			Format: "openai-responses", Endpoint: "https://api.openai.com/v1",
 			Auth: map[string]any{"scheme": "bearer"}, Prefixes: []any{"sk-"},
 		}, "null", []model{
+			{"gpt-6-astra", "GPT-6 Astra", five},
 			{"gpt-6.2-astra", "GPT-6.2 Astra", five},
 			{"gpt-6.2-sol", "GPT-6.2 Sol", five},
-			{"gpt-6-astra", "GPT-6 Astra", five},
 			{"gpt-6.1-sol", "GPT-6.1 Sol", five},
 			{"gpt-6.1-terra", "GPT-6.1 Terra", none},
 			{"gpt-6-luna", "GPT-6 Luna", none},
@@ -330,9 +330,9 @@ func TestTheOpenAIDescriptionsAreAsAgreed(t *testing.T) {
 			Paths: []any{"/backend-api/codex/*"}, Runtimes: []any{"codex"},
 			OAuthRefr: map[string]any{"url": "https://auth.openai.com/oauth/token", "client_id": "app_EMoamEEZ73f0CkXaXp7hrann"},
 		}, `["five_hour","seven_day"]`, []model{
+			{"gpt-6.1-sol", "GPT-6.1 Sol", six},
 			{"gpt-6.2-sol", "GPT-6.2 Sol", six},
 			{"gpt-6.2-astra", "GPT-6.2 Astra", six},
-			{"gpt-6.1-sol", "GPT-6.1 Sol", six},
 			{"gpt-6-astra", "GPT-6 Astra", six},
 			{"gpt-6.1-terra", "GPT-6.1 Terra", six},
 			{"gpt-6-sol", "GPT-6 Sol", six},
@@ -361,6 +361,34 @@ func TestTheOpenAIDescriptionsAreAsAgreed(t *testing.T) {
 		}
 		if got, want := asJSON(mp.Models), asJSON(tc.models); got != want {
 			t.Errorf("%s: the models are %s, want %s", tc.file, got, want)
+		}
+	}
+}
+
+// TestTheFirstModelIsTheDefault pins the first model of each OpenAI description. The
+// first entry of models is the default model of a new provider, so a model put in front
+// of it changes the default, and that change is made on purpose.
+func TestTheFirstModelIsTheDefault(t *testing.T) {
+	for file, want := range map[string]string{
+		"openai.json":              "gpt-6-astra",
+		"openai-subscription.json": "gpt-6.1-sol",
+	} {
+		var d struct {
+			Roles struct {
+				ModelProvider struct {
+					Models []struct {
+						ID string `json:"id"`
+					} `json:"models"`
+				} `json:"model_provider"`
+			} `json:"roles"`
+		}
+		if err := json.Unmarshal(read(t, file), &d); err != nil {
+			t.Errorf("%s: %v", file, err)
+			continue
+		}
+		models := d.Roles.ModelProvider.Models
+		if len(models) == 0 || models[0].ID != want {
+			t.Errorf("%s: the first model is %v, want %q, the default model of a new provider", file, models, want)
 		}
 	}
 }
