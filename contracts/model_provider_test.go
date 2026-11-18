@@ -411,6 +411,15 @@ func TestPathsHoldTheirRules(t *testing.T) {
 		{"the root", `["/"]`, ""},
 		{"every path", `["/*"]`, ""},
 		{"a star at the end", `["/backend-api/codex/*"]`, ""},
+		{"{} as a whole segment", `["/v1/{}/messages"]`, ""},
+		{"{} as the last segment", `["/v1/{}"]`, ""},
+		{"{} before a star", `["/v1/{}*"]`, ""},
+		{"{} as the first segment", `["/{}/messages"]`, ""},
+		{"a name in braces", `["/v1/{id}"]`, at + "/0 pattern"},
+		{"braces inside a segment", `["/v1/a{b}"]`, at + "/0 pattern"},
+		{"an opening brace", `["/v1/a{b"]`, at + "/0 pattern"},
+		{"a closing brace", `["/v1/a}b"]`, at + "/0 pattern"},
+		{"{} with text after it", `["/v1/{}a"]`, at + "/0 pattern"},
 		{"no path", `[]`, at + " minItems"},
 		{"33 paths", strs(33, "/v1/p%d"), at + " maxItems"},
 		{"a path twice", `["/v1", "/v1"]`, at + " uniqueItems"},
@@ -567,7 +576,7 @@ func TestCheckModelProviderReadsTheOAuthRefreshURLHost(t *testing.T) {
 		{"https://10.0.0.256/oauth/token", `the host "10.0.0.256" ends in a number and is not an IPv4 address of four decimal parts from 0 to 255, each with no leading zero`},
 		{"https://auth.acme.example:65536/oauth/token", `the port "65536" is not a number from 1 to 65535`},
 	} {
-		want := `the oauth_refresh url "` + tc.url + `" of model_provider apis[0] has no host the control plane can read: ` + tc.why
+		want := `change the oauth_refresh url "` + tc.url + `" of model_provider apis[0]: the control plane cannot read its host or port: ` + tc.why
 		if err := contracts.CheckModelProvider(doc(tc.url)); err == nil || err.Error() != want {
 			t.Errorf("%s: %v, want %q", tc.url, err, want)
 		}
@@ -643,6 +652,36 @@ func TestCheckModelProviderRefusesAnUnclearPath(t *testing.T) {
 	} {
 		if err := contracts.CheckModelProvider(doc(paths)); err != nil {
 			t.Errorf("%s: %v", paths, err)
+		}
+	}
+}
+
+// TestCheckModelProviderRefusesAPathWithASpaceTheSchemaReadsAsText pins that
+// CheckModelProvider refuses an entry of paths with a Unicode space character, such as
+// U+00A0, U+2003 or U+0085, which the pattern of the schema accepts and Forager's
+// policy.ValidPath refuses, and accepts a path with U+00FF.
+func TestCheckModelProviderRefusesAPathWithASpaceTheSchemaReadsAsText(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	for _, tc := range []struct {
+		name, path string
+		refused    bool
+	}{
+		{"a no-break space", `/v1/a\u00a0b`, true},
+		{"an em space", `/v1/a\u2003b`, true},
+		{"a next line", `/v1/a\u0085b`, true},
+		{"a letter with a diaeresis", `/v1/a\u00ffb`, false},
+	} {
+		d, err := jsonschema.UnmarshalJSON(strings.NewReader(provider(`{"format": "openai-responses", "endpoint": "https://api.acme.example/v1",
+ "auth": {"scheme": "bearer"}, "paths": ["` + tc.path + `"]}`)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := schema.Validate(d); err != nil {
+			t.Errorf("%s: the schema refuses it, and the rule is CheckModelProvider's alone: %v", tc.name, err)
+		}
+		err = contracts.CheckModelProvider(d)
+		if got := err != nil && strings.HasPrefix(err.Error(), "change the path "); got != tc.refused {
+			t.Errorf("%s: %v, refused is %v, want %v", tc.name, err, got, tc.refused)
 		}
 	}
 }

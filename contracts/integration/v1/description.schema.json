@@ -262,12 +262,12 @@
           "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$"}
         },
         "paths": {
-          "description": "The paths of the endpoint's host that the gateway sets the key on, 1 to 32, none twice, in Forager's path grammar, ^/[^*?#\\s]*\\*?$, as paths of a host credential in Forager's descriptor.schema.json. The control plane copies the list unchanged into paths of api_credential in the run configuration. Absent means every path of the host.",
+          "description": "The paths of the endpoint's host that the gateway sets the key on, 1 to 32, none twice, in Forager's path grammar, as credential_paths in Forager's run-configuration.schema.json defines it: a path from the root, with no *, ? or # and no space character, whose last character may be a *, where a segment written exactly {} matches one segment that is not empty and a { or } anywhere else is refused. The control plane copies the list unchanged into paths of api_credential in the run configuration. Absent means every path of the host.",
           "type": "array",
           "minItems": 1,
           "maxItems": 32,
           "uniqueItems": true,
-          "items": {"type": "string", "pattern": "^/[^*?#\\s]*\\*?$"}
+          "items": {"type": "string", "pattern": "^/(?:\\{\\}|[^*?#\\s{}/]*)(?:/(?:\\{\\}|[^*?#\\s{}/]*))*\\*?$"}
         },
         "oauth_refresh": {
           "description": "Where and with which client id the control plane refreshes an OAuth login of this API: a POST to url with a JSON body that has grant_type refresh_token, the login's refresh token, client_id and, when present, scope. It is allowed only with an auth whose oauth is true. Absent, the login needs no refresh.",
