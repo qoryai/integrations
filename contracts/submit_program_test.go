@@ -2,6 +2,7 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"path"
 	"regexp"
@@ -69,14 +70,14 @@ func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
 	}
 	for _, want := range []string{
 		contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd, contracts.SubmitLinePrefix,
-		"at most 20 lines", "`" + contracts.SubmitDraftOpen + "`", "`" + contracts.SubmitDraftUpdate + "`", "`" + contracts.SubmitDraftNone + "`",
+		"`" + contracts.SubmitDraftOpen + "`", "`" + contracts.SubmitDraftUpdate + "`", "`" + contracts.SubmitDraftNone + "`",
 	} {
 		if !strings.Contains(readme, want) {
 			t.Errorf("the README does not contain %q", want)
 		}
 	}
-	if contracts.SubmitPrintedLines != 20 {
-		t.Errorf("SubmitPrintedLines is %d, and the README says 20", contracts.SubmitPrintedLines)
+	if want := fmt.Sprintf("at most %d lines", contracts.SubmitPrintedLines); !strings.Contains(readme, want) {
+		t.Errorf("the README does not contain %q", want)
 	}
 	// The contract has no relay, no JSON file and no wall.
 	for _, bad := range []string{"QORY_PROXY", "QORY_SUBMISSION_FILE", "SSL_CERT_FILE", "proxy.sock", "program-timeout", "jq "} {
@@ -87,54 +88,69 @@ func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
 }
 
 // TestTheReadmeExamplesAreTheFixtures pins that the output shown in the README is the
-// content of fixtures/output/github-like.txt, and that the exit table lists the exit
-// constants.
+// content of fixtures/output/github-like.txt, and that the table of exit statuses has a
+// row for each exit constant and for any other status.
 func TestTheReadmeExamplesAreTheFixtures(t *testing.T) {
 	readme := submitFile(t, "README.md")
 	if !strings.Contains(readme, "```text\n"+submitFile(t, "fixtures/output/github-like.txt")+"```") {
 		t.Error("the README's example is not the content of fixtures/output/github-like.txt")
 	}
-	for _, row := range []string{"| 0 |", "| 1 |", "| 2 |", "| another status, or the program did not start |"} {
+	for _, row := range []string{
+		fmt.Sprintf("| %d |", contracts.SubmitExitDone), fmt.Sprintf("| %d |", contracts.SubmitExitForge),
+		fmt.Sprintf("| %d |", contracts.SubmitExitInput), "| another status, or the program did not start |",
+	} {
 		if !strings.Contains(readme, row) {
 			t.Errorf("the table of exit statuses has no row %q", row)
 		}
 	}
-	if contracts.SubmitExitDone != 0 || contracts.SubmitExitForge != 1 || contracts.SubmitExitInput != 2 {
-		t.Error("the exit constants are not 0, 1 and 2")
+	if !strings.Contains(readme, "`"+contracts.SubmitProgramFailed+"`") {
+		t.Errorf("the README does not define %s", contracts.SubmitProgramFailed)
 	}
 }
+
+var (
+	given = []string{commitBase, commitMade}
+	// both fixture forges
+	hostCode, hostGit = "code.example.com", "git.example.net"
+)
 
 // TestTheOutputFixturesAreRead pins what qory records from each output fixture whose
 // lines are all valid: a draft with its five members, or none, and an address for each
 // commit it lists. One fixture is for a forge whose draft is a pull request, one for a
-// forge whose draft is a merge request.
+// forge whose draft is a merge request, and two for a draft that a person closed or
+// merged.
 func TestTheOutputFixturesAreRead(t *testing.T) {
 	for _, c := range []struct {
-		file, system, url, action string
-		number                    int
-		commits                   int
+		file, system, url, action, state string
+		number                           int
+		commits                          int
 	}{
-		{"github-like.txt", "code.example.com", "https://code.example.com/acme/shop/pull/34", "opened", 34, 2},
-		{"gitlab-like.txt", "git.example.net", "https://git.example.net/acme/shop/-/merge_requests/7", "updated", 7, 2},
-		{"kept.txt", "code.example.com", "https://code.example.com/acme/shop/pull/34", "kept", 34, 2},
+		{"github-like.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "opened", "draft", 34, 2},
+		{"crlf.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "opened", "draft", 34, 2},
+		{"gitlab-like.txt", hostGit, "https://git.example.net/acme/shop/-/merge_requests/7", "updated", "draft", 7, 2},
+		{"kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "draft", 34, 2},
+		{"closed-kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "closed", 34, 2},
+		{"merged-kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "merged", 34, 2},
 	} {
-		r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+c.file), c.system, []string{commitBase, commitMade})
-		if len(r.Invalid) != 0 {
-			t.Errorf("%s: invalid lines %v", c.file, r.Invalid)
-		}
-		d := r.Draft
-		if d == nil {
-			t.Errorf("%s: no draft", c.file)
-			continue
-		}
-		if d.Number != c.number || d.URL != c.url || d.Title != "Show delivery dates at checkout" || d.State != "draft" || d.Action != c.action {
-			t.Errorf("%s: draft %+v", c.file, *d)
-		}
-		if len(r.CommitURLs) != c.commits {
-			t.Errorf("%s: %d addresses, want %d", c.file, len(r.CommitURLs), c.commits)
+		for _, draft := range []string{contracts.SubmitDraftOpen, contracts.SubmitDraftUpdate} {
+			r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+c.file), c.system, draft, given)
+			if len(r.Invalid) != 0 {
+				t.Errorf("%s: invalid lines %v", c.file, r.Invalid)
+			}
+			d := r.Draft
+			if d == nil {
+				t.Errorf("%s: no draft", c.file)
+				continue
+			}
+			if d.Number != c.number || d.URL != c.url || d.Title != "Show delivery dates at checkout" || d.State != c.state || d.Action != c.action {
+				t.Errorf("%s: draft %+v", c.file, *d)
+			}
+			if len(r.CommitURLs) != c.commits {
+				t.Errorf("%s: %d addresses, want %d", c.file, len(r.CommitURLs), c.commits)
+			}
 		}
 	}
-	r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/commits-only.txt"), "code.example.com", []string{commitBase, commitMade})
+	r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/commits-only.txt"), hostCode, contracts.SubmitDraftNone, given)
 	if r.Draft != nil || len(r.Invalid) != 0 || len(r.CommitURLs) != 1 {
 		t.Errorf("commits-only.txt: %+v", r)
 	}
@@ -145,41 +161,56 @@ func TestTheOutputFixturesAreRead(t *testing.T) {
 
 // TestAnInvalidOutputLineIsLeftOut pins, for each invalid output fixture, the line that
 // qory leaves out and why, that the lines around it are recorded, and that a draft that
-// loses one of its five lines is not recorded.
+// loses one of its five lines is not recorded and has its other lines left out too,
+// each as a line of a draft that is not whole.
 func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
-	const system = "code.example.com"
-	given := []string{commitBase, commitMade}
+	const whole = "the draft needs five lines"
 	for file, want := range map[string]struct {
-		line   int
-		reason string
-		draft  bool // the draft is recorded whole
+		line   int    // the line that breaks a rule, 0 when the draft only lacks a line
+		reason string // why that line is left out
+		others int    // the lines left out beside it, because the draft is not whole
+		draft  bool   // the draft is recorded whole
 	}{
-		"invalid-key-unknown.txt":          {8, "the key is not one of the contract's", true},
-		"invalid-no-value.txt":             {8, "not a key and a value", true},
-		"invalid-control-character.txt":    {8, "control character", true},
-		"invalid-no-line-feed.txt":         {8, "no line feed", true},
-		"invalid-key-twice.txt":            {8, "the key is there already", true},
-		"invalid-commit-twice.txt":         {8, "has an address already", true},
-		"invalid-commit-not-given.txt":     {8, "not one that qory gave", true},
-		"invalid-number-zero.txt":          {1, "number is not a whole number", false},
-		"invalid-number-decimal.txt":       {1, "number is not a whole number", false},
-		"invalid-url-http.txt":             {2, "not https", false},
-		"invalid-url-other-host.txt":       {2, "not on the repository's system", false},
-		"invalid-url-user.txt":             {2, "user information", false},
-		"invalid-url-query.txt":            {2, "query or a fragment", false},
-		"invalid-url-javascript.txt":       {2, "not https", false},
-		"invalid-state-merged.txt":         {4, "state is neither", false},
-		"invalid-action-closed.txt":        {5, "action is none of", false},
-		"invalid-title-257-characters.txt": {3, "257 characters, over the limit of 256", false},
-		"invalid-draft-without-action.txt": {0, "", false},
+		"invalid-key-unknown.txt":           {8, "the key is not one of the contract's", 0, true},
+		"invalid-no-value.txt":              {8, "not a key and a value", 0, true},
+		"invalid-control-character.txt":     {8, "control character", 0, true},
+		"invalid-no-line-feed.txt":          {8, "no line feed", 0, true},
+		"invalid-key-twice.txt":             {8, "the key is there already", 0, true},
+		"invalid-commit-twice.txt":          {8, "has an address already", 0, true},
+		"invalid-commit-not-given.txt":      {8, "not one that qory gave", 0, true},
+		"invalid-number-zero.txt":           {1, "number is not a whole number", 4, false},
+		"invalid-number-decimal.txt":        {1, "number is not a whole number", 4, false},
+		"invalid-url-http.txt":              {2, "not an https URL", 4, false},
+		"invalid-url-other-host.txt":        {2, "not on the repository's system", 4, false},
+		"invalid-url-user.txt":              {2, "not an https URL", 4, false},
+		"invalid-url-query.txt":             {2, "query or a fragment", 4, false},
+		"invalid-url-javascript.txt":        {2, "not an https URL", 4, false},
+		"invalid-url-upper-case-scheme.txt": {2, "not an https URL", 4, false},
+		"invalid-state-archived.txt":        {4, "state is none of", 4, false},
+		"invalid-state-merged.txt":          {5, "closed or merged has the action kept", 0, false},
+		"invalid-action-closed.txt":         {5, "action is none of", 4, false},
+		"invalid-title-257-characters.txt":  {3, "257 characters, over the limit of 256", 4, false},
+		"invalid-title-all-spaces.txt":      {3, "only spaces", 4, false},
+		"invalid-title-no-break-space.txt":  {3, "only spaces", 4, false},
+		"invalid-title-bad-utf8.txt":        {3, "not UTF-8", 4, false},
+		"invalid-draft-without-action.txt":  {0, "", 4, false},
 	} {
-		r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+file), system, given)
-		if want.line == 0 {
-			if len(r.Invalid) != 0 {
-				t.Errorf("%s: invalid lines %v", file, r.Invalid)
+		r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+file), hostCode, contracts.SubmitDraftOpen, given)
+		own := 0
+		if want.line > 0 {
+			own = 1
+		}
+		if len(r.Invalid) != own+want.others {
+			t.Errorf("%s: %d lines are left out %v, want %d", file, len(r.Invalid), r.Invalid, own+want.others)
+		}
+		for _, e := range r.Invalid {
+			if e.Line == want.line {
+				if !strings.Contains(e.Reason, want.reason) {
+					t.Errorf("%s: line %d is left out for %q, want %q", file, e.Line, e.Reason, want.reason)
+				}
+			} else if !strings.Contains(e.Reason, whole) {
+				t.Errorf("%s: line %d is left out for %q, want %q", file, e.Line, e.Reason, whole)
 			}
-		} else if len(r.Invalid) != 1 || r.Invalid[0].Line != want.line || !strings.Contains(r.Invalid[0].Reason, want.reason) {
-			t.Errorf("%s: invalid lines %v, want line %d with %q", file, r.Invalid, want.line, want.reason)
 		}
 		if (r.Draft != nil) != want.draft {
 			t.Errorf("%s: draft recorded %v, want %v", file, r.Draft != nil, want.draft)
@@ -198,14 +229,213 @@ func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 			invalid++
 		}
 	}
-	if invalid != 18 {
-		t.Errorf("fixtures/output holds %d invalid- files, and the test expects 18", invalid)
+	if invalid != 23 {
+		t.Errorf("fixtures/output holds %d invalid- files, and the test expects 23", invalid)
+	}
+}
+
+// TestAnAddressHasTheRuleOfTheSchema pins that a result line's address has the rule of
+// definitions.schema.json, $defs.url, and the checks of the contract: what that pattern
+// refuses is left out, and so is an address with a port, a query, a fragment, no path,
+// another host or more than 2048 characters.
+func TestAnAddressHasTheRuleOfTheSchema(t *testing.T) {
+	const good = "https://code.example.com/acme/shop/pull/34"
+	long := "https://code.example.com/" + strings.Repeat("a", 2048-len("https://code.example.com/"))
+	for _, c := range []struct {
+		name, addr string
+		ok         bool
+	}{
+		{"plain", good, true},
+		{"host in upper case", "https://CODE.example.com/acme/shop/pull/34", true},
+		{"percent-encoding", "https://code.example.com/acme/shop%20x/pull/34", true},
+		{"2048 characters", long, true},
+		{"2049 characters", long + "a", false},
+		{"upper-case scheme", "HTTPS://code.example.com/acme/shop/pull/34", false},
+		{"http", "http://code.example.com/acme/shop/pull/34", false},
+		{"double quote", "https://code.example.com/acme/\"shop/pull/34", false},
+		{"single quote", "https://code.example.com/acme/shop'/pull/34", true},
+		{"less-than", "https://code.example.com/acme/<shop/pull/34", false},
+		{"greater-than", "https://code.example.com/acme/shop>/pull/34", false},
+		{"left brace", "https://code.example.com/acme/{shop/pull/34", false},
+		{"right brace", "https://code.example.com/acme/shop}/pull/34", false},
+		{"bar", "https://code.example.com/acme/|shop/pull/34", false},
+		{"caret", "https://code.example.com/acme/^shop/pull/34", false},
+		{"backtick", "https://code.example.com/acme/`shop/pull/34", false},
+		{"backslash", "https://code.example.com/acme\\shop/pull/34", false},
+		{"non-ASCII", "https://code.example.com/acm\u00e9/shop/pull/34", false},
+		{"no-break space", "https://code.example.com/acme/shop\u00a0/pull/34", false},
+		{"space", "https://code.example.com/acme/shop /pull/34", false},
+		{"port", "https://code.example.com:8443/acme/shop/pull/34", false},
+		{"empty port", "https://code.example.com:/acme/shop/pull/34", false},
+		{"fragment", "https://code.example.com/acme/shop/pull/34#files", false},
+		{"empty fragment", "https://code.example.com/acme/shop/pull/34#", false},
+		{"query", "https://code.example.com/acme/shop/pull/34?tab=files", false},
+		{"empty query", "https://code.example.com/acme/shop/pull/34?", false},
+		{"user information", "https://user@code.example.com/acme/shop/pull/34", false},
+		{"no path", "https://code.example.com", false},
+		{"root path", "https://code.example.com/", false},
+		{"another host", "https://other.example.com/acme/shop/pull/34", false},
+		{"suffix of the host", "https://evil-code.example.com/acme/shop/pull/34", false},
+		{"lone percent", "https://code.example.com/acme/shop/100%/pull/34", false},
+	} {
+		for _, key := range []string{contracts.SubmitKeyDraftURL, contracts.SubmitKeyCommitURL} {
+			line := key + " " + c.addr + "\n"
+			if key == contracts.SubmitKeyCommitURL {
+				line = key + " " + commitMade + " " + c.addr + "\n"
+			}
+			r := contracts.ParseSubmitLines(line, hostCode, contracts.SubmitDraftOpen, given)
+			recorded := len(r.CommitURLs) == 1
+			if key == contracts.SubmitKeyDraftURL {
+				// A lone valid address is left out because the draft is not whole.
+				recorded = len(r.Invalid) == 1 && strings.Contains(r.Invalid[0].Reason, "needs five lines")
+			}
+			if recorded != c.ok {
+				t.Errorf("%s as %s: %+v, want accepted %v", c.name, key, r, c.ok)
+			}
+		}
+	}
+	// An empty value is not a line with a value.
+	for _, line := range []string{"draft_url \n", "draft_url\n", "commit_url \n", "commit_url " + commitMade + " \n"} {
+		if r := contracts.ParseSubmitLines(line, hostCode, contracts.SubmitDraftOpen, given); len(r.Invalid) != 1 {
+			t.Errorf("%q: %+v, want one invalid line", line, r)
+		}
+	}
+	// A 7-bit DEL in the address is a control character.
+	if r := contracts.ParseSubmitLines("draft_url https://code.example.com/a\x7f\n", hostCode, contracts.SubmitDraftOpen, given); len(r.Invalid) != 1 || !strings.Contains(r.Invalid[0].Reason, "control character") {
+		t.Errorf("an address with DEL: %+v", r)
+	}
+}
+
+// TestATitleHasTheRuleOfTheSchema pins that a result line's title has the rule of
+// definitions.schema.json, $defs.draft_title, the same as the title of the adapter's
+// reply: 1 to 256 characters of UTF-8, with no control, bidirectional or invisible
+// character, and not only spaces.
+func TestATitleHasTheRuleOfTheSchema(t *testing.T) {
+	for _, c := range []struct {
+		name, title string
+		ok          bool
+	}{
+		{"plain", "Show delivery dates", true},
+		{"256 characters", strings.Repeat("a", 256), true},
+		{"256 characters of 2 bytes", strings.Repeat("\u00e9", 256), true},
+		{"257 characters", strings.Repeat("a", 257), false},
+		{"DEL", "Show\x7fdates", false},
+		{"C1 control", "Show\u0085dates", false},
+		{"line separator", "Show\u2028dates", false},
+		{"paragraph separator", "Show\u2029dates", false},
+		{"bidirectional override", "Show\u202edates", false},
+		{"zero-width space", "Show\u200bdates", false},
+		{"byte order mark", "Show\ufeffdates", false},
+		{"no-break space only", "\u00a0\u00a0", false},
+		{"spaces only", "   ", false},
+		{"ideographic space only", "\u3000", false},
+		{"a space inside", "Show  dates", true},
+		{"bytes that are not UTF-8", "Show\xffdates", false},
+	} {
+		r := contracts.ParseSubmitLines("draft_title "+c.title+"\n", hostCode, contracts.SubmitDraftOpen, given)
+		// A lone valid title makes an incomplete draft: it is recorded as one line left out for that.
+		refused := len(r.Invalid) == 1 && !strings.Contains(r.Invalid[0].Reason, "needs five lines")
+		if refused == c.ok {
+			t.Errorf("%s: %+v, want accepted %v", c.name, r.Invalid, c.ok)
+		}
+	}
+}
+
+// TestADraftLineFollowsTheInput pins what qory does with the draft lines by the value of
+// QORY_SUBMIT_DRAFT: with none, each draft line is left out and no draft is recorded;
+// with open or update, a partial draft is left out line by line, a draft that a person
+// closed or merged needs the action kept, and a number that differs from the
+// QORY_SUBMIT_DRAFT_NUMBER of an update is recorded.
+func TestADraftLineFollowsTheInput(t *testing.T) {
+	out := submitFile(t, "fixtures/output/github-like.txt")
+	r := contracts.ParseSubmitLines(out, hostCode, contracts.SubmitDraftNone, given)
+	if r.Draft != nil || len(r.Invalid) != 5 || len(r.CommitURLs) != 2 {
+		t.Errorf("with none: %+v", r)
+	}
+	for _, e := range r.Invalid {
+		if !strings.Contains(e.Reason, "QORY_SUBMIT_DRAFT is none") {
+			t.Errorf("with none, line %d is left out for %q", e.Line, e.Reason)
+		}
+	}
+	// An update whose draft number was a hint: the program printed another number.
+	r = contracts.ParseSubmitLines(strings.Replace(out, "draft_number 34", "draft_number 41", 1), hostCode, contracts.SubmitDraftUpdate, given)
+	if r.Draft == nil || r.Draft.Number != 41 {
+		t.Errorf("an update that printed another number: %+v", r)
+	}
+	// Three of the five draft lines: none is recorded, and each is listed.
+	partial := "draft_number 34\ndraft_state draft\ndraft_action opened\n"
+	r = contracts.ParseSubmitLines(partial, hostCode, contracts.SubmitDraftOpen, given)
+	if r.Draft != nil || len(r.Invalid) != 3 || !strings.Contains(r.Invalid[0].Reason, "draft_url, draft_title is missing") {
+		t.Errorf("a partial draft: %+v", r)
+	}
+	// Each of the five keys left out makes its own partial draft.
+	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
+	for i := 0; i < 5; i++ {
+		var without []string
+		for j, l := range lines {
+			if j != i {
+				without = append(without, l)
+			}
+		}
+		r = contracts.ParseSubmitLines(strings.Join(without, "\n")+"\n", hostCode, contracts.SubmitDraftOpen, given)
+		if r.Draft != nil || len(r.Invalid) != 4 {
+			t.Errorf("without line %d: %+v", i+1, r)
+		}
+	}
+}
+
+// TestWhatQoryRecordsAfterTheProgram pins ReadSubmitRun: the draft and the addresses
+// from the lines after exit 0, 1 and 2; program-failed with the exit status when a
+// draft that was asked for is not made; program-failed with exit 1 when the program did
+// not start or ended with another status, and then no line is read; and no failure for
+// the draft none.
+func TestWhatQoryRecordsAfterTheProgram(t *testing.T) {
+	out := submitFile(t, "fixtures/output/github-like.txt")
+	for _, c := range []struct {
+		name, output, draft string
+		started             bool
+		exit                int
+		wantDraft           bool
+		failed              int // the exit of the failure, -1 for none
+	}{
+		{"finished", out, "open", true, 0, true, -1},
+		{"forge failed with the lines", out, "update", true, 1, true, -1},
+		{"input refused with the lines", out, "open", true, 2, true, -1},
+		{"forge failed, no lines", "", "open", true, 1, false, 1},
+		{"input refused, no lines", "", "update", true, 2, false, 2},
+		{"finished, no lines", "", "open", true, 0, false, 0},
+		{"finished, partial draft", "draft_number 34\n", "open", true, 0, false, 0},
+		{"another status", out, "open", true, 3, false, 1},
+		{"killed by a signal", out, "open", true, -1, false, 1},
+		{"did not start", "", "open", false, 0, false, 1},
+		{"draft none, no lines", "", "none", true, 0, false, -1},
+		{"draft none, program failed", "", "none", true, 1, false, -1},
+		{"draft none, did not start", "", "none", false, 0, false, -1},
+	} {
+		rec := contracts.ReadSubmitRun(c.started, c.exit, c.output, hostCode, c.draft, given)
+		if (rec.Draft != nil) != c.wantDraft {
+			t.Errorf("%s: draft recorded %v", c.name, rec.Draft != nil)
+		}
+		switch {
+		case c.failed < 0 && rec.Failed != nil:
+			t.Errorf("%s: failed %+v", c.name, *rec.Failed)
+		case c.failed >= 0 && (rec.Failed == nil || rec.Failed.Reason != contracts.SubmitProgramFailed || rec.Failed.Exit != c.failed):
+			t.Errorf("%s: failed %+v, want exit %d", c.name, rec.Failed, c.failed)
+		}
+		wantURLs := 0
+		if c.output == out && c.started && c.exit >= 0 && c.exit <= 2 {
+			wantURLs = 2
+		}
+		if len(rec.CommitURLs) != wantURLs {
+			t.Errorf("%s: %d addresses, want %d", c.name, len(rec.CommitURLs), wantURLs)
+		}
 	}
 }
 
 // TestADescriptionIsMarked pins MarkedDescription on each case of
 // fixtures/description: a draft being opened, text outside the markers kept on an update,
-// the markers removed, and a block added at the end.
+// the markers removed, a start marker that a person left alone, and a block added at the
+// end.
 func TestADescriptionIsMarked(t *testing.T) {
 	dirs, err := fs.ReadDir(contracts.RunFS, "submit-program/fixtures/description")
 	if err != nil {
@@ -220,35 +450,49 @@ func TestADescriptionIsMarked(t *testing.T) {
 			t.Errorf("%s: got %q, want %q", d.Name(), got, want)
 		}
 	}
-	for _, name := range []string{"open", "update-keeps-text-around", "markers-removed", "start-marker-removed"} {
+	for _, name := range []string{"open", "update-keeps-text-around", "markers-removed", "start-marker-removed",
+		"stray-start-marker-first-round", "stray-start-marker-second-round", "end-marker-before-start", "crlf-body-without-markers"} {
 		if !seen[name] {
 			t.Errorf("fixtures/description has no case %q", name)
 		}
 	}
-	// Writing the result again with the same text changes nothing, where the result has one block.
+	// Writing the result again with the same text changes nothing, whatever markers the result has.
 	for name := range seen {
 		dir := "fixtures/description/" + name + "/"
 		result, text := submitFile(t, dir+"result.md"), submitFile(t, dir+"text.md")
-		if strings.Count(result, contracts.SubmitMarkerStart) != 1 {
-			continue // a description with a marker left over from a person's edit
-		}
 		if again := contracts.MarkedDescription(result, text); again != result {
 			t.Errorf("%s: a second write gives %q, want %q", name, again, result)
+		}
+	}
+	// A person's text and the stray start marker survive every round.
+	person := "Intro.\n" + contracts.SubmitMarkerStart + "\nA person wrote this.\n"
+	d := person
+	for _, text := range []string{"One.", "Two.", "Three."} {
+		d = contracts.MarkedDescription(d, text)
+		if !strings.HasPrefix(d, person) || strings.Count(d, "\n"+contracts.SubmitMarkerStart+"\n") != 2 ||
+			!strings.HasSuffix(d, "\n"+text+"\n"+contracts.SubmitMarkerEnd) || strings.Count(d, contracts.SubmitMarkerEnd) != 1 {
+			t.Fatalf("after %q the description is %q", text, d)
 		}
 	}
 }
 
 // TestATitleChangesOnlyWhileItIsThePreviousOne pins NextTitle: an update with an
-// unchanged title changes it, an update with a title that a person edited keeps it, and
-// a first version, with no previous title, changes nothing.
+// unchanged title changes it, an update with a title that a person edited keeps it, a
+// previous title that is absent changes nothing, and the text that a forge puts before
+// the title of a draft is left out of the comparison and kept in the new title.
 func TestATitleChangesOnlyWhileItIsThePreviousOne(t *testing.T) {
-	for _, c := range []struct{ name, current, previous, next, want string }{
-		{"unchanged title", "Show dates", "Show dates", "Show delivery dates", "Show delivery dates"},
-		{"edited title", "Show dates (urgent)", "Show dates", "Show delivery dates", "Show dates (urgent)"},
-		{"no previous title", "Show dates", "", "Show delivery dates", "Show dates"},
-		{"same title again", "Show dates", "Show dates", "Show dates", "Show dates"},
+	for _, c := range []struct{ name, current, previous, next, forge, want string }{
+		{"unchanged title", "Show dates", "Show dates", "Show delivery dates", "", "Show delivery dates"},
+		{"edited title", "Show dates (urgent)", "Show dates", "Show delivery dates", "", "Show dates (urgent)"},
+		{"no previous title", "Show dates", "", "Show delivery dates", "", "Show dates"},
+		{"same title again", "Show dates", "Show dates", "Show dates", "", "Show dates"},
+		{"forge text before the title", "Prefix: Show dates", "Show dates", "Show delivery dates", "Prefix: ", "Prefix: Show delivery dates"},
+		{"forge text, edited title", "Prefix: Show dates (urgent)", "Show dates", "Show delivery dates", "Prefix: ", "Prefix: Show dates (urgent)"},
+		{"forge text left on a title that has none", "Show dates", "Show dates", "Show delivery dates", "Prefix: ", "Show delivery dates"},
+		{"forge text on a title that is only the text", "Prefix: ", "Show dates", "Show delivery dates", "Prefix: ", "Prefix: "},
+		{"previous title is the forge's text", "Prefix: Show dates", "Prefix: Show dates", "Show delivery dates", "", "Show delivery dates"},
 	} {
-		if got := contracts.NextTitle(c.current, c.previous, c.next); got != c.want {
+		if got := contracts.NextTitle(c.current, c.previous, c.next, c.forge); got != c.want {
 			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
 		}
 	}
