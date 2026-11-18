@@ -309,6 +309,31 @@ func TestTheAgreedMembersAreSet(t *testing.T) {
 	}
 }
 
+// TestASubscriptionDescriptionWarnsOfPersonalUse checks that the description text of each
+// subscription provider says the subscription is for personal use only and links the
+// vendor's terms, since the provider's terms do not allow a subscription to serve requests
+// on behalf of other users.
+func TestASubscriptionDescriptionWarnsOfPersonalUse(t *testing.T) {
+	for file, terms := range map[string]string{
+		"claude-subscription.json": "Anthropic's terms: https://code.claude.com/docs/en/legal-and-compliance",
+		"openai-subscription.json": "OpenAI's terms: https://openai.com/policies/terms-of-use/",
+	} {
+		var d struct {
+			Description string `json:"description"`
+		}
+		if err := json.Unmarshal(read(t, file), &d); err != nil {
+			t.Errorf("%s: %v", file, err)
+			continue
+		}
+		if !strings.Contains(d.Description, "For personal use only: ") {
+			t.Errorf("%s: the description %q lacks the warning that begins \"For personal use only: \"", file, d.Description)
+		}
+		if !strings.HasSuffix(d.Description, terms) {
+			t.Errorf("%s: the description %q does not end with the terms link %q", file, d.Description, terms)
+		}
+	}
+}
+
 // runtimeModel is a runtime of runtimes.json as far as the checks here read it: its
 // name, the API formats it sends and the values its run effort takes.
 type runtimeModel struct {

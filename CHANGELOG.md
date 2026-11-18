@@ -257,7 +257,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `limit_windows` `five_hour` and `seven_day`, the refresh at
   `https://auth.openai.com/oauth/token`, and eight GPT models. Its `auth` sets
   `account_header` `chatgpt-account-id` and `account_claim`, the pointer to the account
-  id in the access token, as Forager's `auth.schema.json` defines them.
+  id in the access token, as Forager's `auth.schema.json` defines them. Its `description`
+  says that the subscription is for personal use only and links OpenAI's terms, as
+  `descriptions/claude-subscription.json` does for Anthropic's.
 - A description in the data form has no `program_version`: it is a file that no program
   prints, its one role is `model_provider`, and its settings have no member `writeOnly`.
   `descriptions/` contains the data descriptions of seven model providers, and the `name`

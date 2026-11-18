@@ -2,7 +2,7 @@
   "version": 1,
   "name": "openai-subscription",
   "title": "OpenAI subscription",
-  "description": "Runs use OpenAI models through a ChatGPT plan, with a sign-in from Codex.",
+  "description": "Runs use your ChatGPT subscription through the sign-in that `codex login` creates. For personal use only: OpenAI's terms do not allow a subscription to serve requests on behalf of other users. OpenAI's terms: https://openai.com/policies/terms-of-use/",
   "vendor": "OpenAI",
   "settings": {"type": "object", "properties": {}, "additionalProperties": false},
   "egress_hosts": ["chatgpt.com"],
