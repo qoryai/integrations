@@ -493,6 +493,217 @@ func TestOAuthRefreshHoldsItsRules(t *testing.T) {
 	}
 }
 
+// TestOAuthDeviceHoldsItsRules pins oauth_device of an API to the rules of its schema:
+// usercode_url, poll_url, verification_url and redirect_uri required, each an https URL
+// as $defs/endpoint defines it, no other member, and no client id, since the client id is
+// the client_id of oauth_refresh; and oauth_device only with oauth_refresh.
+func TestOAuthDeviceHoldsItsRules(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	at := "/roles/model_provider/apis/0/oauth_device"
+	refresh := `, "oauth_refresh": {"url": "https://auth.acme.example/oauth/token", "client_id": "acme-cli"}`
+	member := map[string]string{
+		"usercode_url":     "https://auth.acme.example/device/usercode",
+		"poll_url":         "https://auth.acme.example/device/token",
+		"verification_url": "https://auth.acme.example/device",
+		"redirect_uri":     "https://auth.acme.example/device/callback",
+	}
+	order := []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"}
+	device := func(skip, key, value string) string {
+		var l []string
+		for _, k := range order {
+			v := member[k]
+			if k == key {
+				v = value
+			}
+			if k != skip {
+				l = append(l, `"`+k+`": "`+v+`"`)
+			}
+		}
+		return strings.Join(l, ", ")
+	}
+	for _, tc := range []struct{ name, device, want string }{
+		{"the four urls", device("", "", ""), ""},
+		{"a url with a port and a path", device("", "poll_url", "https://auth.acme.example:8443/device/token"), ""},
+		{"an empty object", "", at + " required usercode_url,poll_url,verification_url,redirect_uri"},
+		{"no usercode_url", device("usercode_url", "", ""), at + " required usercode_url"},
+		{"no poll_url", device("poll_url", "", ""), at + " required poll_url"},
+		{"no verification_url", device("verification_url", "", ""), at + " required verification_url"},
+		{"no redirect_uri", device("redirect_uri", "", ""), at + " required redirect_uri"},
+		{"a usercode_url over http", device("", "usercode_url", "http://auth.acme.example/device/usercode"), at + "/usercode_url pattern"},
+		{"a poll_url over http", device("", "poll_url", "http://auth.acme.example/device/token"), at + "/poll_url pattern"},
+		{"a verification_url over http", device("", "verification_url", "http://auth.acme.example/device"), at + "/verification_url pattern"},
+		{"a redirect_uri over http", device("", "redirect_uri", "http://auth.acme.example/device/callback"), at + "/redirect_uri pattern"},
+		{"a poll_url with a query", device("", "poll_url", "https://auth.acme.example/device/token?x=1"), at + "/poll_url pattern"},
+		{"a client_id", device("", "", "") + `, "client_id": "acme-cli"`, at + " additionalProperties"},
+		{"an undefined member", device("", "", "") + `, "interval": 5`, at + " additionalProperties"},
+	} {
+		if got := refusal(t, schema, tc.name, inAPI(refresh+`, "oauth_device": {`+tc.device+`}`)); got != tc.want {
+			t.Errorf("%s: refused for %q, want %q", tc.name, got, tc.want)
+		}
+	}
+	const without = "/roles/model_provider/apis/0 dependentRequired/oauth_device"
+	if got := refusal(t, schema, "oauth_device without oauth_refresh", inAPI(`, "oauth_device": {`+device("", "", "")+`}`)); got != without {
+		t.Errorf("oauth_device without oauth_refresh: refused for %q, want %q", got, without)
+	}
+}
+
+// TestCheckDescriptionRefusesAnUnusableOAuthDevice pins that CheckDescription, which runs
+// before the schema in conformance, refuses an oauth_device without oauth_refresh and an
+// oauth_device URL string that does not start with https:// in lower case (http://,
+// HTTPS://, ftp://, //host/path, a bare host, a path, an empty string) with a message
+// that starts with the fix, at the index of the API and with the member and the value
+// of the URL, and that the schema refuses the same documents. A missing or non-string
+// member and other oauth_device mistakes are left to the schema.
+func TestCheckDescriptionRefusesAnUnusableOAuthDevice(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	good := map[string]string{
+		"usercode_url":     "https://auth.acme.example/device/usercode",
+		"poll_url":         "https://auth.acme.example/device/token",
+		"verification_url": "https://auth.acme.example/device",
+		"redirect_uri":     "https://auth.acme.example/device/callback",
+	}
+	order := []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"}
+	device := func(member, value string) string {
+		var l []string
+		for _, k := range order {
+			v := good[k]
+			if k == member {
+				v = value
+			}
+			l = append(l, `"`+k+`": "`+v+`"`)
+		}
+		return `, "oauth_device": {` + strings.Join(l, ", ") + `}`
+	}
+	refresh := `, "oauth_refresh": {"url": "https://auth.acme.example/oauth/token", "client_id": "acme-cli"}`
+	// api0 is a valid first API of the format openai-chat; the API under test is the
+	// second one, at index 1, or the first one, at index 0.
+	api0 := `{"format": "openai-chat", "endpoint": "https://chat.acme.example", "auth": {"scheme": "bearer"}}`
+	api := func(members string) string {
+		return `{"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": {"scheme": "bearer", "oauth": true}` + members + `}`
+	}
+	doc := func(apis ...string) string { return provider(strings.Join(apis, ", ")) }
+	cases := []struct{ name, doc, want string }{
+		{"without oauth_refresh, at index 0", doc(api(device("", ""))),
+			"Add oauth_refresh to model_provider apis[0]: oauth_device takes its client_id and url from it."},
+		{"without oauth_refresh, at index 1", doc(api0, api(device("", ""))),
+			"Add oauth_refresh to model_provider apis[1]: oauth_device takes its client_id and url from it."},
+	}
+	for _, member := range order {
+		for _, value := range []string{"http://auth.acme.example/device/x", "ftp://auth.acme.example/device/x", "//auth.acme.example/device/x", "auth.acme.example", "/device/x", "", "HTTPS://auth.acme.example/device/x"} {
+			cases = append(cases,
+				struct{ name, doc, want string }{member + " " + value, doc(api(refresh + device(member, value))),
+					`Change the oauth_device ` + member + ` "` + value + `" of model_provider apis[0] to an https URL.`},
+				struct{ name, doc, want string }{member + " " + value + ", at index 1", doc(api0, api(refresh+device(member, value))),
+					`Change the oauth_device ` + member + ` "` + value + `" of model_provider apis[1] to an https URL.`})
+		}
+	}
+	for _, tc := range cases {
+		if err := contracts.CheckDescription([]byte(tc.doc)); err == nil || err.Error() != tc.want {
+			t.Errorf("%s: CheckDescription returns %v, want %q", tc.name, err, tc.want)
+		}
+		d, err := jsonschema.UnmarshalJSON(strings.NewReader(tc.doc))
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if schema.Validate(d) == nil {
+			t.Errorf("%s: the schema accepts it", tc.name)
+		}
+	}
+	for _, tc := range []struct{ name, doc string }{
+		{"the four https URLs", doc(api(refresh + device("", "")))},
+		{"no oauth_device", doc(api(refresh))},
+		{"an https URL with http in the path", doc(api(refresh + device("poll_url", "https://auth.acme.example/http://x")))},
+		{"a missing member, which the schema refuses", doc(api(refresh + strings.Replace(device("", ""), `"poll_url": "`+good["poll_url"]+`", `, "", 1)))},
+		{"a member that is not a string, which the schema refuses", doc(api(refresh + strings.Replace(device("", ""), `"`+good["poll_url"]+`"`, "5", 1)))},
+		{"an undefined member, which the schema refuses", doc(api(refresh + strings.Replace(device("", ""), "}", `, "client_id": "acme-cli"}`, 1)))},
+	} {
+		if err := contracts.CheckDescription([]byte(tc.doc)); err != nil {
+			t.Errorf("%s: CheckDescription returns %v", tc.name, err)
+		}
+	}
+}
+
+// TestTheAcmeSubscriptionFixtureHasOAuthDevice pins that fixtures/acme-subscription.json
+// sets oauth_device with its four members, so that a valid description with the member
+// stays among the fixtures that TestDescriptionFixturesValidate accepts.
+func TestTheAcmeSubscriptionFixtureHasOAuthDevice(t *testing.T) {
+	doc, err := contracts.Document("fixtures/acme-subscription.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, _ := doc.(map[string]any)
+	roles, _ := d["roles"].(map[string]any)
+	role, _ := roles["model_provider"].(map[string]any)
+	apis, _ := role["apis"].([]any)
+	if len(apis) != 1 {
+		t.Fatalf("%d APIs, want 1", len(apis))
+	}
+	api, _ := apis[0].(map[string]any)
+	device, ok := api["oauth_device"].(map[string]any)
+	if !ok {
+		t.Fatal("the API has no oauth_device")
+	}
+	for _, member := range []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"} {
+		if u, ok := device[member].(string); !ok || !strings.HasPrefix(u, "https://") {
+			t.Errorf("oauth_device %s is %v, want an https URL", member, device[member])
+		}
+	}
+	if len(device) != 4 {
+		t.Errorf("oauth_device has %d members, want 4", len(device))
+	}
+}
+
+// TestCheckModelProviderReadsTheOAuthDeviceURLHosts pins that CheckModelProvider refuses
+// each of the four urls of an oauth_device whose host or port the control plane cannot
+// read, which the schema accepts, names the member, and accepts urls at the edges.
+func TestCheckModelProviderReadsTheOAuthDeviceURLHosts(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	good := map[string]string{
+		"usercode_url":     "https://auth.acme.example/device/usercode",
+		"poll_url":         "https://auth.acme.example/device/token",
+		"verification_url": "https://auth.acme.example/device",
+		"redirect_uri":     "https://auth.acme.example/device/callback",
+	}
+	doc := func(member, url string) any {
+		t.Helper()
+		var l []string
+		for _, k := range []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"} {
+			v := good[k]
+			if k == member {
+				v = url
+			}
+			l = append(l, `"`+k+`": "`+v+`"`)
+		}
+		d, err := jsonschema.UnmarshalJSON(strings.NewReader(provider(`{"format": "anthropic-messages", "endpoint": "https://api.acme.example",
+ "auth": {"scheme": "bearer", "oauth": true}, "oauth_refresh": {"url": "https://auth.acme.example/oauth/token", "client_id": "acme-cli"},
+ "oauth_device": {` + strings.Join(l, ", ") + `}}`)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := schema.Validate(d); err != nil {
+			t.Fatalf("%s %s: the schema refuses it: %v", member, url, err)
+		}
+		return d
+	}
+	for _, member := range []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"} {
+		for _, tc := range []struct{ url, why string }{
+			{"https://AUTH.acme.example/device", `the host "AUTH.acme.example" is not labels joined by dots, each 1 to 63 lower-case letters, digits and hyphens that starts and ends with a letter or a digit`},
+			{"https://10.0.0.256/device", `the host "10.0.0.256" ends in a number and is not an IPv4 address of four decimal parts from 0 to 255, each with no leading zero`},
+			{"https://auth.acme.example:65536/device", `the port "65536" is not a number from 1 to 65535`},
+		} {
+			want := `change the oauth_device ` + member + ` "` + tc.url + `" of model_provider apis[0]: the control plane cannot read its host or port: ` + tc.why
+			if err := contracts.CheckModelProvider(doc(member, tc.url)); err == nil || err.Error() != want {
+				t.Errorf("%s %s: %v, want %q", member, tc.url, err, want)
+			}
+		}
+		for _, url := range []string{good[member], "https://auth.acme.example:65535/device", "https://10.0.0.1/device"} {
+			if err := contracts.CheckModelProvider(doc(member, url)); err != nil {
+				t.Errorf("%s %s: %v", member, url, err)
+			}
+		}
+	}
+}
+
 // TestKeyLifetimeDaysHoldsItsRules pins key_lifetime_days of model_provider to the rules of
 // its schema, with a value at each edge accepted and a value past it refused: an
 // integer from 1 to 3650. A provider without key_lifetime_days is accepted.
