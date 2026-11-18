@@ -91,8 +91,13 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-answer-undefined-member.json":                   func(m map[string]any) { delete(m, "verdict") },
 		"next-session-answer-next-unknown.json":                       func(m map[string]any) { m["next"] = "session" },
 		"next-session-answer-without-next.json":                       func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-model-choice-runtime.json":               func(m map[string]any) { delete(m["model_choice"].(map[string]any), "runtime") },
-		"next-session-answer-model-choice-effort-without-model.json":  func(m map[string]any) { m["model_choice"] = session["model_choice"] },
+		"next-session-answer-model-choice-runtime-number.json":        func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-model-choice-runtime-upper-case.json":    func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-model-choice-runtime-effort-only.json": func(m map[string]any) {
+			m["model_choice"].(map[string]any)["model"] = "example-large"
+			m["model_choice"].(map[string]any)["provider_models"] = session["model_choice"].(map[string]any)["provider_models"]
+		},
+		"next-session-answer-model-choice-effort-without-model.json": func(m map[string]any) { m["model_choice"] = session["model_choice"] },
 		"next-session-answer-model-choice-undefined-member.json": func(m map[string]any) {
 			delete(m["model_choice"].(map[string]any), "time_limit_minutes")
 		},
@@ -175,6 +180,10 @@ func TestTheNextSessionTypesMarshalToTheirSchemas(t *testing.T) {
 				`"provider_models":[{"id":"example-large","effort":["low","high"]}],"tiers":{"thinking":"example-large"}},` +
 				`"model_credential":"example-provider-2","time_limit_minutes":1440,"full_suite":true,"inputs":{"version":1}}`},
 		{"documents/model_choice", contracts.ModelChoice{}, `{}`},
+		{"documents/model_choice", contracts.ModelChoice{Runtime: "codex"}, `{"runtime":"codex"}`},
+		{"documents/model_choice", contracts.ModelChoice{Runtime: "codex", Model: "example-large",
+			ProviderModels: []contracts.ProviderModel{{ID: "example-large"}}},
+			`{"runtime":"codex","model":"example-large","provider_models":[{"id":"example-large"}]}`},
 		{"documents/model_choice", contracts.ModelChoice{Model: "example-large",
 			ProviderModels: []contracts.ProviderModel{{ID: "example-large"}}}, `{"model":"example-large","provider_models":[{"id":"example-large"}]}`},
 	}
@@ -325,9 +334,10 @@ func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 }
 
 // TestTheModelChoiceIsTheModelMembersOfRunSettings pins that model_choice has the
-// members model, effort, provider_models and tiers of run_settings by reference, the
-// same dependentRequired, and no runtime, and that the next-session answer takes
-// workflow, time_limit_minutes and inputs from documents.schema.json by reference.
+// members runtime, model, effort, provider_models and tiers of run_settings by
+// reference, the same dependentRequired, and no required member, and that the
+// next-session answer takes workflow, time_limit_minutes and inputs from
+// documents.schema.json by reference.
 func TestTheModelChoiceIsTheModelMembersOfRunSettings(t *testing.T) {
 	doc, err := contracts.RunDocument("documents.schema.json")
 	if err != nil {
@@ -337,7 +347,7 @@ func TestTheModelChoiceIsTheModelMembersOfRunSettings(t *testing.T) {
 	settings := defs["run_settings"].(map[string]any)
 	choice := defs["model_choice"].(map[string]any)
 	props := choice["properties"].(map[string]any)
-	if got := slices.Sorted(maps.Keys(props)); !slices.Equal(got, []string{"effort", "model", "provider_models", "tiers"}) {
+	if got := slices.Sorted(maps.Keys(props)); !slices.Equal(got, []string{"effort", "model", "provider_models", "runtime", "tiers"}) {
 		t.Errorf("model_choice has the members %v", got)
 	}
 	for k, v := range props {
@@ -350,6 +360,9 @@ func TestTheModelChoiceIsTheModelMembersOfRunSettings(t *testing.T) {
 	}
 	if !reflect.DeepEqual(choice["dependentRequired"], settings["dependentRequired"]) {
 		t.Errorf("model_choice has the dependentRequired %v, run_settings has %v", choice["dependentRequired"], settings["dependentRequired"])
+	}
+	if _, ok := choice["required"]; ok {
+		t.Error("model_choice requires a member")
 	}
 	if choice["additionalProperties"] != false {
 		t.Error("model_choice accepts members it does not define")
@@ -391,6 +404,29 @@ func TestTheNextSessionSchemasNameTheLink(t *testing.T) {
 			if strings.Contains(d, banned) {
 				t.Errorf("the description of %s contains %q", name, banned)
 			}
+		}
+	}
+}
+
+// TestTheRuntimeOfAModelChoiceNamesTheCredentialRule pins that the descriptions of
+// model_choice and of the model_credential of the next-session answer say that, for a
+// session with a runtime, the credential's API lists that runtime in runtimes when it
+// has any.
+func TestTheRuntimeOfAModelChoiceNamesTheCredentialRule(t *testing.T) {
+	rule := "only for a credential of an API whose runtimes, when present, list that runtime and whose format that runtime sends"
+	documents, err := contracts.RunDocument("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	choice := documents.(map[string]any)["$defs"].(map[string]any)["model_choice"].(map[string]any)["description"].(string)
+	answer, err := contracts.RunDocument("next-session-answer.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	credential := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)["model_credential"].(map[string]any)["description"].(string)
+	for name, d := range map[string]string{"model_choice": choice, "model_credential": credential} {
+		if !strings.Contains(d, rule) {
+			t.Errorf("the description of %s does not contain %q", name, rule)
 		}
 	}
 }

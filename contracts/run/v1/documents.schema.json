@@ -354,7 +354,7 @@
       }
     },
     "run_settings": {
-      "description": "The runtime and model settings the job composes the agent's harness with. The control plane sets run_settings only for the step explore: a run of the step prebuild has no run_settings. run_settings are the settings of session 1: the runtime is the runtime of every session of the run, and model, effort, provider_models and tiers are the model choice of session 1. The model choice of each later session is the model_choice of the answer to the next-session call. run_settings contains no key or secret. With no provider chosen, model, effort, provider_models and tiers are absent: the run uses the gateway's configured key and the runtime's default model. The control plane guarantees four rules that this schema cannot check: the ids in provider_models are unique; effort is listed for model in provider_models; each tier's model is in provider_models; and a tier's effort is listed for that tier's model in provider_models. The job writes the values as given, and maps no model or effort value to another. The control plane keeps the serialized signed 201 of the run code's redemption within 1 MiB. When that 201 with run_settings would exceed it, the control plane drops the oldest comments from inputs and sets comments_omitted, as the 768 KiB rule for inputs does, until the 201 fits.",
+      "description": "The runtime and model settings the job composes the agent's harness with. The control plane sets run_settings only for the step explore: a run of the step prebuild has no run_settings. run_settings are the settings of session 1: the runtime is the runtime of session 1 and of each later session whose model_choice has no runtime, and model, effort, provider_models and tiers are the model choice of session 1. The model choice of each later session is the model_choice of the answer to the next-session call. run_settings contains no key or secret. With no provider chosen, model, effort, provider_models and tiers are absent: the run uses the gateway's configured key and the runtime's default model. The control plane guarantees four rules that this schema cannot check: the ids in provider_models are unique; effort is listed for model in provider_models; each tier's model is in provider_models; and a tier's effort is listed for that tier's model in provider_models. The job writes the values as given, and maps no model or effort value to another. The control plane keeps the serialized signed 201 of the run code's redemption within 1 MiB. When that 201 with run_settings would exceed it, the control plane drops the oldest comments from inputs and sets comments_omitted, as the 768 KiB rule for inputs does, until the 201 fits.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -439,7 +439,7 @@
       }
     },
     "model_choice": {
-      "description": "The model choice of one session after session 1: the members model, effort, provider_models and tiers of run_settings, with the meaning they have there. It has no runtime, because every session of the run uses the runtime of run_settings. With no provider chosen, the four members are absent, and the four rules that run_settings lists for the control plane apply to the members that are present.",
+      "description": "The model choice of one session after session 1: the members runtime, model, effort, provider_models and tiers of run_settings, with the meaning they have there, except as runtime says here. runtime is the runtime the session runs on. Absent, the session runs on the runtime of run_settings. A session after session 1 may run on a runtime that differs from the runtime of run_settings, and model, effort, provider_models and tiers then apply to that runtime. The schema checks only the pattern of the runtime's name. runtime can be the only member: the session runs on that runtime with no provider chosen. With no provider chosen, model, effort, provider_models and tiers are absent: the session uses the gateway's configured key and the default model of its runtime. The four rules that run_settings lists for the control plane apply to those four members that are present. For a session whose model_choice has runtime, the control plane sets model_credential only for a credential of an API whose runtimes, when present, list that runtime and whose format that runtime sends, as the model_provider role of the integration description says. A session whose model_choice has runtime and no model_credential runs on the gateway's configured key, which that runtime must be able to use. model, effort, provider_models and tiers suit that runtime.",
       "type": "object",
       "additionalProperties": false,
       "dependentRequired": {
@@ -457,6 +457,9 @@
         ]
       },
       "properties": {
+        "runtime": {
+          "$ref": "#/$defs/run_settings/properties/runtime"
+        },
         "model": {
           "$ref": "#/$defs/run_settings/properties/model"
         },
@@ -508,7 +511,7 @@
       }
     },
     "harness_section": {
-      "description": "The harness section of the harness document. A section extends a stack or defines one. A section with extends extends that stack, the base: it appends its modules to the base, and takes the workflows of the base, so it has no workflows. A section without extends defines a stack: it requires modules, at least 1, and may contain workflows, in which the stack declares the access level of each of its workflows. A section that defines a stack, without extends, takes no target: the machine composes it for run_settings.runtime, or, when the run documents have no run_settings, for the default runtime of the machine. Either kind may contain the bindings of roles, the extensions, and a name and a description. Every other key of the harness section of qory.yaml is refused.",
+      "description": "The harness section of the harness document. A section extends a stack or defines one. A section with extends extends that stack, the base: it appends its modules to the base, and takes the workflows of the base, so it has no workflows. A section without extends defines a stack: it requires modules, at least 1, and may contain workflows, in which the stack declares the access level of each of its workflows. A section that defines a stack, without extends, takes no target: the machine composes it for the runtime of the session: for session 1, run_settings.runtime; for a later session, the runtime of its model_choice, or run_settings.runtime when that has none; and, when the run documents have no run_settings, the default runtime of the machine. Either kind may contain the bindings of roles, the extensions, and a name and a description. Every other key of the harness section of qory.yaml is refused.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

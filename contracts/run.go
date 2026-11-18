@@ -191,9 +191,11 @@ type HarnessDocument struct {
 // and takes the workflows of the base, so it has no Workflows. A section without Extends
 // defines a stack: it requires Modules, at least 1, and may have Workflows, in which the
 // stack declares the access level of each of its workflows. A section that defines a
-// stack, without Extends, takes no target: the machine composes it for
-// RunSettings.Runtime, or, when the run documents have no RunSettings, for the default
-// runtime of the machine. Either kind may have Bind, Extensions, Name and Description.
+// stack, without Extends, takes no target: the machine composes it for the runtime of
+// the session: for session 1, RunSettings.Runtime; for a later session, the Runtime of
+// its [ModelChoice], or RunSettings.Runtime when that is empty; and, when the run
+// documents have no RunSettings, the default runtime of the machine. Either kind may
+// have Bind, Extensions, Name and Description.
 type HarnessSection struct {
 	// Name is the name of the harness.
 	Name string `json:"name,omitempty"`
@@ -481,7 +483,8 @@ type WorkItem struct {
 
 // RunSettings is the run's run_settings, documents.schema.json: the runtime and
 // model settings the job composes the agent's harness with, the settings of session 1.
-// Runtime is the runtime of every session of the run. It contains no key or secret.
+// Runtime is the runtime of session 1 and of each later session whose [ModelChoice] has
+// no Runtime. It contains no key or secret.
 // With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
 // uses the gateway's configured key and the runtime's default model. Effort
 // and Tiers are set only with Model, and ProviderModels is set exactly when Model is.
@@ -511,13 +514,24 @@ type RunSettings struct {
 }
 
 // ModelChoice is a model_choice of the next-session answer, run/v1
-// documents.schema.json: the model, effort, provider models and tiers of one session
-// after session 1. Its
-// members are those of [RunSettings] with the same meaning and no Runtime, because
-// every session of the run uses the runtime of RunSettings. With no provider chosen,
-// the four members are empty, and the four rules that [RunSettings] lists for the
-// control plane apply to the members that are set.
+// documents.schema.json: the runtime, model, effort, provider models and tiers of one
+// session after session 1. Its members are those of [RunSettings] with the same
+// meaning, except Runtime. Runtime is the runtime the session runs on; empty, the
+// session runs on the runtime of RunSettings, and a session after session 1 may run on
+// a runtime that differs from it. Runtime can be the only member: the session
+// runs on that runtime with no provider chosen. With no provider chosen, Model, Effort,
+// ProviderModels and Tiers are empty: the session uses the gateway's configured key and
+// the default model of its runtime. The four rules that [RunSettings] lists for the
+// control plane apply to those four members that are set. For a session whose
+// ModelChoice has Runtime, the control plane sets a ModelCredential only for a
+// credential of an API whose runtimes, when present, list that runtime and whose format
+// that runtime sends. A session with Runtime and no ModelCredential runs on the
+// gateway's configured key, which that runtime must be able to use. The model members
+// suit that runtime.
 type ModelChoice struct {
+	// Runtime is the runtime's name in Forager's runtime descriptor, such as claude. It
+	// is the runtime the session runs on; empty, the runtime of [RunSettings].
+	Runtime string `json:"runtime,omitempty"`
 	// Model is the exact id of the model the session uses.
 	Model string `json:"model,omitempty"`
 	// Effort is the effort value the session uses with Model.
@@ -569,8 +583,9 @@ type NextSessionAnswer struct {
 	Session int `json:"session,omitempty"`
 	// Workflow is the workflow that the session starts, as [Documents.Workflow].
 	Workflow string `json:"workflow,omitempty"`
-	// ModelChoice is the model choice of the session, nil when no provider is chosen:
-	// the session uses the gateway's configured key and the runtime's default model.
+	// ModelChoice is the model choice of the session, nil when the session runs on the
+	// runtime of [RunSettings] and no provider is chosen: the session uses the gateway's
+	// configured key and the default model of that runtime.
 	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
 	// ModelCredential is the credential of the run that the session joins with, such as
 	// <the provider's public id>-<its place from 1>, and empty when no provider is
