@@ -25,7 +25,7 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodeEnvironmentImageMissing: "is not in the registry",
 	contracts.EndCodePushHeadChanged:         "is not the commit that the run expected",
 	contracts.EndCodePushScopeRefused:        "changes a file that the session may not change",
-	contracts.EndCodePushKeyFound:            "adds a key or a value of the run's secrets",
+	contracts.EndCodePushKeyFound:            "or the commits are too large to verify",
 	contracts.EndCodeRunDocumentsInvalid:     "fail qory's validation",
 	contracts.EndCodeHarnessInvalid:          "cannot be used: its source",
 	contracts.EndCodeMachineSetupInvalid:     "this machine has no registry",

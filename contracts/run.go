@@ -665,7 +665,7 @@ const (
 	// file outside .qory/ when the session has no plan.
 	EndCodePushScopeRefused EndCode = "push_scope_refused"
 	// EndCodePushKeyFound: a commit of the session adds a key or a value of the run's
-	// secrets, so qory pushed nothing.
+	// secrets, or the commits are too large to verify, so qory pushed nothing.
 	EndCodePushKeyFound EndCode = "push_key_found"
 	// EndCodeRunDocumentsInvalid: the run's documents, or the response to the run code, fail
 	// qory's validation.
