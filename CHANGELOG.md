@@ -134,6 +134,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   prebuild's environment image, `environment_image` in the run documents, is not in the
   registry), `push_head_changed` (the branch head at the forge is not the commit that
   the run expected, its start commit or its last push, or the branch is missing),
+  `push_scope_refused` (a commit of the session changes a file that the session may not
+  change: a file outside its plan's scope at the session's start, or any file outside
+  `.qory/` when the session has no plan),
   `run_documents_invalid` (the run's documents, or the response to the run code, fail
   qory's validation), `harness_invalid` (the harness that the run composes cannot be
   used), `machine_setup_invalid` (the machine cannot run the step, or has no registry),
