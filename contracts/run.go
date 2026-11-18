@@ -660,6 +660,9 @@ const (
 	// EndCodePushHeadChanged: the branch head at the forge is not the commit that the run
 	// expected (its start commit, or its last push), or the branch is missing.
 	EndCodePushHeadChanged EndCode = "push_head_changed"
+	// EndCodePushScopeRefused: a commit of the session changes a file outside the scope
+	// that the session's plan allowed when the session started.
+	EndCodePushScopeRefused EndCode = "push_scope_refused"
 	// EndCodeRunDocumentsInvalid: the run's documents, or the response to the run code, fail
 	// qory's validation.
 	EndCodeRunDocumentsInvalid EndCode = "run_documents_invalid"
