@@ -35,6 +35,7 @@ var adapterSchemas = []string{
 	"connections-disconnect.schema.json",
 	"changes.schema.json",
 	"changes-failed.schema.json",
+	"changes-submitted.schema.json",
 	"connect-pass.schema.json",
 	"connect-return.schema.json",
 	"setup-pass.schema.json",
@@ -146,6 +147,55 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-comment-author-name-unicode-spaces.json":      {"changes", "/changes/0/author_name pattern"},
 		"changes-failed-unknown-reason.json":                   {"changes-failed", "/reason enum"},
 		"changes-failed-without-comment-id.json":               {"changes-failed", "/ required comment_id"},
+		"changes-failed-comment-branch-gone.json":              {"changes-failed", "/reason enum"},
+		"changes-failed-comment-forge-refused.json":            {"changes-failed", "/reason enum"},
+		"changes-failed-comment-with-path.json":                {"changes-failed", "/path "},
+		"changes-failed-submission-and-comment-id.json":        {"changes-failed", "/ "},
+		"changes-failed-submission-id-wrong-prefix.json":       {"changes-failed", "/submission_id pattern"},
+		"changes-failed-submission-item-gone.json":             {"changes-failed", "/reason enum"},
+		"changes-failed-submission-unknown-reason.json":        {"changes-failed", "/reason enum"},
+		"changes-failed-submission-detail-1001.json":           {"changes-failed", "/detail maxLength"},
+		"changes-failed-submission-detail-empty.json":          {"changes-failed", "/detail minLength; /detail pattern"},
+		"changes-failed-submission-detail-line-break.json":     {"changes-failed", "/detail pattern"},
+		"changes-failed-comment-detail.json":                   {"changes-failed", "/detail "},
+		"changes-failed-submission-without-path.json":          {"changes-failed", "/ required path"},
+		"changes-failed-submission-without-system.json":        {"changes-failed", "/ required system"},
+		"changes-submission-branch-with-space.json":            {"changes", "/changes/0/targets/0/branch pattern"},
+		"changes-submission-commit-short.json":                 {"changes", "/changes/0/targets/0/commits/0/commit pattern"},
+		"changes-submission-commits-empty.json":                {"changes", "/changes/0/targets/0/commits minItems"},
+		"changes-submission-description-20001.json":            {"changes", "/changes/0/text/description maxLength"},
+		"changes-submission-description-marker.json":           {"changes", "/changes/0/text/description "},
+		"changes-submission-draft-action-close.json":           {"changes", "/changes/0/targets/0/draft/action enum"},
+		"changes-submission-draft-without-base-branch.json":    {"changes", "/changes/0/targets/0/base required branch"},
+		"changes-submission-draft-without-text.json":           {"changes", "/changes/0 required text"},
+		"changes-submission-id-wrong-prefix.json":              {"changes", "/changes/0/submission_id pattern"},
+		"changes-submission-open-with-number.json":             {"changes", "/changes/0/targets/0/draft "},
+		"changes-submission-path-dot-dot.json":                 {"changes", "/changes/0/targets/0/path "},
+		"changes-submission-previous-title-empty.json":         {"changes", "/changes/0/previous_title minLength; /changes/0/previous_title pattern; /changes/0/previous_title pattern"},
+		"changes-submission-previous-title-null.json":          {"changes", "/changes/0/previous_title type"},
+		"changes-submission-targets-empty.json":                {"changes", "/changes/0/targets minItems"},
+		"changes-submission-step-129-characters.json":          {"changes", "/changes/0/targets/0/commits/0/step maxLength"},
+		"changes-submission-system-upper-case.json":            {"changes", "/changes/0/targets/0/system pattern"},
+		"changes-submission-title-257-characters.json":         {"changes", "/changes/0/text/title maxLength"},
+		"changes-submission-title-line-feed.json":              {"changes", "/changes/0/text/title pattern"},
+		"changes-submission-update-without-number.json":        {"changes", "/changes/0/targets/0/draft required number"},
+		"changes-submission-with-url.json":                     {"changes", "/changes/0 additionalProperties"},
+		"changes-submission-without-commits.json":              {"changes", "/changes/0/targets/0 required commits"},
+		"changes-submission-without-targets.json":              {"changes", "/changes/0 required targets"},
+		"changes-submission-without-step.json":                 {"changes", "/changes/0/targets/0/commits/0 required step"},
+		"changes-submitted-commit-url-http.json":               {"changes-submitted", "/targets/0/commits/0/commit_url pattern"},
+		"changes-submitted-commit-without-commit-url.json":     {"changes-submitted", "/targets/0/commits/0 required commit_url"},
+		"changes-submitted-commits-empty.json":                 {"changes-submitted", "/targets/0/commits minItems"},
+		"changes-submitted-draft-action-closed.json":           {"changes-submitted", "/targets/0/draft/action enum"},
+		"changes-submitted-draft-closed-updated.json":          {"changes-submitted", "/targets/0/draft/action const"},
+		"changes-submitted-draft-merged-opened.json":           {"changes-submitted", "/targets/0/draft/action const"},
+		"changes-submitted-draft-number-0.json":                {"changes-submitted", "/targets/0/draft/number minimum"},
+		"changes-submitted-draft-state-archived.json":          {"changes-submitted", "/targets/0/draft/state enum"},
+		"changes-submitted-draft-without-url.json":             {"changes-submitted", "/targets/0/draft required url"},
+		"changes-submitted-undefined-member.json":              {"changes-submitted", "/ additionalProperties"},
+		"changes-submitted-without-base.json":                  {"changes-submitted", "/targets/0 required base"},
+		"changes-submitted-without-targets.json":               {"changes-submitted", "/ required targets"},
+		"changes-submitted-without-submission-id.json":         {"changes-submitted", "/ required submission_id"},
 		"source-item-comments-comment-id-upper-case.json":      {"source-item-comments", "/comments/0/comment_id pattern"},
 		"source-collections-no-listing.json":                   {"source-collections", "/ required listing"},
 		"source-item-comments-person-kind-app.json":            {"source-item-comments", "/comments/0/author/kind enum"},
@@ -210,9 +260,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-call-url-query.json":                          {"adapter", "/call_url pattern"},
 		"adapter-call-url-without-final-slash.json":            {"adapter", "/call_url pattern"},
 		"adapter-description-secrets-twice.json":               {"adapter", "/description/roles/source/secrets uniqueItems"},
-		"adapter-submit-module-ref-branch.json":                {"adapter", "/submit_module/source/ref pattern"},
-		"adapter-submit-module-ref-short.json":                 {"adapter", "/submit_module/source/ref pattern"},
-		"adapter-submit-module-exclude.json":                   {"adapter", "/submit_module/exclude "},
 		"grant-without-pass-nonce.json":                        {"grant", "/ required pass_nonce"},
 		"grant-without-account.json":                           {"grant", "/ required account"},
 		"grant-end-without-grant-ref.json":                     {"grant-end", "/ required grant_ref"},
@@ -374,6 +421,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	person := contracts.Person{Name: "Ada Example", Kind: "person"}
 	target := &contracts.Target{System: "code.example.com", Path: "acme/shop"}
 	noItems := false
+	const submission = "av_7k2m9q4v1x8z3c5d"
+	commitA, commitB := strings.Repeat("a", 40), strings.Repeat("b", 40)
 	values := []struct {
 		schema string
 		v      any
@@ -426,8 +475,48 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: contracts.ChangeSync, Interval: &interval},
 			{Kind: contracts.ChangeComment, CommentID: "sc_7k2m9q4v1x8z3c5d", Ref: "TRK-1", AuthorName: "Dana Example", Body: "Seen too."},
 			{Kind: contracts.ChangeWatch, WorkItemID: "wi_1", URL: "https://control.example.com/work-items/wi_1"},
+			{Kind: contracts.ChangeSubmission, SubmissionID: submission, Targets: []contracts.SubmissionTarget{{
+				System: "code.example.com", Path: "acme/shop", Branch: "qory/wi_1",
+				Base:    contracts.SubmissionBase{Commit: commitA},
+				Commit:  commitB,
+				Commits: []contracts.SubmissionCommit{{Commit: commitB, Step: "deliverable:d-1"}}}}},
+			{Kind: contracts.ChangeSubmission, SubmissionID: submission, Ref: "TRK-1", PreviousTitle: "Show dates",
+				Text: &contracts.SubmissionText{Title: "Show delivery dates", Description: "The page lists dates."},
+				Targets: []contracts.SubmissionTarget{{
+					System: "code.example.com", Path: "acme/shop", Branch: "qory/wi_1",
+					Base:    contracts.SubmissionBase{Commit: commitA, Branch: "main"},
+					Commit:  commitB,
+					Commits: []contracts.SubmissionCommit{{Commit: commitB, Step: "deliverable:d-1"}},
+					Draft:   &contracts.DraftRequest{Action: contracts.DraftUpdate, Number: 34}}}},
 		}}},
 		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, CommentID: "sc_7k2m9q4v1x8z3c5d", Reason: "too_long"}},
+		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, SubmissionID: submission,
+			System: "code.example.com", Path: "acme/shop", Reason: "branch_gone"}},
+		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, SubmissionID: submission,
+			System: "code.example.com", Path: "acme/shop", Reason: "forge_refused",
+			Detail: "Shorten the title, then run again. The forge returned 422: title is too long."}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, SubmissionID: submission,
+			Targets: []contracts.SubmittedTarget{{System: "code.example.com", Path: "acme/shop",
+				Base:    contracts.CommitAddress{Commit: commitA, CommitURL: "https://code.example.com/acme/shop/commit/" + commitA},
+				Commits: []contracts.CommitAddress{{Commit: commitB, CommitURL: "https://code.example.com/acme/shop/commit/" + commitB}}}}}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, SubmissionID: submission,
+			Targets: []contracts.SubmittedTarget{{System: "git.example.net", Path: "acme/shop",
+				Base:    contracts.CommitAddress{Commit: commitA, CommitURL: "https://git.example.net/acme/shop/-/commit/" + commitA},
+				Commits: []contracts.CommitAddress{{Commit: commitB, CommitURL: "https://git.example.net/acme/shop/-/commit/" + commitB}},
+				Draft: &contracts.SubmittedDraft{Number: 7, URL: "https://git.example.net/acme/shop/-/merge_requests/7",
+					Title: "Show delivery dates", State: contracts.DraftStateDraft, Action: contracts.DraftOpened}}}}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, SubmissionID: submission,
+			Targets: []contracts.SubmittedTarget{{System: "code.example.com", Path: "acme/shop",
+				Base:    contracts.CommitAddress{Commit: commitA, CommitURL: "https://code.example.com/acme/shop/commit/" + commitA},
+				Commits: []contracts.CommitAddress{{Commit: commitB, CommitURL: "https://code.example.com/acme/shop/commit/" + commitB}},
+				Draft: &contracts.SubmittedDraft{Number: 34, URL: "https://code.example.com/acme/shop/pull/34",
+					Title: "Show delivery dates", State: contracts.DraftStateClosed, Action: contracts.DraftKept}}}}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, SubmissionID: submission,
+			Targets: []contracts.SubmittedTarget{{System: "git.example.net", Path: "acme/shop",
+				Base:    contracts.CommitAddress{Commit: commitA, CommitURL: "https://git.example.net/acme/shop/-/commit/" + commitA},
+				Commits: []contracts.CommitAddress{{Commit: commitB, CommitURL: "https://git.example.net/acme/shop/-/commit/" + commitB}},
+				Draft: &contracts.SubmittedDraft{Number: 7, URL: "https://git.example.net/acme/shop/-/merge_requests/7",
+					Title: "Show delivery dates", State: contracts.DraftStateMerged, Action: contracts.DraftKept}}}}},
 		{"connect-pass", contracts.ConnectPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
 			ConnectionID: "ac_0123456789abcdef", Nonce: "AAECAwQFBgcICQoLDA0ODw", ExpiresAt: now}},
 		{"connect-return", contracts.ConnectReturn{Version: contracts.Version, ConnectionID: "ac_0123456789abcdef",
@@ -444,11 +533,6 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
 			CallURL: "https://adapter.example.com/calls/", Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60},
 			Description: read(t, "fixtures/example-tracker.json")}},
-		{"adapter", contracts.Adapter{Version: contracts.Version, Time: now, ConnectURL: "https://adapter.example.com/connect",
-			Sync: contracts.Sync{DefaultInterval: 900, MinimumInterval: 60}, Description: read(t, "fixtures/example-tracker.json"),
-			SubmitModule: &contracts.SubmitModule{Name: "forge-submit", Source: contracts.HarnessSource{
-				Git: "https://code.example.com/example-org/forge-module", Ref: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4",
-				Module: "forge-submit"}}}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 		{"refusal", contracts.Refusal{Error: "grant_taken"}},
 		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
@@ -626,60 +710,6 @@ func TestAdapterSetupURLRoundTrips(t *testing.T) {
 	}
 	if err := validate(schema, b); err != nil {
 		t.Errorf("an adapter without a setup URL marshals to %s, which adapter.schema.json refuses: %v", b, err)
-	}
-}
-
-// TestAdapterSubmitModuleRoundTrips decodes the start-up fixture with a submit_module
-// into Adapter, and pins that SubmitModule has its name and source, that it marshals back
-// to a document adapter.schema.json accepts, with the same submit_module, and that an
-// Adapter without a SubmitModule marshals no submit_module member.
-func TestAdapterSubmitModuleRoundTrips(t *testing.T) {
-	const name = "fixtures/adapter/adapter/code-host-submit-module.json"
-	var a contracts.Adapter
-	if err := json.Unmarshal(read(t, name), &a); err != nil {
-		t.Fatal(err)
-	}
-	want := contracts.SubmitModule{Name: "forge-submit", Source: contracts.HarnessSource{
-		Git: "https://code.example.com/example-org/forge-module", Ref: "3f2a91c4d5e6f708192a3b4c5d6e7f8091a2b3c4",
-		Module: "forge-submit"}}
-	if a.SubmitModule == nil || *a.SubmitModule != want {
-		t.Fatalf("%s decodes submit_module as %+v", name, a.SubmitModule)
-	}
-	schema := compile(t, "adapter.schema.json")
-	b, err := json.Marshal(a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := validate(schema, b); err != nil {
-		t.Errorf("%s marshals back to %s, which adapter.schema.json refuses: %v", name, b, err)
-	}
-	var doc, fixture map[string]json.RawMessage
-	if err := json.Unmarshal(b, &doc); err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(read(t, name), &fixture); err != nil {
-		t.Fatal(err)
-	}
-	var compact bytes.Buffer
-	if err := json.Compact(&compact, fixture["submit_module"]); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(doc["submit_module"], compact.Bytes()) {
-		t.Errorf("%s marshals back submit_module as %s, want %s", name, doc["submit_module"], compact.Bytes())
-	}
-	a.SubmitModule = nil
-	if b, err = json.Marshal(a); err != nil {
-		t.Fatal(err)
-	}
-	doc = nil
-	if err := json.Unmarshal(b, &doc); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := doc["submit_module"]; ok {
-		t.Errorf("an adapter without a submit module marshals to %s, with a submit_module member", b)
-	}
-	if err := validate(schema, b); err != nil {
-		t.Errorf("an adapter without a submit module marshals to %s, which adapter.schema.json refuses: %v", b, err)
 	}
 }
 
@@ -1449,7 +1479,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		}
 	}
 	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
-		"connections-disconnect", "changes-failed", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
+		"connections-disconnect", "changes-failed", "changes-submitted", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
 		"resolve-answer", "read", "read-public", "read-answer", "run-credential", "run-credential-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
