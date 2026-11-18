@@ -181,6 +181,8 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"outcome-push-head-changed-cancelled.json":                      {"outcome", "/state const"},
 		"outcome-push-scope-refused-succeeded.json":                     {"outcome", "/state const"},
 		"outcome-push-scope-refused-cancelled.json":                     {"outcome", "/state const"},
+		"outcome-push-key-found-succeeded.json":                         {"outcome", "/state const"},
+		"outcome-push-key-found-cancelled.json":                         {"outcome", "/state const"},
 		"outcome-run-documents-invalid-succeeded.json":                  {"outcome", "/state const"},
 		"outcome-run-documents-invalid-cancelled.json":                  {"outcome", "/state const"},
 		"outcome-harness-invalid-succeeded.json":                        {"outcome", "/state const"},
