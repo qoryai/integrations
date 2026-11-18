@@ -2,7 +2,9 @@ package contracts_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -573,6 +575,74 @@ func TestCheckModelProviderReadsTheOAuthRefreshURLHost(t *testing.T) {
 	for _, url := range []string{"https://auth.acme.example/oauth/token", "https://auth.acme.example:65535/oauth/token", "https://10.0.0.1/oauth/token"} {
 		if err := contracts.CheckModelProvider(doc(url)); err != nil {
 			t.Errorf("%s: %v", url, err)
+		}
+	}
+}
+
+// TestCheckModelProviderRefusesAnUnclearPath pins that CheckModelProvider refuses an
+// entry of an API's paths that Forager's policy.UnclearPath reports, which the schema
+// accepts: an empty, "." or ".." segment, also before a ";" or "%3B", a backslash, an
+// encoded slash, backslash, dot or percent sign in either letter case, and a control
+// character. The message starts with the fix and names the entry. Paths that the gateway
+// can match, with a star at the end or a segment that only starts with dots, are accepted.
+func TestCheckModelProviderRefusesAnUnclearPath(t *testing.T) {
+	schema := compile(t, "description.schema.json")
+	doc := func(paths string) any {
+		t.Helper()
+		d, err := jsonschema.UnmarshalJSON(strings.NewReader(provider(`{"format": "openai-responses", "endpoint": "https://api.acme.example/v1",
+ "auth": {"scheme": "bearer"}, "paths": ` + paths + `}`)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := schema.Validate(d); err != nil {
+			t.Fatalf("%s: the schema refuses it, and the rule is CheckModelProvider's alone: %v", paths, err)
+		}
+		return d
+	}
+	const reason = `: it has an empty, "." or ".." segment, a backslash, an encoded slash, backslash, dot or percent sign, or a control character, which the gateway denies in a request path, so the path matches no request`
+	for _, tc := range []struct{ name, path string }{
+		{"an empty segment", "/v1//messages"},
+		{"an empty segment at the start", "//v1"},
+		{"a dot segment", "/v1/./messages"},
+		{"a dot segment at the end", "/v1/."},
+		{"a dot-dot segment", "/v1/../messages"},
+		{"a dot-dot segment at the end", "/v1/.."},
+		{"a dot segment before a semicolon", "/v1/.;x/messages"},
+		{"a dot-dot segment before a semicolon", "/v1/..;x/messages"},
+		{"a dot-dot segment before an encoded semicolon", "/v1/..%3B/messages"},
+		{"a dot-dot segment before an encoded semicolon in capitals", "/v1/..%3b/messages"},
+		{"an empty segment before a semicolon", "/v1/;x/messages"},
+		{"a dot-dot segment before a star", "/v1/../*"},
+		{"a backslash", `/v1\\messages`},
+		{"an encoded slash", "/v1%2Fmessages"},
+		{"an encoded slash in lower case", "/v1%2fmessages"},
+		{"an encoded backslash", "/v1%5Cmessages"},
+		{"an encoded dot", "/v1/%2e%2e/messages"},
+		{"an encoded dot in capitals", "/v1/%2E/messages"},
+		{"an encoded percent sign", "/v1/%252e/messages"},
+		{"a control character", `/v1/a\u0001b`},
+		{"a delete character", `/v1/a\u007fb`},
+	} {
+		d := doc(`["` + tc.path + `"]`)
+		got := contracts.CheckModelProvider(d)
+		path := tc.path
+		if err := json.Unmarshal([]byte(`"`+tc.path+`"`), &path); err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		want := `change the path ` + strconv.Quote(path) + ` of model_provider apis[0] paths[0]` + reason
+		if got == nil || got.Error() != want {
+			t.Errorf("%s: %v, want %q", tc.name, got, want)
+		}
+	}
+	if got, want := contracts.CheckModelProvider(doc(`["/v1/messages", "/v1/a/../b"]`)), `change the path "/v1/a/../b" of model_provider apis[0] paths[1]`+reason; got == nil || got.Error() != want {
+		t.Errorf("the second path: %v, want %q", got, want)
+	}
+	for _, paths := range []string{
+		`["/"]`, `["/*"]`, `["/v1/messages"]`, `["/backend-api/codex/*"]`, `["/v1/messages/"]`,
+		`["/v1/.hidden", "/v1/..hidden", "/v1/.*", "/v1/..*"]`, `["/v1/a.b/c..d"]`,
+	} {
+		if err := contracts.CheckModelProvider(doc(paths)); err != nil {
+			t.Errorf("%s: %v", paths, err)
 		}
 	}
 }

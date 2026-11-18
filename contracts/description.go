@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/qoryai/forager/policy"
 	"github.com/qoryai/integrations/internal/rawjson"
 )
 
@@ -77,8 +78,10 @@ func CheckDescription(b []byte) error {
 // express: no two entries of apis have the same format; an API endpoint that is a URL,
 // and the url of each oauth_refresh, each have a host and port as [urlHost] reads them;
 // an API endpoint that is a setting is the name of a property of settings whose type
-// is string and that is not marked writeOnly; and no two entries of models have the
-// same id. doc is the description as a schema validates it, after the schema accepts
+// is string and that is not marked writeOnly; no entry of an API's paths is one that
+// Forager's policy.UnclearPath reports, since the gateway denies a request path with
+// such a part before it reads any credential's paths, so the entry would match nothing;
+// and no two entries of models have the same id. doc is the description as a schema validates it, after the schema accepts
 // it. A description with no model_provider role keeps every rule.
 func CheckModelProvider(doc any) error {
 	d, _ := doc.(map[string]any)
@@ -108,6 +111,12 @@ func CheckModelProvider(doc any) error {
 		if u, ok := refresh["url"].(string); ok {
 			if _, err := urlHost(u); err != nil {
 				return fmt.Errorf("the oauth_refresh url %q of model_provider apis[%d] has no host the control plane can read: %w", u, i, err)
+			}
+		}
+		paths, _ := api["paths"].([]any)
+		for j, p := range paths {
+			if path, _ := p.(string); policy.UnclearPath(path) {
+				return fmt.Errorf("change the path %q of model_provider apis[%d] paths[%d]: it has an empty, \".\" or \"..\" segment, a backslash, an encoded slash, backslash, dot or percent sign, or a control character, which the gateway denies in a request path, so the path matches no request", path, i, j)
 			}
 		}
 	}

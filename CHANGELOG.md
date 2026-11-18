@@ -241,7 +241,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   description can set `vendor`, the vendor's name in lines the control plane shows,
   such as `Anthropic rejected it on <date time>.`.
   `contracts.CheckModelProvider` refuses an `oauth_refresh` `url` whose host or port
-  the control plane cannot read. Every description in `descriptions/` sets `vendor`; in
+  the control plane cannot read, and an entry of `paths` that Forager's
+  `policy.UnclearPath` reports: a path with an empty, `.` or `..` segment, a backslash,
+  an encoded slash, backslash, dot or percent sign, or a control character, which the
+  gateway denies in a request path. Every description in `descriptions/` sets `vendor`; in
   `descriptions/claude-subscription.json`, `runtimes` is `["claude"]` and
   `key_lifetime_days` is `365`.
 - `descriptions/openai.json` describes the OpenAI API key provider: the Responses API at
