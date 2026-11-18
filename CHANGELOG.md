@@ -266,14 +266,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
   `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning.
   `model_credential` is the name of a credential of the run, such as the provider's
-  public id, a hyphen and the key's place from 1; the schema checks only the pattern of
-  a credential's name in Forager's policy.
+  public id, a hyphen and the key's place from 1. The schema checks only the grammar of
+  a credential's name in Forager's `run-configuration.schema.json`: 1 to 64 of `a-z`,
+  `0-9`, underscore, dot and dash, starting with a letter or a digit. Without
+  `model_credential`, the session joins with the group of the run's start key. The
+  control plane sets `model_credential` for every later session whose key is a
+  credential of the run configuration outside that group.
 - A session after session 1 may choose its runtime: `model_choice` gains `runtime`
   (`ModelChoice.Runtime` in Go), a runtime name in Forager's runtime descriptor, as
   `run_settings.runtime`. A `model_choice` without `runtime` runs the session on the
   runtime of `run_settings`, and `runtime` can be its only member: the session runs on
-  that runtime with the gateway's configured key and that runtime's default model. The
-  `runtime` of `run_settings` is the runtime of session 1 and of each later session
+  that runtime with the group of the run's start key and that runtime's default model.
+  The `runtime` of `run_settings` is the runtime of session 1 and of each later session
   whose `model_choice` has none. For a session with `runtime`, the control plane sets a
   `model_credential` only for a credential of an API whose `runtimes`, when present,
   list that runtime and whose format that runtime sends.
@@ -289,6 +293,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `full_suite` is `true` when session 1 runs the full test suite after the agent ends.
   `shared_run` and `full_suite` left out are the same as `false`. A run of the step
   `prebuild` has none of the three.
+- The run documents of every run of the step `explore` contain `run_settings`, and
+  `contracts.Documents.RunSettings` is set for each of them. A run of the step
+  `prebuild` has no `run_settings`. The runtime of session 1 is `run_settings.runtime`,
+  and the runtime of a later session is the `runtime` of its `model_choice`, or
+  `run_settings.runtime` when it has none.
 - The run documents of the step `prebuild` can contain `largest_prebuilt_image_bytes`,
   and `contracts.Documents` has it as `LargestPrebuiltImageBytes`, an `*int64`: the
   largest size, in decimal bytes, that the target image of the build may have. It is an
@@ -656,8 +665,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   workflows. A section that defines a stack, without `extends`, takes no target: the
   machine composes it for the runtime of the session: `run_settings.runtime` for session
   1; for a later session, the `runtime` of its `model_choice`, or `run_settings.runtime`
-  when it has none; and, when the run documents have no `run_settings`, the default
-  runtime of the machine. A section with `extends` takes
+  when it has none. A section with `extends` takes
   the workflows of its base, and the schema rejects `workflows` in it. In Go,
   `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
   `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,

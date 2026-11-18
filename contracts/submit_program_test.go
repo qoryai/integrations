@@ -755,3 +755,20 @@ func TestTheLeftOutLinesAreInTheOrderOfTheirNumbers(t *testing.T) {
 		t.Errorf("lines %v are left out, want %v: %v", lines, want, r.Invalid)
 	}
 }
+
+// TestTheReadmeSaysWhichDraftTheProgramTakes pins that the README of the submit program
+// says where the program finds the drafts, which of several it takes, that a closed or
+// merged draft is reported as kept, and that the program never changes the title of a
+// draft that it finds.
+func TestTheReadmeSaysWhichDraftTheProgramTakes(t *testing.T) {
+	readme := strings.Join(strings.Fields(submitFile(t, "README.md")), " ")
+	for _, want := range []string{
+		"the program first looks for the drafts from `QORY_SUBMIT_BRANCH` and the repository, in any state",
+		"With several drafts, it takes the not-closed, not-merged draft with the highest number; with none, the closed or merged one with the highest number, which it reports with `draft_action` `kept` and leaves as it is.",
+		"Any other draft is edited: its description follows the rules below, and its title stays, because the program never changes the title of a draft that it finds and a run with no run code has no previous title.",
+	} {
+		if !strings.Contains(readme, want) {
+			t.Errorf("the README does not contain %q", want)
+		}
+	}
+}

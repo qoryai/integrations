@@ -35,11 +35,11 @@ const MaxInputs = 768 << 10
 // If the machine's qory version does not meet that requirement, the run stops. It reads
 // none of the other machine keys of that file and none of its git and env sections, so
 // the harness file of the target does not set how the run starts. A run of the step
-// explore has WorkItem. A run of the step prebuild has Access, Target, ImageDestination
-// and exactly one of EnvironmentDestination and EnvironmentImage, and no TargetVersion,
-// WorkItem, RunSettings, TimeLimitMinutes, SharedRun, FullSuite, Workflow,
-// HarnessHidden or Harness. RunSettings, TimeLimitMinutes, SharedRun and FullSuite are
-// set only for the step explore. The documents are the documents of session 1: its
+// explore has WorkItem and RunSettings. A run of the step prebuild has Access, Target,
+// ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
+// no TargetVersion, WorkItem, RunSettings, TimeLimitMinutes, SharedRun, FullSuite,
+// Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun and FullSuite are set
+// only for the step explore. The documents are the documents of session 1: its
 // Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With SharedRun, each
 // later session comes from the answer to the next-session request, as
 // [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
@@ -183,8 +183,7 @@ type HarnessDocument struct {
 // stack declares the access level of each of its workflows. A section that defines a
 // stack, without Extends, takes no target: the machine composes it for the runtime of
 // the session: for session 1, RunSettings.Runtime; for a later session, the Runtime of
-// its [ModelChoice], or RunSettings.Runtime when that is empty; and, when the run
-// documents have no RunSettings, the default runtime of the machine. Either kind may
+// its [ModelChoice], or RunSettings.Runtime when that is empty. Either kind may
 // have Bind, Extensions, Name and Description.
 type HarnessSection struct {
 	// Name is the name of the harness.
@@ -462,7 +461,8 @@ type WorkItem struct {
 // RunSettings is the run's run_settings, documents.schema.json: the runtime and
 // model settings the job composes the agent's harness with, the settings of session 1.
 // Runtime is the runtime of session 1 and of each later session whose [ModelChoice] has
-// no Runtime. It contains no key or secret.
+// no Runtime. Each run of the step explore has RunSettings, and a run of the step
+// prebuild has none. RunSettings contains no key or secret.
 // With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
 // uses the gateway's configured key and the runtime's default model. Effort
 // and Tiers are set only with Model, and ProviderModels is set exactly when Model is.
@@ -498,14 +498,15 @@ type RunSettings struct {
 // session runs on the runtime of RunSettings, and a session after session 1 may run on
 // a runtime that differs from it. Runtime can be the only member: the session
 // runs on that runtime with no provider chosen. With no provider chosen, Model, Effort,
-// ProviderModels and Tiers are empty: the session uses the gateway's configured key and
-// the default model of its runtime. The four rules that [RunSettings] lists for the
+// ProviderModels and Tiers are empty: the session uses the default model of its
+// runtime, with the key of its ModelCredential or, without one, of the group of the
+// run's start key. The four rules that [RunSettings] lists for the
 // control plane apply to those four members that are set. For a session whose
 // ModelChoice has Runtime, the control plane sets a ModelCredential only for a
 // credential of an API whose runtimes, when present, list that runtime and whose format
-// that runtime sends. A session with Runtime and no ModelCredential runs on the
-// gateway's configured key, which that runtime must be able to use. The model members
-// suit that runtime.
+// that runtime sends. A session with Runtime and no ModelCredential joins with the
+// group of the run's start key, which that runtime must be able to use. The model
+// members suit that runtime.
 type ModelChoice struct {
 	// Runtime is the runtime's name in Forager's runtime descriptor, such as claude. It
 	// is the runtime the session runs on; empty, the runtime of [RunSettings].
@@ -562,13 +563,16 @@ type NextSessionAnswer struct {
 	// Workflow is the workflow that the session starts, as [Documents.Workflow].
 	Workflow string `json:"workflow,omitempty"`
 	// ModelChoice is the model choice of the session, nil when the session runs on the
-	// runtime of [RunSettings] and no provider is chosen: the session uses the gateway's
-	// configured key and the default model of that runtime.
+	// runtime of [RunSettings] and no provider is chosen: the session uses the default
+	// model of that runtime, with the key of its ModelCredential or, without one, of the
+	// group of the run's start key.
 	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
 	// ModelCredential is the credential of the run that the session joins with, such as
-	// <the provider's public id>-<its place from 1>, and empty when no provider is
-	// chosen. The schema checks only the pattern of a credential's name in Forager's
-	// policy.
+	// <the provider's public id>-<its place from 1>. The schema checks only the grammar
+	// of a credential's name in Forager's run configuration. When empty, the session
+	// joins with the group of the run's start key. The control plane sets it for every
+	// later session whose key is a credential of the run configuration outside that
+	// group.
 	ModelCredential string `json:"model_credential,omitempty"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 15 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`

@@ -121,6 +121,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-prebuild-with-work-item.json":                        {"documents", "/ "},
 		"documents-prebuild-with-workflow.json":                         {"documents", "/ dependentRequired/workflow; /workflow ; / required harness; / required target_version"},
 		"documents-explore-without-work-item.json":                      {"documents", "/ required work_item"},
+		"documents-explore-without-run-settings.json":                   {"documents", "/ required run_settings"},
 		"documents-prebuild-inputs-version-2.json":                      {"documents", "/inputs/version const"},
 		"documents-prebuild-inputs-without-environment-ref.json":        {"documents", "/inputs required environment_ref"},
 		"documents-prebuild-inputs-environment-ref-empty.json":          {"documents", "/inputs/environment_ref minLength"},
@@ -771,6 +772,7 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	largestImage := int64(5368709120)
 	ads := &contracts.Target{System: "ads.example.com", Path: "accounts/1234"}
 	item := contracts.WorkItem{ID: "wi_1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
+	settings := &contracts.RunSettings{Runtime: "claude"}
 	hidden, shown := true, false
 	const source = "https://code.example.com/team/harness"
 	harness := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
@@ -834,9 +836,9 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 			EnvironmentDestination:    "registry.example.com/environments/0123456789abcdef",
 			LargestPrebuiltImageBytes: &largestImage}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
-			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item}},
+			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, RunSettings: settings}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
-			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, RunSettings: &contracts.RunSettings{Runtime: "claude"},
+			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, RunSettings: settings,
 			TimeLimitMinutes: 1440, SharedRun: true, FullSuite: true}},
 		{"documents/harness", harness},
 		{"documents/harness", full},
@@ -845,25 +847,25 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 		{"documents/harness", definedBare},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: target,
-			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, Workflow: "hello",
+			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, RunSettings: settings, Workflow: "hello",
 			HarnessHidden: &hidden}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
-			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: ads, WorkItem: &item,
+			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: ads, WorkItem: &item, RunSettings: settings,
 			Workflow: "hello", HarnessHidden: &shown, Harness: harness}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
-			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, Harness: full}},
+			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, RunSettings: settings, Harness: full}},
 		{"documents/submit", step},
 		{"documents/submit", contracts.Submit{Type: "customer-facts", Send: "after_gate"}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target,
-			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, Workflow: "build",
+			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, RunSettings: settings, Workflow: "build",
 			HarnessHidden: &shown, Submit: &step}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
-			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target, WorkItem: &item,
+			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target, WorkItem: &item, RunSettings: settings,
 			Workflow: "build", HarnessHidden: &shown, Harness: harness, Submit: &step}},
 		{"documents", contracts.Documents{Step: "explore", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target,
-			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, Workflow: "build",
+			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, RunSettings: settings, Workflow: "build",
 			HarnessHidden: &shown, Submit: &step}},
 	}
 	for _, c := range values {
@@ -1011,7 +1013,8 @@ func TestAPrebuildsInputsAreRefusedForTheirEnvironmentRefAlone(t *testing.T) {
 
 // TestRunSettingsAreRefusedForRunSettingsAlone pins that each invalid fixture whose
 // name starts with documents-run-settings- is refused for run_settings and for
-// nothing else: the same documents without run_settings are accepted.
+// nothing else: an explore run with run_settings replaced by only a runtime, and a
+// prebuild run without run_settings, are accepted.
 func TestRunSettingsAreRefusedForRunSettingsAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	n := 0
@@ -1029,9 +1032,13 @@ func TestRunSettingsAreRefusedForRunSettingsAlone(t *testing.T) {
 			t.Errorf("%s are not run documents with run_settings", f)
 			continue
 		}
-		delete(answer, "run_settings")
+		if answer["step"] == "explore" {
+			answer["run_settings"] = map[string]any{"runtime": "claude"}
+		} else {
+			delete(answer, "run_settings")
+		}
 		if err := schema.Validate(answer); err != nil {
-			t.Errorf("%s without run_settings is refused: %v", f, err)
+			t.Errorf("%s with the least run_settings is refused: %v", f, err)
 		}
 	}
 	if n == 0 {

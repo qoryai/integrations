@@ -56,13 +56,16 @@ the text from it. `gh pr create` and `gh pr edit` read a body from a file with
 
 With `QORY_SUBMIT_DRAFT` `none`, as after a session that did not pass, the program makes no
 draft and prints only the address of each commit. qory leaves out each draft line that a
-program prints then. With `open`, the program first looks for a draft from
-`QORY_SUBMIT_BRANCH` in any state, so a draft that exists is not opened a second time:
-a draft that a person closed or merged is reported with `draft_action` `kept` and left
-as it is, and any other draft is edited: its description follows the rules below, and
-its title stays. The program edits a draft only while it is `draft` or `open`. There is
-no input for the number of a draft or for a previous title, because a run with no run
-code has no earlier submission.
+program prints then. With `open`, the program first looks for the drafts from `QORY_SUBMIT_BRANCH` and the
+repository, in any state, so a draft that exists is not opened a second time. With
+several drafts, it takes the not-closed, not-merged draft with the highest number; with
+none, the closed or merged one with the highest number, which it reports with
+`draft_action` `kept` and leaves as it is. Any other draft is edited: its description
+follows the rules below, and its title stays, because the program never changes the
+title of a draft that it finds and a run with no run code has no previous title. The
+program edits a draft only while it is `draft` or `open`. There is no input for the
+number of a draft or for a previous title, because a run with no run code has no earlier
+submission.
 
 ## Credentials
 
