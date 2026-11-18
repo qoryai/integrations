@@ -467,3 +467,51 @@ func TestAnAbsentModelCredentialJoinsWithTheStartKeyGroup(t *testing.T) {
 		}
 	}
 }
+
+// TestTheModelCredentialIsAnyNameOfForagersRunConfiguration pins that the
+// model_credential of the next-session answer is a $ref to the credential_name of
+// Forager's run-configuration.schema.json, that its description names the form of a
+// provider key and of a machine key, and that the answer accepts the names of that
+// grammar that do not end in a hyphen and a place, and refuses the others.
+func TestTheModelCredentialIsAnyNameOfForagersRunConfiguration(t *testing.T) {
+	answer, err := contracts.RunDocument("next-session-answer.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	property := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)["model_credential"].(map[string]any)
+	if got, want := property["$ref"], "https://qory.dev/contracts/forager/v1/run-configuration.schema.json#/$defs/credential_name"; got != want {
+		t.Errorf("model_credential refers to %v, want %s", got, want)
+	}
+	description := property["description"].(string)
+	for _, sentence := range []string{
+		"The name of a provider key is <the provider's public id>-<its place from 1>, such as example-provider-1, and the name of a machine key is the name it has in the machine's forager.yaml, such as machine-key.",
+		"1 to 64 of a-z, 0-9, underscore, dot and dash, starting with a letter or a digit",
+	} {
+		if !strings.Contains(description, sentence) {
+			t.Errorf("the description of model_credential does not contain %q", sentence)
+		}
+	}
+	schema := compileRun(t, runSchema("next-session-answer"))
+	for name, ok := range map[string]bool{
+		"machine-key":           true,
+		"machine":               true,
+		"0":                     true,
+		"machine.key_2":         true,
+		strings.Repeat("a", 64): true,
+		strings.Repeat("a", 65): false,
+		"Machine-key":           false,
+		"-machine":              false,
+		"machine key":           false,
+		"":                      false,
+	} {
+		m := fixture(t, "next-session-answer/session-machine-key.json")
+		m["model_credential"] = name
+		err := schema.Validate(m)
+		if ok && err != nil {
+			t.Errorf("the name %q is refused: %v", name, err)
+		}
+		if !ok && err == nil {
+			t.Errorf("the name %q is accepted", name)
+		}
+	}
+}
