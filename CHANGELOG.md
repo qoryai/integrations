@@ -173,12 +173,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning.
   `model_credential` is the name of a credential of the run, such as the provider's
   public id, a hyphen and the key's place from 1; the schema checks only the pattern of
-  a credential's name in Forager's policy.
+  a credential's name in Forager's policy. Without `model_credential`, the session
+  joins with the group of the run's start key. The control plane sets
+  `model_credential` for every later session whose key is outside that group, the
+  machine's key included.
 - A session after session 1 may choose its runtime: `model_choice` gains `runtime`
   (`ModelChoice.Runtime` in Go), a runtime name in Forager's runtime descriptor, as
   `run_settings.runtime`. A `model_choice` without `runtime` runs the session on the
   runtime of `run_settings`, and `runtime` can be its only member: the session runs on
-  that runtime with the gateway's configured key and that runtime's default model. The
+  that runtime with the group of the run's start key and that runtime's default model.
+  The
   `runtime` of `run_settings` is the runtime of session 1 and of each later session
   whose `model_choice` has none. For a session with `runtime`, the control plane sets a
   `model_credential` only for a credential of an API whose `runtimes`, when present,

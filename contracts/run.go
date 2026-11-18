@@ -520,14 +520,15 @@ type RunSettings struct {
 // session runs on the runtime of RunSettings, and a session after session 1 may run on
 // a runtime that differs from it. Runtime can be the only member: the session
 // runs on that runtime with no provider chosen. With no provider chosen, Model, Effort,
-// ProviderModels and Tiers are empty: the session uses the gateway's configured key and
-// the default model of its runtime. The four rules that [RunSettings] lists for the
+// ProviderModels and Tiers are empty: the session uses the default model of its
+// runtime, with the key of its ModelCredential or, without one, of the group of the
+// run's start key. The four rules that [RunSettings] lists for the
 // control plane apply to those four members that are set. For a session whose
 // ModelChoice has Runtime, the control plane sets a ModelCredential only for a
 // credential of an API whose runtimes, when present, list that runtime and whose format
-// that runtime sends. A session with Runtime and no ModelCredential runs on the
-// gateway's configured key, which that runtime must be able to use. The model members
-// suit that runtime.
+// that runtime sends. A session with Runtime and no ModelCredential joins with the
+// group of the run's start key, which that runtime must be able to use. The model
+// members suit that runtime.
 type ModelChoice struct {
 	// Runtime is the runtime's name in Forager's runtime descriptor, such as claude. It
 	// is the runtime the session runs on; empty, the runtime of [RunSettings].
@@ -584,13 +585,15 @@ type NextSessionAnswer struct {
 	// Workflow is the workflow that the session starts, as [Documents.Workflow].
 	Workflow string `json:"workflow,omitempty"`
 	// ModelChoice is the model choice of the session, nil when the session runs on the
-	// runtime of [RunSettings] and no provider is chosen: the session uses the gateway's
-	// configured key and the default model of that runtime.
+	// runtime of [RunSettings] and no provider is chosen: the session uses the default
+	// model of that runtime, with the key of its ModelCredential or, without one, of the
+	// group of the run's start key.
 	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
 	// ModelCredential is the credential of the run that the session joins with, such as
-	// <the provider's public id>-<its place from 1>, and empty when no provider is
-	// chosen. The schema checks only the pattern of a credential's name in Forager's
-	// policy.
+	// <the provider's public id>-<its place from 1>. The schema checks only the
+	// pattern of a credential's name in Forager's policy. When empty, the session joins
+	// with the group of the run's start key. The control plane sets it for every later
+	// session whose key is outside that group, the machine's key included.
 	ModelCredential string `json:"model_credential,omitempty"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 15 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`

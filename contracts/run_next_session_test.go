@@ -430,3 +430,40 @@ func TestTheRuntimeOfAModelChoiceNamesTheCredentialRule(t *testing.T) {
 		}
 	}
 }
+
+// TestAnAbsentModelCredentialJoinsWithTheStartKeyGroup pins that the descriptions of
+// model_choice and of the model_credential of the next-session answer say that a
+// session without a model_credential joins with the group of the run's start key, and
+// that the model_credential description says when the control plane sets one. It pins
+// too that no description says the session uses the gateway's configured key.
+func TestAnAbsentModelCredentialJoinsWithTheStartKeyGroup(t *testing.T) {
+	documents, err := contracts.RunDocument("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	choice := documents.(map[string]any)["$defs"].(map[string]any)["model_choice"].(map[string]any)["description"].(string)
+	answer, err := contracts.RunDocument("next-session-answer.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	properties := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)
+	answerChoice := properties["model_choice"].(map[string]any)["description"].(string)
+	credential := properties["model_credential"].(map[string]any)["description"].(string)
+	sentence := "When absent, the session joins with the group of the run's start key. The control plane sets model_credential for every later session whose key is outside that group, the machine's key included."
+	if !strings.Contains(credential, sentence) {
+		t.Errorf("the description of model_credential does not contain %q", sentence)
+	}
+	for name, c := range map[string]struct{ text, want string }{
+		"model_choice of the documents":           {choice, "joins with the group of the run's start key, which that runtime must be able to use"},
+		"model_choice of the next-session answer": {answerChoice, "with the key of its model_credential or, without one, of the group of the run's start key"},
+	} {
+		if !strings.Contains(c.text, c.want) {
+			t.Errorf("the description of %s does not contain %q", name, c.want)
+		}
+	}
+	for name, d := range map[string]string{"documents model_choice": choice, "answer model_choice": answerChoice, "model_credential": credential} {
+		if strings.Contains(d, "configured key") {
+			t.Errorf("the description of %s says the session uses the gateway's configured key", name)
+		}
+	}
+}
