@@ -119,8 +119,12 @@
               "description": "true: the source takes comments from the control plane. The control plane writes a comment entry to the change feed (changes.schema.json) for each comment that a person writes in the control plane on a work item taken in from one of the source's items, and the adapter posts the comment on the item. Absent, the source takes no comment from the control plane, so the adapter cannot post comments there: the control plane writes no comment entry for the source, and keeps the comment in the control plane only. An adapter that does not set comments: true never receives a comment entry. A source with items: false has no items, and its description does not have comments.",
               "const": true
             },
+            "submissions": {
+              "description": "true: the source takes submissions from the control plane. The control plane writes a submission entry to the change feed (changes.schema.json) for each submission version that a run stores for a target in one of the source's collections, and the adapter puts the commits' addresses and, where the entry asks for it, a draft on the forge. This applies whatever source the run's work item came from, and also when the work item came from no item at a source. Absent, the source takes no submission from the control plane: the control plane writes no submission entry for the source. An adapter that does not set submissions: true never receives a submission entry. A run's submission goes to the adapter of the run's target collection, and only an adapter with targets: true offers collections as targets, so a source with submissions: true also has targets: true.",
+              "const": true
+            },
             "targets": {
-              "description": "true: the adapter's collections can have a target, a place where a run's changes go (source-collections.schema.json). An adapter with targets handles a run-credential call with purpose work for any of its collections that has a target, under the rules of run-credential.schema.json. This applies whatever source the run's work item came from, and also when the work item came from no item at a source. The control plane offers the collections of an adapter with targets as places for a run's changes. Absent: the control plane does not offer them. In both cases, the control plane accepts the target of each collection in a listing.",
+              "description": "true: the adapter's collections can have a target, a place where a run's changes go (source-collections.schema.json). An adapter with targets handles a run-credential call with purpose work for any of its collections that has a target, under the rules of run-credential.schema.json. This applies whatever source the run's work item came from, and also when the work item came from no item at a source. The control plane offers the collections of an adapter with targets as places for a run's changes, and writes a watch entry (changes.schema.json) only for such an adapter. A submission entry needs submissions: true as well. Absent: the control plane does not offer them. In both cases, the control plane accepts the target of each collection in a listing.",
               "const": true
             },
             "secrets": {
@@ -144,6 +148,7 @@
               "items": {"$ref": "#/$defs/apply"}
             }
           },
+          "dependentRequired": {"submissions": ["targets"]},
           "if": {"required": ["items"]},
           "then": {"not": {"anyOf": [{"required": ["item_noun"]}, {"required": ["comments"]}]}}
         },
