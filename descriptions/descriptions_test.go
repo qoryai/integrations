@@ -7,6 +7,7 @@ package descriptions_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"maps"
 	"os"
@@ -174,65 +175,188 @@ func read(t *testing.T, file string) []byte {
 // descriptions/*.json file is an effort value of a runtime in runtimes.json of the
 // pinned Forager module. The runtimes are the ones the API of the model lists, or,
 // when it lists none, every runtime that sends the API's format. It also checks that
-// each runtime an API lists sends the API's format. A mutation to the check: a model
-// with the effort value "turbo" fails it.
+// each runtime an API lists sends the API's format. It checks that turboEffort, which
+// conformance accepts and whose model has the effort value "turbo", fails that check.
 func TestEveryEffortValueIsTakenByARuntime(t *testing.T) {
 	runtimes := foragerModelRuntimes(t)
 	for _, file := range descriptionFiles(t) {
-		var d struct {
-			Roles struct {
-				ModelProvider struct {
-					APIs []struct {
-						Format   string   `json:"format"`
-						Runtimes []string `json:"runtimes"`
-					} `json:"apis"`
-					Models []struct {
-						ID     string   `json:"id"`
-						Effort []string `json:"effort"`
-					} `json:"models"`
-				} `json:"model_provider"`
-			} `json:"roles"`
+		for _, problem := range effortProblems(t, file, read(t, file), runtimes) {
+			t.Error(problem)
 		}
-		if err := json.Unmarshal(read(t, file), &d); err != nil {
-			t.Errorf("%s: %v", file, err)
+	}
+	if err := conformance.DataDescription([]byte(turboEffort)); err != nil {
+		t.Errorf("turboEffort: conformance refuses it, and the effort rule is this test's alone: %v", err)
+	}
+	got := effortProblems(t, "turbo-effort.json", []byte(turboEffort), runtimes)
+	if len(got) != 1 || !strings.Contains(got[0], `the model "acme-large-2" has the effort values ["turbo"]`) {
+		t.Errorf("turboEffort: the problems are %q, want one that names the effort value \"turbo\"", got)
+	}
+}
+
+// turboEffort is a data description whose API lists claude and whose model has the effort
+// values high and turbo, which no runtime takes. It is not a file in descriptions/, so no
+// reader of the directory takes it for a description.
+const turboEffort = `{"version": 1, "name": "turbo-effort", "title": "Turbo effort", "vendor": "Acme",
+ "settings": {"type": "object"}, "egress_hosts": ["api.acme.example"],
+ "roles": {"model_provider": {"apis": [{"format": "anthropic-messages", "endpoint": "https://api.acme.example",
+ "auth": {"scheme": "bearer"}, "runtimes": ["claude"]}],
+ "models": [{"id": "acme-large-2", "title": "Acme Large 2", "effort": ["high", "turbo"]}]}}}`
+
+// effortProblems returns a message for each effort value of a model in the description b
+// that no runtime of its APIs takes, and for each API whose format no runtime sends or
+// whose listed runtime does not send it. file names the description in the messages.
+func effortProblems(t *testing.T, file string, b []byte, runtimes map[string]runtimeModel) []string {
+	t.Helper()
+	var d struct {
+		Roles struct {
+			ModelProvider struct {
+				APIs []struct {
+					Format   string   `json:"format"`
+					Runtimes []string `json:"runtimes"`
+				} `json:"apis"`
+				Models []struct {
+					ID     string   `json:"id"`
+					Effort []string `json:"effort"`
+				} `json:"models"`
+			} `json:"model_provider"`
+		} `json:"roles"`
+	}
+	if err := json.Unmarshal(b, &d); err != nil {
+		return []string{fmt.Sprintf("%s: %v", file, err)}
+	}
+	var problems []string
+	taken := map[string]bool{}
+	allFound := true
+	for i, api := range d.Roles.ModelProvider.APIs {
+		found := false
+		for _, r := range runtimes {
+			if !slices.Contains(r.Formats, api.Format) || (api.Runtimes != nil && !slices.Contains(api.Runtimes, r.Name)) {
+				continue
+			}
+			found = true
+			for _, v := range r.Effort {
+				taken[v] = true
+			}
+		}
+		if !found {
+			allFound = false
+			problems = append(problems, fmt.Sprintf("%s: apis[%d] has the format %q, and no runtime that it lists, or no runtime at all when it lists none, sends that format in Forager's runtimes.json", file, i, api.Format))
+		}
+		for _, name := range api.Runtimes {
+			if r, ok := runtimes[name]; ok && !slices.Contains(r.Formats, api.Format) {
+				problems = append(problems, fmt.Sprintf("%s: apis[%d] lists the runtime %q, which sends %v, not the format %q", file, i, name, r.Formats, api.Format))
+			}
+		}
+	}
+	if !allFound {
+		return problems
+	}
+	for _, m := range d.Roles.ModelProvider.Models {
+		var bad []string
+		for _, v := range m.Effort {
+			if !taken[v] {
+				bad = append(bad, v)
+			}
+		}
+		if bad != nil {
+			problems = append(problems, fmt.Sprintf("%s: the model %q has the effort values %q, which no runtime of its APIs takes; use values from %v", file, m.ID, bad, slices.Sorted(maps.Keys(taken))))
+		}
+	}
+	return problems
+}
+
+// TestTheOpenAIDescriptionsAreAsAgreed pins the members of openai.json and
+// openai-subscription.json that a run depends on: the format, endpoint, auth, key
+// prefixes, paths, runtimes, refresh url and client id of the API, the limit windows,
+// the egress hosts, and each model's id, title and effort values, in order. A change to
+// one of them fails here and is made on purpose.
+func TestTheOpenAIDescriptionsAreAsAgreed(t *testing.T) {
+	const claim = "/https:~1~1api.openai.com~1auth/chatgpt_account_id"
+	type api struct {
+		Format    string `json:"format"`
+		Endpoint  string `json:"endpoint"`
+		Auth      any    `json:"auth"`
+		Prefixes  any    `json:"key_prefixes"`
+		Paths     any    `json:"paths"`
+		Runtimes  any    `json:"runtimes"`
+		OAuthRefr any    `json:"oauth_refresh"`
+	}
+	type model struct {
+		ID     string   `json:"id"`
+		Title  string   `json:"title"`
+		Effort []string `json:"effort"`
+	}
+	type description struct {
+		EgressHosts any `json:"egress_hosts"`
+		Roles       struct {
+			ModelProvider struct {
+				APIs         []api   `json:"apis"`
+				LimitWindows any     `json:"limit_windows"`
+				Models       []model `json:"models"`
+			} `json:"model_provider"`
+		} `json:"roles"`
+	}
+	asJSON := func(v any) string {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	five := []string{"low", "medium", "high", "xhigh", "max"}
+	six := []string{"low", "medium", "high", "xhigh", "max", "ultra"}
+	none := append([]string{"none"}, five...)
+	for _, tc := range []struct {
+		file    string
+		hosts   string
+		api     api
+		windows string
+		models  []model
+	}{
+		{"openai.json", `["api.openai.com"]`, api{
+			Format: "openai-responses", Endpoint: "https://api.openai.com/v1",
+			Auth: map[string]any{"scheme": "bearer"}, Prefixes: []any{"sk-"},
+		}, "null", []model{
+			{"gpt-6-astra", "GPT-6 Astra", five},
+			{"gpt-6.1-sol", "GPT-6.1 Sol", five},
+			{"gpt-6.1-terra", "GPT-6.1 Terra", none},
+			{"gpt-6-luna", "GPT-6 Luna", none},
+		}},
+		{"openai-subscription.json", `["chatgpt.com"]`, api{
+			Format: "openai-responses", Endpoint: "https://chatgpt.com/backend-api/codex",
+			Auth:  map[string]any{"scheme": "bearer", "oauth": true, "account_header": "chatgpt-account-id", "account_claim": claim},
+			Paths: []any{"/backend-api/codex/*"}, Runtimes: []any{"codex"},
+			OAuthRefr: map[string]any{"url": "https://auth.openai.com/oauth/token", "client_id": "app_EMoamEEZ73f0CkXaXp7hrann"},
+		}, `["five_hour","seven_day"]`, []model{
+			{"gpt-6.1-sol", "GPT-6.1 Sol", six},
+			{"gpt-6-astra", "GPT-6 Astra", six},
+			{"gpt-6.1-terra", "GPT-6.1 Terra", six},
+			{"gpt-6-sol", "GPT-6 Sol", six},
+			{"gpt-6-luna", "GPT-6 Luna", five},
+			{"gpt-5.6-sol", "GPT-5.6 Sol", six},
+			{"gpt-5.6-terra", "GPT-5.6 Terra", six},
+			{"gpt-5.6-luna", "GPT-5.6 Luna", five},
+		}},
+	} {
+		var d description
+		if err := json.Unmarshal(read(t, tc.file), &d); err != nil {
+			t.Errorf("%s: %v", tc.file, err)
 			continue
 		}
-		taken := map[string]bool{}
-		allFound := true
-		for i, api := range d.Roles.ModelProvider.APIs {
-			found := false
-			for _, r := range runtimes {
-				if !slices.Contains(r.Formats, api.Format) || (api.Runtimes != nil && !slices.Contains(api.Runtimes, r.Name)) {
-					continue
-				}
-				found = true
-				for _, v := range r.Effort {
-					taken[v] = true
-				}
-			}
-			if !found {
-				allFound = false
-				t.Errorf("%s: apis[%d] has the format %q, and no runtime that it lists, or no runtime at all when it lists none, sends that format in Forager's runtimes.json", file, i, api.Format)
-			}
-			for _, name := range api.Runtimes {
-				if r, ok := runtimes[name]; ok && !slices.Contains(r.Formats, api.Format) {
-					t.Errorf("%s: apis[%d] lists the runtime %q, which sends %v, not the format %q", file, i, name, r.Formats, api.Format)
-				}
-			}
+		mp := d.Roles.ModelProvider
+		if got := asJSON(d.EgressHosts); got != tc.hosts {
+			t.Errorf("%s: egress_hosts is %s, want %s", tc.file, got, tc.hosts)
 		}
-		if !allFound {
-			continue
+		if got := asJSON(mp.LimitWindows); got != tc.windows {
+			t.Errorf("%s: limit_windows is %s, want %s", tc.file, got, tc.windows)
 		}
-		for _, m := range d.Roles.ModelProvider.Models {
-			var bad []string
-			for _, v := range m.Effort {
-				if !taken[v] {
-					bad = append(bad, v)
-				}
-			}
-			if bad != nil {
-				t.Errorf("%s: the model %q has the effort values %q, which no runtime of its APIs takes; use values from %v", file, m.ID, bad, slices.Sorted(maps.Keys(taken)))
-			}
+		if len(mp.APIs) != 1 {
+			t.Errorf("%s: %d APIs, want 1", tc.file, len(mp.APIs))
+		} else if got, want := asJSON(mp.APIs[0]), asJSON(tc.api); got != want {
+			t.Errorf("%s: the API is %s, want %s", tc.file, got, want)
+		}
+		if got, want := asJSON(mp.Models), asJSON(tc.models); got != want {
+			t.Errorf("%s: the models are %s, want %s", tc.file, got, want)
 		}
 	}
 }
