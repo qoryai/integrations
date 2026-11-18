@@ -225,7 +225,7 @@
   },
   "$defs": {
     "api": {
-      "description": "One API of a model provider: its format, its endpoint, how the gateway sets the key on a request, the prefixes a key must start with, the runtimes that may use a key, the paths the key is set on, and how the control plane refreshes an OAuth login.",
+      "description": "One API of a model provider: its format, its endpoint, how the gateway sets the key on a request, the prefixes a key must start with, the runtimes that may use a key, the paths the key is set on, how the control plane signs in to an OAuth login with a device code, and how it refreshes the login.",
       "type": "object",
       "additionalProperties": false,
       "required": ["format", "endpoint", "auth"],
@@ -284,8 +284,21 @@
             "client_id": {"description": "The OAuth client id of the refresh request: 1 to 128 characters, with no white space.", "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^\\S+$"},
             "scope": {"description": "The OAuth scope of the refresh request, such as openid profile email: 1 to 256 characters. Absent, the request has no scope.", "type": "string", "minLength": 1, "maxLength": 256}
           }
+        },
+        "oauth_device": {
+          "description": "Where the control plane signs in to this API with the OAuth device code flow, so that a person approves the login in a browser on a second page. The control plane sends a POST with a JSON body that has client_id to usercode_url, shows the person the user code from the response and verification_url, polls poll_url until the person approves, and sends the authorization code and code verifier from that answer, with redirect_uri, to the url of oauth_refresh. It is allowed only with oauth_refresh, and it has no client id: the client id is the client_id of oauth_refresh. Absent, the control plane has no sign-in for this API.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["usercode_url", "poll_url", "verification_url", "redirect_uri"],
+          "properties": {
+            "usercode_url": {"description": "The URL the control plane sends the request for a user code to, as $defs/endpoint defines it.", "$ref": "#/$defs/endpoint"},
+            "poll_url": {"description": "The URL the control plane polls until the person approves the login, as $defs/endpoint defines it.", "$ref": "#/$defs/endpoint"},
+            "verification_url": {"description": "The page where the person enters the user code and approves the login, as $defs/endpoint defines it. The control plane shows this URL to the person; it does not send a request to it.", "$ref": "#/$defs/endpoint"},
+            "redirect_uri": {"description": "The redirect URI of the code exchange, as $defs/endpoint defines it. The control plane sends no request to it.", "$ref": "#/$defs/endpoint"}
+          }
         }
       },
+      "dependentRequired": {"oauth_device": ["oauth_refresh"]},
       "if": {"required": ["oauth_refresh"]},
       "then": {"properties": {"auth": {"required": ["oauth"]}}}
     },

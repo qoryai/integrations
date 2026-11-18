@@ -76,7 +76,7 @@ func CheckDescription(b []byte) error {
 // CheckModelProvider reports the first rule of the model_provider role of
 // description.schema.json that a description breaks and that the schema does not
 // express: no two entries of apis have the same format; an API endpoint that is a URL,
-// and the url of each oauth_refresh, each have a host and port as [urlHost] reads them;
+// the url of each oauth_refresh, and each of the four urls of each oauth_device, each have a host and port as [urlHost] reads them;
 // each entry of an API's paths is a path that Forager's policy.ValidPath accepts and
 // that policy.UnclearPath does not report, since the gateway denies a request path
 // with such a part before it reads any credential's paths, so the entry would match
@@ -112,6 +112,14 @@ func CheckModelProvider(doc any) error {
 		if u, ok := refresh["url"].(string); ok {
 			if _, err := urlHost(u); err != nil {
 				return fmt.Errorf("change the oauth_refresh url %q of model_provider apis[%d]: the control plane cannot read its host or port: %w", u, i, err)
+			}
+		}
+		device, _ := api["oauth_device"].(map[string]any)
+		for _, member := range []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"} {
+			if u, ok := device[member].(string); ok {
+				if _, err := urlHost(u); err != nil {
+					return fmt.Errorf("change the oauth_device %s %q of model_provider apis[%d]: the control plane cannot read its host or port: %w", member, u, i, err)
+				}
 			}
 		}
 		paths, _ := api["paths"].([]any)
