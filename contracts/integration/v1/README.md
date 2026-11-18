@@ -221,7 +221,8 @@ forge on a port other than 443 is not a target. The steps:
    `number`. The `number` is a hint: when the forge has no draft with that number, the
    adapter finds the draft from `branch` in any state and goes on with it, or opens a
    draft if there is none. With `open`, the adapter first looks for a draft from `branch`
-   in any state, so a draft that exists is not opened a second time. The adapter edits a
+   in any state, so a draft that exists is not opened a second time. The adapter finds a
+   draft by its head branch, `branch`, and the repository only, never by `base.branch`. The adapter edits a
    draft only while it is `draft` or `open`; a draft that a person closed or merged stays
    as it is. The draft's description has one block between the lines
    `<!-- qory:start -->` and `<!-- qory:end -->`, and `text.description` is the content
@@ -255,9 +256,10 @@ forge on a port other than 443 is not a target. The steps:
 | `reason` | Meaning |
 |---|---|
 | `not_permitted` | the forge returned that the integration's account has no permission on the repository |
-| `unreachable` | each request to the forge timed out, failed to connect or returned a busy status, until the adapter's retries ended |
+| `unreachable` | each request to the forge timed out, failed to connect, or returned a busy status or a 5xx status, until the adapter's retries ended |
 | `branch_gone` | the forge returned that the branch or its base branch does not exist |
 | `too_long` | the title or the description is longer than the forge's limit for a draft |
+| `forge_refused` | the forge refused a request with a status that no other reason covers, such as 400, or 422 for a cause other than a missing branch or a length limit, so the same request fails again |
 
 On a run with no run code, `qory run` runs a submit program with the login of the forge's
 command line that the person made. That run has no work item and no earlier submission,

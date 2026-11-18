@@ -148,6 +148,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-failed-unknown-reason.json":                   {"changes-failed", "/reason enum"},
 		"changes-failed-without-comment-id.json":               {"changes-failed", "/ required comment_id"},
 		"changes-failed-comment-branch-gone.json":              {"changes-failed", "/reason enum"},
+		"changes-failed-comment-forge-refused.json":            {"changes-failed", "/reason enum"},
 		"changes-failed-comment-with-path.json":                {"changes-failed", "/path "},
 		"changes-failed-submission-and-comment-id.json":        {"changes-failed", "/ "},
 		"changes-failed-submission-id-wrong-prefix.json":       {"changes-failed", "/submission_id pattern"},

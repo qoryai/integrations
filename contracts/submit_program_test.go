@@ -579,7 +579,7 @@ func TestTheSubmissionExamplesAreOneForEachForgeKind(t *testing.T) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
-	for _, reason := range []string{"not_permitted", "unreachable", "branch_gone", "too_long"} {
+	for _, reason := range []string{"not_permitted", "unreachable", "branch_gone", "too_long", "forge_refused"} {
 		b := read(t, "fixtures/adapter/changes-failed/submission-"+strings.ReplaceAll(reason, "_", "-")+".json")
 		if err := validate(compile(t, "changes-failed.schema.json"), b); err != nil {
 			t.Errorf("%s: %v", reason, err)
