@@ -407,3 +407,29 @@ func TestTheNextSessionSchemasNameTheLink(t *testing.T) {
 		}
 	}
 }
+
+// TestTheRuntimeOfAModelChoiceNamesTheCredentialRule pins that the descriptions of
+// model_choice and of the model_credential of the next-session answer say that, for a
+// session with a runtime, the credential's API lists that runtime in runtimes when it
+// has any, and that model_choice says what an absent runtime means with no run_settings.
+func TestTheRuntimeOfAModelChoiceNamesTheCredentialRule(t *testing.T) {
+	rule := "only for a credential of an API whose runtimes, when present, list that runtime and whose format that runtime sends"
+	documents, err := contracts.RunDocument("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	choice := documents.(map[string]any)["$defs"].(map[string]any)["model_choice"].(map[string]any)["description"].(string)
+	answer, err := contracts.RunDocument("next-session-answer.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	credential := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)["model_credential"].(map[string]any)["description"].(string)
+	for name, d := range map[string]string{"model_choice": choice, "model_credential": credential} {
+		if !strings.Contains(d, rule) {
+			t.Errorf("the description of %s does not contain %q", name, rule)
+		}
+	}
+	if want := "or, when the run documents have no run_settings, on the default runtime of the machine"; !strings.Contains(choice, want) {
+		t.Errorf("the description of model_choice does not contain %q", want)
+	}
+}

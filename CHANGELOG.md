@@ -177,10 +177,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - A session after session 1 may choose its runtime: `model_choice` gains `runtime`
   (`ModelChoice.Runtime` in Go), a runtime name in Forager's runtime descriptor, as
   `run_settings.runtime`. A `model_choice` without `runtime` runs the session on the
-  runtime of `run_settings`, and `runtime` can be its only member: the session runs on
+  runtime of `run_settings` or, when the run documents have no `run_settings`, on the
+  default runtime of the machine. `runtime` can be its only member: the session runs on
   that runtime with the gateway's configured key and that runtime's default model. The
   `runtime` of `run_settings` is the runtime of session 1 and of each later session
-  whose `model_choice` has none.
+  whose `model_choice` has none. For a session with `runtime`, the control plane sets a
+  `model_credential` only for a credential of an API whose `runtimes`, when present,
+  list that runtime and whose format that runtime sends.
 - The next-session request follows the rules of `dev.qory.session.exited` for `state`
   and `reason` that do not depend on its `exit_code`: a `cancelled` session has a
   `reason`, the reasons `timeout` and `interrupted` are for a `cancelled` session only,

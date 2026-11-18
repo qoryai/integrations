@@ -484,7 +484,8 @@ type WorkItem struct {
 // RunSettings is the run's run_settings, documents.schema.json: the runtime and
 // model settings the job composes the agent's harness with, the settings of session 1.
 // Runtime is the runtime of session 1 and of each later session whose [ModelChoice] has
-// no Runtime. It contains no key or secret.
+// no Runtime. It contains no key or secret. A run whose documents have no RunSettings
+// uses the default runtime of the machine.
 // With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
 // uses the gateway's configured key and the runtime's default model. Effort
 // and Tiers are set only with Model, and ProviderModels is set exactly when Model is.
@@ -515,17 +516,24 @@ type RunSettings struct {
 
 // ModelChoice is a model_choice of the next-session answer, run/v1
 // documents.schema.json: the runtime, model, effort, provider models and tiers of one
-// session after session 1. Its members are those of [RunSettings] with the same meaning,
-// except Runtime. Runtime is the runtime the session runs on; empty, the session runs
-// on the runtime of RunSettings, and a session after session 1 may run on a runtime that
-// differs from it. Runtime can be the only member: the session runs on that runtime with
-// no provider chosen. With no provider chosen, Model, Effort, ProviderModels and Tiers
-// are empty: the session uses the gateway's configured key and the default model of its
-// runtime. The four rules that [RunSettings] lists for the control plane apply to those
-// four members that are set.
+// session after session 1. Its members are those of [RunSettings] with the same
+// meaning, except Runtime. Runtime is the runtime the session runs on; empty, the
+// session runs on the runtime of RunSettings or, when the run documents have no
+// RunSettings, the default runtime of the machine, and a session after session 1 may
+// run on a runtime that differs from it. Runtime can be the only member: the session
+// runs on that runtime with no provider chosen. With no provider chosen, Model, Effort,
+// ProviderModels and Tiers are empty: the session uses the gateway's configured key and
+// the default model of its runtime. The four rules that [RunSettings] lists for the
+// control plane apply to those four members that are set. For a session whose
+// ModelChoice has Runtime, the control plane sets a ModelCredential only for a
+// credential of an API whose runtimes, when present, list that runtime and whose format
+// that runtime sends. A session with Runtime and no ModelCredential runs on the
+// gateway's configured key, which that runtime must be able to use. The model members
+// suit that runtime.
 type ModelChoice struct {
 	// Runtime is the runtime's name in Forager's runtime descriptor, such as claude. It
-	// is the runtime the session runs on; empty, the runtime of [RunSettings].
+	// is the runtime the session runs on; empty, the runtime of [RunSettings] or, with no
+	// RunSettings, the default runtime of the machine.
 	Runtime string `json:"runtime,omitempty"`
 	// Model is the exact id of the model the session uses.
 	Model string `json:"model,omitempty"`
