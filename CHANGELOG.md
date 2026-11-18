@@ -122,6 +122,34 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- The run contract has a run's end, `outcome.schema.json`, titled Run end: `state`
+  (`succeeded`, `failed` or `cancelled`), and optionally `reason` and `exit_code`, as
+  Forager's `dev.qory.run.exited` has them. qory sets `reason` to one of the end codes
+  to say why a run failed, and the schema lists each with its cause in plain words:
+  `push_credential_missing` (the run's configuration has no credential with the purpose
+  `push`), `push_refused` (a push of the run's commits was refused with status 403),
+  `prebuilt_image_too_large` (the image of the target is larger than
+  `largest_prebuilt_image_bytes`), `push_not_recorded` (qory pushed the run's commits
+  and the control plane has no record of the push), `environment_image_missing` (the
+  prebuild's environment image, `environment_image` in the run documents, is not in the
+  registry), `push_head_changed` (the branch head at the forge is not the commit that
+  the run expected, its start commit or its last push, or the branch is missing),
+  `run_documents_invalid` (the run's documents, or the response to the run code, fail
+  qory's validation), `harness_invalid` (the harness that the run composes cannot be
+  used), `machine_setup_invalid` (the machine cannot run the step, or has no registry),
+  `target_fetch_failed` (qory could not fetch the target of the run),
+  `repository_check_failed` (a git or folder step on the run's repository failed),
+  `forge_unreachable` (qory could not reach the forge), `history_rewritten` (the HEAD of
+  the run's working folder does not descend from the commit that the run started from,
+  so a push would not be a fast-forward), `run_api_failed` (a call from qory to the run
+  API failed) and `prebuild_failed` (a prebuild failed: its build, the pull of its base
+  image, or the push or verification of the image it built). A `reason` that is not in
+  the list passes the schema, as a newer qory may send a code that an older reader does
+  not know. One of the end codes with a `state` other than `failed` fails, and so does a
+  member the schema does not define, such as `message` or `action`. None of them is one
+  of Forager's reserved reasons. In Go, `RunOutcome`, `EndCode` and a constant for each
+  code are added, named `EndCode` and the code in camel case, such as
+  `EndCodePushHeadChanged`.
 - The run contract has the next-session call, for a run of several sessions on one
   machine. After each session that did not pause, qory sends a request,
   `next-session-request.schema.json`: `session`, Forager's number of the session that
@@ -567,6 +595,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
 - The contract describes `domains` as applying only to where work comes from: a
   credential of the `credential` role reaches a run in a workspace of any domain.
+- The tier map of the run documents, `run_settings.tiers`, has the tiers `light`,
+  `balanced` and `thinking`. `contracts.Tiers` has the member `Balanced`.
 - When a node pool's starter created no machine for a dispatch, the machine log,
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the

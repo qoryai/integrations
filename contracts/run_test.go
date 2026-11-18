@@ -42,11 +42,11 @@ func runFiles(t *testing.T, dir string) []string {
 }
 
 // runSchemas are the schemas of the run contract: the files of run/v1.
-var runSchemas = []string{"documents", "next-session-answer", "next-session-request"}
+var runSchemas = []string{"documents", "next-session-answer", "next-session-request", "outcome"}
 
 // TestRunSchemaIsTheContract pins that run/v1 contains exactly documents.schema.json,
-// next-session-answer.schema.json and next-session-request.schema.json, each with the
-// $id RunBase/<file name>, and that each compiles.
+// next-session-answer.schema.json, next-session-request.schema.json and
+// outcome.schema.json, each with the $id RunBase/<file name>, and that each compiles.
 func TestRunSchemaIsTheContract(t *testing.T) {
 	entries, err := fs.ReadDir(contracts.RunFS, ".")
 	if err != nil {
@@ -58,7 +58,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 			got = append(got, e.Name())
 		}
 	}
-	want := "documents.schema.json,next-session-answer.schema.json,next-session-request.schema.json"
+	want := "documents.schema.json,next-session-answer.schema.json,next-session-request.schema.json,outcome.schema.json"
 	if strings.Join(got, ",") != want {
 		t.Errorf("run/v1 contains %v, want %s", got, want)
 	}
@@ -76,7 +76,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 }
 
 // TestRunFixturesValidate pins that each document under fixtures/<name>/ of the run
-// contract is accepted by <name>.schema.json, for the three schemas of the contract,
+// contract is accepted by <name>.schema.json, for the four schemas of the contract,
 // and that fixtures/ contains no other folder of valid documents.
 func TestRunFixturesValidate(t *testing.T) {
 	for _, name := range runSchemas {
@@ -131,6 +131,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-run-settings-model-without-provider-models.json":     {"documents", "/run_settings dependentRequired/model"},
 		"documents-run-settings-provider-models-without-model.json":     {"documents", "/run_settings dependentRequired/provider_models"},
 		"documents-run-settings-unknown-tier.json":                      {"documents", "/run_settings/tiers additionalProperties"},
+		"documents-run-settings-tier-fast.json":                         {"documents", "/run_settings/tiers additionalProperties"},
 		"documents-run-settings-undefined-member.json":                  {"documents", "/run_settings additionalProperties"},
 		"documents-run-settings-tier-without-model.json":                {"documents", "/run_settings/tiers/thinking required model"},
 		"documents-run-settings-effort-empty.json":                      {"documents", "/run_settings/provider_models/0/effort minItems"},
@@ -173,6 +174,38 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"next-session-request-reason-interrupted-state-succeeded.json":  {"next-session-request", "/state const"},
 		"next-session-request-reason-gateway-lost-state-cancelled.json": {"next-session-request", "/state const"},
 		"next-session-request-without-session.json":                     {"next-session-request", "/ required session"},
+		"outcome-end-code-succeeded.json":                               {"outcome", "/state const"},
+		"outcome-environment-image-missing-succeeded.json":              {"outcome", "/state const"},
+		"outcome-environment-image-missing-cancelled.json":              {"outcome", "/state const"},
+		"outcome-push-head-changed-succeeded.json":                      {"outcome", "/state const"},
+		"outcome-push-head-changed-cancelled.json":                      {"outcome", "/state const"},
+		"outcome-run-documents-invalid-succeeded.json":                  {"outcome", "/state const"},
+		"outcome-run-documents-invalid-cancelled.json":                  {"outcome", "/state const"},
+		"outcome-harness-invalid-succeeded.json":                        {"outcome", "/state const"},
+		"outcome-harness-invalid-cancelled.json":                        {"outcome", "/state const"},
+		"outcome-machine-setup-invalid-succeeded.json":                  {"outcome", "/state const"},
+		"outcome-machine-setup-invalid-cancelled.json":                  {"outcome", "/state const"},
+		"outcome-target-fetch-failed-succeeded.json":                    {"outcome", "/state const"},
+		"outcome-target-fetch-failed-cancelled.json":                    {"outcome", "/state const"},
+		"outcome-repository-check-failed-succeeded.json":                {"outcome", "/state const"},
+		"outcome-repository-check-failed-cancelled.json":                {"outcome", "/state const"},
+		"outcome-forge-unreachable-succeeded.json":                      {"outcome", "/state const"},
+		"outcome-forge-unreachable-cancelled.json":                      {"outcome", "/state const"},
+		"outcome-history-rewritten-succeeded.json":                      {"outcome", "/state const"},
+		"outcome-history-rewritten-cancelled.json":                      {"outcome", "/state const"},
+		"outcome-run-api-failed-succeeded.json":                         {"outcome", "/state const"},
+		"outcome-run-api-failed-cancelled.json":                         {"outcome", "/state const"},
+		"outcome-prebuild-failed-succeeded.json":                        {"outcome", "/state const"},
+		"outcome-prebuild-failed-cancelled.json":                        {"outcome", "/state const"},
+		"outcome-end-code-cancelled.json":                               {"outcome", "/state const"},
+		"outcome-reason-empty.json":                                     {"outcome", "/reason pattern"},
+		"outcome-reason-upper-case.json":                                {"outcome", "/reason pattern"},
+		"outcome-end-code-member.json":                                  {"outcome", "/ additionalProperties"},
+		"outcome-message.json":                                          {"outcome", "/ additionalProperties"},
+		"outcome-action.json":                                           {"outcome", "/ additionalProperties"},
+		"outcome-without-state.json":                                    {"outcome", "/ required state"},
+		"outcome-state-unknown.json":                                    {"outcome", "/state enum"},
+		"outcome-exit-code-below-minus-1.json":                          {"outcome", "/exit_code minimum"},
 		"documents-access-without-target.json":                          {"documents", "/ dependentRequired/access"},
 		"documents-target-without-access.json":                          {"documents", "/ dependentRequired/target"},
 		"documents-prebuild-without-target.json":                        {"documents", "/ required access,target"},
@@ -1515,8 +1548,9 @@ func TestRunSettingsReadFromTheFixture(t *testing.T) {
 		s.ProviderModels[1].ID != "example-small" || s.ProviderModels[1].Effort != nil {
 		t.Errorf("provider_models read as %+v", s.ProviderModels)
 	}
-	if s.Tiers == nil || s.Tiers.Light == nil || s.Tiers.Fast != nil || s.Tiers.Thinking == nil ||
+	if s.Tiers == nil || s.Tiers.Light == nil || s.Tiers.Balanced == nil || s.Tiers.Thinking == nil ||
 		s.Tiers.Light.Model != "example-small" || s.Tiers.Light.Effort != "" ||
+		s.Tiers.Balanced.Model != "example-large" || s.Tiers.Balanced.Effort != "" ||
 		s.Tiers.Thinking.Model != "example-large" || s.Tiers.Thinking.Effort != "max" {
 		t.Errorf("tiers read as %+v", s.Tiers)
 	}

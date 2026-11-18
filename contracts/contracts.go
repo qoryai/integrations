@@ -129,7 +129,9 @@
 // is a document, not a request. The run contract also contains the next-session call of
 // a run of several sessions: next-session-request.schema.json, whose Go type is
 // [NextSessionRequest], and next-session-answer.schema.json, whose Go type is
-// [NextSessionAnswer].
+// [NextSessionAnswer]. It also contains a run's end, outcome.schema.json, whose Go
+// type is [RunOutcome]: how the run ended, with the end codes, [EndCode], that qory sets
+// in its reason for a failed run. The schema lists each end code with its cause.
 //
 // The explore contract contains one schema, inputs.schema.json, which defines the
 // inputs member of the run's documents, run/v1 documents.schema.json, for the step

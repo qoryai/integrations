@@ -621,6 +621,73 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
 }
 
+// RunOutcome is a run's end, run/v1 outcome.schema.json, titled Run end: how the run
+// ended. State, Reason and ExitCode are the members of Forager's dev.qory.run.exited.
+// It is not the body of Forager's run-outcome.schema.json.
+type RunOutcome struct {
+	// State is how the run ended: "succeeded", "failed" or "cancelled".
+	State string `json:"state"`
+	// Reason is the reason of the run's dev.qory.run.exited, empty for none. qory sets one
+	// of the [EndCode] values, with State "failed", to say why a run failed.
+	Reason string `json:"reason,omitempty"`
+	// ExitCode is the run's exit code, from -1, and nil for none. A nil ExitCode is left
+	// out, and a pointer to 0 is written as 0.
+	ExitCode *int `json:"exit_code,omitempty"`
+}
+
+// EndCode is a code that qory sets in [RunOutcome.Reason] to say why a run failed: a code
+// in the list of $defs end_codes of run/v1 outcome.schema.json, which shows each code's
+// cause in plain words. The schema refuses one of them with a State other than failed.
+type EndCode string
+
+// The end codes, with the cause of each: see outcome.schema.json for the words. None is
+// one of Forager's reserved reasons.
+const (
+	// EndCodePushCredentialMissing: the run's configuration has no credential with the
+	// purpose push, so qory pushed nothing.
+	EndCodePushCredentialMissing EndCode = "push_credential_missing"
+	// EndCodePushRefused: a push of the run's commits was refused with status 403.
+	EndCodePushRefused EndCode = "push_refused"
+	// EndCodePrebuiltImageTooLarge: the image of the target is larger than
+	// [Documents.LargestPrebuiltImageBytes].
+	EndCodePrebuiltImageTooLarge EndCode = "prebuilt_image_too_large"
+	// EndCodePushNotRecorded: qory pushed the run's commits, and the control plane has
+	// no record of the push.
+	EndCodePushNotRecorded EndCode = "push_not_recorded"
+	// EndCodeEnvironmentImageMissing: the prebuild's environment image
+	// ([Documents.EnvironmentImage]) is not in the registry.
+	EndCodeEnvironmentImageMissing EndCode = "environment_image_missing"
+	// EndCodePushHeadChanged: the branch head at the forge is not the commit that the run
+	// expected (its start commit, or its last push), or the branch is missing.
+	EndCodePushHeadChanged EndCode = "push_head_changed"
+	// EndCodeRunDocumentsInvalid: the run's documents, or the response to the run code, fail
+	// qory's validation.
+	EndCodeRunDocumentsInvalid EndCode = "run_documents_invalid"
+	// EndCodeHarnessInvalid: the harness that the run composes, from the run documents or
+	// the target's harness file, cannot be used: its source, fetch or composition fails,
+	// neither has one, its qory version does not fit, or the runtime has no headless start
+	// for the workflow.
+	EndCodeHarnessInvalid EndCode = "harness_invalid"
+	// EndCodeMachineSetupInvalid: the machine cannot run the step: its forager.yaml,
+	// folders, home, proxies, image fit, runtime install, push verification or setup
+	// container fail, or this machine has no registry.
+	EndCodeMachineSetupInvalid EndCode = "machine_setup_invalid"
+	// EndCodeTargetFetchFailed: qory could not fetch the target of the run.
+	EndCodeTargetFetchFailed EndCode = "target_fetch_failed"
+	// EndCodeRepositoryCheckFailed: a git or folder step on the run's repository failed.
+	EndCodeRepositoryCheckFailed EndCode = "repository_check_failed"
+	// EndCodeForgeUnreachable: qory could not reach the forge of the run's repository.
+	EndCodeForgeUnreachable EndCode = "forge_unreachable"
+	// EndCodeHistoryRewritten: the HEAD of the run's working folder does not descend from
+	// the commit that the run started from, so a push would not be a fast-forward.
+	EndCodeHistoryRewritten EndCode = "history_rewritten"
+	// EndCodeRunAPIFailed: a call from qory to the run API failed.
+	EndCodeRunAPIFailed EndCode = "run_api_failed"
+	// EndCodePrebuildFailed: a prebuild failed: its build, the pull of its base image, or
+	// the push or verification of the image it built.
+	EndCodePrebuildFailed EndCode = "prebuild_failed"
+)
+
 // ProviderModel is one model of the run's provider, an entry of
 // run_settings.provider_models. Effort lists the effort values the model accepts, 1 to
 // 16, each listed once. An entry with no Effort means the model takes no effort value.
@@ -637,7 +704,7 @@ type ProviderModel struct {
 // control plane maps apply.
 type Tiers struct {
 	Light    *Tier `json:"light,omitempty"`
-	Fast     *Tier `json:"fast,omitempty"`
+	Balanced *Tier `json:"balanced,omitempty"`
 	Thinking *Tier `json:"thinking,omitempty"`
 }
 
