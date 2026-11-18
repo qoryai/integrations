@@ -265,14 +265,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `NextSessionKindEnd` are added.
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
   `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning.
-  `model_credential` is the name of a credential of the run. The name of a provider key
-  is the provider's public id, a hyphen and the key's place from 1; the name of a
-  machine key is the name it has in the machine's `forager.yaml`. The schema checks only
-  the grammar of a credential's name in Forager's `run-configuration.schema.json`: 1 to
-  64 of `a-z`, `0-9`, underscore, dot and dash, starting with a letter or a digit.
-  Without `model_credential`, the session joins with the group of the run's start key.
-  The control plane sets `model_credential` for every later session whose key is
-  outside that group, the machine's key included.
+  `model_credential` is the name of a credential of the run, such as the provider's
+  public id, a hyphen and the key's place from 1. The schema checks only the grammar of
+  a credential's name in Forager's `run-configuration.schema.json`: 1 to 64 of `a-z`,
+  `0-9`, underscore, dot and dash, starting with a letter or a digit. Without
+  `model_credential`, the session joins with the group of the run's start key. The
+  control plane sets `model_credential` for every later session whose key is a
+  credential of the run configuration outside that group.
 - A session after session 1 may choose its runtime: `model_choice` gains `runtime`
   (`ModelChoice.Runtime` in Go), a runtime name in Forager's runtime descriptor, as
   `run_settings.runtime`. A `model_choice` without `runtime` runs the session on the

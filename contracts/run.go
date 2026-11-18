@@ -567,13 +567,12 @@ type NextSessionAnswer struct {
 	// model of that runtime, with the key of its ModelCredential or, without one, of the
 	// group of the run's start key.
 	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
-	// ModelCredential is the credential of the run that the session joins with. The name
-	// of a provider key is <the provider's public id>-<its place from 1>, such as
-	// example-provider-1, and the name of a machine key is the name it has in the
-	// machine's forager.yaml, such as machine-key. The schema checks only the grammar of
-	// a credential's name in Forager's run configuration. When empty, the session joins
-	// with the group of the run's start key. The control plane sets it for every later
-	// session whose key is outside that group, the machine's key included.
+	// ModelCredential is the credential of the run that the session joins with, such as
+	// <the provider's public id>-<its place from 1>. The schema checks only the grammar
+	// of a credential's name in Forager's run configuration. When empty, the session
+	// joins with the group of the run's start key. The control plane sets it for every
+	// later session whose key is a credential of the run configuration outside that
+	// group.
 	ModelCredential string `json:"model_credential,omitempty"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 15 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
