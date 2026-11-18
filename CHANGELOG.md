@@ -176,12 +176,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   input to an empty file such as `/dev/null`. The program prints lines of the form
   `draft_number 34`, with the keys `draft_number`, `draft_url`, `draft_title`,
   `draft_state` and `draft_action`, and `commit_url <commit> <address>`, so it needs no
-  JSON tool. qory records the valid lines after exit 0, 1 or 2, `program-failed` with
-  the exit status for a draft that it asked for and the lines do not make, and prints at
-  most 20 lines of standard error, each prefixed `qory run: submit program: `. The
-  contract has the rules of the marked block and of the title. In Go,
-  `ParseSubmitLines`, `ReadSubmitRun`, `MarkedDescription`, `NextTitle` and the
-  constants of the input and key names are added.
+  JSON tool. qory records the valid lines after exit 0, 1 or 2. Exit 3 means the person
+  has no login of the forge's command line: the program prints as its first line on
+  standard error, for a forge whose command line is `gh`, "Run `gh auth login`, then
+  `qory run` again.", and qory records `login-needed`. A program that runs more than 120
+  seconds is stopped and recorded as `program-timeout`, with no exit status and no line
+  read. For a draft that it asked for and the program did not make, qory records
+  `program-failed` with the exit status. qory prints at most 20 lines of standard error,
+  each prefixed `qory run: submit program: `. The contract has the rules of the marked
+  block and of the title. In Go, `ParseSubmitLines`, `ReadSubmitRun`, `SubmitEnd`,
+  `MarkedDescription`, `NextTitle` and the constants of the input and key names are
+  added.
 - The run contract has a run's end, `outcome.schema.json`, titled Run end: `state`
   (`succeeded`, `failed` or `cancelled`), and optionally `reason` and `exit_code`, as
   Forager's `dev.qory.run.exited` has them. qory sets `reason` to one of the end codes

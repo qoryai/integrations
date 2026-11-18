@@ -80,7 +80,7 @@ func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
 		t.Errorf("the README does not contain %q", want)
 	}
 	// The contract has no relay, no JSON file and no wall.
-	for _, bad := range []string{"QORY_PROXY", "QORY_SUBMISSION_FILE", "SSL_CERT_FILE", "proxy.sock", "program-timeout", "jq "} {
+	for _, bad := range []string{"QORY_PROXY", "QORY_SUBMISSION_FILE", "SSL_CERT_FILE", "proxy.sock", "jq "} {
 		if strings.Contains(readme, bad) {
 			t.Errorf("the README contains %q", bad)
 		}
@@ -97,14 +97,25 @@ func TestTheReadmeExamplesAreTheFixtures(t *testing.T) {
 	}
 	for _, row := range []string{
 		fmt.Sprintf("| %d |", contracts.SubmitExitDone), fmt.Sprintf("| %d |", contracts.SubmitExitForge),
-		fmt.Sprintf("| %d |", contracts.SubmitExitInput), "| another status, or the program did not start |",
+		fmt.Sprintf("| %d |", contracts.SubmitExitInput), fmt.Sprintf("| %d |", contracts.SubmitExitLogin),
+		"| another status, or the program did not start |",
 	} {
 		if !strings.Contains(readme, row) {
 			t.Errorf("the table of exit statuses has no row %q", row)
 		}
 	}
-	if !strings.Contains(readme, "`"+contracts.SubmitProgramFailed+"`") {
-		t.Errorf("the README does not define %s", contracts.SubmitProgramFailed)
+	for _, reason := range []string{contracts.SubmitProgramFailed, contracts.SubmitProgramTimeout, contracts.SubmitLoginNeeded} {
+		if !strings.Contains(readme, "`"+reason+"`") {
+			t.Errorf("the README does not define %s", reason)
+		}
+	}
+	for _, want := range []string{
+		fmt.Sprintf("%d seconds", int(contracts.SubmitTimeLimit.Seconds())),
+		"\n" + contracts.SubmitLoginLine + "\n",
+	} {
+		if !strings.Contains(readme, want) {
+			t.Errorf("the README does not contain %q", want)
+		}
 	}
 }
 
@@ -387,51 +398,70 @@ func TestADraftLineFollowsTheInput(t *testing.T) {
 
 // TestWhatQoryRecordsAfterTheProgram pins ReadSubmitRun: the draft and the addresses
 // from the lines after exit 0, 1 and 2; program-failed with the exit status when a
-// draft that was asked for is not made; program-failed with exit 1 when the program did
-// not start or ended with another status, and then no line is read; and no failure for
-// the draft none.
+// draft that was asked for is not made; login-needed after exit 3; program-timeout,
+// with no exit status, after a time-out; program-failed with exit 1 when the program
+// did not start or ended with a signal or another status; no line read in the last four
+// cases, whatever the program printed; and no failure for the draft none.
 func TestWhatQoryRecordsAfterTheProgram(t *testing.T) {
 	out := submitFile(t, "fixtures/output/github-like.txt")
 	for _, c := range []struct {
 		name, output, draft string
-		started             bool
-		exit                int
+		end                 contracts.SubmitEnd
 		wantDraft           bool
-		failed              int // the exit of the failure, -1 for none
+		reason              string // the reason of the failure, "" for none
+		exit                int    // the exit of the failure, -1 for none
+		lines               bool   // qory reads the lines
 	}{
-		{"finished", out, "open", true, 0, true, -1},
-		{"forge failed with the lines", out, "update", true, 1, true, -1},
-		{"input refused with the lines", out, "open", true, 2, true, -1},
-		{"forge failed, no lines", "", "open", true, 1, false, 1},
-		{"input refused, no lines", "", "update", true, 2, false, 2},
-		{"finished, no lines", "", "open", true, 0, false, 0},
-		{"finished, partial draft", "draft_number 34\n", "open", true, 0, false, 0},
-		{"another status", out, "open", true, 3, false, 1},
-		{"killed by a signal", out, "open", true, -1, false, 1},
-		{"did not start", "", "open", false, 0, false, 1},
-		{"draft none, no lines", "", "none", true, 0, false, -1},
-		{"draft none, program failed", "", "none", true, 1, false, -1},
-		{"draft none, did not start", "", "none", false, 0, false, -1},
+		{"finished", out, "open", ended(0), true, "", -1, true},
+		{"forge failed with the lines", out, "update", ended(1), true, "", -1, true},
+		{"input refused with the lines", out, "open", ended(2), true, "", -1, true},
+		{"forge failed, no lines", "", "open", ended(1), false, contracts.SubmitProgramFailed, 1, true},
+		{"input refused, no lines", "", "update", ended(2), false, contracts.SubmitProgramFailed, 2, true},
+		{"finished, no lines", "", "open", ended(0), false, contracts.SubmitProgramFailed, 0, true},
+		{"finished, partial draft", "draft_number 34\n", "open", ended(0), false, contracts.SubmitProgramFailed, 0, true},
+		{"no login, with the lines", out, "open", ended(3), false, contracts.SubmitLoginNeeded, 3, false},
+		{"no login, no lines", "", "update", ended(3), false, contracts.SubmitLoginNeeded, 3, false},
+		{"timed out, with the lines", out, "open", contracts.SubmitEnd{Started: true, TimedOut: true, Exit: 0}, false, contracts.SubmitProgramTimeout, -1, false},
+		{"timed out, no lines", "", "open", contracts.SubmitEnd{Started: true, TimedOut: true, Exit: -1}, false, contracts.SubmitProgramTimeout, -1, false},
+		{"timed out with exit 0 is still a time-out", out, "update", contracts.SubmitEnd{Started: true, TimedOut: true}, false, contracts.SubmitProgramTimeout, -1, false},
+		{"another status", out, "open", ended(4), false, contracts.SubmitProgramFailed, 1, false},
+		{"killed by a signal", out, "open", ended(-1), false, contracts.SubmitProgramFailed, 1, false},
+		{"did not start", "", "open", contracts.SubmitEnd{}, false, contracts.SubmitProgramFailed, 1, false},
+		{"draft none, no lines", "", "none", ended(0), false, "", -1, true},
+		{"draft none, program failed", "", "none", ended(1), false, "", -1, true},
+		{"draft none, no login", "", "none", ended(3), false, "", -1, false},
+		{"draft none, timed out", "", "none", contracts.SubmitEnd{Started: true, TimedOut: true}, false, "", -1, false},
+		{"draft none, did not start", "", "none", contracts.SubmitEnd{}, false, "", -1, false},
 	} {
-		rec := contracts.ReadSubmitRun(c.started, c.exit, c.output, hostCode, c.draft, given)
+		rec := contracts.ReadSubmitRun(c.end, c.output, hostCode, c.draft, given)
 		if (rec.Draft != nil) != c.wantDraft {
 			t.Errorf("%s: draft recorded %v", c.name, rec.Draft != nil)
 		}
 		switch {
-		case c.failed < 0 && rec.Failed != nil:
+		case c.reason == "" && rec.Failed != nil:
 			t.Errorf("%s: failed %+v", c.name, *rec.Failed)
-		case c.failed >= 0 && (rec.Failed == nil || rec.Failed.Reason != contracts.SubmitProgramFailed || rec.Failed.Exit != c.failed):
-			t.Errorf("%s: failed %+v, want exit %d", c.name, rec.Failed, c.failed)
+		case c.reason != "" && (rec.Failed == nil || rec.Failed.Reason != c.reason):
+			t.Errorf("%s: failed %+v, want %s", c.name, rec.Failed, c.reason)
+		case c.reason != "" && c.exit < 0 && rec.Failed.Exit != nil:
+			t.Errorf("%s: failed with the exit status %d, want none", c.name, *rec.Failed.Exit)
+		case c.reason != "" && c.exit >= 0 && (rec.Failed.Exit == nil || *rec.Failed.Exit != c.exit):
+			t.Errorf("%s: failed %+v, want exit %d", c.name, rec.Failed, c.exit)
 		}
 		wantURLs := 0
-		if c.output == out && c.started && c.exit >= 0 && c.exit <= 2 {
+		if c.output == out && c.lines {
 			wantURLs = 2
 		}
 		if len(rec.CommitURLs) != wantURLs {
 			t.Errorf("%s: %d addresses, want %d", c.name, len(rec.CommitURLs), wantURLs)
 		}
+		if !c.lines && len(rec.Invalid) != 0 {
+			t.Errorf("%s: lines were read: %v", c.name, rec.Invalid)
+		}
 	}
 }
+
+// ended is a program that started and ended with the exit status, or -1 for a signal.
+func ended(exit int) contracts.SubmitEnd { return contracts.SubmitEnd{Started: true, Exit: exit} }
 
 // TestADescriptionIsMarked pins MarkedDescription on each case of
 // fixtures/description: a draft being opened, text outside the markers kept on an update,

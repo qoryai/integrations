@@ -60,8 +60,16 @@ draft only while it is `draft` or `open`.
 The program uses the forge command line's login of the person who runs qory. qory gives
 the program no credential, no access token and no proxy address, and no input in the
 table of inputs is a secret. The program reads no credential from qory. If the person is
-not logged in to the forge's command line, the program prints the command that logs in,
-such as `gh auth login`, on standard error and exits with status 1.
+not logged in to the forge's command line, the program exits with status 3 and prints, as
+the first line on standard error, the command that logs in. For a forge whose command
+line is `gh`, that line is:
+
+```text
+Run `gh auth login`, then `qory run` again.
+```
+
+A program for another forge prints the login command of that forge's command line in the
+same form.
 
 ## The result lines
 
@@ -115,23 +123,32 @@ A blank line is left out and is not an error. Diagnostics go to standard error.
 
 ## Exit status
 
-qory records `program-failed` for a draft that it asked for and the lines do not make:
-`{reason: program-failed, exit: <status>}` in qory's record of the run, for the repository
-that the program ran for. It records nothing for `QORY_SUBMIT_DRAFT` `none`.
+For a draft that it asked for and the program did not make, qory records a reason in its
+record of the run, for the repository that the program ran for. It records nothing for
+`QORY_SUBMIT_DRAFT` `none`.
+
+| Reason | When |
+|---|---|
+| `program-failed` | the program ended with status 0, 1 or 2 and printed no whole draft, or it did not start, or it ended with a signal or a status that the table does not list; it has `exit`: the exit status, or 1 when the program did not start or ended with a signal or an unlisted status |
+| `program-timeout` | the program ran past the time limit; it has no exit status |
+| `login-needed` | the program ended with status 3; it has `exit` 3 |
 
 | Exit | What qory records |
 |---|---|
 | 0 | the program finished: the draft and the addresses from the valid lines; `program-failed` with `exit` 0 when the lines make no draft |
 | 1 | a call to the forge failed: the valid lines, and for a draft that they do not make, `program-failed` with `exit` 1 |
 | 2 | the program could not use its inputs: the valid lines, and `program-failed` with `exit` 2 for a draft that they do not make |
-| another status, or the program did not start | nothing from the lines; the draft is `program-failed` with `exit` 1 |
+| 3 | the person has no login of the forge's command line: no line is read, and the reason is `login-needed` |
+| another status, or the program did not start | no line is read, and the reason is `program-failed` with `exit` 1 |
 
-The contract sets no time limit for the program. qory may stop a program that runs too
-long. A program that qory stopped ends without exit status 0, 1 or 2, so qory records it
-as another status: `program-failed` with `exit` 1, and reads no line.
+The time limit is 120 seconds. qory stops a program that runs longer, so a local
+`qory run` never waits on the program for more. The record is `program-timeout` with no
+exit status, and qory reads no line, whatever the program printed and whatever status
+the stopped program ended with. A program that a signal ended for another reason is in the
+last row of the table.
 
 A reader of qory's record cannot tell a program that did not start, or ended with another
-status, from a program that exited with status 1 and printed no draft: both are
+status or a signal, from a program that exited with status 1 and printed no draft: all are
 `program-failed` with `exit` 1. qory prints a different message on standard error for
 each.
 

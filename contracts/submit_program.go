@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 )
 
@@ -84,17 +85,35 @@ const (
 
 // The exit statuses of the submit program that qory reads the result lines after: 0 the
 // program finished, [SubmitExitForge] a call to the forge failed, [SubmitExitInput] the
-// program could not use its inputs. After any other status, or when the program did not
-// start, qory reads no line.
+// program could not use its inputs. After [SubmitExitLogin], the person has no login of
+// the forge's command line, and after any other status, a time-out, or when the program
+// did not start, qory reads no line.
 const (
 	SubmitExitDone  = 0
 	SubmitExitForge = 1
 	SubmitExitInput = 2
+	SubmitExitLogin = 3
 )
 
-// SubmitProgramFailed is the reason that qory records for a draft that the program was
-// asked to make and did not make, with the program's exit status.
-const SubmitProgramFailed = "program-failed"
+// SubmitTimeLimit is how long a submit program may run. qory stops a program that runs
+// longer, so a local `qory run` never waits on the program for more.
+const SubmitTimeLimit = 120 * time.Second
+
+// SubmitLoginLine is the first line that a program prints on standard error with exit
+// status [SubmitExitLogin], for a forge whose command line is gh. A program for another
+// forge prints the login command of that forge's command line in its place.
+const SubmitLoginLine = "Run `gh auth login`, then `qory run` again."
+
+// The reasons that qory records for a draft that it asked for and the program did not
+// make. [SubmitProgramFailed]: the program did not start, ended with status 0, 1 or 2
+// and printed no whole draft, or ended with a status or a signal that the contract
+// does not list. [SubmitProgramTimeout]: the program ran past [SubmitTimeLimit], and
+// qory read no line. [SubmitLoginNeeded]: the program ended with [SubmitExitLogin].
+const (
+	SubmitProgramFailed  = "program-failed"
+	SubmitProgramTimeout = "program-timeout"
+	SubmitLoginNeeded    = "login-needed"
+)
 
 // The most characters of an address and of a title that a result line has.
 const (
@@ -250,39 +269,58 @@ var submitDraftKeys = []string{SubmitKeyDraftNumber, SubmitKeyDraftURL, SubmitKe
 func submitDraftKey(key string) bool { return slices.Contains(submitDraftKeys, key) }
 
 // SubmitFailure is the reason qory records for a draft that the program did not make:
-// [SubmitProgramFailed], and Exit, the program's exit status, or 1 when the program
-// did not start or ended with a status other than 0, 1 and 2.
+// Reason, and Exit, the program's exit status. Exit is nil for [SubmitProgramTimeout],
+// which has no exit status, and 1 for [SubmitProgramFailed] after a program that did not
+// start or ended with a status or a signal that the contract does not list.
 type SubmitFailure struct {
 	Reason string
-	Exit   int
+	Exit   *int
 }
 
 // SubmitRecord is what qory records for one repository after the program ended: the
 // [SubmitResult] of its lines, and Failed, nil unless draft was not [SubmitDraftNone]
-// and the lines make no draft.
+// and the program made no draft.
 type SubmitRecord struct {
 	SubmitResult
 	Failed *SubmitFailure
 }
 
-// ReadSubmitRun is what qory records after a program ended. started is false when the
-// program did not start, and exit is its exit status. After a status other than
-// [SubmitExitDone], [SubmitExitForge] and [SubmitExitInput], or when the program did not
-// start, qory reads no line and records Failed with Exit 1. Otherwise it reads the
-// lines with [ParseSubmitLines], and when draft is not [SubmitDraftNone] and they make
-// no draft, records Failed with the program's exit status.
-func ReadSubmitRun(started bool, exit int, output, system, draft string, commits []string) SubmitRecord {
-	var rec SubmitRecord
-	if !started || exit < SubmitExitDone || exit > SubmitExitInput {
-		rec.CommitURLs = map[string]string{}
+// SubmitEnd is how a submit program ended. Started is false when it did not start.
+// TimedOut is true when it ran past [SubmitTimeLimit] and qory stopped it; Exit is then
+// not read. Otherwise Exit is the exit status, or -1 when a signal ended the program.
+type SubmitEnd struct {
+	Started  bool
+	TimedOut bool
+	Exit     int
+}
+
+// ReadSubmitRun is what qory records after a program ended. A program that timed out
+// is recorded as [SubmitProgramTimeout]. After [SubmitExitLogin] it is recorded as
+// [SubmitLoginNeeded] with Exit 3. A program that did not start, or ended with a
+// signal or with a status other than 0 to 3, is recorded as [SubmitProgramFailed] with
+// Exit 1. In each of these cases qory reads no line. Otherwise (status 0, 1 or 2) it reads
+// the lines with [ParseSubmitLines], and when draft is not [SubmitDraftNone] and they
+// make no draft, records [SubmitProgramFailed] with the program's exit status.
+func ReadSubmitRun(end SubmitEnd, output, system, draft string, commits []string) SubmitRecord {
+	failed := func(reason string, exit *int) SubmitRecord {
+		rec := SubmitRecord{SubmitResult: SubmitResult{CommitURLs: map[string]string{}}}
 		if draft != SubmitDraftNone {
-			rec.Failed = &SubmitFailure{SubmitProgramFailed, 1}
+			rec.Failed = &SubmitFailure{reason, exit}
 		}
 		return rec
 	}
-	rec.SubmitResult = ParseSubmitLines(output, system, draft, commits)
+	status := func(n int) *int { return &n }
+	switch {
+	case end.TimedOut:
+		return failed(SubmitProgramTimeout, nil)
+	case !end.Started || end.Exit < SubmitExitDone || end.Exit > SubmitExitLogin:
+		return failed(SubmitProgramFailed, status(1))
+	case end.Exit == SubmitExitLogin:
+		return failed(SubmitLoginNeeded, status(SubmitExitLogin))
+	}
+	rec := SubmitRecord{SubmitResult: ParseSubmitLines(output, system, draft, commits)}
 	if draft != SubmitDraftNone && rec.Draft == nil {
-		rec.Failed = &SubmitFailure{SubmitProgramFailed, exit}
+		rec.Failed = &SubmitFailure{SubmitProgramFailed, status(end.Exit)}
 	}
 	return rec
 }
