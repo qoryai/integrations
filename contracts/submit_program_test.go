@@ -603,6 +603,22 @@ func TestTheFeedDescribesTheMarkers(t *testing.T) {
 	}
 }
 
+// TestTheFeedSaysWhichDraftOfSeveralIsTaken pins the sentence that picks one draft from
+// several on the branch, in the submission entry's description and in the README step that
+// finds the draft, whose white space is collapsed to single spaces.
+func TestTheFeedSaysWhichDraftOfSeveralIsTaken(t *testing.T) {
+	d, _ := node(t, "changes.schema.json", "/$defs/submission")["description"].(string)
+	readme := strings.Join(strings.Fields(string(read(t, "README.md"))), " ")
+	for _, c := range []struct{ where, text, want string }{
+		{"the submission entry", d, "With several drafts on the branch, the adapter takes the entry's draft.number when it is among them, otherwise the newest open one."},
+		{"the README", readme, "With several drafts on the branch, the adapter takes the entry's `draft.number` when it is among them, otherwise the newest open one."},
+	} {
+		if !strings.Contains(c.text, c.want) {
+			t.Errorf("%s does not contain %q", c.where, c.want)
+		}
+	}
+}
+
 // gatingTexts are the places that state that a submission entry reaches only an adapter whose
 // source role has submissions: true, by where they are. A README section has its white
 // space collapsed to single spaces.

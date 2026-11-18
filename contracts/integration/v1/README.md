@@ -222,7 +222,7 @@ forge on a port other than 443 is not a target. The steps:
    adapter finds the draft from `branch` in any state and goes on with it, or opens a
    draft if there is none. With `open`, the adapter first looks for a draft from `branch`
    in any state, so a draft that exists is not opened a second time. The adapter finds a
-   draft by its head branch, `branch`, and the repository only, never by `base.branch`. The adapter edits a
+   draft by its head branch, `branch`, and the repository only, never by `base.branch`. With several drafts on the branch, the adapter takes the entry's `draft.number` when it is among them, otherwise the newest open one. The adapter edits a
    draft only while it is `draft` or `open`; a draft that a person closed or merged stays
    as it is. The draft's description has one block between the lines
    `<!-- qory:start -->` and `<!-- qory:end -->`, and `text.description` is the content
