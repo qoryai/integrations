@@ -357,6 +357,8 @@ const (
 	ChangeGrant      = "grant"
 	ChangeSync       = "sync"
 	ChangeWatch      = "watch"
+	// ChangeSubmission is the kind of an entry for a submission version that a run stored.
+	ChangeSubmission = "submission"
 )
 
 // Change is one entry of the change feed, of the kind set in Kind. A work_item entry has
@@ -367,7 +369,11 @@ const (
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
 // adapter's declared default; a watch entry, which the control plane writes when a run
 // whose target collection is one of the adapter's collections stores a submission
-// version, has WorkItemID and URL. It marshals with the members of its kind alone.
+// version, has WorkItemID and URL; a submission entry, written for each submission
+// version that a run stores, has SubmissionID, Ref (the item's ref, empty when the work
+// item came from no item), PreviousTitle (empty on the first version), Text (nil when
+// no repository has Draft) and Targets. It marshals with the members of its kind
+// alone.
 //
 // AuthorName is plain text, and the control plane sends it as it is, with no escaping.
 // The adapter writes it as plain text: it escapes each character or sequence that the
@@ -392,6 +398,60 @@ type Change struct {
 	CommentID     string `json:"comment_id,omitempty"`
 	AuthorName    string `json:"author_name,omitempty"`
 	Body          string `json:"body,omitempty"`
+
+	SubmissionID  string             `json:"submission_id,omitempty"`
+	PreviousTitle string             `json:"previous_title,omitempty"`
+	Text          *SubmissionText    `json:"text,omitempty"`
+	Targets       []SubmissionTarget `json:"targets,omitempty"`
+}
+
+// SubmissionText is the text of a submission entry, changes.schema.json: Title is the
+// title of the draft, and Description the content of the marked block of its
+// description, without the two marker lines, as [MarkedDescription] writes it.
+type SubmissionText struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+// SubmissionTarget is one repository of a submission entry, changes.schema.json:
+// where it is, the Branch that the run pushed, the Base it started at, the head Commit,
+// the Commits from the base to the head, oldest first, and Draft, nil when the entry
+// asks for no draft.
+type SubmissionTarget struct {
+	System  string             `json:"system"`
+	Path    string             `json:"path"`
+	Branch  string             `json:"branch"`
+	Base    SubmissionBase     `json:"base"`
+	Commit  string             `json:"commit"`
+	Commits []SubmissionCommit `json:"commits"`
+	Draft   *DraftRequest      `json:"draft,omitempty"`
+}
+
+// SubmissionBase is where a run started: the Commit, and the Branch that the draft is
+// based on, empty when the run's machine did not read it.
+type SubmissionBase struct {
+	Commit string `json:"commit"`
+	Branch string `json:"branch,omitempty"`
+}
+
+// SubmissionCommit is one commit of a submission entry, with the ledger Step that made
+// it.
+type SubmissionCommit struct {
+	Commit string `json:"commit"`
+	Step   string `json:"step"`
+}
+
+// The actions of a [DraftRequest].
+const (
+	DraftOpen   = "open"
+	DraftUpdate = "update"
+)
+
+// DraftRequest is what a submission entry asks for a repository: Action [DraftOpen], or
+// [DraftUpdate] with the Number of the draft to edit.
+type DraftRequest struct {
+	Action string `json:"action"`
+	Number int    `json:"number,omitempty"`
 }
 
 // MarshalJSON writes the entry with the members of its kind alone, and refuses a kind
@@ -438,6 +498,15 @@ func (c Change) MarshalJSON() ([]byte, error) {
 			WorkItemID string `json:"work_item_id"`
 			URL        string `json:"url"`
 		}{c.Kind, c.WorkItemID, c.URL})
+	case ChangeSubmission:
+		return json.Marshal(struct {
+			Kind          string             `json:"kind"`
+			SubmissionID  string             `json:"submission_id"`
+			Ref           string             `json:"ref,omitempty"`
+			PreviousTitle string             `json:"previous_title,omitempty"`
+			Text          *SubmissionText    `json:"text,omitempty"`
+			Targets       []SubmissionTarget `json:"targets"`
+		}{c.Kind, c.SubmissionID, c.Ref, c.PreviousTitle, c.Text, c.Targets})
 	}
 	return nil, fmt.Errorf("the change feed defines no kind %q", c.Kind)
 }
@@ -445,12 +514,85 @@ func (c Change) MarshalJSON() ([]byte, error) {
 // ChangesFailed is the body of POST /v1/work-items/changes/failed,
 // changes-failed.schema.json: the adapter stopped trying to post the comment of the
 // comment entry with CommentID, for Reason "item_gone", "not_permitted", "too_long" or
-// "unreachable". The control plane marks the comment not posted and stores Reason.
+// "unreachable", or to put a repository of the submission entry with SubmissionID on
+// the forge, the repository System and Path, for Reason "not_permitted", "unreachable",
+// "branch_gone" or "too_long". A report has CommentID, or SubmissionID with System and
+// Path, never both. For a comment, the control plane marks the comment not posted and
+// stores Reason; for a repository, it stores Reason with the submission version.
 type ChangesFailed struct {
-	Version   int    `json:"version"`
-	Time      string `json:"time"`
-	CommentID string `json:"comment_id"`
-	Reason    string `json:"reason"`
+	Version      int    `json:"version"`
+	Time         string `json:"time"`
+	CommentID    string `json:"comment_id,omitempty"`
+	SubmissionID string `json:"submission_id,omitempty"`
+	System       string `json:"system,omitempty"`
+	Path         string `json:"path,omitempty"`
+	Reason       string `json:"reason"`
+}
+
+// ChangesSubmitted is the body of POST /v1/work-items/changes/submitted,
+// changes-submitted.schema.json: what the adapter put on the forge for the submission
+// entry with SubmissionID.
+type ChangesSubmitted struct {
+	Version      int               `json:"version"`
+	Time         string            `json:"time"`
+	SubmissionID string            `json:"submission_id"`
+	Targets      []SubmittedTarget `json:"targets"`
+}
+
+// SubmittedTarget is the reply for one repository of a submission entry: the
+// address of the Base commit and of each commit, and the Draft, nil when the entry's
+// repository had no draft.
+type SubmittedTarget struct {
+	System  string          `json:"system"`
+	Path    string          `json:"path"`
+	Base    CommitAddress   `json:"base"`
+	Commits []CommitAddress `json:"commits"`
+	Draft   *SubmittedDraft `json:"draft,omitempty"`
+}
+
+// CommitAddress is a commit and the forge's address of it.
+type CommitAddress struct {
+	Commit    string `json:"commit"`
+	CommitURL string `json:"commit_url"`
+}
+
+// The states and actions of a [SubmittedDraft], and the reason it has none.
+const (
+	DraftStateDraft = "draft"
+	DraftStateOpen  = "open"
+	DraftOpened     = "opened"
+	DraftUpdated    = "updated"
+	DraftKept       = "kept"
+	DraftNoProgram  = "no-program"
+)
+
+// SubmittedDraft is the draft after the adapter's call: Number, URL, Title, State
+// [DraftStateDraft] or [DraftStateOpen], and Action [DraftOpened], [DraftUpdated] or
+// [DraftKept]; or None, the reason it made no draft, [DraftNoProgram], with the other
+// members empty. It marshals the members of one of the two forms.
+type SubmittedDraft struct {
+	Number int
+	URL    string
+	Title  string
+	State  string
+	Action string
+	None   string
+}
+
+// MarshalJSON writes the draft with its five members, or {"none": ...} when None is set.
+func (d SubmittedDraft) MarshalJSON() ([]byte, error) {
+	if d.None != "" {
+		return json.Marshal(struct {
+			None string `json:"none"`
+		}{d.None})
+	}
+	return json.Marshal(struct {
+		Number int    `json:"number"`
+		URL    string `json:"url"`
+		Title  string `json:"title"`
+		State  string `json:"state"`
+		Action string `json:"action"`
+	}{d.Number, d.URL, d.Title, d.State, d.Action})
 }
 
 // ConnectPass is the payload of a connect pass, connect-pass.schema.json.

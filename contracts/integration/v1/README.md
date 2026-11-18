@@ -187,10 +187,59 @@ The feed answer has at least one entry whenever the feed has an entry of a kind 
 revision in the request's `X-Qory-Contract-Version` defines after the cursor. The
 adapter reads the next entries from the feed answer's `cursor`.
 
-The control plane writes a `watch` entry, with `work_item_id` and `url`, whenever a run
-stores a submission version. It writes the entry in the feed of the adapter of the run's
+The control plane writes a `watch` entry, with `work_item_id` and `url`, and a
+`submission` entry, as [Submissions](#submissions) describes, whenever a run stores a
+submission version. It writes both entries in the feed of the adapter of the run's
 target collection, whatever source the work item came from, and also when the work item
 came from no item at a source.
+
+## Submissions
+
+A submission is the work item's branch at its head commit, with the commits that the run
+made. When a run stores a submission version, the forge's adapter, an adapter whose
+`source` role has `targets: true`, reads it from the change feed and puts it on the
+forge. The adapter runs no program. The steps:
+
+1. The control plane stores the submission version and writes a `submission` entry to
+   the feed of the adapter of the run's target collection (`changes.schema.json`). The
+   entry has `submission_id`, `targets` and, when the session passed, `text`. Each
+   target has `system`, `path`, `branch`, `base` (`commit` and `branch`), the head
+   `commit`, `commits` (each with `commit` and the ledger `step`) and, only when the
+   session passed, `draft`: `{action: open}` or `{action: update, number}`. A draft is a
+   pull request or a merge request that people can still change before it is ready.
+   The entry is the same for every forge, so one adapter opens a pull request and
+   another a merge request from it.
+2. The adapter builds the forge's address of `base.commit` and of each commit, for every
+   target, whether or not the session passed.
+3. For a target with `draft`, the adapter opens the draft, or edits the draft with that
+   `number`. The draft's description has one block between the lines
+   `<!-- qory:start -->` and `<!-- qory:end -->`, and `text.description` is the content
+   of that block. On an update, the adapter replaces that block and keeps the rest of
+   the description. If a person removed a marker, the adapter adds a blank line and a
+   new block at the end. On an update, the adapter sets the title to `text.title` only
+   while the draft's title equals `previous_title`, the `text.title` of the previous
+   version; a title that a person edited stays. The adapter reads the draft's state
+   before it edits.
+4. The adapter sends `POST /v1/work-items/changes/submitted`
+   (`changes-submitted.schema.json`) with `submission_id` and, for each target, the
+   `commit_url` of each commit and of the base, and `draft`: `{number, url, title,
+   state, action}`, or `{none: no-program}` when it left the draft alone. The control
+   plane stores them.
+5. After a failure that trying again cannot fix, or when its retries end, the adapter
+   sends `POST /v1/work-items/changes/failed` (`changes-failed.schema.json`) with
+   `submission_id`, `system`, `path` and `reason`.
+
+| `reason` | Meaning |
+|---|---|
+| `not_permitted` | the forge returned that the integration's account has no permission on the repository |
+| `unreachable` | each request to the forge timed out, failed to connect or returned a busy status, until the adapter's retries ended |
+| `branch_gone` | the forge returned that the branch or its base branch does not exist |
+| `too_long` | the title or the description is longer than the forge's limit for a draft |
+
+On a run with no run code, `qory run` makes the same calls with a submit program that
+uses the person's login of the forge's command line. The
+[submit program contract](../../run/v1/submit-program/README.md) lists its inputs and its
+result lines, and has the rules of the block and of the title in the same words.
 
 A person can write a comment in the control plane on a work item taken in from an item
 at the source. The comment reaches the source in four steps:
@@ -248,6 +297,7 @@ with `items: false` has no items, and its `source` role has no `comments`.
 | Path | Contains | Validated against |
 |---|---|---|
 | `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential`; `example-source-apply-bearer.json`, a source role with an apply item of the scheme `bearer` whose paths are templates with `{target.path}` and a path without it; `example-source-apply-basic.json`, one with an apply item of the scheme `basic` and its `username`; `example-source-apply-header.json`, one with an apply item of the scheme `header` and its `header`, on a DNS name and an IPv4 address; `example-source-guide.json`, a source role with a `guide`: a `setup` part with `before`, three `steps` and `after`, and a `connect` part with two `steps` alone; `example-source-targets.json`, a source role with `targets: true`; `example-source-comments.json`, a source role with `comments: true` | `description.schema.json` |
+| `fixtures/adapter/<name>/` | the requests and answers of the adapter, named by their schema; among them `changes/submission-github-like.json` and `changes/submission-gitlab-like.json`, a submission entry that opens a draft on one host and one that updates a draft on another, `changes/submission-two-versions.json`, a first version with no `previous_title` and a second that has the title of the first, `changes-submitted/github-like.json` and `changes-submitted/gitlab-like.json`, the replies, and `changes-failed/submission-*.json`, one for each reason of a submission | `<name>.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define; `description-source-comments-false.json`, `comments: false`; and `description-source-items-false-with-comments.json`, `comments` beside `items: false` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.
