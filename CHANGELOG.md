@@ -172,38 +172,38 @@ change what an existing reader or program relies on, and notes it under Upgradin
   submission entry, and qory runs the module's submit program only on a run with no run
   code. qory finds the program in the composed harness: the `submit_program` key,
   `{command: [<path>, <argument>, ...]}`, of the manifest of the forge's module, with
-  the path relative to the module. Only a write run gets a draft. qory pushes the branch
-  before it runs the program, with the check for keys and for files outside the
-  session's scope that a run from a run code has (`push_key_found`,
+  the path relative to the module. A run with no run code has no work item and no
+  earlier submission. Only a write run gets a draft. qory pushes the branch
+  `qory/run-<run id>` before it runs the program, with the check for keys and for files
+  outside the session's scope that a run from a run code has (`push_key_found`,
   `push_scope_refused`); if a check refuses, qory pushes nothing and runs no program.
-  The program pushes nothing. qory sets the environment variables `QORY_SUBMIT_SYSTEM`,
-  `QORY_SUBMIT_PATH`, `QORY_SUBMIT_BRANCH` (with no work item, `qory/run-<run id>`),
-  `QORY_SUBMIT_BASE_BRANCH`, `QORY_SUBMIT_BASE_COMMIT`, `QORY_SUBMIT_COMMITS`,
-  `QORY_SUBMIT_DRAFT` (`none` when the run has no hand-off text),
-  `QORY_SUBMIT_DRAFT_NUMBER`, `QORY_SUBMIT_TITLE`, `QORY_SUBMIT_PREVIOUS_TITLE` (unset
-  on a run with no work item) and `QORY_SUBMIT_DESCRIPTION_FILE`, and sets standard
-  input to an empty file such as `/dev/null`. The program prints lines of the form
-  `draft_number 34`, with the keys `draft_number`, `draft_url`, `draft_title`,
-  `draft_state` and `draft_action`, and `commit_url <commit> <address>`, so it needs no
-  JSON tool. qory records the valid lines after exit 0, 1 or 2. With
-  `QORY_SUBMIT_DRAFT=none`, qory records no draft and no failure. Exit 3 means the
-  person has no login of the forge's command line: the program prints as its first line
-  on standard error, for a forge whose command line is `gh`, "Run `gh auth login`, then
-  `qory run` again.", and qory records `login-needed` with exit 3. A program that runs
-  more than 120 seconds is stopped and recorded as `program-timeout`, with no exit
-  status and no line read. A program that did not start, or ended on a signal or another
-  status, is recorded as `program-failed` with exit 1 and no line read. For a draft that
-  it asked for and the program did not make, qory records `program-failed` with the exit
-  status. qory prints at most 20 lines of standard error, each prefixed `qory run:
-  submit program: `. The contract has the rules of the marked block and of the title. In
-  Go, these are added: `ParseSubmitLines`, `ReadSubmitRun`, `MarkedDescription` and
-  `NextTitle`; the types `SubmitResult`, `SubmitLineError`, `SubmitRecord`,
-  `SubmitFailure` and `SubmitEnd`; the input names `SubmitEnv*` and `SubmitDraftNone`;
-  the key names `SubmitKey*`; `SubmitMarkerStart` and `SubmitMarkerEnd`;
-  `SubmitPrintedLines` and `SubmitLinePrefix`; the exit statuses `SubmitExitDone`,
-  `SubmitExitForge`, `SubmitExitInput` and `SubmitExitLogin`; `SubmitTimeLimit` and
-  `SubmitLoginLine`; and the reasons `SubmitProgramFailed`, `SubmitProgramTimeout` and
-  `SubmitLoginNeeded`.
+  The program pushes nothing, and opens a draft or edits the draft that it finds from
+  the branch. qory sets the environment variables `QORY_SUBMIT_SYSTEM`,
+  `QORY_SUBMIT_PATH`, `QORY_SUBMIT_BRANCH`, `QORY_SUBMIT_BASE_BRANCH`,
+  `QORY_SUBMIT_BASE_COMMIT`, `QORY_SUBMIT_COMMITS`, `QORY_SUBMIT_DRAFT` (`open`, or
+  `none` when the run has no hand-off text), `QORY_SUBMIT_TITLE` and
+  `QORY_SUBMIT_DESCRIPTION_FILE`, and sets standard input to an empty file such as
+  `/dev/null`. The program prints lines of the form `draft_number 34`, with the keys
+  `draft_number`, `draft_url`, `draft_title`, `draft_state` and `draft_action`, and
+  `commit_url <commit> <address>`, so it needs no JSON tool. qory records the valid
+  lines after exit 0, 1 or 2. With `QORY_SUBMIT_DRAFT=none`, qory records no draft and
+  no failure. Exit 3 means the person has no login of the forge's command line: the
+  program prints as its first line on standard error, for a forge whose command line is
+  `gh`, "Run `gh auth login`, then `qory run` again.", and qory records `login-needed`
+  with exit 3. A program that runs more than 120 seconds is stopped and recorded as
+  `program-timeout`, with no exit status and no line read. A program that did not start,
+  or ended on a signal or another status, is recorded as `program-failed` with exit 1
+  and no line read. For a draft that it asked for and the program did not make, qory
+  records `program-failed` with the exit status. qory prints at most 20 lines of
+  standard error, each prefixed `qory run: submit program: `. The contract has the rule
+  of the marked block. In Go, these are added: `ParseSubmitLines`, `ReadSubmitRun`,
+  `MarkedDescription` and `NextTitle`; the types `SubmitResult`, `SubmitLineError`,
+  `SubmitRecord`, `SubmitFailure` and `SubmitEnd`; the input names `SubmitEnv*` and
+  `SubmitDraftNone`; the key names `SubmitKey*`; `SubmitMarkerStart` and
+  `SubmitMarkerEnd`; `SubmitPrintedLines` and `SubmitLinePrefix`; the exit statuses
+  `SubmitExitDone`, `SubmitExitForge`, `SubmitExitInput` and `SubmitExitLogin`;
+  `SubmitTimeLimit` and `SubmitLoginLine`; and the reasons `SubmitProgramFailed`,
+  `SubmitProgramTimeout` and `SubmitLoginNeeded`.
 - The run contract has a run's end, `outcome.schema.json`, titled Run end: `state`
   (`succeeded`, `failed` or `cancelled`), and optionally `reason` and `exit_code`, as
   Forager's `dev.qory.run.exited` has them. qory sets `reason` to one of the end codes

@@ -25,9 +25,8 @@ const (
 	SubmitEnvSystem = "QORY_SUBMIT_SYSTEM"
 	// SubmitEnvPath is the repository's path on its system, such as acme/shop.
 	SubmitEnvPath = "QORY_SUBMIT_PATH"
-	// SubmitEnvBranch is the head of the draft: with a work item, qory/ and the work item's
-	// public id, which the run pushed; with none, the branch that qory makes for the run,
-	// qory/run-<run id>, which the program pushes.
+	// SubmitEnvBranch is the head of the draft: the branch that qory makes for the run,
+	// qory/run-<run id>, which qory has already pushed when the program starts.
 	SubmitEnvBranch = "QORY_SUBMIT_BRANCH"
 	// SubmitEnvBaseBranch is the branch that the draft is based on. Unset when qory did
 	// not read it.
@@ -37,25 +36,18 @@ const (
 	// SubmitEnvCommits is the commits of the run, from the base to the head, oldest
 	// first, full commit ids joined by single spaces.
 	SubmitEnvCommits = "QORY_SUBMIT_COMMITS"
-	// SubmitEnvDraft is what to do with the draft: DraftOpen, DraftUpdate or
-	// SubmitDraftNone.
+	// SubmitEnvDraft is what to do with the draft: DraftOpen or SubmitDraftNone.
 	SubmitEnvDraft = "QORY_SUBMIT_DRAFT"
-	// SubmitEnvDraftNumber is the number of the draft to update. Set exactly with
-	// DraftUpdate.
-	SubmitEnvDraftNumber = "QORY_SUBMIT_DRAFT_NUMBER"
 	// SubmitEnvTitle is the title of the draft. Set unless SubmitDraftNone.
 	SubmitEnvTitle = "QORY_SUBMIT_TITLE"
-	// SubmitEnvPreviousTitle is the title of the previous submission version of the work
-	// item. Unset on the first version, and when that version had no text.
-	SubmitEnvPreviousTitle = "QORY_SUBMIT_PREVIOUS_TITLE"
 	// SubmitEnvDescriptionFile is the path of a UTF-8 file with the run's text for
 	// the description: the content of the block, without the marker lines. Set unless
 	// SubmitDraftNone.
 	SubmitEnvDescriptionFile = "QORY_SUBMIT_DESCRIPTION_FILE"
 )
 
-// SubmitDraftNone is the value of [SubmitEnvDraft] for no draft. The other two values are
-// [DraftOpen] and [DraftUpdate], the actions of a submission entry.
+// SubmitDraftNone is the value of [SubmitEnvDraft] for no draft. The other value is
+// [DraftOpen]: a run with no run code has no earlier submission, so it has no update.
 const SubmitDraftNone = "none"
 
 // The keys of the result lines that the program prints on standard output, each line

@@ -1,6 +1,6 @@
 # The submit program
 
-A submit program opens or updates the draft of a run's submission on a forge, and prints
+A submit program opens the draft of a run's submission on a forge, and prints
 the forge's address of each commit. A draft is a pull request or a merge request that
 people can still change before it is ready. qory runs the program only on a run that has
 no run code: a person starts `qory run`, and the program uses the login of the forge's
@@ -28,23 +28,21 @@ line, except where the table shows another form. Only a write run gets a draft.
 |---|---|
 | `QORY_SUBMIT_SYSTEM` | the host name of the repository's system, such as `code.example.com` |
 | `QORY_SUBMIT_PATH` | the repository's path on the system, such as `acme/shop` |
-| `QORY_SUBMIT_BRANCH` | the head of the draft, a branch that qory has already pushed when the program starts: with a work item, `qory/` and the work item's public id; with none, as on a local `qory run`, the branch that qory makes for the run, `qory/run-<run id>` |
-| `QORY_SUBMIT_BASE_BRANCH` | the branch that the draft is based on. Unset when qory did not read it; a program that has `QORY_SUBMIT_DRAFT` `open` or `update` and no base branch exits with status 2 |
+| `QORY_SUBMIT_BRANCH` | the branch that qory makes for the run, `qory/run-<run id>`: the head of the draft, already pushed when the program starts |
+| `QORY_SUBMIT_BASE_BRANCH` | the branch that the draft is based on. Unset when qory did not read it; a program that has `QORY_SUBMIT_DRAFT` `open` and no base branch exits with status 2 |
 | `QORY_SUBMIT_BASE_COMMIT` | the commit that the run started at, 40 or 64 lower-case hexadecimal digits |
 | `QORY_SUBMIT_COMMITS` | the run's commits from the base to the head, oldest first: full commit ids joined by single spaces, 1 to 100 |
-| `QORY_SUBMIT_DRAFT` | `open`, `update` or `none`. `none` when the run has no hand-off text |
-| `QORY_SUBMIT_DRAFT_NUMBER` | the number of the draft to update, a hint: the program finds the draft from the branch when the forge has no draft with that number. Set exactly when `QORY_SUBMIT_DRAFT` is `update` |
+| `QORY_SUBMIT_DRAFT` | `open` or `none`. `none` when the run has no hand-off text |
 | `QORY_SUBMIT_TITLE` | the title of the draft, from the run's hand-off text, 1 to 256 characters on one line. Unset when `QORY_SUBMIT_DRAFT` is `none` |
-| `QORY_SUBMIT_PREVIOUS_TITLE` | the title of the previous submission version of the work item. Set only with a work item: unset on the first version, when that version had no text, and on a local run, which has no work item and so no previous version. The program then leaves the draft's title as it is |
 | `QORY_SUBMIT_DESCRIPTION_FILE` | the path of a UTF-8 file with the description text from the run's hand-off text, at most 20000 characters, over several lines, with no marker line: the program adds the markers. Unset when `QORY_SUBMIT_DRAFT` is `none` |
 
-qory pushes the branch before it runs the program, on every run, and the program pushes
-nothing. On a local run, which has no work item, qory pushes `qory/run-<run id>` with
-the person's git login. Before each push qory checks the run's commits as it does for a
+A run with no run code has no work item and no earlier submission. qory pushes
+`qory/run-<run id>` with the person's git login before it runs the program, and the
+program pushes nothing. Before each push qory checks the run's commits as it does for a
 run that it starts from a run code: for a key or a value of the run's secrets, and for a
 change to a file that the session may not change (`outcome.schema.json`, the end codes
 `push_key_found` and `push_scope_refused`). If a check refuses, qory pushes nothing and
-runs no program. After a push that succeeded, the program only opens or updates the
+runs no program. After a push that succeeded, the program only opens or edits the
 draft, so exit status 1 means that a call to the forge failed, and the program never
 exits with a push failure.
 
@@ -59,11 +57,10 @@ draft and prints only the address of each commit. qory leaves out each draft lin
 program prints then. With `open`, the program first looks for a draft from
 `QORY_SUBMIT_BRANCH` in any state, so a draft that exists is not opened a second time:
 a draft that a person closed or merged is reported with `draft_action` `kept` and left
-as it is, and any other draft is updated as for `update`. With `update`, the program
-reads the draft with `QORY_SUBMIT_DRAFT_NUMBER`; when the forge has no such draft, it
-finds the draft from the branch and goes on as for `open`, and prints the number of the
-draft it found, which may differ from `QORY_SUBMIT_DRAFT_NUMBER`. The program edits a
-draft only while it is `draft` or `open`.
+as it is, and any other draft is edited: its description follows the rules below, and
+its title stays. The program edits a draft only while it is `draft` or `open`. There is
+no input for the number of a draft or for a previous title, because a run with no run
+code has no earlier submission.
 
 ## Credentials
 
@@ -191,14 +188,14 @@ but spaces, tabs or a carriage return.
 
 1. For an `open` where no draft exists, the description is the block: the start marker
    line, the text of `QORY_SUBMIT_DESCRIPTION_FILE`, the end marker line.
-2. For an `update`, the program takes the first end marker line that has a start marker
+2. For a draft that exists, the program takes the first end marker line that has a start marker
    line before it, and the last start marker line before that end line. It replaces the
    text from the start of the start line to the end marker with the new block, and keeps
    every other byte, the spaces, tabs and carriage return after the end marker included.
    A start marker line that a person left alone, with no end marker line after it,
-   stays; the block that qory wrote comes after it and is the pair the next update
+   stays; the block that qory wrote comes after it and is the pair the next edit
    replaces.
-3. For an `update`, if no such pair exists, as when a person removed a marker, the
+3. For a draft that exists, if no such pair exists, as when a person removed a marker, the
    program keeps the description whole and adds a blank line and the new block at the end.
    When the description is empty, the block alone is the new description, with no blank
    line before it.
@@ -214,13 +211,8 @@ plain-text cases: for each case, the draft's description before (`existing.md`),
 
 ## The draft's title
 
-On an `update`, the program changes the draft's title to `QORY_SUBMIT_TITLE` only while the
-title that the forge shows is the same as `QORY_SUBMIT_PREVIOUS_TITLE`. A title that a
-person edited stays. With `QORY_SUBMIT_PREVIOUS_TITLE` unset, the title stays. If the
-forge adds a text before the title of a draft that is not ready, the program
-compares the title without that text and keeps the text in the new title. On an `open`,
-the draft has `QORY_SUBMIT_TITLE`. `contracts.NextTitle` is the same rule in Go, with the
-forge's text as an argument.
+A new draft has `QORY_SUBMIT_TITLE`. The program does not change the title of a draft
+that it finds, because a run with no run code has no previous title to compare it with.
 
 ## Examples
 

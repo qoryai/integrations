@@ -259,12 +259,13 @@ forge on a port other than 443 is not a target. The steps:
 | `branch_gone` | the forge returned that the branch or its base branch does not exist |
 | `too_long` | the title or the description is longer than the forge's limit for a draft |
 
-On a run with no run code, `qory run` runs a submit program that makes the calls to the
-forge of steps 2 and 3 with the login of the forge's command line that the person made.
-The program sends nothing to the control plane: only the adapter sends
-`changes/submitted`. The
-[submit program contract](../../run/v1/submit-program/README.md) lists its inputs and its
-result lines, and has the rules of the block and of the title in the same words.
+On a run with no run code, `qory run` runs a submit program with the login of the forge's
+command line that the person made. That run has no work item and no earlier submission,
+so the program opens a draft from the branch `qory/run-<run id>`, which qory has pushed,
+or edits the draft that it finds there, and builds the address of each commit as in step
+2. The program sends nothing to the control plane: only the adapter sends
+`changes/submitted`. The [submit program contract](../../run/v1/submit-program/README.md)
+lists its inputs and its result lines, and has the rule of the block in the same words.
 
 A person can write a comment in the control plane on a work item taken in from an item
 at the source. The comment reaches the source in four steps:

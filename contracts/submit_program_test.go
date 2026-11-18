@@ -38,8 +38,8 @@ func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
 	readme := submitFile(t, "README.md")
 	inputs := []string{
 		contracts.SubmitEnvSystem, contracts.SubmitEnvPath, contracts.SubmitEnvBranch, contracts.SubmitEnvBaseBranch,
-		contracts.SubmitEnvBaseCommit, contracts.SubmitEnvCommits, contracts.SubmitEnvDraft, contracts.SubmitEnvDraftNumber,
-		contracts.SubmitEnvTitle, contracts.SubmitEnvPreviousTitle, contracts.SubmitEnvDescriptionFile,
+		contracts.SubmitEnvBaseCommit, contracts.SubmitEnvCommits, contracts.SubmitEnvDraft,
+		contracts.SubmitEnvTitle, contracts.SubmitEnvDescriptionFile,
 	}
 	var rows []string
 	for _, l := range strings.Split(readme, "\n") {
@@ -70,7 +70,7 @@ func TestTheSubmitProgramNamesAreInTheReadme(t *testing.T) {
 	}
 	for _, want := range []string{
 		contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd, contracts.SubmitLinePrefix,
-		"`" + contracts.DraftOpen + "`", "`" + contracts.DraftUpdate + "`", "`" + contracts.SubmitDraftNone + "`",
+		"`" + contracts.DraftOpen + "`", "`" + contracts.SubmitDraftNone + "`",
 	} {
 		if !strings.Contains(readme, want) {
 			t.Errorf("the README does not contain %q", want)
@@ -143,7 +143,7 @@ func TestTheOutputFixturesAreRead(t *testing.T) {
 		{"closed-kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "closed", 34, 2},
 		{"merged-kept.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "kept", "merged", 34, 2},
 	} {
-		for _, draft := range []string{contracts.DraftOpen, contracts.DraftUpdate} {
+		for _, draft := range []string{contracts.DraftOpen} {
 			r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+c.file), c.system, draft, given)
 			if len(r.Invalid) != 0 {
 				t.Errorf("%s: invalid lines %v", c.file, r.Invalid)
@@ -355,9 +355,9 @@ func TestATitleHasTheRuleOfTheSchema(t *testing.T) {
 
 // TestADraftLineFollowsTheInput pins what qory does with the draft lines by the value of
 // QORY_SUBMIT_DRAFT: with none, each draft line is left out and no draft is recorded;
-// with open or update, a partial draft is left out line by line, a draft that a person
-// closed or merged needs the action kept, and a number that differs from the
-// QORY_SUBMIT_DRAFT_NUMBER of an update is recorded.
+// with open, a partial draft is left out line by line, a draft that a person closed or
+// merged needs the action kept, and the number of a draft that the program found from the
+// branch is recorded.
 func TestADraftLineFollowsTheInput(t *testing.T) {
 	out := submitFile(t, "fixtures/output/github-like.txt")
 	r := contracts.ParseSubmitLines(out, hostCode, contracts.SubmitDraftNone, given)
@@ -369,10 +369,10 @@ func TestADraftLineFollowsTheInput(t *testing.T) {
 			t.Errorf("with none, line %d is left out for %q", e.Line, e.Reason)
 		}
 	}
-	// An update whose draft number was a hint: the program printed another number.
-	r = contracts.ParseSubmitLines(strings.Replace(out, "draft_number 34", "draft_number 41", 1), hostCode, contracts.DraftUpdate, given)
+	// An open that found a draft from the branch: the program printed that draft's number.
+	r = contracts.ParseSubmitLines(strings.Replace(out, "draft_number 34", "draft_number 41", 1), hostCode, contracts.DraftOpen, given)
 	if r.Draft == nil || r.Draft.Number != 41 {
-		t.Errorf("an update that printed another number: %+v", r)
+		t.Errorf("an open that found another draft: %+v", r)
 	}
 	// Three of the five draft lines: none is recorded, and each is listed.
 	partial := "draft_number 34\ndraft_state draft\ndraft_action opened\n"
