@@ -11,10 +11,11 @@
     "time": {"description": "When the adapter built the body, RFC 3339 in UTC with whole seconds. Set it from the adapter's clock: the control plane returns an unsigned 401 for a time more than 300 seconds off its clock, either way.", "$ref": "definitions.schema.json#/$defs/time"},
     "submission_id": {"description": "The submission_id of the submission entry that the adapter is reporting on.", "$ref": "definitions.schema.json#/$defs/submission_id"},
     "targets": {
-      "description": "The targets of the entry that the adapter handled, 1 to 20, each system and path once.",
+      "description": "The targets of the entry that the adapter handled, 1 to 20. No two targets have the same system and path; the schema refuses only two identical items, and the control plane refuses any other duplicate, 400 invalid_request.",
       "type": "array",
       "minItems": 1,
       "maxItems": 20,
+      "uniqueItems": true,
       "items": {"$ref": "#/$defs/target"}
     }
   },
@@ -25,7 +26,7 @@
       "additionalProperties": false,
       "required": ["system", "path", "base", "commits"],
       "properties": {
-        "system": {"description": "The system of the repository, as the entry has it.", "$ref": "definitions.schema.json#/$defs/target/properties/system"},
+        "system": {"description": "The system of the repository, as the entry has it. It has no port, as the entry's system.", "$ref": "definitions.schema.json#/$defs/target/properties/system"},
         "path": {"description": "The path of the repository, as the entry has it.", "$ref": "definitions.schema.json#/$defs/repository_path"},
         "base": {
           "description": "The address of the base commit: the commit of base.commit in the entry.",

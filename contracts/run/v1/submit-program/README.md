@@ -1,20 +1,28 @@
 # The submit program
 
-A submit program opens or updates the draft of a run's submission on a forge, and writes
+A submit program opens or updates the draft of a run's submission on a forge, and prints
 the forge's address of each commit. A draft is a pull request or a merge request that
 people can still change before it is ready. qory runs the program only on a run that has
-no run code: a person starts `qory run`, and the program uses the person's login of the
-forge's command line, such as `gh`. A run that qory starts from a run code runs no
-program: the forge's adapter puts the submission on the forge from the change feed
-(`contracts/integration/v1/changes.schema.json`, the `submission` entry).
+no run code: a person starts `qory run`, and the program uses the login of the forge's
+command line, such as `gh`, that the person made. A run that qory starts from a run code
+runs no program: the forge's adapter puts the submission on the forge from the change
+feed (`contracts/integration/v1/changes.schema.json`, the `submission` entry).
 
 The contract has plain inputs and plain lines back. The program needs no JSON tool.
 
+## Finding the program
+
+The program is the `submit_program` key of the manifest of the forge's harness module,
+`{command: [<path>, <argument>, ...]}`. The module is one that the person's `qory.yaml`
+composes. `<path>` is relative to the module's directory, and the arguments that follow
+it are the program's arguments. This is the harness module contract's key, not a member
+of the run documents or of the adapter's start-up: neither document mentions the module.
+
 ## Inputs
 
-qory runs the program once for each repository of the submission, with no argument, and
-sets these environment variables. Each value is on one line, except where the table
-shows another form.
+qory runs the program once for each repository of the submission, with the arguments of
+`submit_program` and no other, and sets these environment variables. Each value is on one
+line, except where the table shows another form.
 
 | Variable | Value |
 |---|---|
@@ -25,24 +33,34 @@ shows another form.
 | `QORY_SUBMIT_BASE_COMMIT` | the commit that the run started at, 40 or 64 lower-case hexadecimal digits |
 | `QORY_SUBMIT_COMMITS` | the run's commits from the base to the head, oldest first: full commit ids joined by single spaces, 1 to 100 |
 | `QORY_SUBMIT_DRAFT` | `open`, `update` or `none` |
-| `QORY_SUBMIT_DRAFT_NUMBER` | the number of the draft to update. Set exactly when `QORY_SUBMIT_DRAFT` is `update` |
+| `QORY_SUBMIT_DRAFT_NUMBER` | the number of the draft to update, a hint: the program finds the draft from the branch when the forge has no draft with that number. Set exactly when `QORY_SUBMIT_DRAFT` is `update` |
 | `QORY_SUBMIT_TITLE` | the title of the draft, 1 to 256 characters on one line. Unset when `QORY_SUBMIT_DRAFT` is `none` |
-| `QORY_SUBMIT_PREVIOUS_TITLE` | the title of the previous submission version of the work item. Unset on the first version, and when that version had no text |
+| `QORY_SUBMIT_PREVIOUS_TITLE` | the title of the previous submission version of the work item. Unset on the first version, and when that version had no text; the program then leaves the draft's title as it is |
 | `QORY_SUBMIT_DESCRIPTION_FILE` | the path of a UTF-8 file with the run's text for the description, at most 20000 characters, over several lines. Unset when `QORY_SUBMIT_DRAFT` is `none` |
 
-The description is a file because it has several lines. Standard input is empty and
-closed (`/dev/null`): a program that starts `gh` or `git` passes its standard input on,
-and the first command that reads it would take the text. `gh pr create` and `gh pr edit`
-read a body from a file with `--body-file`.
+The description is a file because it has several lines. Standard input is open and empty
+(`/dev/null`): a program that starts `gh` or `git` passes its standard input on, and the
+first command that reads it would take the text. `gh pr create` and `gh pr edit` read a
+body from a file with `--body-file`.
 
 With `QORY_SUBMIT_DRAFT` `none`, as after a session that did not pass, the program makes no
-draft and prints only the address of each commit.
+draft and prints only the address of each commit. qory leaves out each draft line that a
+program prints then. With `open`, the program first looks for a draft from
+`QORY_SUBMIT_BRANCH` in any state, so a draft that exists is not opened a second time:
+a draft that a person closed or merged is reported with `draft_action` `kept` and left
+as it is, and any other draft is updated as for `update`. With `update`, the program
+reads the draft with `QORY_SUBMIT_DRAFT_NUMBER`; when the forge has no such draft, it
+finds the draft from the branch and goes on as for `open`, and prints the number of the
+draft it found, which may differ from `QORY_SUBMIT_DRAFT_NUMBER`. The program edits a
+draft only while it is `draft` or `open`.
 
 ## Credentials
 
-The program relies on the forge command line's login of the person who runs qory, never
-on a relay. qory gives the program no credential, no token and no proxy address, and no
-input in the table of inputs is a secret. The program reads no credential from qory.
+The program uses the forge command line's login of the person who runs qory. qory gives
+the program no credential, no access token and no proxy address, and no input in the
+table of inputs is a secret. The program reads no credential from qory. If the person is
+not logged in to the forge's command line, the program prints the command that logs in,
+such as `gh auth login`, on standard error and exits with status 1.
 
 ## The result lines
 
@@ -55,8 +73,8 @@ line.
 | `draft_number` | the draft's number: digits only, 1 to 9 of them, 1 or more |
 | `draft_url` | the draft's address |
 | `draft_title` | the draft's title after the call, 1 to 256 characters |
-| `draft_state` | `draft` while the forge shows the draft as not ready for review, `open` once it shows it as ready |
-| `draft_action` | `opened`, `updated`, or `kept` when the program changed nothing |
+| `draft_state` | `draft` while the forge shows the draft as not ready for review, `open` once it shows it as ready, `closed` when a person closed it without merging, `merged` once it is merged |
+| `draft_action` | `opened`, `updated`, or `kept` when the program changed nothing; a draft that is `closed` or `merged` always has `kept` |
 | `commit_url` | a commit id from `QORY_SUBMIT_BASE_COMMIT` or `QORY_SUBMIT_COMMITS`, a space, and the forge's address of that commit |
 
 An address is an `https` address of at most 2048 characters, on the host in
@@ -65,33 +83,50 @@ qory checks no more of its form, so the same program contract serves a forge who
 addresses end in `/pull/<number>` and one whose addresses end in
 `/-/merge_requests/<number>`.
 
-qory records the draft only when all five `draft_` lines are there, once each, and valid.
-It records a `commit_url` line for each commit that it gave the program, once. A line
-that is not valid is left out, and the lines around it count. These lines are not valid:
+An address passes the pattern of `$defs.url` in `contracts/integration/v1/definitions.schema.json`,
+the one that the adapter's reply has: the scheme is `https` in lower case, and the
+address has no double quote, no `<`, `>`, `{`, `}`, `|`, `^`, backtick or backslash, no space and
+no character outside ASCII. `draft_title` has the rule of `$defs.draft_title` in the same
+file: UTF-8, no control character, no bidirectional control, no line or paragraph
+separator, no invisible format character, and at least one character that is not a space.
+
+Each line ends in a line feed, or in a carriage return and a line feed: qory strips one
+carriage return at the end of each line before it reads the line.
+
+qory records the draft only when all five `draft_` lines are there and valid, and
+`draft_action` is `kept` for a draft that is `closed` or `merged`. It records a
+`commit_url` line for each commit that it gave the program, once. qory leaves out each line
+that is not valid and reads the lines around it. These lines are not valid:
 
 - a key that the table does not list, or a key with no value;
 - a line with a control character, or a last line with no line feed;
-- a `draft_` key that is there already, or a commit that has an address already;
+- a second line with a `draft_` key, or a second line for a commit: the first line stays;
 - a `commit_url` for a commit that qory did not give the program;
-- a value that breaks its rule in the table.
+- a value that breaks its rule in the table;
+- a `draft_` line when `QORY_SUBMIT_DRAFT` is `none`;
+- each `draft_` line of a draft that lacks one of the five lines, or whose `draft_action` is
+  not `kept` while `draft_state` is `closed` or `merged`: qory records no draft, and lists
+  the lines that it left out.
 
 A blank line is left out and is not an error. Diagnostics go to standard error.
 
 ## Exit status
 
+qory records `program-failed` for a draft that it asked for and the lines do not make:
+`{reason: program-failed, exit: <status>}` in qory's record of the run, for the repository
+that the program ran for. It records nothing for `QORY_SUBMIT_DRAFT` `none`.
+
 | Exit | What qory records |
 |---|---|
-| 0 | the program finished: the draft and the addresses from the valid lines |
+| 0 | the program finished: the draft and the addresses from the valid lines; `program-failed` with `exit` 0 when the lines make no draft |
 | 1 | a call to the forge failed: the valid lines, and for a draft that they do not make, `program-failed` with `exit` 1 |
 | 2 | the program could not use its inputs: the valid lines, and `program-failed` with `exit` 2 for a draft that they do not make |
 | another status, or the program did not start | nothing from the lines; the draft is `program-failed` with `exit` 1 |
 
-A program that finishes with exit 0 and prints no draft lines for a repository whose
-`QORY_SUBMIT_DRAFT` is `open` or `update` leaves the draft as it was: `no-program`.
-
+`contracts.ReadSubmitRun` is the same rule in Go.
 ## What qory prints
 
-qory prints at most 20 lines of the program's standard error, each masked of secrets and
+qory prints at most 20 lines of the program's standard error, with secrets masked and
 prefixed `qory run: submit program: `. It does not print the result lines, so a
 repository of 100 commits does not take the 20 lines.
 
@@ -107,17 +142,22 @@ The page lists open orders.
 ```
 
 The program writes the draft's description as follows. It reads the draft's description
-from the forge first.
+from the forge first. A line is a marker line when it is the marker followed by nothing
+but spaces, tabs or a carriage return.
 
-1. For an `open`, the description is the block: the start marker, the text of
-   `QORY_SUBMIT_DESCRIPTION_FILE`, the end marker.
-2. For an `update`, if the description has a start marker line and, after it, an end
-   marker line, the program replaces the first such pair, and the lines between them,
-   with the new block, and keeps every other line. Spaces, tabs and a carriage return
-   after a marker count as part of the marker line; the ones after the end marker stay.
-3. For an `update`, if the description has no start marker followed by an end marker, as
-   when a person removed one, the program keeps the description whole and adds a blank
-   line and the new block at the end.
+1. For an `open` where no draft exists, the description is the block: the start marker
+   line, the text of `QORY_SUBMIT_DESCRIPTION_FILE`, the end marker line.
+2. For an `update`, the program takes the first end marker line that has a start marker
+   line before it, and the last start marker line before that end line. It replaces the
+   text from the start of the start line to the end marker with the new block, and keeps
+   every other byte, the spaces, tabs and carriage return after the end marker included.
+   A start marker line that a person left alone, with no end marker line after it,
+   stays; the block that qory wrote comes after it and is the pair the next update
+   replaces.
+3. For an `update`, if no such pair exists, as when a person removed a marker, the
+   program keeps the description whole and adds a blank line and the new block at the end.
+4. The new block uses the line ending of the description: CRLF when the first line ending
+   of the description is CRLF, otherwise LF.
 
 `contracts.MarkedDescription` is the same rule in Go, and `fixtures/description/` contains
 plain-text cases: for each case, the draft's description before (`existing.md`), the text
@@ -127,8 +167,11 @@ plain-text cases: for each case, the draft's description before (`existing.md`),
 
 On an `update`, the program changes the draft's title to `QORY_SUBMIT_TITLE` only while the
 title that the forge shows is the same as `QORY_SUBMIT_PREVIOUS_TITLE`. A title that a
-person edited stays. On an `open`, the draft has `QORY_SUBMIT_TITLE`. `contracts.NextTitle`
-is the same rule in Go.
+person edited stays. With `QORY_SUBMIT_PREVIOUS_TITLE` unset, the title stays. If the
+forge adds a text before the title of a draft that is not ready, the program
+compares the title without that text and keeps the text in the new title. On an `open`,
+the draft has `QORY_SUBMIT_TITLE`. `contracts.NextTitle` is the same rule in Go, with the
+forge's text as an argument.
 
 ## Examples
 
@@ -148,8 +191,12 @@ commit_url 9f8e7d6c5b4a39281706f5e4d3c2b1a09f8e7d6c https://code.example.com/acm
 
 A repository on a forge whose draft is a merge request prints
 [`fixtures/output/gitlab-like.txt`](fixtures/output/gitlab-like.txt), with `-/` in its
-addresses. The directory `fixtures/output/` also holds `invalid-` files, each with the
-line that qory leaves out, and the test checks the reason for each.
+addresses. A draft that a person closed or merged is in
+[`fixtures/output/closed-kept.txt`](fixtures/output/closed-kept.txt) and
+[`fixtures/output/merged-kept.txt`](fixtures/output/merged-kept.txt): `draft_state` is `closed`
+or `merged`, and `draft_action` is `kept`. The directory `fixtures/output/` also holds
+`invalid-` files, each with a line that qory leaves out, and the test checks the reason
+for each.
 
 ## Fixtures
 

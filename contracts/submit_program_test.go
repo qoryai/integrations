@@ -196,12 +196,12 @@ func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 		"invalid-draft-without-action.txt":  {0, "", 4, false},
 	} {
 		r := contracts.ParseSubmitLines(submitFile(t, "fixtures/output/"+file), hostCode, contracts.SubmitDraftOpen, given)
-		own := 0
+		broken := 0
 		if want.line > 0 {
-			own = 1
+			broken = 1
 		}
-		if len(r.Invalid) != own+want.others {
-			t.Errorf("%s: %d lines are left out %v, want %d", file, len(r.Invalid), r.Invalid, own+want.others)
+		if len(r.Invalid) != broken+want.others {
+			t.Errorf("%s: %d lines are left out %v, want %d", file, len(r.Invalid), r.Invalid, broken+want.others)
 		}
 		for _, e := range r.Invalid {
 			if e.Line == want.line {
@@ -368,7 +368,7 @@ func TestADraftLineFollowsTheInput(t *testing.T) {
 	if r.Draft != nil || len(r.Invalid) != 3 || !strings.Contains(r.Invalid[0].Reason, "draft_url, draft_title is missing") {
 		t.Errorf("a partial draft: %+v", r)
 	}
-	// Each of the five keys left out makes its own partial draft.
+	// Leaving out any one of the five keys makes a partial draft.
 	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
 	for i := 0; i < 5; i++ {
 		var without []string

@@ -154,7 +154,7 @@
       "additionalProperties": false,
       "required": ["system", "path", "branch", "base", "commit", "commits"],
       "properties": {
-        "system": {"description": "The host name of the repository's system, as definitions.schema.json, $defs.target, describes it.", "$ref": "definitions.schema.json#/$defs/target/properties/system"},
+        "system": {"description": "The host name of the repository's system, as definitions.schema.json, $defs.target, describes it. It has no port, so a forge on a port other than 443 is not expressible.", "$ref": "definitions.schema.json#/$defs/target/properties/system"},
         "path": {"description": "The path of the repository on its system, as definitions.schema.json, $defs.repository_path, describes it.", "$ref": "definitions.schema.json#/$defs/repository_path"},
         "branch": {"description": "The branch that the run pushed to, the same in each repository: qory/ and the work item's public id. The head of the draft.", "$ref": "definitions.schema.json#/$defs/branch_name"},
         "base": {
