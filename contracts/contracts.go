@@ -13,7 +13,9 @@
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
 // start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
 // and [ConnectionsDisconnect], the change feed [Changes] it reads back, the
-// [ChangesFailed] report of a comment it stopped trying to post, the secrets it stores in the
+// [ChangesFailed] report of a comment or of a submission target it stopped trying to
+// post, the [ChangesSubmitted] reply with which it reports what it put on the forge for a
+// submission entry of the feed, the secrets it stores in the
 // control plane, [AdapterSecrets], sealed to the server key, and reads
 // back sealed to its access key, [AdapterSecretsAnswer], the [Grant] it reports for a
 // connection, the [GrantEnd] it reports when the source no longer covers a grant, and
@@ -132,6 +134,13 @@
 // [NextSessionAnswer]. It also contains a run's end, outcome.schema.json, whose Go
 // type is [RunOutcome]: how the run ended, with the end codes, [EndCode], that qory sets
 // in its reason for a failed run. The schema lists each end code with its cause.
+//
+// The run contract also has the submit program contract, run/v1/submit-program/README.md:
+// the plain inputs and result lines of the program that qory runs on a run with no run
+// code, with the Go names of the inputs and keys, [SubmitEnvSystem] and the other
+// constants of submit_program.go, [ParseSubmitLines] that reads the result lines,
+// [MarkedDescription] that writes the draft's description between the marker lines, and
+// [NextTitle] that decides the draft's title.
 //
 // The explore contract contains one schema, inputs.schema.json, which defines the
 // inputs member of the run's documents, run/v1 documents.schema.json, for the step

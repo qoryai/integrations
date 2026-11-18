@@ -122,6 +122,43 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- The change feed has the entry kind `submission` (`changes.schema.json`): the control
+  plane writes one for each submission version that a run stores, in the feed of an
+  adapter whose `source` role has `targets: true`, so that the forge's adapter opens or
+  updates a draft (a pull request or a merge request) from it, in the same words for
+  every forge. It has `submission_id`, the item's `ref` when the work item came from an
+  item, `previous_title`, `text` (`title` and `description`) and `targets`, 1 to 20.
+  A target has `system`, `path`, `branch`, `base` (`commit` and `branch`), the head
+  `commit`, `commits`, 1 to 100, each with `commit` and `step`, and `draft`, `{action:
+  open}` or `{action: update, number}`, only after a session that passed. The run's text
+  sits in the draft's description between the lines `<!-- qory:start -->` and
+  `<!-- qory:end -->`: an update replaces only that block, and adds a new block at the
+  end when a person removed a marker. An update changes the draft's title only while it
+  equals `previous_title`, the title of the previous version. In
+  Go, `ChangeSubmission`, `SubmissionText`, `SubmissionTarget`, `SubmissionBase`,
+  `SubmissionCommit`, `DraftRequest`, and the `Change` members `SubmissionID`,
+  `PreviousTitle`, `Text` and `Targets` are added.
+- The adapter reports a submission entry with `POST /v1/work-items/changes/submitted`
+  (`changes-submitted.schema.json`): for each target, the address of each commit and of
+  the base, and `draft`, `{number, url, title, state, action}` or `{none: no-program}`.
+  A failure that trying again cannot fix goes to `POST /v1/work-items/changes/failed`,
+  which takes `comment_id`, or `submission_id` with `system` and `path`, and for a
+  submission the reason `not_permitted`, `unreachable`, `branch_gone` or `too_long`.
+  In Go, `ChangesSubmitted`, `SubmittedTarget`, `CommitAddress` and `SubmittedDraft`
+  are added, and `ChangesFailed` has `SubmissionID`, `System` and `Path`.
+- The submit program contract, `contracts/run/v1/submit-program/README.md`, is for the
+  program that `qory run` runs on a run with no run code, with the person's login of the
+  forge's command line. qory sets the environment variables `QORY_SUBMIT_SYSTEM`,
+  `QORY_SUBMIT_PATH`, `QORY_SUBMIT_BRANCH`, `QORY_SUBMIT_BASE_BRANCH`,
+  `QORY_SUBMIT_BASE_COMMIT`, `QORY_SUBMIT_COMMITS`, `QORY_SUBMIT_DRAFT`,
+  `QORY_SUBMIT_DRAFT_NUMBER`, `QORY_SUBMIT_TITLE`, `QORY_SUBMIT_PREVIOUS_TITLE` and
+  `QORY_SUBMIT_DESCRIPTION_FILE`, and closes standard input. The program prints lines of
+  the form `draft_number 34`, with the keys `draft_number`, `draft_url`, `draft_title`,
+  `draft_state` and `draft_action`, and `commit_url <commit> <address>`, so it needs no
+  JSON tool. qory records the valid lines after exit 0, 1 or 2, and prints at most 20
+  lines of standard error, each prefixed `qory run: submit program: `. The contract has
+  the rules of the marked block and of the title. In Go, `ParseSubmitLines`,
+  `MarkedDescription`, `NextTitle` and the constants of the names are added.
 - The run contract has a run's end, `outcome.schema.json`, titled Run end: `state`
   (`succeeded`, `failed` or `cancelled`), and optionally `reason` and `exit_code`, as
   Forager's `dev.qory.run.exited` has them. qory sets `reason` to one of the end codes
