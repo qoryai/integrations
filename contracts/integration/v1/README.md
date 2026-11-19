@@ -202,7 +202,10 @@ A submission is the work item's branch at its head commit, with the commits that
 made. When a run stores a submission version, the forge's adapter, an adapter whose
 `source` role has `submissions: true`, reads it from the change feed and puts it on
 the forge. The adapter runs no program. A `system` is a host name without a port, so a
-forge on a port other than 443 is not a target. The steps:
+forge on a port other than 443 is not a target. A target of a source collection, an item
+or a run is the `collection` ref of one of the adapter's collections and, optionally, an
+`address` with a `system` and a `path`. Each target of a `submission` entry has a `system`
+and a `path` and no `collection`. The steps:
 
 1. The control plane stores the submission version and writes a `submission` entry to
    the feed of the adapter of the run's target collection (`changes.schema.json`). The
@@ -257,8 +260,9 @@ forge on a port other than 443 is not a target. The steps:
    does not, 400. Each address, the `commit_url` of the base and of each listed commit and the
    `url` of the draft, is on the `system` of its target (its host, in lower case, equals
    the `system`), with no user information, port, query or fragment, and with a path that
-   is not empty or `/` alone, as in the submit program contract. The control plane
-   refuses a reply with another address, 400. The control plane stores the addresses and
+   is not empty or `/` alone, as in the submit program contract. The host check applies
+   only where a target has a `system`, and each target of a `submission` entry has one.
+   The control plane refuses a reply with another address, 400. The control plane stores the addresses and
    the draft.
 5. After a failure that trying again cannot fix, or when its retries end, the adapter
    sends `POST /v1/work-items/changes/failed` (`changes-failed.schema.json`) with

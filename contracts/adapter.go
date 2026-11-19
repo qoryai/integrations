@@ -186,8 +186,15 @@ type Collection struct {
 	Items          *bool   `json:"items,omitempty"`
 }
 
-// Target is where a change would go: a host name and a path on it.
+// Target is where a change would go: the Collection, the ref of one of the adapter's
+// collections, and its Address, nil when the place has none.
 type Target struct {
+	Collection string         `json:"collection"`
+	Address    *TargetAddress `json:"address,omitempty"`
+}
+
+// TargetAddress is the address of a place on a system: a host name and a path on it.
+type TargetAddress struct {
 	System string `json:"system"`
 	Path   string `json:"path"`
 }

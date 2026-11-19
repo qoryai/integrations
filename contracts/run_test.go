@@ -775,9 +775,9 @@ func mustDocument(t *testing.T, s string) any {
 // definition, and one value of [contracts.Documents] for each step against
 // documents.schema.json.
 func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
-	target := &contracts.Target{System: "code.example.com", Path: "acme/shop"}
+	target := &contracts.Target{Collection: "R_1001", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}
 	largestImage := int64(5368709120)
-	ads := &contracts.Target{System: "ads.example.com", Path: "accounts/1234"}
+	ads := &contracts.Target{Collection: "AP_1234"}
 	item := contracts.WorkItem{ID: "wi_1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
 	settings := &contracts.RunSettings{Runtime: "claude"}
 	hidden, shown := true, false
