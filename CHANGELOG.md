@@ -729,6 +729,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the
   machine log and revision 1 of the provisioner contract stay as they are.
+- The member `model_credential` of the next-session answer is
+  `model_provider_credential_name`, and `NextSessionAnswer.ModelCredential` in Go is
+  `NextSessionAnswer.ModelProviderCredentialName`. The member is the name of the model
+  provider credential that the session joins with. The run's first session and a later
+  session that sets no `model_provider_credential_name` use the default model provider
+  credential, `default_model_provider_credential_name` in Forager's run configuration.
+  `next-session-answer.schema.json` refuses `model_credential`, because the answer has
+  no other members. Change the control plane and the readers of the answer together.
+- The descriptions in `documents.schema.json` and `run.go` call the settings of a
+  machine's `qory.yaml` that the harness document of the run documents may not set
+  "machine harness settings": `runtime`, `model`, `effort`, `tiers`, `force`, `update`,
+  `home`, `links` and `launch`.
+- The invalid fixtures `documents-harness-machine-key-<name>.json` are
+  `documents-harness-machine-setting-<name>.json`,
+  `next-session-answer-model-credential-upper-case.json` is
+  `next-session-answer-model-provider-credential-name-upper-case.json`, and
+  `run-machine-key-upper-case.json` is `run-machine-type-upper-case.json`. The last one
+  stays invalid for the `key` of the machine type in `run.machine`.
 
 ### Removed
 
