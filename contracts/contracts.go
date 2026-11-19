@@ -125,7 +125,7 @@
 // redeems the run code for the run key and the run's documents.
 //
 // The run contract contains the run's documents, documents.schema.json: one object, whose
-// Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types.
+// Go type is [Documents], with [RunSettings] and [Subject] among its members' types.
 // The object is the documents member of Forager's run answer: the machine receives it,
 // signed, in the 201 of the run code's redemption, and Forager passes it on unread. It
 // is a document, not a request. The run contract also contains the next-session call of
@@ -145,9 +145,10 @@
 // [NextTitle] that decides the draft's title.
 //
 // The explore contract contains one schema, inputs.schema.json, which defines the
-// inputs member of the run's documents, run/v1 documents.schema.json, for the step
-// explore. The inputs are a document of a step, not a request, and the signature of
-// the run's documents covers them.
+// inputs member of the run's documents, run/v1 documents.schema.json, for a run of the
+// step workflow whose workflow reads these inputs, such as an Explore run. The inputs
+// are a document of a step, not a request, and the signature of the run's documents
+// covers them.
 //
 // The machines contract contains the protocol of a machine adapter, a program that makes
 // and deletes machines at one vendor, which the provisioner runs as `<adapter>
