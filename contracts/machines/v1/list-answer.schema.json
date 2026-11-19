@@ -2,9 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/machines/v1/list-answer.schema.json",
   "title": "List answer",
-  "description": "The answer of the command list, on standard output: the machines at the vendor that the adapter made for the request's node pool. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "description": "The answer of the command list, on standard output: the machines at the vendor that the adapter made for the request's node pool. The answer is at most 1 MiB. It has no version. The provisioner ignores a member that this schema does not define, unless the must_understand of the answer lists it.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "machines"
   ],
@@ -14,7 +13,6 @@
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "dispatch_id",
@@ -45,6 +43,18 @@
             "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/time"
           }
         }
+      }
+    },
+    "must_understand": {
+      "description": "The members of the document that the reader must understand, each as a JSON Pointer (RFC 6901) counted from the document, such as /machines. List each once, at most 32. A pointer has no line feed, and writes ~ only as ~0 or ~1. Each pointer is to a member that this schema defines. The provisioner ignores a member that this schema does not define, unless must_understand lists it. It refuses an answer whose must_understand lists a pointer that it does not define, as it refuses a document that this schema refuses.",
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 256,
+        "not": {"pattern": "\\n"},
+        "pattern": "^(?:/machines|/machines/(?:0|[1-9][0-9]*)|/machines/(?:0|[1-9][0-9]*)/dispatch_id|/machines/(?:0|[1-9][0-9]*)/id|/machines/(?:0|[1-9][0-9]*)/started|/machines/(?:0|[1-9][0-9]*)/state)$"
       }
     }
   }

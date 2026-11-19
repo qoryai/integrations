@@ -158,6 +158,17 @@ func understoodSchemas() []understood {
 		provisionerUnderstood("machine-log.schema.json", "machine-log/whole.json", "/log", version2),
 		provisionerUnderstood("refusal.schema.json", "refusal/no-gateway.json", "/error", func(m map[string]any) { m["error"] = json.Number("7") }),
 		provisionerUnderstood("release.schema.json", "release/no-capacity.json", "/reason", version2),
+		machinesUnderstood("check.schema.json", "check/check.json", "/version", version2),
+		machinesUnderstood("check-answer.schema.json", "check-answer/check-answer.json", "/offers", func(m map[string]any) { m["offers"] = []any{} }),
+		machinesUnderstood("delete.schema.json", "delete/delete.json", "/id", version2),
+		machinesUnderstood("delete-answer.schema.json", "delete-answer/gone.json", "/state", func(m map[string]any) { m["state"] = "running" }),
+		machinesUnderstood("error.schema.json", "error/defect.json", "/error", func(m map[string]any) { m["error"].(map[string]any)["kind"] = "fatal" }),
+		machinesUnderstood("list.schema.json", "list/list.json", "/pool", version2),
+		machinesUnderstood("list-answer.schema.json", "list-answer/list-answer.json", "/machines", func(m map[string]any) { m["machines"].([]any)[0].(map[string]any)["state"] = "gone" }),
+		machinesUnderstood("log.schema.json", "log/log.json", "/id", version2),
+		machinesUnderstood("log-answer.schema.json", "log-answer/log-answer.json", "/log", func(m map[string]any) { m["log"] = "a\x00b" }),
+		machinesUnderstood("make.schema.json", "make/make.json", "/dispatch_id", version2),
+		machinesUnderstood("make-answer.schema.json", "make-answer/make-answer.json", "/id", func(m map[string]any) { m["id"] = "" }),
 	)
 }
 
@@ -171,6 +182,21 @@ func provisionerUnderstood(name, valid, known string, invalid func(m map[string]
 		closed:  func() (*jsonschema.Schema, error) { return contracts.CompileProvisionerClosed(name) },
 		read:    contracts.ProvisionerDocument,
 		list:    func(t *testing.T) []string { return provisionerFiles(t, "fixtures/"+base) },
+		valid:   "fixtures/" + valid,
+		known:   known,
+		invalid: invalid,
+	}
+}
+
+// machinesUnderstood is the understood entry of a root schema of the machines contract.
+func machinesUnderstood(name, valid, known string, invalid func(m map[string]any)) understood {
+	base := strings.TrimSuffix(name, ".schema.json")
+	return understood{
+		name:    name,
+		open:    func() (*jsonschema.Schema, error) { return contracts.CompileMachines(name) },
+		closed:  func() (*jsonschema.Schema, error) { return contracts.CompileMachinesClosed(name) },
+		read:    contracts.MachinesDocument,
+		list:    func(t *testing.T) []string { return treeFiles(t, contracts.MachinesFS, "fixtures/"+base) },
 		valid:   "fixtures/" + valid,
 		known:   known,
 		invalid: invalid,
@@ -274,6 +300,17 @@ var closedSites = map[string][]string{
 	"provisioner/release.schema.json":      {""},
 	"provisioner/definitions.schema.json":  {"/$defs/machine_spec"},
 	"integration/refusal.schema.json":      {},
+	"machines/check.schema.json":           {""},
+	"machines/check-answer.schema.json":    {""},
+	"machines/delete.schema.json":          {""},
+	"machines/delete-answer.schema.json":   {""},
+	"machines/error.schema.json":           {"", "/properties/error"},
+	"machines/list.schema.json":            {""},
+	"machines/list-answer.schema.json":     {"", "/properties/machines/items"},
+	"machines/log.schema.json":             {""},
+	"machines/log-answer.schema.json":      {""},
+	"machines/make.schema.json":            {""},
+	"machines/make-answer.schema.json":     {""},
 }
 
 // contractTree is a contract of the repository whose schemas a closed copy can reach: the
@@ -363,6 +400,9 @@ func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 	}
 	for _, name := range []string{"claim", "claim-answer", "dispatched", "machine-end", "machine-log", "refusal", "release"} {
 		reachableFiles(t, contracts.ProvisionerBase+"/"+name+".schema.json", reached)
+	}
+	for _, name := range []string{"check", "check-answer", "delete", "delete-answer", "error", "list", "list-answer", "log", "log-answer", "make", "make-answer"} {
+		reachableFiles(t, contracts.MachinesBase+"/"+name+".schema.json", reached)
 	}
 	for _, name := range []string{"documents", "next-session-answer", "next-session-request", "outcome"} {
 		reachableFiles(t, contracts.RunBase+"/"+name+".schema.json", reached)
@@ -529,6 +569,17 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		{"machine-log.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.MachineLog{}},
 		{"refusal.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, nil},
 		{"release.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.Release{}},
+		{"check.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesCheck{}},
+		{"check-answer.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesCheckAnswer{}},
+		{"delete.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesDelete{}},
+		{"delete-answer.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesDeleteAnswer{}},
+		{"error.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesError{}},
+		{"list.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesList{}},
+		{"list-answer.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesListAnswer{}},
+		{"log.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesLog{}},
+		{"log-answer.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesLogAnswer{}},
+		{"make.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesMake{}},
+		{"make-answer.schema.json", contracts.MachinesBase, contracts.MachinesDocument, nil, contracts.MachinesMakeAnswer{}},
 		{"changes-submitted.schema.json", contracts.Base, contracts.Document, []string{"/data"}, contracts.ChangesSubmitted{}},
 		{"changes-failed.schema.json", contracts.Base, contracts.Document, nil, contracts.ChangesFailed{}},
 		{"adapter.schema.json", contracts.Base, contracts.Document, []string{"/description"}, contracts.Adapter{}},
@@ -888,6 +939,40 @@ func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
 			v = &contracts.NextSessionRequest{}
 		case strings.HasPrefix(name, "outcome-"):
 			v = &contracts.RunOutcome{}
+		}
+		if err := json.Unmarshal(b, v); err != nil {
+			t.Errorf("%s: %v", f, err)
+		}
+	}
+	for _, f := range treeFiles(t, contracts.MachinesFS, "fixtures/closed") {
+		b, err := fs.ReadFile(contracts.MachinesFS, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var v any
+		switch name := path.Base(f); {
+		case strings.HasPrefix(name, "check-answer-"):
+			v = &contracts.MachinesCheckAnswer{}
+		case strings.HasPrefix(name, "check-"):
+			v = &contracts.MachinesCheck{}
+		case strings.HasPrefix(name, "delete-answer-"):
+			v = &contracts.MachinesDeleteAnswer{}
+		case strings.HasPrefix(name, "delete-"):
+			v = &contracts.MachinesDelete{}
+		case strings.HasPrefix(name, "error-"):
+			v = &contracts.MachinesError{}
+		case strings.HasPrefix(name, "list-answer-"):
+			v = &contracts.MachinesListAnswer{}
+		case strings.HasPrefix(name, "list-"):
+			v = &contracts.MachinesList{}
+		case strings.HasPrefix(name, "log-answer-"):
+			v = &contracts.MachinesLogAnswer{}
+		case strings.HasPrefix(name, "log-"):
+			v = &contracts.MachinesLog{}
+		case strings.HasPrefix(name, "make-answer-"):
+			v = &contracts.MachinesMakeAnswer{}
+		case strings.HasPrefix(name, "make-"):
+			v = &contracts.MachinesMake{}
 		}
 		if err := json.Unmarshal(b, v); err != nil {
 			t.Errorf("%s: %v", f, err)

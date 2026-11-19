@@ -2,9 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/machines/v1/make.schema.json",
   "title": "Make",
-  "description": "The request of the command make. A machine adapter is a program that makes and deletes machines at one vendor, such as a cloud. The provisioner, the starter of the provisioner contract, https://qory.dev/contracts/provisioner/v1/, runs the adapter to make a machine for each dispatch, and to delete the machine once it stops. With make, the adapter makes one machine at the vendor for the dispatch in dispatch_id, in the node pool in pool, that fits machine_spec, and passes start_data to the machine. One dispatch_id makes at most one machine. A second make with the same dispatch_id makes no machine, and its answer is the id of the machine that the first make with that dispatch_id made. start_data contains a run code, so it travels only in this request on standard input, never in an argument, and the adapter never writes it to a log. The command line is `<adapter> make --settings FILE`, where FILE is the path of the adapter's settings, whose content each adapter defines. The adapter reads this request as one JSON document on standard input. On success it writes one JSON answer on standard output, make-answer.schema.json, and exits with status 0. On failure it writes error.schema.json on standard output and exits with status 1. The adapter refuses a request with another version, or with a member this schema does not define, as a failure of kind defect.",
+  "description": "The request of the command make. A machine adapter is a program that makes and deletes machines at one vendor, such as a cloud. The provisioner, the starter of the provisioner contract, https://qory.dev/contracts/provisioner/v1/, runs the adapter to make a machine for each dispatch, and to delete the machine once it stops. With make, the adapter makes one machine at the vendor for the dispatch in dispatch_id, in the node pool in pool, that fits machine_spec, and passes start_data to the machine. One dispatch_id makes at most one machine. A second make with the same dispatch_id makes no machine, and its answer is the id of the machine that the first make with that dispatch_id made. start_data contains a run code, so it travels only in this request on standard input, never in an argument, and the adapter never writes it to a log. The command line is `<adapter> make --settings FILE`, where FILE is the path of the adapter's settings, whose content each adapter defines. The adapter reads this request as one JSON document on standard input. On success it writes one JSON answer on standard output, make-answer.schema.json, and exits with status 0. On failure it writes error.schema.json on standard output and exits with status 1. The adapter refuses a request with another version as a failure of kind defect. It ignores a member that this schema does not define, unless the must_understand of the request lists it.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "version",
     "dispatch_id",
@@ -39,6 +38,18 @@
       },
       "then": {
         "pattern": "==$"
+      }
+    },
+    "must_understand": {
+      "description": "The members of the document that the reader must understand, each as a JSON Pointer (RFC 6901) counted from the document, such as /dispatch_id. List each once, at most 32. A pointer has no line feed, and writes ~ only as ~0 or ~1. Each pointer is to a member that this schema defines. The adapter ignores a member that this schema does not define, unless must_understand lists it. It refuses a request whose must_understand lists a pointer that it does not define, as a failure of kind defect.",
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 256,
+        "not": {"pattern": "\\n"},
+        "pattern": "^(?:/dispatch_id|/machine_spec|/machine_spec/arch|/machine_spec/disk_gib|/machine_spec/memory_mib|/machine_spec/vcpus|/machine_spec/virtualization|/pool|/start_data|/version)$"
       }
     }
   }

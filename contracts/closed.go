@@ -37,6 +37,13 @@ func CompileProvisionerClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(ProvisionerBase, ProvisionerFS, name)
 }
 
+// CompileMachinesClosed compiles the closed copy of any schema of the machines contract,
+// as [CompileClosed] does for the integration contract, and returns an error for any other
+// name.
+func CompileMachinesClosed(name string) (*jsonschema.Schema, error) {
+	return compileClosed(MachinesBase, MachinesFS, name)
+}
+
 // CloseSchema returns a copy of the schema doc, as [Document] reads it, that refuses a
 // member the schema does not define, and the JSON pointers of the places it closed, ""
 // for the root. It sets additionalProperties to false in each schema that lists properties
@@ -130,6 +137,18 @@ var closable = map[string]bool{
 	ProvisionerBase + "/machine-log.schema.json":  true,
 	ProvisionerBase + "/refusal.schema.json":      true,
 	ProvisionerBase + "/release.schema.json":      true,
+
+	MachinesBase + "/check.schema.json":         true,
+	MachinesBase + "/check-answer.schema.json":  true,
+	MachinesBase + "/delete.schema.json":        true,
+	MachinesBase + "/delete-answer.schema.json": true,
+	MachinesBase + "/error.schema.json":         true,
+	MachinesBase + "/list.schema.json":          true,
+	MachinesBase + "/list-answer.schema.json":   true,
+	MachinesBase + "/log.schema.json":           true,
+	MachinesBase + "/log-answer.schema.json":    true,
+	MachinesBase + "/make.schema.json":          true,
+	MachinesBase + "/make-answer.schema.json":   true,
 }
 
 // closingLoader reads the schemas of the contracts that this package embeds, closed as

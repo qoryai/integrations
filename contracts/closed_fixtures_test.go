@@ -103,6 +103,34 @@ var closedProvisionerFixtures = map[string]closedFixture{
 	"release-with-retry.json":                         {"release", "/ additionalProperties"},
 }
 
+// closedMachinesFixtures are the fixtures of machines/v1/fixtures/closed, by file name.
+var closedMachinesFixtures = map[string]closedFixture{
+	"check-undefined-member.json":               {"check", "/ additionalProperties"},
+	"check-answer-version.json":                 {"check-answer", "/ additionalProperties"},
+	"check-answer-undefined-member.json":        {"check-answer", "/ additionalProperties"},
+	"make-with-size.json":                       {"make", "/ additionalProperties"},
+	"make-key.json":                             {"make", "/ additionalProperties"},
+	"list-answer-machine-key.json":              {"list-answer", "/machines/0 additionalProperties"},
+	"make-undefined-member.json":                {"make", "/ additionalProperties"},
+	"make-answer-version.json":                  {"make-answer", "/ additionalProperties"},
+	"make-answer-undefined-member.json":         {"make-answer", "/ additionalProperties"},
+	"list-undefined-member.json":                {"list", "/ additionalProperties"},
+	"list-answer-version.json":                  {"list-answer", "/ additionalProperties"},
+	"list-answer-undefined-member.json":         {"list-answer", "/ additionalProperties"},
+	"list-answer-machine-undefined-member.json": {"list-answer", "/machines/0 additionalProperties"},
+	"log-undefined-member.json":                 {"log", "/ additionalProperties"},
+	"log-answer-version.json":                   {"log-answer", "/ additionalProperties"},
+	"log-answer-undefined-member.json":          {"log-answer", "/ additionalProperties"},
+	"delete-undefined-member.json":              {"delete", "/ additionalProperties"},
+	"delete-answer-version.json":                {"delete-answer", "/ additionalProperties"},
+	"delete-answer-undefined-member.json":       {"delete-answer", "/ additionalProperties"},
+	"error-version.json":                        {"error", "/ additionalProperties"},
+	"error-undefined-member.json":               {"error", "/ additionalProperties"},
+	"error-failure-undefined-member.json":       {"error", "/error additionalProperties"},
+	"make-machine-spec-undefined-member.json":   {"make", "/machine_spec additionalProperties"},
+	"check-answer-offers-undefined-member.json": {"check-answer", "/offers/0 additionalProperties"},
+}
+
 // checkClosedFixtures pins that the files under dir are exactly the keys of want, that each
 // validates against the open schema of its fixture, and that the closed copy refuses it at
 // the reason of its fixture.
@@ -162,6 +190,13 @@ func TestTheClosedDescriptionFixturesAreAcceptedAndRefusedByTheClosedCopy(t *tes
 func TestTheClosedProvisionerFixturesAreAcceptedAndRefusedByTheClosedCopy(t *testing.T) {
 	checkClosedFixtures(t, provisionerFiles(t, "fixtures/closed"), closedProvisionerFixtures,
 		contracts.ProvisionerDocument, contracts.CompileProvisioner, contracts.CompileProvisionerClosed)
+}
+
+// TestTheClosedMachinesFixturesAreAcceptedAndRefusedByTheClosedCopy checks
+// machines/v1/fixtures/closed.
+func TestTheClosedMachinesFixturesAreAcceptedAndRefusedByTheClosedCopy(t *testing.T) {
+	checkClosedFixtures(t, treeFiles(t, contracts.MachinesFS, "fixtures/closed"), closedMachinesFixtures,
+		contracts.MachinesDocument, contracts.CompileMachines, contracts.CompileMachinesClosed)
 }
 
 // TestTheClosedAdapterFixturesAreAcceptedAndRefusedByTheClosedCopy checks

@@ -44,6 +44,9 @@ const (
 // machines, or none, check fails with kind [FailureDefect].
 type MachinesCheck struct {
 	Version int `json:"version"`
+	// MustUnderstand lists the members of the request that the adapter must understand, as
+	// JSON Pointers counted from the request: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesCheckAnswer is the answer of check, check-answer.schema.json. Offers are the
@@ -55,6 +58,9 @@ type MachinesCheck struct {
 // [Claim].
 type MachinesCheckAnswer struct {
 	Offers []MachineSpec `json:"offers"`
+	// MustUnderstand lists the members of the answer that the provisioner must understand, as
+	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesMake is the request of `<adapter> make --settings FILE`, make.schema.json: the
@@ -80,6 +86,9 @@ type MachinesMake struct {
 	Pool        string      `json:"pool"`
 	MachineSpec MachineSpec `json:"machine_spec"`
 	StartData   string      `json:"start_data"`
+	// MustUnderstand lists the members of the request that the adapter must understand, as
+	// JSON Pointers counted from the request: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesMakeAnswer is the answer of make, make-answer.schema.json: the vendor's id of
@@ -89,6 +98,9 @@ type MachinesMake struct {
 type MachinesMakeAnswer struct {
 	ID          string `json:"id"`
 	MachineType string `json:"machine_type,omitempty"`
+	// MustUnderstand lists the members of the answer that the provisioner must understand, as
+	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesList is the request of `<adapter> list --settings FILE`, list.schema.json:
@@ -96,12 +108,18 @@ type MachinesMakeAnswer struct {
 type MachinesList struct {
 	Version int    `json:"version"`
 	Pool    string `json:"pool"`
+	// MustUnderstand lists the members of the request that the adapter must understand, as
+	// JSON Pointers counted from the request: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesListAnswer is the answer of list, list-answer.schema.json. A nil Machines is
 // written as the empty list.
 type MachinesListAnswer struct {
 	Machines []Machine `json:"machines"`
+	// MustUnderstand lists the members of the answer that the provisioner must understand, as
+	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MarshalJSON writes a, with a nil Machines as the empty list, which the schema
@@ -130,6 +148,9 @@ type Machine struct {
 type MachinesLog struct {
 	Version int    `json:"version"`
 	ID      string `json:"id"`
+	// MustUnderstand lists the members of the request that the adapter must understand, as
+	// JSON Pointers counted from the request: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesLogAnswer is the answer of log, log-answer.schema.json. Log is the machine's
@@ -138,6 +159,9 @@ type MachinesLog struct {
 // [MaxMachinesAnswer] bytes.
 type MachinesLogAnswer struct {
 	Log string `json:"log"`
+	// MustUnderstand lists the members of the answer that the provisioner must understand, as
+	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesDelete is the request of `<adapter> delete --settings FILE`,
@@ -147,12 +171,18 @@ type MachinesLogAnswer struct {
 type MachinesDelete struct {
 	Version int    `json:"version"`
 	ID      string `json:"id"`
+	// MustUnderstand lists the members of the request that the adapter must understand, as
+	// JSON Pointers counted from the request: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesDeleteAnswer is the answer of delete, delete-answer.schema.json. State is
 // [MachineDeleting] or [MachineGone].
 type MachinesDeleteAnswer struct {
 	State string `json:"state"`
+	// MustUnderstand lists the members of the answer that the provisioner must understand, as
+	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesError is what an adapter writes on standard output, error.schema.json, before
@@ -161,6 +191,9 @@ type MachinesDeleteAnswer struct {
 // other status.
 type MachinesError struct {
 	Error MachinesFailure `json:"error"`
+	// MustUnderstand lists the members of the error that the provisioner must understand, as
+	// JSON Pointers counted from the error: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachinesFailure is a [MachinesError]'s failure: its Kind, one of [FailureLimit],
