@@ -35,11 +35,11 @@ const MaxInputs = 768 << 10
 // If the machine's qory version does not meet that requirement, the run stops. It reads
 // none of the other machine harness settings of that file and none of its git and env
 // sections, so the harness file of the target does not set how the run starts. A run of
-// the step explore has WorkItem and RunSettings. A run of the step prebuild has Access, Target,
-// ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
-// no TargetVersion, WorkItem, RunSettings, TimeLimitMinutes, SharedRun, FullSuite,
-// Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun and FullSuite are set
-// only for the step explore. The documents are the documents of session 1: its
+// the step workflow has Subject and RunSettings, and runs the workflow named in Workflow. A
+// run of the step prebuild has Access, Target, ImageDestination and exactly one of
+// EnvironmentDestination and EnvironmentImage, and no TargetVersion, Subject,
+// RunSettings, TimeLimitMinutes, SharedRun, FullSuite, Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun and FullSuite are set
+// only for the step workflow. The documents are the documents of session 1: its
 // Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With SharedRun, each
 // later session comes from the answer to the next-session request, as
 // [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
@@ -82,22 +82,24 @@ type Documents struct {
 	// to another version later. The grammar is generic, because a target in another
 	// system has another kind of version: 1 to 255 letters, digits and the characters
 	// ._/-.
-	TargetVersion string       `json:"target_version,omitempty"`
-	WorkItem      *WorkItem    `json:"work_item,omitempty"`
-	RunSettings   *RunSettings `json:"run_settings,omitempty"`
+	TargetVersion string   `json:"target_version,omitempty"`
+	Subject       *Subject `json:"subject,omitempty"`
+	// Trigger is what started the run, in snake_case, such as take_in. It is optional.
+	Trigger     string       `json:"trigger,omitempty"`
+	RunSettings *RunSettings `json:"run_settings,omitempty"`
 	// TimeLimitMinutes is the time limit of session 1, in minutes, from 1 to 1440,
 	// and 0 when the control plane sets none. The machine sets it as that session's
 	// time limit. The limit of each later session is the TimeLimitMinutes of the
-	// [NextSessionAnswer]. It is set only for the step explore.
+	// [NextSessionAnswer]. It is set only for the step workflow.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
 	// SharedRun is true when qory sends the next-session request after each session
 	// and runs the session that the answer sets. False and absent in the JSON are the
 	// same: qory sends no request, and the run has session 1 only. It is set only for
-	// the step explore.
+	// the step workflow.
 	SharedRun bool `json:"shared_run,omitempty"`
 	// FullSuite is true when session 1 runs the full test suite after the agent ends.
 	// False and absent in the JSON are the same. The flag of each later session is the
-	// FullSuite of the [NextSessionAnswer]. It is set only for the step explore.
+	// FullSuite of the [NextSessionAnswer]. It is set only for the step workflow.
 	FullSuite bool `json:"full_suite,omitempty"`
 	// Workflow is set exactly when HarnessHidden is: the workflow of the harness that
 	// the run starts, such as hello. qory starts the first of these that the harness
@@ -452,18 +454,20 @@ func (p *HarnessPart) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// WorkItem is the work item a run is for, the run's work_item,
-// documents.schema.json.
-type WorkItem struct {
+// Subject is what a run is for, the run's subject, documents.schema.json. Kind is
+// snake_case, and work_item is its first value, a work item of the control plane, whose
+// ID starts with wi_. URL and Title are empty when the control plane has none.
+type Subject struct {
+	Kind  string `json:"kind"`
 	ID    string `json:"id"`
-	URL   string `json:"url"`
-	Title string `json:"title"`
+	URL   string `json:"url,omitempty"`
+	Title string `json:"title,omitempty"`
 }
 
 // RunSettings is the run's run_settings, documents.schema.json: the runtime and
 // model settings the job composes the agent's harness with, the settings of session 1.
 // Runtime is the runtime of session 1 and of each later session whose [ModelChoice] has
-// no Runtime. Each run of the step explore has RunSettings, and a run of the step
+// no Runtime. Each run of the step workflow has RunSettings, and a run of the step
 // prebuild has none. RunSettings contains no key or secret.
 // With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
 // uses the run's default model provider credential, a local model provider credential
