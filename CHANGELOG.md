@@ -285,7 +285,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   of every signed request: `429` `rate_limited`, the rate limit of the gateway's access
   key for the run endpoint is reached; `400` `bad_request`, an instance id that is
   absent or outside its pattern; and `400` `unsupported_contract_version`, a contract
-  version other than 1. Two come from the checks of the run: `404` `not_found`, an
+  version other than 1. The control plane's other `bad_request`, for a signing header
+  sent twice, is not signed, so the gateway returns `502` `control_plane_unavailable`
+  with `from` `gateway` for it. Two come from the checks of the run: `404` `not_found`, an
   unknown run or one that is not a shared run; and `409` `run_ended`, a run that ended
   or that a member cancelled. Four come from the checks of the request: `413`
   `payload_too_large`, a body over 4 KiB, which reaches qory only when the control
