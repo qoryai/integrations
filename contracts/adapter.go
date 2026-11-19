@@ -422,8 +422,9 @@ type SubmissionTarget struct {
 	Commit  string             `json:"commit"`
 	Commits []SubmissionCommit `json:"commits"`
 	// EarlierCommits is a pointer so that an absent member differs from 0, which the
-	// schema refuses.
-	EarlierCommits *int          `json:"earlier_commits,omitempty"`
+	// schema refuses. It is 1 to 9223372036854775807, and Commits has exactly 100 entries
+	// when it is set: the schema checks both.
+	EarlierCommits *int64        `json:"earlier_commits,omitempty"`
 	Draft          *DraftRequest `json:"draft,omitempty"`
 }
 

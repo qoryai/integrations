@@ -183,7 +183,7 @@
             }
           }
         },
-        "earlier_commits": {"description": "The number of commits of the run in this repository that are not listed, at least 1. They are older than the first entry of commits. Absent when commits lists each commit from the base to the head. The control plane sets it only when the run has more than 100 commits in the repository, and then commits has the newest 100. The schema does not check that commits has 100 entries. The adapter builds no address for the earlier commits. The control plane writes the number without a decimal point or exponent.", "type": "integer", "minimum": 1},
+        "earlier_commits": {"description": "The number of commits of the run in this repository that are not listed, at least 1. They are older than the first entry of commits. Absent when commits lists each commit from the base to the head. The control plane sets it only when the run has more than 100 commits in the repository, and then commits has the newest 100: with earlier_commits, commits has exactly 100 entries. The adapter builds no address for the earlier commits. It is 1 to 9223372036854775807, the largest 64-bit signed integer. The control plane writes it without a decimal point or exponent.", "type": "integer", "minimum": 1, "maximum": 9223372036854775807},
         "draft": {
           "description": "What to do with the draft of the repository. Absent after a session that did not pass, when the run wrote no text, and when the session escalated: the adapter then only builds the address of each listed commit.",
           "type": "object",
@@ -199,7 +199,10 @@
         }
       },
       "if": {"required": ["draft"]},
-      "then": {"properties": {"base": {"required": ["branch"]}}}
+      "then": {"properties": {"base": {"required": ["branch"]}}},
+      "allOf": [
+        {"if": {"required": ["earlier_commits"]}, "then": {"properties": {"commits": {"minItems": 100}}}}
+      ]
     }
   }
 }

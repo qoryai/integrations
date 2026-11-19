@@ -739,10 +739,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   repository that are older than the first entry of `commits` and are not listed. A run
   of more than 100 commits in a repository is accepted: `commits` lists the newest 100,
   oldest first, ending in `commit`, and `earlier_commits` is the number of the older
-  ones. `commits` still has at most 100 entries, and the member is absent when `commits`
-  lists each commit of the run. The reply in `changes-submitted.schema.json` has an item
-  for each listed commit and none for the earlier ones, so the adapter builds no address
-  for them.
+  ones. `commits` still has at most 100 entries, and exactly 100 with `earlier_commits`.
+  The member is absent when `commits` lists each commit of the run. The reply in
+  `changes-submitted.schema.json` has an item for each listed commit and none for the
+  earlier ones, so the adapter builds no address for them.
 
 ### Changed
 

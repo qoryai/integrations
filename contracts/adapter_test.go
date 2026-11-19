@@ -168,6 +168,8 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-submission-earlier-commits-0.json":            {"changes", "/changes/0/targets/0/earlier_commits minimum"},
 		"changes-submission-earlier-commits-negative.json":     {"changes", "/changes/0/targets/0/earlier_commits minimum"},
 		"changes-submission-earlier-commits-string.json":       {"changes", "/changes/0/targets/0/earlier_commits type"},
+		"changes-submission-earlier-commits-over-int64.json":   {"changes", "/changes/0/targets/0/earlier_commits maximum"},
+		"changes-submission-earlier-commits-99-commits.json":   {"changes", "/changes/0/targets/0/commits minItems"},
 		"changes-submission-description-20001.json":            {"changes", "/changes/0/text/description maxLength"},
 		"changes-submission-description-marker.json":           {"changes", "/changes/0/text/description "},
 		"changes-submission-draft-action-close.json":           {"changes", "/changes/0/targets/0/draft/action enum"},
@@ -431,7 +433,7 @@ func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
 func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	now := contracts.FormatTime(time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
 	interval := 600
-	earlier := 40
+	earlier := int64(9223372036854775807)
 	reason := "Fixed"
 	listing := contracts.Listing{ID: "items-1", Part: 1, StartedAt: now, Complete: true}
 	person := contracts.Person{Name: "Ada Example", Kind: "person"}
@@ -439,6 +441,11 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	noItems := false
 	const submission = "av_7k2m9q4v1x8z3c5d"
 	commitA, commitB := strings.Repeat("a", 40), strings.Repeat("b", 40)
+	newest := make([]contracts.SubmissionCommit, 100)
+	for i := range newest {
+		newest[i] = contracts.SubmissionCommit{Commit: fmt.Sprintf("%040x", i+1), Step: "deliverable:d-1"}
+	}
+	newest[99].Commit = commitB
 	values := []struct {
 		schema string
 		v      any
@@ -502,7 +509,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 					System: "code.example.com", Path: "acme/shop", Branch: "qory/wi_1",
 					Base:           contracts.SubmissionBase{Commit: commitA, Branch: "main"},
 					Commit:         commitB,
-					Commits:        []contracts.SubmissionCommit{{Commit: commitB, Step: "deliverable:d-1"}},
+					Commits:        newest,
 					EarlierCommits: &earlier,
 					Draft:          &contracts.DraftRequest{Action: contracts.DraftUpdate, Number: 34}}}},
 		}}},
