@@ -356,11 +356,11 @@ func definedAt(schema *jsonschema.Schema, where []string) []string {
 }
 
 // TestTheRunDocumentsExploreInputsValidate pins that the inputs of each run documents
-// fixture of the run contract whose step is workflow and whose subject is a work item
-// are accepted by explore/v1 inputs.schema.json, the shape that run/v1
-// documents.schema.json refers to for the inputs of an Explore run. It checks every valid fixture, and every invalid fixture that
-// has inputs and whose refusal by documents.schema.json has no reason at /inputs or
-// below it.
+// fixture of the run contract whose step is workflow and whose subject is a work item are
+// accepted by explore/v1 inputs.schema.json, the shape that run/v1 documents.schema.json
+// refers to for the inputs of an Explore run. It checks every valid fixture, and every
+// invalid fixture that has inputs and whose refusal by documents.schema.json has no reason
+// at /inputs or below it.
 func TestTheRunDocumentsExploreInputsValidate(t *testing.T) {
 	schema := compileExplore(t, "inputs.schema.json")
 	documents := compileRun(t, runSchema("documents"))
@@ -411,12 +411,12 @@ func refusedAtInputs(err error) bool {
 	return false
 }
 
-// TestTheRunTargetDomainAndWorkItemAreItsExploreInputs pins that each valid run
-// documents fixture of the run contract whose step is workflow and whose subject has the
-// kind work_item has the same
-// target in target and in inputs.target, or neither, the same domain in domain and in
-// inputs.domain, and the same work item id in subject.id and in inputs.work_item.id,
-// as explore/v1 inputs.schema.json describes how the control plane writes them.
+// TestTheRunTargetDomainAndWorkItemAreItsExploreInputs pins that each valid run documents
+// fixture of the run contract whose step is workflow and whose subject has the kind
+// work_item has the same target in target and in inputs.target, or neither, the same
+// domain in domain and in inputs.domain, and the same work item id in subject.id and in
+// inputs.work_item.id, as explore/v1 inputs.schema.json describes how the control plane
+// writes them.
 func TestTheRunTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
 	explore := 0
 	for _, f := range runFiles(t, "fixtures/documents") {

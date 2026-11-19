@@ -9,6 +9,7 @@
       "path": "acme/shop"
     }
   },
+  "target_version": "0123456789abcdef0123456789abcdef01234567",
   "subject": {
     "kind": "work_item",
     "id": "wi_8Kx2mQ4vT9",
@@ -18,6 +19,8 @@
   "run_settings": {
     "runtime": "claude"
   },
+  "workflow": "hello",
+  "harness_hidden": true,
   "environment_destination": "registry.example.com/environments/0123456789abcdef",
   "inputs": {
     "version": 1,

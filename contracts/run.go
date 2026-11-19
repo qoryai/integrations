@@ -17,31 +17,32 @@ const MaxInputs = 768 << 10
 // documents member of Forager's run answer, which the machine receives, signed, in the
 // 201 of the run code's redemption. Forager passes it on unread. Step, Domain and Inputs
 // are set for every run. Access is set exactly when Target is, and TargetVersion only
-// when Target is. Workflow is set exactly when HarnessHidden is, and a run with Workflow
-// has Harness, TargetVersion, or both. When the run composes a harness, the harness
-// comes from one of two places. If TargetVersion is set and the read of the harness file
-// of the target returned a file whose harness section extends a stack or defines one,
-// Harness is nil. For a target that is a repository, the machine composes that file at
-// TargetVersion, as described under [Documents.TargetVersion]. A harness section
-// extends a stack when it has extends, a base, and defines one when it has no extends
-// and lists at least one module. The run documents contain Harness in three cases:
-// TargetVersion is set and the read returned a file whose harness section is absent, or
-// has no extends and lists no module; TargetVersion is set and the read returned found:
-// false; or TargetVersion is empty, because the run has no target or the control plane
-// read no harness file of the target. When Harness is set, the machine composes
-// Harness instead of the harness section of the harness file of the target. Of that
-// file, the machine applies the qory version that the file requires, the worktree
-// section, and the tiers of the harness section, as described under [RunSettings.Tiers].
-// If the machine's qory version does not meet that requirement, the run stops. It reads
-// none of the other machine harness settings of that file and none of its git and env
-// sections, so the harness file of the target does not set how the run starts. A run of
-// the step workflow has Subject and RunSettings, and runs the workflow named in Workflow. A
-// run of the step prebuild has Access, Target, ImageDestination and exactly one of
-// EnvironmentDestination and EnvironmentImage, and no TargetVersion, Subject,
-// RunSettings, TimeLimitMinutes, SharedRun, FullSuite, Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun and FullSuite are set
-// only for the step workflow. The documents are the documents of session 1: its
-// Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With SharedRun, each
-// later session comes from the answer to the next-session request, as
+// when Target is. Workflow is set exactly when HarnessHidden is, and for every run of the
+// step workflow. A run with Workflow has Harness, TargetVersion, or both. When the run
+// composes a harness, the harness comes from one of two places. If TargetVersion is set
+// and the read of the harness file of the target returned a file whose harness section
+// extends a stack or defines one, Harness is nil. For a target that is a repository, the
+// machine composes that file at TargetVersion, as described under
+// [Documents.TargetVersion]. A harness section extends a stack when it has extends, a
+// base, and defines one when it has no extends and lists at least one module. The run
+// documents contain Harness in three cases: TargetVersion is set and the read returned a
+// file whose harness section is absent, or has no extends and lists no module;
+// TargetVersion is set and the read returned found: false; or TargetVersion is empty,
+// because the run has no target or the control plane read no harness file of the target.
+// When Harness is set, the machine composes Harness instead of the harness section of the
+// harness file of the target. Of that file, the machine applies the qory version that the
+// file requires, the worktree section, and the tiers of the harness section, as described
+// under [RunSettings.Tiers]. If the machine's qory version does not meet that
+// requirement, the run stops. It reads none of the other machine harness settings of that
+// file and none of its git and env sections, so the harness file of the target does not
+// set how the run starts. A run of the step workflow has Subject, RunSettings and
+// Workflow, and runs the workflow named in Workflow. A run of the step prebuild has
+// Access, Target, ImageDestination and exactly one of EnvironmentDestination and
+// EnvironmentImage, and no TargetVersion, Subject, RunSettings, TimeLimitMinutes,
+// SharedRun, FullSuite, Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun
+// and FullSuite are set only for the step workflow. The documents are the documents of
+// session 1: its Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With
+// SharedRun, each later session comes from the answer to the next-session request, as
 // [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
 // it, whose shape belongs to the step's schema.
 type Documents struct {
@@ -101,7 +102,8 @@ type Documents struct {
 	// False and absent in the JSON are the same. The flag of each later session is the
 	// FullSuite of the [NextSessionAnswer]. It is set only for the step workflow.
 	FullSuite bool `json:"full_suite,omitempty"`
-	// Workflow is set exactly when HarnessHidden is: the workflow of the harness that
+	// Workflow is set exactly when HarnessHidden is, and for every run of the step
+	// workflow: the workflow of the harness that
 	// the run starts, such as hello. qory starts the first of these that the harness
 	// has: the skill workflow-hello, the command workflow-hello, the skill hello, the
 	// command hello. At most 55 characters, so that workflow-<name> stays within 64.

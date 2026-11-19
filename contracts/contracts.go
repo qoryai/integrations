@@ -146,7 +146,7 @@
 //
 // The explore contract contains one schema, inputs.schema.json, which defines the
 // inputs member of the run's documents, run/v1 documents.schema.json, for the step
-// explore. The inputs are a document of a step, not a request, and the signature of
+// workflow. The inputs are a document of a step, not a request, and the signature of
 // the run's documents covers them.
 //
 // The machines contract contains the protocol of a machine adapter, a program that makes

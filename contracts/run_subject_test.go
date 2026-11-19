@@ -3,16 +3,19 @@ package contracts_test
 import (
 	"encoding/json"
 	"io/fs"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/qoryai/integrations/contracts"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 // TestAWorkflowRunHasASubjectAndATrigger pins that run documents of the step workflow
-// with a subject of kind work_item and the trigger take_in are accepted, that the step
-// explore and the member work_item are refused, and that the documents read into
-// [contracts.Documents] with the subject and the trigger.
+// with a subject of kind work_item and the trigger take_in are accepted, that the same
+// documents with the step explore are refused for the step alone, that the same
+// documents with the member work_item in place of subject are refused, and that the
+// documents read into [contracts.Documents] with the subject and the trigger.
 func TestAWorkflowRunHasASubjectAndATrigger(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	doc := fixture(t, "documents/explore.json")
@@ -36,13 +39,19 @@ func TestAWorkflowRunHasASubjectAndATrigger(t *testing.T) {
 	if d.Subject == nil || d.Subject.Kind != "work_item" || d.Trigger != "take_in" {
 		t.Errorf("documents/explore.json reads as subject %+v and trigger %q", d.Subject, d.Trigger)
 	}
-	doc["step"] = "explore"
-	if schema.Validate(doc) == nil {
-		t.Error("run documents of the step explore are accepted")
+	old := fixture(t, "documents/explore.json")
+	old["step"] = "explore"
+	delete(old, "run_settings")
+	delete(old, "workflow")
+	delete(old, "harness_hidden")
+	if err := schema.Validate(old); runRefusal(err) != "/step enum" {
+		t.Errorf("run documents of the step explore are refused for %q, want %q", runRefusal(err), "/step enum")
 	}
-	delete(doc, "run_settings")
-	if schema.Validate(doc) == nil {
-		t.Error("run documents of the step explore without run_settings are accepted")
+	old = fixture(t, "documents/explore.json")
+	old["work_item"] = old["subject"]
+	delete(old, "subject")
+	if err := schema.Validate(old); runRefusal(err) != "/ additionalProperties; / required subject" {
+		t.Errorf("run documents with work_item and no subject are refused for %q", runRefusal(err))
 	}
 	for member, value := range map[string]any{
 		"run_settings":       map[string]any{"runtime": "claude"},
@@ -84,9 +93,15 @@ func TestASubjectAndATriggerAreBoundedAtTheirEdges(t *testing.T) {
 		{"id of 201 characters, kind ticket", func(d map[string]any) { subject(d)["kind"], subject(d)["id"] = "ticket", strings.Repeat("a", 201) }, false},
 		{"id without the prefix wi_, kind ticket", func(d map[string]any) { subject(d)["kind"], subject(d)["id"] = "ticket", "TRK-1" }, true},
 		{"id without the prefix wi_, kind work_item", func(d map[string]any) { subject(d)["id"] = "TRK-1" }, false},
+		{"id with U+2028, kind ticket", func(d map[string]any) { subject(d)["kind"], subject(d)["id"] = "ticket", "TRK-1\u2028TRK-2" }, false},
+		{"id with U+2029, kind ticket", func(d map[string]any) { subject(d)["kind"], subject(d)["id"] = "ticket", "TRK-1\u2029TRK-2" }, false},
+		{"id with the control character U+0085, kind ticket", func(d map[string]any) { subject(d)["kind"], subject(d)["id"] = "ticket", "TRK-1\u0085TRK-2" }, false},
+		{"id with a control character U+0000, kind ticket", func(d map[string]any) { subject(d)["kind"], subject(d)["id"] = "ticket", "TRK-1\x00" }, false},
 		{"id with a line feed, kind ticket", func(d map[string]any) { subject(d)["kind"], subject(d)["id"] = "ticket", "TRK-1\nTRK-2" }, false},
 		{"title of 256 characters", func(d map[string]any) { subject(d)["title"] = strings.Repeat("a", 256) }, true},
 		{"title of 257 characters", func(d map[string]any) { subject(d)["title"] = strings.Repeat("a", 257) }, false},
+		{"empty title", func(d map[string]any) { subject(d)["title"] = "" }, false},
+		{"title of spaces only", func(d map[string]any) { subject(d)["title"] = "   " }, false},
 		{"no url and no title", func(d map[string]any) { delete(subject(d), "url"); delete(subject(d), "title") }, true},
 		{"no trigger", func(d map[string]any) { delete(d, "trigger") }, true},
 		{"trigger of 64 characters", func(d map[string]any) { d["trigger"] = strings.Repeat("a", 64) }, true},
@@ -105,4 +120,48 @@ func TestASubjectAndATriggerAreBoundedAtTheirEdges(t *testing.T) {
 func subject(d map[string]any) map[string]any {
 	s, _ := d["subject"].(map[string]any)
 	return s
+}
+
+// runRefusal returns the reasons of the refusal err, sorted and joined by "; ", and ""
+// when err is nil.
+func runRefusal(err error) string {
+	v, ok := err.(*jsonschema.ValidationError)
+	if !ok {
+		return ""
+	}
+	r := leaves(v)
+	slices.Sort(r)
+	return strings.Join(r, "; ")
+}
+
+// TestAWorkflowStepHasAWorkflow pins that run documents of the step workflow without
+// workflow are refused for that member alone, and that run documents of the step
+// prebuild have no workflow.
+func TestAWorkflowStepHasAWorkflow(t *testing.T) {
+	schema := compileRun(t, runSchema("documents"))
+	d := fixture(t, "documents/explore-workflow.json")
+	delete(d, "workflow")
+	delete(d, "harness_hidden")
+	if r := runRefusal(schema.Validate(d)); r != "/ required workflow" {
+		t.Errorf("run documents of the step workflow without workflow are refused for %q, want %q", r, "/ required workflow")
+	}
+	d = fixture(t, "documents/prebuild.json")
+	if err := schema.Validate(d); err != nil {
+		t.Errorf("documents/prebuild.json is refused: %v", err)
+	}
+	d["workflow"], d["harness_hidden"] = "hello", true
+	if schema.Validate(d) == nil {
+		t.Error("run documents of the step prebuild with workflow are accepted")
+	}
+}
+
+// TestATriggerIsAcceptedForAPrebuild pins that the trigger is not tied to the step: run
+// documents of the step prebuild with a trigger are accepted, as the contract says
+// nothing about a trigger for that step.
+func TestATriggerIsAcceptedForAPrebuild(t *testing.T) {
+	d := fixture(t, "documents/prebuild.json")
+	d["trigger"] = "take_in"
+	if err := compileRun(t, runSchema("documents")).Validate(d); err != nil {
+		t.Errorf("run documents of the step prebuild with a trigger are refused: %v", err)
+	}
 }

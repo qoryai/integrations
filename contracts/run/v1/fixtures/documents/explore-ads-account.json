@@ -5,6 +5,7 @@
   "target": {
     "collection": "AP_1234"
   },
+  "target_version": "0123456789abcdef0123456789abcdef01234567",
   "subject": {
     "kind": "work_item",
     "id": "wi_8Kx2mQ4vT9",
@@ -14,6 +15,8 @@
   "run_settings": {
     "runtime": "claude"
   },
+  "workflow": "hello",
+  "harness_hidden": true,
   "inputs": {
     "version": 1,
     "work_item": {

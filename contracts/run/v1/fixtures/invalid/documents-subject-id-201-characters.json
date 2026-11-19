@@ -9,6 +9,7 @@
       "path": "acme/shop"
     }
   },
+  "target_version": "0123456789abcdef0123456789abcdef01234567",
   "subject": {
     "kind": "ticket",
     "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -19,6 +20,8 @@
   "run_settings": {
     "runtime": "claude"
   },
+  "workflow": "hello",
+  "harness_hidden": true,
   "inputs": {
     "version": 1,
     "work_item": {

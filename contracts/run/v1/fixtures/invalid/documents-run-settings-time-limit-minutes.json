@@ -9,6 +9,7 @@
       "path": "acme/shop"
     }
   },
+  "target_version": "0123456789abcdef0123456789abcdef01234567",
   "subject": {
     "kind": "work_item",
     "id": "wi_8Kx2mQ4vT9",
@@ -19,6 +20,8 @@
     "runtime": "claude",
     "time_limit_minutes": 90
   },
+  "workflow": "hello",
+  "harness_hidden": true,
   "inputs": {
     "version": 1,
     "work_item": {

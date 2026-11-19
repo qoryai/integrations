@@ -11,6 +11,8 @@
   "run_settings": {
     "runtime": "claude"
   },
+  "workflow": "hello",
+  "harness_hidden": true,
   "inputs": {
     "version": 1,
     "work_item": {
