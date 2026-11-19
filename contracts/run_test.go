@@ -119,9 +119,9 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-undefined-member.json":                                    {"documents", "/ additionalProperties"},
 		"documents-inputs-no-version.json":                                   {"documents", "/inputs required version"},
 		"documents-prebuild-inputs-target.json":                              {"documents", "/inputs additionalProperties"},
-		"documents-prebuild-with-work-item.json":                             {"documents", "/ "},
+		"documents-prebuild-with-subject.json":                               {"documents", "/ "},
 		"documents-prebuild-with-workflow.json":                              {"documents", "/ dependentRequired/workflow; /workflow ; / required harness; / required target_version"},
-		"documents-explore-without-work-item.json":                           {"documents", "/ required work_item"},
+		"documents-workflow-without-subject.json":                            {"documents", "/ required subject"},
 		"documents-explore-without-run-settings.json":                        {"documents", "/ required run_settings"},
 		"documents-prebuild-inputs-version-2.json":                           {"documents", "/inputs/version const"},
 		"documents-prebuild-inputs-without-environment-ref.json":             {"documents", "/inputs required environment_ref"},
@@ -223,7 +223,8 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-prebuild-without-target.json":                             {"documents", "/ required access,target"},
 		"documents-domain-upper-case.json":                                   {"documents", "/domain pattern"},
 		"documents-workflow-without-harness-hidden.json":                     {"documents", "/ dependentRequired/workflow"},
-		"documents-harness-hidden-without-workflow.json":                     {"documents", "/ dependentRequired/harness_hidden"},
+		"documents-harness-hidden-without-workflow.json":                     {"documents", "/ dependentRequired/harness_hidden; / required workflow"},
+		"documents-workflow-step-without-workflow.json":                      {"documents", "/ required workflow"},
 		"documents-prebuild-with-harness-hidden.json":                        {"documents", "/ dependentRequired/harness_hidden; /harness_hidden "},
 		"documents-harness-hidden-string.json":                               {"documents", "/harness_hidden type"},
 		"documents-access-admin.json":                                        {"documents", "/access enum"},
@@ -294,7 +295,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-prebuild-with-harness.json":                               {"documents", "/harness "},
 		"documents-prebuild-with-target-version.json":                        {"documents", "/target_version "},
 		"documents-workflow-without-harness-or-target-version.json":          {"documents", "/ required harness; / required target_version"},
-		"documents-work-item-url-http.json":                                  {"documents", "/work_item/url pattern"},
+		"documents-subject-url-http.json":                                    {"documents", "/subject/url pattern"},
 		"documents-submit-undefined-member.json":                             {"documents", "/submit additionalProperties"},
 		"documents-submit-type-upper-case.json":                              {"documents", "/submit/type pattern"},
 		"documents-submit-type-underscore.json":                              {"documents", "/submit/type pattern"},
@@ -304,8 +305,24 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-submit-without-send.json":                                 {"documents", "/submit required send"},
 		"documents-submit-access-read.json":                                  {"documents", "/access const"},
 		"documents-submit-access-write-no-push.json":                         {"documents", "/access const"},
-		"documents-submit-without-workflow.json":                             {"documents", "/ dependentRequired/submit"},
+		"documents-submit-without-workflow.json":                             {"documents", "/ dependentRequired/submit; / required workflow"},
 		"documents-prebuild-with-submit.json":                                {"documents", "/ dependentRequired/submit; /submit ; /access const"},
+		"documents-step-explore.json":                                        {"documents", "/step const; /step enum"},
+		"documents-subject-without-kind.json":                                {"documents", "/subject required kind"},
+		"documents-subject-without-id.json":                                  {"documents", "/subject required id"},
+		"documents-subject-work-item-id-prefix.json":                         {"documents", "/subject/id pattern"},
+		"documents-subject-kind-camel-case.json":                             {"documents", "/subject/kind pattern"},
+		"documents-subject-kind-hyphen.json":                                 {"documents", "/subject/kind pattern"},
+		"documents-subject-kind-65-characters.json":                          {"documents", "/subject/kind maxLength"},
+		"documents-subject-id-empty.json":                                    {"documents", "/subject/id minLength; /subject/id pattern"},
+		"documents-subject-id-line-feed.json":                                {"documents", "/subject/id pattern"},
+		"documents-subject-id-201-characters.json":                           {"documents", "/subject/id maxLength"},
+		"documents-subject-title-line-feed.json":                             {"documents", "/subject/title pattern"},
+		"documents-subject-undefined-member.json":                            {"documents", "/subject additionalProperties"},
+		"documents-trigger-hyphen.json":                                      {"documents", "/trigger pattern"},
+		"documents-trigger-upper-case.json":                                  {"documents", "/trigger pattern"},
+		"documents-trigger-65-characters.json":                               {"documents", "/trigger maxLength"},
+		"documents-work-item-member.json":                                    {"documents", "/ additionalProperties; / required subject"},
 	}
 	got := runFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -563,8 +580,8 @@ func TestATargetVersionHasItsGrammar(t *testing.T) {
 // digits, and one or more path components of lower-case letters and digits joined by
 // a dot, one or two underscores, or hyphens, with no tag and no digest; that the host
 // contains a dot, has a port, or is localhost; that 255 characters are accepted and
-// 256 refused; that the documents of the step explore with image_destination are
-// refused for that member alone; and that the documents of a step other than explore
+// 256 refused; that the documents of the step workflow with image_destination are
+// refused for that member alone; and that the documents of a step other than workflow
 // and prebuild are refused for it by step.
 func TestAnImageDestinationIsAnOCIName(t *testing.T) {
 	schema := compileRun(t, runSchema("documents/image_destination"))
@@ -615,8 +632,8 @@ func TestAnImageDestinationIsAnOCIName(t *testing.T) {
 		t.Fatal(err)
 	}
 	documents, ok := doc.(map[string]any)
-	if !ok || documents["step"] != "explore" || documents["image_destination"] == nil {
-		t.Fatal("documents-explore-with-image-destination.json are not run documents of the step explore with image_destination")
+	if !ok || documents["step"] != "workflow" || documents["image_destination"] == nil {
+		t.Fatal("documents-explore-with-image-destination.json are not run documents of the step workflow with image_destination")
 	}
 	delete(documents, "image_destination")
 	if err := compileRun(t, runSchema("documents")).Validate(documents); err != nil {
@@ -629,13 +646,13 @@ func TestAnImageDestinationIsAnOCIName(t *testing.T) {
 	if !ok {
 		t.Fatal("the documents of the step review with image_destination are accepted")
 	}
-	if r := strings.Join(leaves(v), "; "); r != "/step const" {
-		t.Errorf("the documents of the step review with image_destination are refused for %q, want %q", r, "/step const")
+	if r := strings.Join(leaves(v), "; "); r != "/step enum; /step const" {
+		t.Errorf("the documents of the step review with image_destination are refused for %q, want %q", r, "/step enum; /step const")
 	}
 }
 
 // TestAPrebuildHasOneEnvironmentMember pins environment_destination and
-// environment_image of documents.schema.json: the documents of the step explore with
+// environment_image of documents.schema.json: the documents of the step workflow with
 // either are refused for that member alone; and the documents of the step prebuild
 // with both are accepted with either one left out.
 func TestAPrebuildHasOneEnvironmentMember(t *testing.T) {
@@ -649,8 +666,8 @@ func TestAPrebuildHasOneEnvironmentMember(t *testing.T) {
 			t.Fatal(err)
 		}
 		documents, ok := doc.(map[string]any)
-		if !ok || documents["step"] != "explore" || documents[c.member] == nil {
-			t.Errorf("%s are not run documents of the step explore with %s", c.fixture, c.member)
+		if !ok || documents["step"] != "workflow" || documents[c.member] == nil {
+			t.Errorf("%s are not run documents of the step workflow with %s", c.fixture, c.member)
 			continue
 		}
 		delete(documents, c.member)
@@ -779,7 +796,7 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	target := &contracts.Target{Collection: "R_1001", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}
 	largestImage := int64(5368709120)
 	ads := &contracts.Target{Collection: "AP_1234"}
-	item := contracts.WorkItem{ID: "wi_1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
+	item := contracts.Subject{Kind: "work_item", ID: "wi_1", URL: "https://control.example.com/work-items/wi_1", Title: "Checkout fails"}
 	settings := &contracts.RunSettings{Runtime: "claude"}
 	hidden, shown := true, false
 	const source = "https://code.example.com/team/harness"
@@ -824,7 +841,8 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	}{
 		{"documents/target", target},
 		{"documents/target", ads},
-		{"documents/work_item", item},
+		{"documents/subject", item},
+		{"documents/subject", contracts.Subject{Kind: "scheduled_job", ID: "nightly-report"}},
 		{"documents/run_settings", contracts.RunSettings{Runtime: "claude"}},
 		{"documents/run_settings", contracts.RunSettings{Runtime: "claude", Model: "example-large", Effort: "high",
 			ProviderModels: []contracts.ProviderModel{{ID: "example-large", Effort: []string{"low", "high"}}, {ID: "example-small"}},
@@ -843,37 +861,40 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 			ImageDestination:          "registry.example.com/targets/0123456789abcdef",
 			EnvironmentDestination:    "registry.example.com/environments/0123456789abcdef",
 			LargestPrebuiltImageBytes: &largestImage}},
-		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
-			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, RunSettings: settings}},
-		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
-			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, RunSettings: settings,
+		{"documents", contracts.Documents{Step: "workflow", Domain: "marketing",
+			Inputs: json.RawMessage(`{"version":1}`), Subject: &item, RunSettings: settings,
+			Workflow: "hello", HarnessHidden: &hidden, Harness: harness}},
+		{"documents", contracts.Documents{Step: "workflow", Domain: "marketing",
+			Inputs: json.RawMessage(`{"version":1}`), Subject: &item, RunSettings: settings,
+			Workflow: "hello", HarnessHidden: &hidden, Harness: harness,
 			TimeLimitMinutes: 1440, SharedRun: true, FullSuite: true}},
 		{"documents/harness", harness},
 		{"documents/harness", full},
 		{"documents/harness", bare},
 		{"documents/harness", defined},
 		{"documents/harness", definedBare},
-		{"documents", contracts.Documents{Step: "explore", Domain: "software",
+		{"documents", contracts.Documents{Step: "workflow", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: target,
-			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, RunSettings: settings, Workflow: "hello",
+			TargetVersion: "0123456789abcdef0123456789abcdef01234567", Subject: &item, RunSettings: settings, Workflow: "hello",
 			HarnessHidden: &hidden}},
-		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
-			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: ads, WorkItem: &item, RunSettings: settings,
+		{"documents", contracts.Documents{Step: "workflow", Domain: "marketing",
+			Inputs: json.RawMessage(`{"version":1}`), Access: "read", Target: ads, Subject: &item, RunSettings: settings,
 			Workflow: "hello", HarnessHidden: &shown, Harness: harness}},
-		{"documents", contracts.Documents{Step: "explore", Domain: "marketing",
-			Inputs: json.RawMessage(`{"version":1}`), WorkItem: &item, RunSettings: settings, Harness: full}},
+		{"documents", contracts.Documents{Step: "workflow", Domain: "marketing",
+			Inputs: json.RawMessage(`{"version":1}`), Subject: &item, RunSettings: settings,
+			Workflow: "hello", HarnessHidden: &hidden, Harness: full}},
 		{"documents/submit", step},
 		{"documents/submit", contracts.Submit{Type: "customer-facts", Send: "after_gate"}},
-		{"documents", contracts.Documents{Step: "explore", Domain: "software",
+		{"documents", contracts.Documents{Step: "workflow", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target,
-			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, RunSettings: settings, Workflow: "build",
+			TargetVersion: "0123456789abcdef0123456789abcdef01234567", Subject: &item, RunSettings: settings, Workflow: "build",
 			HarnessHidden: &shown, Submit: &step}},
-		{"documents", contracts.Documents{Step: "explore", Domain: "software",
-			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target, WorkItem: &item, RunSettings: settings,
+		{"documents", contracts.Documents{Step: "workflow", Domain: "software",
+			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target, Subject: &item, RunSettings: settings,
 			Workflow: "build", HarnessHidden: &shown, Harness: harness, Submit: &step}},
-		{"documents", contracts.Documents{Step: "explore", Domain: "software",
+		{"documents", contracts.Documents{Step: "workflow", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target,
-			TargetVersion: "0123456789abcdef0123456789abcdef01234567", WorkItem: &item, RunSettings: settings, Workflow: "build",
+			TargetVersion: "0123456789abcdef0123456789abcdef01234567", Subject: &item, RunSettings: settings, Workflow: "build",
 			HarnessHidden: &shown, Submit: &step}},
 	}
 	for _, c := range values {
@@ -958,25 +979,25 @@ func TestTheInputsPassThrough(t *testing.T) {
 	}
 }
 
-// TestAPrebuildIsRefusedForItsWorkItemAlone pins that the invalid run documents of the
-// step prebuild that have work_item, whose refusal contains no keyword, are refused for
-// work_item and for nothing else: the same documents without work_item are accepted.
-func TestAPrebuildIsRefusedForItsWorkItemAlone(t *testing.T) {
+// TestAPrebuildIsRefusedForItsSubjectAlone pins that the invalid run documents of the
+// step prebuild that have subject, whose refusal contains no keyword, are refused for
+// subject and for nothing else: the same documents without subject are accepted.
+func TestAPrebuildIsRefusedForItsSubjectAlone(t *testing.T) {
 	for _, c := range []struct{ fixture, schema string }{
-		{"documents-prebuild-with-work-item.json", "documents"},
+		{"documents-prebuild-with-subject.json", "documents"},
 	} {
 		doc, err := contracts.RunDocument(path.Join("fixtures/invalid", c.fixture))
 		if err != nil {
 			t.Fatal(err)
 		}
 		answer, ok := doc.(map[string]any)
-		if !ok || answer["step"] != "prebuild" || answer["work_item"] == nil {
-			t.Errorf("%s are not run documents of the step prebuild with work_item", c.fixture)
+		if !ok || answer["step"] != "prebuild" || answer["subject"] == nil {
+			t.Errorf("%s are not run documents of the step prebuild with subject", c.fixture)
 			continue
 		}
-		delete(answer, "work_item")
+		delete(answer, "subject")
 		if err := compileRun(t, runSchema(c.schema)).Validate(answer); err != nil {
-			t.Errorf("%s without work_item is refused: %v", c.fixture, err)
+			t.Errorf("%s without subject is refused: %v", c.fixture, err)
 		}
 	}
 }
@@ -1021,7 +1042,7 @@ func TestAPrebuildsInputsAreRefusedForTheirEnvironmentRefAlone(t *testing.T) {
 
 // TestRunSettingsAreRefusedForRunSettingsAlone pins that each invalid fixture whose
 // name starts with documents-run-settings- is refused for run_settings and for
-// nothing else: an explore run with run_settings replaced by only a runtime, and a
+// nothing else: a workflow run with run_settings replaced by only a runtime, and a
 // prebuild run without run_settings, are accepted.
 func TestRunSettingsAreRefusedForRunSettingsAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
@@ -1040,7 +1061,7 @@ func TestRunSettingsAreRefusedForRunSettingsAlone(t *testing.T) {
 			t.Errorf("%s are not run documents with run_settings", f)
 			continue
 		}
-		if answer["step"] == "explore" {
+		if answer["step"] == "workflow" {
 			answer["run_settings"] = map[string]any{"runtime": "claude"}
 		} else {
 			delete(answer, "run_settings")
@@ -1093,7 +1114,7 @@ func TestProviderModelsHaveAtMost256Entries(t *testing.T) {
 	}
 }
 
-// TestTheRunDocumentsReadIntoTheirGoTypes pins that the target, work_item,
+// TestTheRunDocumentsReadIntoTheirGoTypes pins that the target, subject,
 // run_settings, harness and submit of each run documents fixture read into
 // their Go types and are written back as the fixture's bytes, compacted, that a fixture
 // without target has no access and no target_version either, that a fixture with workflow
@@ -1139,7 +1160,7 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 		}
 		for name, v := range map[string]any{
 			"target":       &contracts.Target{},
-			"work_item":    &contracts.WorkItem{},
+			"subject":      &contracts.Subject{},
 			"run_settings": &contracts.RunSettings{},
 			"harness":      &contracts.HarnessDocument{},
 			"submit":       &contracts.Submit{},
@@ -1166,7 +1187,7 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 		}
 	}
 	if n == 0 {
-		t.Error("fixtures/documents has no target, work_item, run_settings or harness")
+		t.Error("fixtures/documents has no target, subject, run_settings or harness")
 	}
 	if harnesses == 0 {
 		t.Error("fixtures/documents has no harness")
