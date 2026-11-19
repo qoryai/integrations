@@ -85,7 +85,8 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-answer-session-without-workflow.json":                  func(m map[string]any) { m["workflow"] = "review-changes" },
 		"next-session-answer-session-without-inputs.json":                    func(m map[string]any) { m["inputs"] = session["inputs"] },
 		"next-session-answer-session-0.json":                                 func(m map[string]any) { m["session"] = json.Number("2") },
-		"next-session-answer-time-limit-minutes-14.json":                     func(m map[string]any) { m["time_limit_minutes"] = json.Number("15") },
+		"next-session-answer-time-limit-minutes-0.json":                      func(m map[string]any) { m["time_limit_minutes"] = json.Number("1") },
+		"next-session-answer-time-limit-minutes-string.json":                 func(m map[string]any) { m["time_limit_minutes"] = json.Number("30") },
 		"next-session-answer-time-limit-minutes-1441.json":                   func(m map[string]any) { m["time_limit_minutes"] = json.Number("1440") },
 		"next-session-answer-model-provider-credential-name-upper-case.json": func(m map[string]any) { m["model_provider_credential_name"] = "example-provider-1" },
 		"next-session-answer-model-credential.json": func(m map[string]any) {
@@ -294,7 +295,8 @@ func TestTheNextSessionStateAndReasonRules(t *testing.T) {
 // TestTheDocumentsMembersOfTheSessions pins that the run documents of the step explore
 // contain time_limit_minutes, shared_run and full_suite and read them into
 // [contracts.Documents], that false for shared_run and full_suite is accepted and
-// reads as the member left out, and that time_limit_minutes accepts 15 and 1440.
+// reads as the member left out, and that time_limit_minutes accepts 1, 14, 15 and 1440
+// and refuses 0, 1.5 and 1441, in the run documents and in the next-session answer.
 func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	var d contracts.Documents
@@ -308,11 +310,18 @@ func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 	if d.TimeLimitMinutes != 15 || !d.SharedRun || !d.FullSuite {
 		t.Errorf("explore-shared-run.json reads as time_limit_minutes %d, shared_run %v, full_suite %v", d.TimeLimitMinutes, d.SharedRun, d.FullSuite)
 	}
-	for _, limit := range []json.Number{"15", "1440"} {
+	answer := compileRun(t, runSchema("next-session-answer"))
+	for _, limit := range []json.Number{"1", "14", "15", "1440", "0", "1441", "1.5"} {
+		valid := limit != "0" && limit != "1441" && limit != "1.5"
 		doc := fixture(t, "documents/explore-shared-run.json")
 		doc["time_limit_minutes"] = limit
-		if err := schema.Validate(doc); err != nil {
-			t.Errorf("time_limit_minutes %s is refused: %v", limit, err)
+		if err := schema.Validate(doc); (err == nil) != valid {
+			t.Errorf("the documents with time_limit_minutes %s: accepted %v, want %v: %v", limit, err == nil, valid, err)
+		}
+		next := fixture(t, "next-session-answer/session.json")
+		next["time_limit_minutes"] = limit
+		if err := answer.Validate(next); (err == nil) != valid {
+			t.Errorf("the answer with time_limit_minutes %s: accepted %v, want %v: %v", limit, err == nil, valid, err)
 		}
 	}
 	doc := fixture(t, "documents/explore-shared-run.json")
