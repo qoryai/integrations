@@ -317,6 +317,34 @@ func TestAnAddressHasTheRuleOfTheSchema(t *testing.T) {
 	}
 }
 
+// TestAnEmptySystemSkipsOnlyTheHostCheck pins that for a target with no system, as a
+// target with a collection and no address, an address on any host is accepted, and every
+// other rule of an address stays: with a system, the same address on another host is
+// refused.
+func TestAnEmptySystemSkipsOnlyTheHostCheck(t *testing.T) {
+	for _, c := range []struct {
+		name, addr string
+		system     string
+		ok         bool
+	}{
+		{"another host, no system", "https://other.example.com/acme/shop/pull/34", "", true},
+		{"another host, a system", "https://other.example.com/acme/shop/pull/34", hostCode, false},
+		{"the host, no system", "https://code.example.com/acme/shop/pull/34", "", true},
+		{"http, no system", "http://other.example.com/acme/shop/pull/34", "", false},
+		{"port, no system", "https://other.example.com:8443/acme/shop/pull/34", "", false},
+		{"query, no system", "https://other.example.com/acme/shop/pull/34?tab=files", "", false},
+		{"fragment, no system", "https://other.example.com/acme/shop/pull/34#files", "", false},
+		{"no path, no system", "https://other.example.com", "", false},
+		{"user information, no system", "https://user@other.example.com/acme/shop/pull/34", "", false},
+	} {
+		line := contracts.SubmitKeyCommitURL + " " + commitMade + " " + c.addr + "\n"
+		r := contracts.ParseSubmitLines(line, c.system, contracts.DraftOpen, given)
+		if recorded := len(r.CommitURLs) == 1; recorded != c.ok {
+			t.Errorf("%s: %+v, want accepted %v", c.name, r, c.ok)
+		}
+	}
+}
+
 // TestATitleHasTheRuleOfTheSchema pins that a result line's title has the rule of
 // definitions.schema.json, $defs.draft_title, the same as the title of the adapter's
 // reply: 1 to 256 characters of UTF-8, with no control, bidirectional or invisible

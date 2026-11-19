@@ -100,6 +100,9 @@ line.
 
 An address is an `https` address of at most 2048 characters, on the host in
 `QORY_SUBMIT_SYSTEM`, with no user information, port, query or fragment, and with a path.
+qory checks the host only where the target has a `system`. A target with a collection and
+no address has no `system`, so an address on any host passes, and every other rule of an
+address stays.
 qory checks no more of its form, so the same program contract serves a forge whose
 addresses end in `/pull/<number>` and one whose addresses end in
 `/-/merge_requests/<number>`.
