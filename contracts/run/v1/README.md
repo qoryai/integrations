@@ -14,31 +14,36 @@ against.
 
 ## Members a reader does not define
 
-A reader ignores a member of the run documents, or of the next-session answer, that the
-schema does not define. That holds for the members at the top level of each document and
-for the members of the `subject`.
+A reader ignores a member that the schema of the run documents or of the next-session
+answer does not define, at any depth. This holds at the top level, and in `subject`,
+`run_settings`, `submit`, `harness`, `model_choice` and each other object inside them.
 
-- `must_understand` lists top-level members that the reader must understand, each name
-  once. A reader refuses a document whose `must_understand` lists a member that the
-  reader does not define.
+- `must_understand` lists the members that the reader must understand. Each is a JSON
+  Pointer ([RFC 6901](https://www.rfc-editor.org/rfc/rfc6901)) counted from the document,
+  such as `/run_settings/full_suite` or `/subject/kind`. Write a pointer once.
+- A reader refuses a document whose `must_understand` lists a pointer to a member that
+  it does not define. The schema accepts a pointer to a member that the schema defines.
+- Another schema defines the members below `inputs` and below
+  `harness.harness.extensions`. The schema accepts any pointer there.
 - A reader refuses a bad value of a member that it defines.
-- The other objects stay closed, such as `run_settings`, `submit` and `harness`. A reader
-  refuses a member that the schema does not define there.
 
 Examples:
 
 - A run document has a top-level member that an older qory does not define. The older
   qory ignores the member and runs as before.
-- A run document has a member on the `subject` that an older machine does not define.
-  The older machine ignores it.
-- The same top-level member is listed in `must_understand`. The older qory refuses the
-  run documents, and the run ends with `run_documents_invalid`.
+- A run document has `/subject/language`, a member of the `subject` that an older machine
+  does not define. The older machine ignores it.
+- The run document lists `/subject/language` in `must_understand`. The older qory refuses
+  the run documents, and the run ends with `run_documents_invalid`.
 
 A control plane's tests check its documents against a closed copy of the schema. The
 closed copy refuses a member that the schema does not define, so a misspelled member
-fails the test. `contracts.CompileRunClosed` returns the closed copy.
+fails the test. It covers each object of `documents.schema.json` and of the integration
+contract that it reaches by reference. `contracts.CompileRunClosed` returns the closed
+copy.
+
 `contracts.CheckMustUnderstand` applies the rule to a document that a reader decodes into
-a Go type.
+a Go type. It resolves each pointer through the `json` tags of the type.
 
 ## Next-session refusals
 

@@ -18,30 +18,37 @@ addition keeps `version` 1; a change that breaks a reader is `version` 2.
 
 ## Members a reader does not define
 
-A reader ignores a member of a description that `description.schema.json` does not define.
-That holds for the top-level members and for the members of the `source` role.
+A reader ignores a member that the schema of a document does not define, at any depth.
+This holds for a description, for the answer of the change feed, and for each entry of the
+feed. A writer may add a member, and an older reader reads the rest.
 
-- `must_understand` lists top-level members that the reader must understand, each name
-  once. A reader refuses a description whose `must_understand` lists a member that the
-  reader does not define.
+- `must_understand` lists the members that the reader must understand. Each is a JSON
+  Pointer ([RFC 6901](https://www.rfc-editor.org/rfc/rfc6901)) counted from the object
+  that has the list, such as `/roles/source/program` in a description. Write a pointer
+  once.
+- A reader refuses a document whose `must_understand` lists a pointer to a member that
+  it does not define. The schema accepts a pointer to a member that the schema defines.
 - A reader refuses a bad value of a member that it defines.
-- The other objects of a description stay closed: the settings schema, and the
-  `credential` and `model_provider` roles. A reader refuses a member that the schema does
-  not define there.
+- The description's `settings` is the integration's settings schema. The contract
+  neither opens nor closes it, and the schema accepts any pointer below it.
+- The `auth` and the `format` of an API follow the Forager contract.
 
-Example: a program prints a description with a top-level member that an older control
-plane does not define. The older control plane ignores the member and reads the rest.
-When the program lists the member in `must_understand`, the older control plane refuses
-the description.
+Example: a program prints a description with the member `/roles/source/extra`, which an
+older control plane does not define. The older control plane ignores the member and reads
+the rest. The program lists `/roles/source/extra` in `must_understand`. The older control
+plane then refuses the description.
 
 A program's test checks its description against a closed copy of the schema. The closed
 copy refuses a member that the schema does not define, so a misspelled member fails the
-test. `conformance.Description` does this, and `contracts.CompileClosed` returns the
-closed copy.
+test. It covers each object of the integration and run contracts that the schema reaches
+by reference. A schema that several documents share, such as `definitions.schema.json`,
+stays open for a reader and is closed in the copy.
 
-The closed copy does not follow a reference to another schema. `adapter.schema.json`
-embeds the description, so a test of an adapter's start-up document does not check the
-members of that description. Check the description with `conformance.Description`.
+`conformance.Description` validates against the closed copy. `contracts.CompileClosed`
+returns the closed copy of `description.schema.json`, `adapter.schema.json`,
+`changes.schema.json`, `changes-submitted.schema.json` or `changes-failed.schema.json`.
+`adapter.schema.json` embeds the description, so its closed copy checks that description
+too.
 
 ## Describe
 
@@ -63,7 +70,7 @@ from it.
 | `program_version` | the program's version, a string, such as `0.1.0` |
 | `settings` | a JSON Schema, draft 2020-12, of type `object`: the settings document the program takes |
 | `roles` | the roles the program plays, an object keyed by the role's name; at least one |
-| `must_understand` | the names of the members above that the reader must understand, as [Members a reader does not define](#members-a-reader-does-not-define) describes; may be absent |
+| `must_understand` | the JSON Pointers of the members above, and of the members below them, that the reader must understand, as [Members a reader does not define](#members-a-reader-does-not-define) describes; may be absent |
 
 ```json
 {"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
@@ -220,9 +227,26 @@ that defines it. The control plane sends an adapter only the kinds and members o
 revision in its `X-Qory-Contract-Version`. An adapter skips and acknowledges an entry of
 a kind that its revision does not define. It applies nothing of the entry and moves its
 cursor past it. Example: an adapter at an older revision skips and acknowledges an entry
-of a kind that a higher revision defines, and reads the next entry. The feed has no
-`must_understand`. An entry of a defined kind stays closed, so an adapter refuses an
-unknown member of such an entry.
+of a kind that a higher revision defines, and reads the next entry. An adapter ignores a member of the answer, and of an entry of a defined kind, that its
+revision does not define. The answer and each entry may have a `must_understand`, as
+[Members a reader does not define](#members-a-reader-does-not-define) describes. Each
+pointer of an entry is counted from the entry, such as `/target/collection`.
+
+- An adapter that cannot meet an entry's `must_understand` skips and acknowledges the
+  entry. It applies nothing of it and moves its cursor past it, as for a kind that it
+  does not define.
+- A `change_request` entry is the exception. The adapter sends
+  `POST /v1/work-items/changes/failed` with reason `refused`. The `detail` starts with the
+  fix: "Use an adapter that defines /data/draft. The entry lists it in must_understand, and
+  this adapter does not define it." The adapter then stops working on the entry.
+- The artifact type of the `change_kind` defines `data`, so this contract does not. The
+  schema accepts any pointer below `data`. The adapter checks it against the artifact
+  type, and reports the entry failed as above when the artifact type does not define it.
+- The replies `changes-submitted.schema.json` and `changes-failed.schema.json` stay closed
+  at their root. The control plane serves only the revisions that it implements. An
+  adapter never writes a reply with a member that the control plane's revision lacks.
+- The `target` and the `address` in a reply are shared with the entries. They ignore an
+  undefined member.
 
 The control plane writes a `watch` entry, with `work_item_id` and `url`, whenever a run
 stores a change request version, and a `change_request` entry for each target of that
@@ -312,7 +336,7 @@ steps:
 | `unreachable` | each request to the target timed out, failed to connect, or returned a busy status or a 5xx status, until the adapter's retries ended |
 | `target_gone` | the target returned that the place the change goes to does not exist, as after it was deleted |
 | `too_long` | the title or the text is longer than the target's limit |
-| `refused` | the target refused a request with a status that no other reason covers, so the same request fails again, or the adapter cannot apply the entry, as for a `change_kind` that it did not list. The adapter writes the status and message in `detail`, with the fix first |
+| `refused` | the target refused a request with a status that no other reason covers, so the same request fails again, or the adapter cannot apply the entry, as for a `change_kind` that it did not list, or for a `must_understand` pointer that it does not define. The adapter writes the status and message in `detail`, with the fix first |
 
 The integer rule does not apply inside the `data` of an entry and of a reply. A number
 there has a fraction or an exponent when the artifact type of the kind allows it: a bid of
