@@ -19,7 +19,7 @@ addition keeps `version` 1; a change that breaks a reader is `version` 2.
 ## Members a reader does not define
 
 A reader ignores a member that the schema of a document does not define, at any depth.
-This holds for a description, for the answer of the change feed, and for each entry of the
+The rule covers a description, the answer of the change feed, and each entry of the
 feed. A writer may add a member, and an older reader reads the rest.
 
 - `must_understand` lists the members that the reader must understand. Each is a JSON
@@ -229,8 +229,9 @@ revision in its `X-Qory-Contract-Version`. An adapter skips and acknowledges an 
 a kind that its revision does not define. It applies nothing of the entry and moves its
 cursor past it. Example: an adapter at an older revision skips and acknowledges an entry
 of a kind that a higher revision defines, and reads the next entry. An adapter ignores a member of the answer, and of an entry of a defined kind, that its
-revision does not define. The answer and each entry may have a `must_understand`, as
-[Members a reader does not define](#members-a-reader-does-not-define) describes. Each
+revision does not define. The answer has no `must_understand`, so a member of the answer
+never stops the adapter from reading its entries. Each entry may have a `must_understand`,
+as [Members a reader does not define](#members-a-reader-does-not-define) describes. Each
 pointer of an entry is counted from the entry, such as `/target/collection`.
 
 - An adapter that cannot meet an entry's `must_understand` skips and acknowledges the

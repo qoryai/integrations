@@ -342,9 +342,6 @@ type Changes struct {
 	Revision int      `json:"revision"`
 	Cursor   string   `json:"cursor"`
 	Changes  []Change `json:"changes"`
-	// MustUnderstand lists the members of the answer that the adapter must understand, as
-	// JSON Pointers: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MarshalJSON writes the document, a nil Changes as an empty list.

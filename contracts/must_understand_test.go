@@ -101,9 +101,6 @@ func understoodSchemas() []understood {
 			read:     contracts.Document,
 			list:     intList("fixtures/adapter/changes"),
 			freePlac: regexp.MustCompile(`^/changes/\d+/data$|^/changes/\d+/data/`),
-			valid:    "fixtures/adapter/changes/feed.json",
-			known:    "/cursor",
-			invalid:  func(m map[string]any) { m["cursor"] = "" },
 		},
 	}
 }
@@ -406,18 +403,12 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		{"documents.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs", "/harness/harness/extensions"}, contracts.Documents{}},
 		{"next-session-answer.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs"}, contracts.NextSessionAnswer{}},
 		{"description.schema.json", contracts.Base, contracts.Document, []string{"/settings"}, nil},
-		{"changes.schema.json", contracts.Base, contracts.Document, []string{"/changes"}, contracts.Changes{}},
 	} {
 		raw, err := c.read(c.name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var def map[string]any
-		if props, ok := raw.(map[string]any)["properties"].(map[string]any); ok && c.name == "changes.schema.json" {
-			def = props["must_understand"].(map[string]any)
-		} else {
-			def = raw.(map[string]any)["$defs"].(map[string]any)["must_understand"].(map[string]any)
-		}
+		def := raw.(map[string]any)["$defs"].(map[string]any)["must_understand"].(map[string]any)
 		templates := definedPointers(c.base+"/"+c.name, raw, c.open...)
 		if got, want := def["items"].(map[string]any)["pattern"], pointerPattern(templates); got != want {
 			t.Errorf("%s: the pattern of must_understand is not the one built from the schema:\n got %v\nwant %v", c.name, got, want)
@@ -593,7 +584,7 @@ func TestMustUnderstandIsWrittenBack(t *testing.T) {
 	if err := validate(compileRun(t, runSchema("documents")), out); err != nil {
 		t.Errorf("the documents with must_understand: %v", err)
 	}
-	feed := contracts.Changes{Version: 1, Revision: 1, Cursor: "c_1", MustUnderstand: []string{"/cursor"}, Changes: []contracts.Change{
+	feed := contracts.Changes{Version: 1, Revision: 1, Cursor: "c_1", Changes: []contracts.Change{
 		{Kind: contracts.ChangeSync, MustUnderstand: []string{"/interval"}},
 		{Kind: contracts.ChangeWatch, WorkItemID: "wi_1", URL: "https://x.example"},
 	}}
@@ -601,8 +592,8 @@ func TestMustUnderstandIsWrittenBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(out), `"must_understand":["/interval"]`) || !strings.Contains(string(out), `"must_understand":["/cursor"]`) || strings.Count(string(out), "must_understand") != 2 {
-		t.Errorf("the feed is written as %s, want must_understand in the answer and in the first entry", out)
+	if !strings.Contains(string(out), `"must_understand":["/interval"]`) || strings.Count(string(out), "must_understand") != 1 {
+		t.Errorf("the feed is written as %s, want must_understand in the first entry only", out)
 	}
 	if err := validate(compile(t, "changes.schema.json"), out); err != nil {
 		t.Errorf("the feed with must_understand: %v", err)
@@ -704,16 +695,18 @@ func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 	if got := report.(map[string]any)["reason"]; got != "refused" {
 		t.Errorf("the reason of the fixture is %v, want refused", got)
 	}
-	root := func(mu string) []byte {
-		return []byte(`{"version": 1, "revision": 1, "cursor": "c_2", "changes": [], "must_understand": ` + mu + `}`)
+	// The answer has no must_understand: it is a member that the schema does not define, so
+	// a reader ignores it, whatever it lists, and the closed copy refuses it.
+	answer := []byte(`{"version": 1, "revision": 1, "cursor": "c_2", "changes": [], "must_understand": ["/extra"]}`)
+	if err := validate(schema, answer); err != nil {
+		t.Errorf("an answer with a must_understand: %v", err)
 	}
-	for _, c := range []struct {
-		mu string
-		ok bool
-	}{{`["/cursor", "/changes"]`, true}, {`["/changes/0/kind"]`, true}, {`["/extra"]`, false}} {
-		if err := validate(schema, root(c.mu)); (err == nil) != c.ok {
-			t.Errorf("the answer lists %s: accepted %v, want %v: %v", c.mu, err == nil, c.ok, err)
-		}
+	closedFeed, err := contracts.CompileClosed("changes.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := runRefusal(validate(closedFeed, answer)); got != "/ additionalProperties" {
+		t.Errorf("the closed copy refuses an answer with a must_understand for %q, want %q", got, "/ additionalProperties")
 	}
 	if err := validate(schema, []byte(`{"version": 1, "revision": 1, "cursor": "c_2", "changes": [], "extra": 1}`)); err != nil {
 		t.Errorf("an answer with a member that the schema does not define: %v", err)

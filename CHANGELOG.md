@@ -216,8 +216,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
     `format` of an API follow the Forager contract.
   - An answer with `next` `end` and a member of the session shape fails
     `next-session-answer.schema.json`, as before.
-  - The answer of the change feed and each entry have an optional `must_understand`. An
-    adapter ignores an unknown member of the answer and of an entry of a defined kind.
+  - Each entry of the change feed has an optional `must_understand`. The answer has none.
+    An adapter ignores an unknown member of the answer and of an entry of a defined kind.
   - An adapter skips and acknowledges an entry in two cases. The `kind` of the entry is
     one that its revision does not define, or its `must_understand` lists a pointer that
     the adapter does not define.
