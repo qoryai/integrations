@@ -14,15 +14,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `access` of a workflow in `harness`, to the run documents: a reader that checks the
   run documents against an earlier copy refuses each of them.
 - Rename three members, which this module had after 0.3.0 and before this release, and
-  drop one. A run document, or a request or answer of the machines contract, with an
-  earlier name fails its schema. In the run documents, a workflow of a
-  `harness` section has no `time_limit`, and has `plan` and `tier`: `HarnessWorkflow`
-  loses `TimeLimit` and gains `Plan` and `Tier`. `time_limit_minutes` stays the time
-  limit of a session. In the machines contract, `key` of `make` and of each machine of
-  the `list` answer is `dispatch_id`, and `MachinesMake.Key` and `Machine.Key` are
-  `DispatchID`. In the diagnostics, `run.machine.key` is `run.machine.type`; the
-  diagnostics schema accepts a member it does not define, so a reader that reads
-  `key` finds none.
+  drop one. In the run documents, a workflow of a `harness` section has no `time_limit`,
+  and has `plan` and `tier`; a workflow with `time_limit` fails `documents.schema.json`.
+  `HarnessWorkflow` no longer has `TimeLimit`, and has `Plan` and `Tier`.
+  `time_limit_minutes` stays the time limit of a session. In the machines contract,
+  `key` of `make` and of each machine of the `list` answer is `dispatch_id`; a request
+  or answer with `key` fails its schema. `MachinesMake.Key` and `Machine.Key` are
+  `DispatchID`. In the diagnostics, `run.machine.key` is `run.machine.type`; a document
+  with `key` passes the schema, which accepts a member it does not define, so a reader
+  that reads `key` finds none.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
@@ -713,13 +713,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   sets what a run of the workflow may push, such as `build-plan`, and only a workflow
   with `access` `write` has one. `tier` is `light`, `balanced` or `thinking`, the tier of
   the model and effort of the run's main session. A section that defines a stack,
-  without `extends`, takes no target: the
-  machine composes it for the runtime of the session: `run_settings.runtime` for session
-  1; for a later session, the `runtime` of its `model_choice`, or `run_settings.runtime`
-  when it has none. A section with `extends` takes
-  the workflows of its base, and the schema rejects `workflows` in it. In Go,
-  `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
-  `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
+  without `extends`, takes no target: the machine composes it for the runtime of the
+  session: `run_settings.runtime` for session 1; for a later session, the `runtime` of
+  its `model_choice`, or `run_settings.runtime` when it has none. A section with
+  `extends` takes the workflows of its base, and the schema rejects `workflows` in it.
+  In Go, `HarnessSection.Extends` is a pointer, nil for a section that defines a stack,
+  and `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
   `agents`, `commands` or `skills`, to its roles, each to the name of one entry of that
   kind: `bind: {agents: {developer: web-developer}}`. A group role of the kind `agents`,
   a role that several agents fill, takes a list of 1 or more agents, as in qory's
