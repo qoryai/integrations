@@ -168,6 +168,7 @@ func understoodSchemas() []understood {
 		machinesUnderstood("log.schema.json", "log/log.json", "/id", version2),
 		machinesUnderstood("log-answer.schema.json", "log-answer/log-answer.json", "/log", func(m map[string]any) { m["log"] = "a\x00b" }),
 		machinesUnderstood("make.schema.json", "make/make.json", "/dispatch_id", version2),
+		exploreUnderstood(),
 		machinesUnderstood("make-answer.schema.json", "make-answer/make-answer.json", "/id", func(m map[string]any) { m["id"] = "" }),
 	)
 }
@@ -200,6 +201,18 @@ func machinesUnderstood(name, valid, known string, invalid func(m map[string]any
 		valid:   "fixtures/" + valid,
 		known:   known,
 		invalid: invalid,
+	}
+}
+
+// exploreUnderstood is the understood entry of the explore inputs, which have no
+// must_understand: the run documents list a member of the inputs below /inputs.
+func exploreUnderstood() understood {
+	return understood{
+		name:   "inputs.schema.json",
+		open:   func() (*jsonschema.Schema, error) { return contracts.CompileExplore("inputs.schema.json") },
+		closed: func() (*jsonschema.Schema, error) { return contracts.CompileExploreClosed("inputs.schema.json") },
+		read:   contracts.ExploreDocument,
+		list:   func(t *testing.T) []string { return treeFiles(t, contracts.ExploreFS, "fixtures/inputs") },
 	}
 }
 
@@ -311,6 +324,7 @@ var closedSites = map[string][]string{
 	"machines/log-answer.schema.json":      {""},
 	"machines/make.schema.json":            {""},
 	"machines/make-answer.schema.json":     {""},
+	"explore/inputs.schema.json":           {"", "/$defs/member", "/properties/comments/items", "/properties/instruction", "/properties/run", "/properties/ticket", "/properties/work_item"},
 }
 
 // contractTree is a contract of the repository whose schemas a closed copy can reach: the
@@ -401,6 +415,7 @@ func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 	for _, name := range []string{"claim", "claim-answer", "dispatched", "machine-end", "machine-log", "refusal", "release"} {
 		reachableFiles(t, contracts.ProvisionerBase+"/"+name+".schema.json", reached)
 	}
+	reachableFiles(t, contracts.ExploreBase+"/inputs.schema.json", reached)
 	for _, name := range []string{"check", "check-answer", "delete", "delete-answer", "error", "list", "list-answer", "log", "log-answer", "make", "make-answer"} {
 		reachableFiles(t, contracts.MachinesBase+"/"+name+".schema.json", reached)
 	}
@@ -941,6 +956,16 @@ func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
 			v = &contracts.RunOutcome{}
 		}
 		if err := json.Unmarshal(b, v); err != nil {
+			t.Errorf("%s: %v", f, err)
+		}
+	}
+	for _, f := range treeFiles(t, contracts.ExploreFS, "fixtures/closed") {
+		b, err := fs.ReadFile(contracts.ExploreFS, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var v any
+		if err := json.Unmarshal(b, &v); err != nil {
 			t.Errorf("%s: %v", f, err)
 		}
 	}

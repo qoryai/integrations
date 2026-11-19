@@ -44,6 +44,13 @@ func CompileMachinesClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(MachinesBase, MachinesFS, name)
 }
 
+// CompileExploreClosed compiles the closed copy of inputs.schema.json of the explore
+// contract, as [CompileClosed] does for the integration contract, and returns an error for
+// any other name.
+func CompileExploreClosed(name string) (*jsonschema.Schema, error) {
+	return compileClosed(ExploreBase, ExploreFS, name)
+}
+
 // CloseSchema returns a copy of the schema doc, as [Document] reads it, that refuses a
 // member the schema does not define, and the JSON pointers of the places it closed, ""
 // for the root. It sets additionalProperties to false in each schema that lists properties
@@ -149,6 +156,8 @@ var closable = map[string]bool{
 	MachinesBase + "/log-answer.schema.json":    true,
 	MachinesBase + "/make.schema.json":          true,
 	MachinesBase + "/make-answer.schema.json":   true,
+
+	ExploreBase + "/inputs.schema.json": true,
 }
 
 // closingLoader reads the schemas of the contracts that this package embeds, closed as

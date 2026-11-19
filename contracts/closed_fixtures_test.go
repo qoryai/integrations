@@ -131,6 +131,21 @@ var closedMachinesFixtures = map[string]closedFixture{
 	"check-answer-offers-undefined-member.json": {"check-answer", "/offers/0 additionalProperties"},
 }
 
+// closedExploreFixtures are the fixtures of explore/v1/fixtures/closed, by file name.
+var closedExploreFixtures = map[string]closedFixture{
+	"inputs-answers.json":                         {"inputs", "/ additionalProperties"},
+	"inputs-changes.json":                         {"inputs", "/ additionalProperties"},
+	"inputs-collection-ref.json":                  {"inputs", "/ticket additionalProperties"},
+	"inputs-comment-by-undefined-member.json":     {"inputs", "/comments/0/by additionalProperties"},
+	"inputs-comment-undefined-member.json":        {"inputs", "/comments/0 additionalProperties"},
+	"inputs-facts.json":                           {"inputs", "/ additionalProperties"},
+	"inputs-instruction-by-undefined-member.json": {"inputs", "/instruction/by additionalProperties"},
+	"inputs-instruction-undefined-member.json":    {"inputs", "/instruction additionalProperties"},
+	"inputs-proposal.json":                        {"inputs", "/ additionalProperties"},
+	"inputs-run-of.json":                          {"inputs", "/run additionalProperties"},
+	"inputs-work-item-undefined-member.json":      {"inputs", "/work_item additionalProperties"},
+}
+
 // checkClosedFixtures pins that the files under dir are exactly the keys of want, that each
 // validates against the open schema of its fixture, and that the closed copy refuses it at
 // the reason of its fixture.
@@ -197,6 +212,13 @@ func TestTheClosedProvisionerFixturesAreAcceptedAndRefusedByTheClosedCopy(t *tes
 func TestTheClosedMachinesFixturesAreAcceptedAndRefusedByTheClosedCopy(t *testing.T) {
 	checkClosedFixtures(t, treeFiles(t, contracts.MachinesFS, "fixtures/closed"), closedMachinesFixtures,
 		contracts.MachinesDocument, contracts.CompileMachines, contracts.CompileMachinesClosed)
+}
+
+// TestTheClosedExploreFixturesAreAcceptedAndRefusedByTheClosedCopy checks
+// explore/v1/fixtures/closed.
+func TestTheClosedExploreFixturesAreAcceptedAndRefusedByTheClosedCopy(t *testing.T) {
+	checkClosedFixtures(t, treeFiles(t, contracts.ExploreFS, "fixtures/closed"), closedExploreFixtures,
+		contracts.ExploreDocument, contracts.CompileExplore, contracts.CompileExploreClosed)
 }
 
 // TestTheClosedAdapterFixturesAreAcceptedAndRefusedByTheClosedCopy checks

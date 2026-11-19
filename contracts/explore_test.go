@@ -6,7 +6,6 @@ import (
 	"maps"
 	"path"
 	"reflect"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -70,14 +69,14 @@ func entryNames(t *testing.T, fsys fs.FS, dir string, folders bool) []string {
 
 // TestExploreSchemasAreTheContract pins that explore/v1 contains exactly the files of
 // exploreSchemas, each with the $id ExploreBase/<file>, and that fixtures/ contains a
-// folder for each schema, the folder invalid, and no other folder.
+// folder for each schema, the folders closed and invalid, and no other folder.
 func TestExploreSchemasAreTheContract(t *testing.T) {
 	schemas := slices.Clone(exploreSchemas)
 	slices.Sort(schemas)
 	if files := entryNames(t, contracts.ExploreFS, ".", false); !slices.Equal(files, schemas) {
 		t.Errorf("explore/v1 contains %v, want %v", files, schemas)
 	}
-	want := []string{"invalid"}
+	want := []string{"closed", "invalid"}
 	for _, name := range exploreSchemas {
 		doc, err := contracts.ExploreDocument(name)
 		if err != nil {
@@ -131,11 +130,9 @@ var invalidExploreFixtures = map[string]struct{ schema, reason string }{
 	"inputs-run-array.json":                         {"inputs", "/run type"},
 	"inputs-attempt-0.json":                         {"inputs", "/run/attempt minimum"},
 	"inputs-attempt-string.json":                    {"inputs", "/run/attempt type"},
-	"inputs-run-of.json":                            {"inputs", "/run additionalProperties of"},
 	"inputs-ticket-array.json":                      {"inputs", "/ticket type"},
 	"inputs-filer-kind-bot.json":                    {"inputs", "/ticket/filed_by/kind enum"},
-	"inputs-collection-ref.json":                    {"inputs", "/ticket additionalProperties collection_ref"},
-	"inputs-ticket-ref.json":                        {"inputs", "/ticket required external_ref; /ticket additionalProperties ref"},
+	"inputs-ticket-ref.json":                        {"inputs", "/ticket required external_ref"},
 	"inputs-time-not-utc.json":                      {"inputs", "/ticket/filed_at pattern"},
 	"inputs-instruction-array.json":                 {"inputs", "/instruction type"},
 	"inputs-instruction-number.json":                {"inputs", "/instruction/text type"},
@@ -159,10 +156,6 @@ var invalidExploreFixtures = map[string]struct{ schema, reason string }{
 	"inputs-without-domain.json":                    {"inputs", "/ required domain"},
 	"inputs-without-ticket-with-comments.json":      {"inputs", "/comments maxItems"},
 	"inputs-without-ticket-comments-omitted-1.json": {"inputs", "/comments_omitted const"},
-	"inputs-answers.json":                           {"inputs", "/ additionalProperties answers"},
-	"inputs-changes.json":                           {"inputs", "/ additionalProperties changes"},
-	"inputs-facts.json":                             {"inputs", "/ additionalProperties facts"},
-	"inputs-proposal.json":                          {"inputs", "/ additionalProperties proposal"},
 }
 
 // TestInvalidExploreFixturesAreRefused pins that each document under fixtures/invalid
@@ -253,8 +246,8 @@ func TestExploreLengthFixturesAreOneCharacterPastTheBound(t *testing.T) {
 
 // TestExploreMembersAreRequiredAndClosed pins two rules that inputs.schema.json sets
 // for every object at every level: every member is required, except target, ticket and
-// the address of the target, and a member the schema does not define is refused, except in
-// the target and its address, which the run documents share and which ignore it. It
+// the address of the target, and a member the schema does not define is accepted, which
+// the closed copy refuses. It
 // first checks that each object of fixtures/inputs/first-attempt.json has every member
 // that the schema defines at that location. It then removes each member in turn, then
 // adds the member undefined to each object in turn, and checks the refusal of each
@@ -293,6 +286,17 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 		}
 		return strings.Join(memberLeaves(v), "; ")
 	}
+	closedSchema, err := contracts.CompileExploreClosed("inputs.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	closedRefusal := func(doc any) string {
+		v, ok := closedSchema.Validate(doc).(*jsonschema.ValidationError)
+		if !ok {
+			return "accepted"
+		}
+		return strings.Join(memberLeaves(v), "; ")
+	}
 	members := 0
 	for _, where := range objects {
 		location := "/" + strings.Join(where, "/")
@@ -321,26 +325,17 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 		}
 		doc := read()
 		objectAt(doc, where)["undefined"] = "x"
-		want := location + " additionalProperties undefined"
-		if sharedObject(location) {
-			want = "accepted"
+		if got := refusal(doc); got != "accepted" {
+			t.Errorf("%s with undefined in %s: %s, want accepted", fixture, location, got)
 		}
-		if got := refusal(doc); got != want {
-			t.Errorf("%s with undefined in %s: %s, want %s", fixture, location, got, want)
+		wantClosed := location + " additionalProperties undefined"
+		if got := closedRefusal(doc); got != wantClosed {
+			t.Errorf("%s with undefined in %s: the closed copy refuses it for %s, want %s", fixture, location, got, wantClosed)
 		}
 	}
 	if len(objects) < 2 || members == 0 {
 		t.Errorf("%s has %d objects and %d members", fixture, len(objects), members)
 	}
-}
-
-// sharedObject reports whether the object at the location is one of the objects that the
-// explore inputs share with the run documents and the change feed, the target and its
-// address, and the person of the ticket and of each comment, whose members a reader
-// ignores when it does not define them.
-func sharedObject(location string) bool {
-	return location == "/target" || location == "/target/address" || location == "/ticket/filed_by" ||
-		regexp.MustCompile(`^/comments/\d+/by$`).MatchString(location)
 }
 
 // definedAt are the members, sorted, that schema defines for the object at the
