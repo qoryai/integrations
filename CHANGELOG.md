@@ -281,13 +281,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `NextSessionKindEnd` are added.
 - The run contract has the control plane's coded refusals of the next-session request,
   `next-session-refusal.schema.json`: Forager's link refusal with `from` `apiary`, as
-  the gateway passes them on. `error` is one of five codes: `400` `invalid_request`, a
-  body outside the request's schema, with `names` and `message`; `404` `not_found`, an
-  unknown run or one that is not a shared run; `409` `run_ended`, a run that ended or
-  that a member cancelled; `409` `session_mismatch`, a session lower than the newest one
-  the run reported; and `503` `unavailable`, a request that the control plane could not
-  complete and that stored nothing, so the same request can be sent again. Another code,
-  or `from` `gateway`, fails the schema.
+  the gateway passes them on. `error` is one of nine codes. Three come from the checks
+  of every signed request: `429` `rate_limited`, the rate limit of the gateway's access
+  key is reached; `400` `bad_request`, an instance id that is absent or outside its
+  pattern; and `400` `unsupported_contract_version`. Six come from the checks of the
+  request: `400` `invalid_request`, a body outside the request's schema, with `names`
+  and `message`; `404` `not_found`, an unknown run or one that is not a shared run;
+  `409` `run_ended`, a run that ended or that a member cancelled; `409`
+  `session_mismatch`, a session lower than the newest one the run reported; `413`
+  `payload_too_large`, a body over 4 KiB; and `503` `unavailable`, a request that the
+  control plane could not complete and that stored nothing, so the same request can be
+  sent again. Another code, or `from` `gateway`, fails the schema.
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
   `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning.
   `model_provider_credential_name` is the name of a credential of the run, such as the
