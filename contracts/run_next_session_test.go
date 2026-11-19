@@ -119,6 +119,8 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-request-reason-interrupted-state-succeeded.json":  func(m map[string]any) { m["state"] = "cancelled" },
 		"next-session-request-reason-gateway-lost-state-cancelled.json": func(m map[string]any) { m["state"] = "failed" },
 		"next-session-request-without-session.json":                     func(m map[string]any) { m["session"] = json.Number("1") },
+		"next-session-refusal-unknown-code.json":                        func(m map[string]any) { m["error"] = "run_ended" },
+		"next-session-refusal-from-gateway.json":                        func(m map[string]any) { m["from"] = "apiary" },
 	}
 	n := 0
 	for _, f := range runFiles(t, "fixtures/invalid") {
@@ -129,6 +131,8 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 			schema = "next-session-answer"
 		case strings.HasPrefix(name, "next-session-request-"):
 			schema = "next-session-request"
+		case strings.HasPrefix(name, "next-session-refusal-"):
+			schema = "next-session-refusal"
 		default:
 			continue
 		}

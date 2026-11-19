@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qory.dev/contracts/run/v1/next-session-refusal.schema.json",
+  "title": "Next-session refusal",
+  "description": "The body of a coded error response of the control plane to the next-session request, next-session-request.schema.json: Forager's link refusal, https://qory.dev/contracts/forager/v1/link-refusal.schema.json, with from apiary. The gateway passes on the control plane's signed coded error response with its status, error, names and message, and sets from to apiary. error is one of five codes, and each code has one status: 400 invalid_request, a body outside next-session-request.schema.json, with names, the first member that fails, and message; 404 not_found, an unknown run, or a run that the control plane does not run as a shared run; 409 run_ended, with message, a run that ended, that a member cancelled, that its stage no longer runs, or whose next session has inputs that cannot be formed; 409 session_mismatch, with message, a session lower than the newest session that the run reported; 503 unavailable, the control plane did not store the step, and the same request can be sent again. An error response of the gateway, with from gateway, is not this document. The other members are as the link refusal defines them.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "https://qory.dev/contracts/forager/v1/link-refusal.schema.json"
+    }
+  ],
+  "properties": {
+    "error": {
+      "description": "The code of the control plane's error response: invalid_request, not_found, run_ended, session_mismatch or unavailable.",
+      "type": "string",
+      "enum": [
+        "invalid_request",
+        "not_found",
+        "run_ended",
+        "session_mismatch",
+        "unavailable"
+      ]
+    },
+    "from": {
+      "description": "apiary: the gateway passes on the control plane's error response.",
+      "const": "apiary"
+    }
+  }
+}
