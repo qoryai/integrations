@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -18,7 +19,7 @@ import (
 // fixtures, the places of those fixtures that define no members, which the closed copy
 // leaves open, such as the settings schema of a description and the auth of an API, which
 // the Forager contract defines, and, for a schema with must_understand, a valid fixture, a pointer to a
-// member of that fixture, and a change that gives a known member a bad value.
+// member of that fixture, and a change that sets a known member to a bad value.
 type understood struct {
 	name     string
 	open     func() (*jsonschema.Schema, error)
@@ -29,7 +30,7 @@ type understood struct {
 	only     *regexp.Regexp // when set, the places that the schema leaves open; the others are closed in both
 	valid    string
 	known    string
-	invalid  func(m map[string]any) // gives a known member a bad value
+	invalid  func(m map[string]any) // sets a known member to a bad value
 }
 
 // understoodSchemas lists them.
@@ -172,7 +173,7 @@ var closedSites = map[string][]string{
 	"changes.schema.json":           {"", "/$defs/change_request", "/$defs/change_request/properties/previous", "/$defs/collection", "/$defs/comment", "/$defs/grant", "/$defs/sync", "/$defs/watch", "/$defs/work_item"},
 	"changes-submitted.schema.json": {},
 	"changes-failed.schema.json":    {},
-	"definitions.schema.json":       {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
+	"definitions.schema.json":       {"/$defs/change_address", "/$defs/target", "/$defs/target/properties/address"},
 	"documents.schema.json": {
 		"", "/$defs/harness", "/$defs/harness_base", "/$defs/harness_module", "/$defs/harness_section",
 		"/$defs/harness_section/properties/bind", "/$defs/harness_selection", "/$defs/harness_source",
@@ -279,7 +280,7 @@ func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 // TestAReaderIgnoresAMemberItDoesNotDefine pins, for each schema, the rule of
 // must_understand. In each object of each valid fixture, a member that the schema does
 // not define is accepted, and the closed copy refuses it, so a misspelled member fails a
-// writer's test. The places that define no members are the exception, as freePlac says.
+// writer's test. The places that define no members are the exception, as freePlac lists them.
 func TestAReaderIgnoresAMemberItDoesNotDefine(t *testing.T) {
 	for _, u := range understoodSchemas() {
 		open, err := u.open()
@@ -305,7 +306,7 @@ func TestAReaderIgnoresAMemberItDoesNotDefine(t *testing.T) {
 				if kind, ok := m["kind"].(string); ok && strings.HasPrefix(place, "/changes/") && !slices.Contains(feedKinds, kind) {
 					continue
 				}
-				m["later_member"] = "x"
+				m["extra_member"] = "x"
 				if err := open.Validate(doc); err != nil {
 					t.Errorf("%s %s: a member of %q that the schema does not define is refused: %v", u.name, f, place, err)
 				}
@@ -326,8 +327,8 @@ func TestAReaderIgnoresAMemberItDoesNotDefine(t *testing.T) {
 			continue
 		}
 		doc := u.fixture(t)
-		doc["later_member"] = "x"
-		doc["must_understand"] = []any{"/later_member"}
+		doc["extra_member"] = "x"
+		doc["must_understand"] = []any{"/extra_member"}
 		if got, want := runRefusal(open.Validate(doc)), "/must_understand/0 pattern"; !strings.Contains(got, want) {
 			t.Errorf("%s: a member that must_understand lists is refused for %q, want %q", u.name, got, want)
 		}
@@ -352,7 +353,7 @@ func TestAReaderIgnoresAMemberItDoesNotDefine(t *testing.T) {
 			t.Errorf("%s: a bad value of a member that the schema defines is accepted", u.name)
 		}
 		doc = u.fixture(t)
-		doc["must_understand"] = "later_member"
+		doc["must_understand"] = "extra_member"
 		if err := open.Validate(doc); err == nil {
 			t.Errorf("%s: a must_understand that is not a list is accepted", u.name)
 		}
@@ -364,7 +365,7 @@ var feedKinds = []string{"work_item", "comment", "collection", "grant", "sync", 
 
 // TestMustUnderstandListsThePointersOfItsSchema pins that the pattern of each pointer that
 // must_understand accepts is the one built from the schema: the members that the schema
-// defines, at any depth, from the object that holds the list. It pins too that the Go type
+// defines, at any depth, from the object that has the list. It pins too that the Go type
 // of the document resolves every such pointer.
 func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 	for _, c := range []struct {
@@ -478,11 +479,11 @@ func TestCheckMustUnderstand(t *testing.T) {
 		want string
 	}{
 		{`{"step": "workflow"}`, contracts.Documents{}, ""},
-		{`{"later_member": 1}`, &contracts.Documents{}, ""},
-		{`{"must_understand": ["/step", "/subject/kind"], "later_member": 1}`, contracts.Documents{}, ""},
+		{`{"extra_member": 1}`, &contracts.Documents{}, ""},
+		{`{"must_understand": ["/step", "/subject/kind"], "extra_member": 1}`, contracts.Documents{}, ""},
 		{`{"must_understand": ["/run_settings/runtime", "/harness/harness/modules/0/name"]}`, contracts.Documents{}, ""},
 		{`{"must_understand": ["/inputs/run/attempt", "/harness/harness/extensions/a~1b"]}`, contracts.Documents{}, ""},
-		{`{"must_understand": ["/step", "/later_member"], "later_member": 1}`, contracts.Documents{}, `use a reader that defines "/later_member"`},
+		{`{"must_understand": ["/step", "/extra_member"], "extra_member": 1}`, contracts.Documents{}, `use a reader that defines "/extra_member"`},
 		{`{"must_understand": ["/subject/language"]}`, contracts.Documents{}, `use a reader that defines "/subject/language"`},
 		{`{"must_understand": ["/harness/harness/modules/01/name"]}`, contracts.Documents{}, "use a reader that defines"},
 		{`{"must_understand": ["/step/kind"]}`, contracts.Documents{}, "use a reader that defines"},
@@ -494,6 +495,15 @@ func TestCheckMustUnderstand(t *testing.T) {
 		{`{"must_understand": "step"}`, contracts.Documents{}, "must_understand to a list"},
 		{`{"must_understand": null}`, contracts.Documents{}, "list of JSON Pointers"},
 		{`{"must_understand": ["/step", "/step"]}`, contracts.Documents{}, `list "/step" once`},
+		{`{"must_understand": ["/run_settings/tiers/light/model", "/run_settings/tiers/light/effort"]}`, contracts.Documents{}, ""},
+		{`{"must_understand": ["/run_settings/tiers/light/bogus"]}`, contracts.Documents{}, `use a reader that defines "/run_settings/tiers/light/bogus"`},
+		{`{"must_understand": ["/harness/harness/bind/agents/writer/0"]}`, contracts.Documents{}, ""},
+		{`{"must_understand": ["/harness/harness/bind/agents/writer/name"]}`, contracts.Documents{}, "use a reader that defines"},
+		{`{"must_understand": ["/harness/harness/bind/hooks/writer"]}`, contracts.Documents{}, "use a reader that defines"},
+		{`{"must_understand": ["/harness/harness/modules/0/only/skills/0"]}`, contracts.Documents{}, ""},
+		{`{"must_understand": ["/harness/harness/modules/0/only/skills/all"]}`, contracts.Documents{}, "use a reader that defines"},
+		{`{"must_understand": [` + strings.TrimSuffix(strings.Repeat(`"/step",`, 33), ",") + `]}`, contracts.Documents{}, "at most 32 pointers"},
+		{`{"must_understand": ["/` + strings.Repeat("a", 256) + `"]}`, contracts.Documents{}, "at most 256 characters"},
 		{`{"must_understand": []}`, contracts.Documents{}, ""},
 		{`[]`, contracts.Documents{}, "JSON object"},
 	} {
@@ -579,15 +589,15 @@ func TestAnAdapterSkipsAnEntryOfAnUnknownKind(t *testing.T) {
 		name, entries string
 		accepted      bool
 	}{
-		{"an unknown kind with members", `[{"kind": "settings", "interval": 600, "later": {"a": 1}}, ` + sync + `]`, true},
+		{"an unknown kind with members", `[{"kind": "settings", "interval": 600, "extra": {"a": 1}}, ` + sync + `]`, true},
 		{"an unknown kind alone", `[{"kind": "settings"}]`, true},
-		{"an unknown kind with must_understand", `[{"kind": "settings", "must_understand": ["/later"]}]`, true},
+		{"an unknown kind with must_understand", `[{"kind": "settings", "must_understand": ["/extra"]}]`, true},
 		{"a kind in upper case", `[{"kind": "Settings"}]`, false},
 		{"a kind of 64 characters", `[{"kind": "` + strings.Repeat("a", 64) + `"}]`, true},
 		{"a kind of 65 characters", `[{"kind": "` + strings.Repeat("a", 65) + `"}]`, false},
 		{"a kind that is not a string", `[{"kind": 7}]`, false},
 		{"no kind", `[{"interval": 600}]`, false},
-		{"a defined kind with a member it does not define", `[{"kind": "sync", "interval": 600, "later": 1}]`, true},
+		{"a defined kind with a member it does not define", `[{"kind": "sync", "interval": 600, "extra": 1}]`, true},
 		{"a defined kind with a bad value", `[{"kind": "sync", "interval": 30}]`, false},
 		{"a defined kind without a member it requires", `[{"kind": "sync"}]`, false},
 	} {
@@ -601,7 +611,7 @@ func TestAnAdapterSkipsAnEntryOfAnUnknownKind(t *testing.T) {
 // feed: an entry, and the answer, ignore a member that they list nowhere; an entry whose
 // must_understand lists a pointer that its kind defines passes; a pointer that its kind does
 // not define fails the schema; below data of a change_request entry, any pointer passes the
-// schema; and CheckChangeMustUnderstand tells an adapter to skip an entry that it cannot
+// schema; and CheckChangeMustUnderstand returns an error for an entry that the adapter cannot
 // meet, with a message that starts with the fix.
 func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 	schema := compile(t, "changes.schema.json")
@@ -619,7 +629,7 @@ func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 	}{
 		{"a listed member of the kind", `{"kind": "sync", "interval": 600, "must_understand": ["/interval"]}`, true, ""},
 		{"a listed member of another kind", `{"kind": "sync", "interval": 600, "must_understand": ["/url"]}`, false, `Use an adapter that defines "/url"`},
-		{"a member that the kind does not define, not listed", `{"kind": "sync", "interval": 600, "later": 1}`, true, ""},
+		{"a member that the kind does not define, not listed", `{"kind": "sync", "interval": 600, "extra": 1}`, true, ""},
 		{"an empty list", `{"kind": "sync", "interval": 600, "must_understand": []}`, true, ""},
 		{"a list that is null", `{"kind": "sync", "interval": 600, "must_understand": null}`, false, "not null"},
 		{"a member listed twice", `{"kind": "sync", "interval": 600, "must_understand": ["/kind", "/kind"]}`, false, `list "/kind" once`},
@@ -627,8 +637,8 @@ func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 		{"must_understand itself", `{"kind": "sync", "interval": 600, "must_understand": ["/must_understand"]}`, false, `Use an adapter that defines "/must_understand"`},
 		{"a nested member of a change request", changeRequest(`["/target/address/path", "/previous/title"]`), true, ""},
 		{"a member of data", changeRequest(`["/data/a"]`), true, ""},
-		{"a member of data that the entry lacks", changeRequest(`["/data/later/deep"]`), true, ""},
-		{"a member of the target that it does not define", changeRequest(`["/target/later"]`), false, `Use an adapter that defines "/target/later"`},
+		{"a member of data that the entry lacks", changeRequest(`["/data/extra/deep"]`), true, ""},
+		{"a member of the target that it does not define", changeRequest(`["/target/extra"]`), false, `Use an adapter that defines "/target/extra"`},
 		{"a member of a work item in data", `{"kind": "work_item", "work_item_id": "wi_1", "ref": "r", "status": "taken_in", "url": "https://x.example", "must_understand": ["/data/a"]}`, false, `Use an adapter that defines "/data/a"`},
 	} {
 		if err := validate(schema, feed(c.entry)); (err == nil) != c.schemaOK {
@@ -642,12 +652,12 @@ func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 			t.Errorf("%s: CheckChangeMustUnderstand: got %v, want an error with %q", c.name, err, c.checkErr)
 		}
 	}
-	if err := contracts.CheckChangeMustUnderstand([]byte(`{"kind": "settings", "must_understand": ["/later"]}`)); err == nil || !strings.HasPrefix(err.Error(), "skip the entry and acknowledge it") {
+	if err := contracts.CheckChangeMustUnderstand([]byte(`{"kind": "settings", "must_understand": ["/extra"]}`)); err == nil || !strings.HasPrefix(err.Error(), "skip the entry and acknowledge it") {
 		t.Errorf("an entry of an unknown kind: %v, want an error that starts with skip the entry and acknowledge it", err)
 	}
 	// The failure report of an entry that the adapter cannot meet has the text of the error as
 	// its detail, and the schema accepts it.
-	entry := changeRequest(`["/target/later"]`)
+	entry := changeRequest(`["/target/extra"]`)
 	err := contracts.CheckChangeMustUnderstand([]byte(entry))
 	report, rerr := contracts.Document("fixtures/adapter/changes-failed/change-request-must-understand.json")
 	if rerr != nil || err == nil {
@@ -665,12 +675,12 @@ func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 	for _, c := range []struct {
 		mu string
 		ok bool
-	}{{`["/cursor", "/changes"]`, true}, {`["/changes/0/kind"]`, true}, {`["/later"]`, false}} {
+	}{{`["/cursor", "/changes"]`, true}, {`["/changes/0/kind"]`, true}, {`["/extra"]`, false}} {
 		if err := validate(schema, root(c.mu)); (err == nil) != c.ok {
 			t.Errorf("the answer lists %s: accepted %v, want %v: %v", c.mu, err == nil, c.ok, err)
 		}
 	}
-	if err := validate(schema, []byte(`{"version": 1, "revision": 1, "cursor": "c_2", "changes": [], "later": 1}`)); err != nil {
+	if err := validate(schema, []byte(`{"version": 1, "revision": 1, "cursor": "c_2", "changes": [], "extra": 1}`)); err != nil {
 		t.Errorf("an answer with a member that the schema does not define: %v", err)
 	}
 }
@@ -697,12 +707,12 @@ func TestTheRepliesStayClosedAtTheirRoot(t *testing.T) {
 		if err := closed.Validate(doc); err != nil {
 			t.Errorf("%s: the closed copy refuses %s: %v", c.name, c.fixture, err)
 		}
-		doc.(map[string]any)["later"] = "x"
+		doc.(map[string]any)["extra"] = "x"
 		if got := runRefusal(open.Validate(doc)); got != "/ additionalProperties" {
 			t.Errorf("%s: the reply with a member that it does not define is refused for %q", c.name, got)
 		}
-		delete(doc.(map[string]any), "later")
-		doc.(map[string]any)["target"].(map[string]any)["later"] = "x"
+		delete(doc.(map[string]any), "extra")
+		doc.(map[string]any)["target"].(map[string]any)["extra"] = "x"
 		if err := open.Validate(doc); err != nil {
 			t.Errorf("%s: a target with a member that the schema does not define is refused: %v", c.name, err)
 		}
@@ -732,6 +742,35 @@ func TestOnlyTheClosableSchemasHaveAClosedCopy(t *testing.T) {
 		want := name == "documents.schema.json" || name == "next-session-answer.schema.json"
 		if (err == nil) != want {
 			t.Errorf("CompileRunClosed(%q): %v", name, err)
+		}
+	}
+}
+
+// TestAReaderDecodesEveryClosedFixture pins that the Go types read each document that the
+// schema accepts and the closed copy refuses: a reader ignores the undefined member, and
+// does not fail on it.
+func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
+	for _, f := range runFiles(t, "fixtures/closed") {
+		b, err := fs.ReadFile(contracts.RunFS, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var v any = &contracts.NextSessionAnswer{}
+		if strings.HasPrefix(path.Base(f), "documents-") {
+			v = &contracts.Documents{}
+		}
+		if err := json.Unmarshal(b, v); err != nil {
+			t.Errorf("%s: %v", f, err)
+		}
+	}
+	for _, f := range treeFiles(t, contracts.FS, "fixtures/adapter/closed") {
+		b, err := fs.ReadFile(contracts.FS, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var v contracts.Changes
+		if err := json.Unmarshal(b, &v); err != nil {
+			t.Errorf("%s: %v", f, err)
 		}
 	}
 }

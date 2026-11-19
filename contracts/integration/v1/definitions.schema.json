@@ -121,6 +121,7 @@
     "person": {
       "description": "Who wrote something at the source: their display name, and whether a person or an automation acts under it.",
       "type": "object",
+      "additionalProperties": false,
       "required": ["name", "kind"],
       "properties": {
         "name": {"description": "The display name the source shows, 1 to 100 characters.", "type": "string", "minLength": 1, "maxLength": 100, "$ref": "#/$defs/text"},
@@ -222,6 +223,7 @@
     "listing": {
       "description": "One part of a listing: a read of the source, from its start to its end, sent in parts. A listing is complete when every part from 1 to n has arrived and part n has complete: true. An adapter sends complete: true only for a listing whose paging cannot skip an item.",
       "type": "object",
+      "additionalProperties": false,
       "required": ["id", "part", "started_at", "complete"],
       "properties": {
         "id": {"description": "The listing's id, 1 to 200 characters, the same on each of its parts and new for each listing.", "type": "string", "minLength": 1, "maxLength": 200, "$ref": "#/$defs/text"},

@@ -9,7 +9,7 @@ import (
 	"github.com/qoryai/integrations/contracts"
 )
 
-// pointerWalker lists the JSON pointers that a schema defines, from the object that holds
+// pointerWalker lists the JSON pointers that a schema defines, from the object that has
 // must_understand. A member is its name; an item of a list is "#"; a member of a map with
 // any key is "*". A pointer in open is open-ended: the schema does not define what is below
 // it, so any pointer below it is accepted.
@@ -172,9 +172,4 @@ func pointerPattern(templates []string) string {
 		alts = append(alts, sb.String())
 	}
 	return fmt.Sprintf("^(?:%s)$", strings.Join(alts, "|"))
-}
-
-func printPointers(name string, templates []string) {
-	fmt.Println("==", name, len(templates))
-	fmt.Println(pointerPattern(templates))
 }

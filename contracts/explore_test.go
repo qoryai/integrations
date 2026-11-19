@@ -252,7 +252,8 @@ func TestExploreLengthFixturesAreOneCharacterPastTheBound(t *testing.T) {
 
 // TestExploreMembersAreRequiredAndClosed pins two rules that inputs.schema.json sets
 // for every object at every level: every member is required, except target, ticket and
-// the address of the target, and a member the schema does not define is refused. It
+// the address of the target, and a member the schema does not define is refused, except in
+// the target and its address, which the run documents share and which ignore it. It
 // first checks that each object of fixtures/inputs/first-attempt.json has every member
 // that the schema defines at that location. It then removes each member in turn, then
 // adds the member undefined to each object in turn, and checks the refusal of each
@@ -333,11 +334,10 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 }
 
 // sharedObject reports whether the object at the location is one of the objects that the
-// explore inputs share with the integration contract, person and target, whose members a
-// reader of the integration contract ignores when it does not define them.
+// explore inputs share with the run documents and the change feed, the target and its
+// address, whose members a reader ignores when it does not define them.
 func sharedObject(location string) bool {
-	return location == "/target" || location == "/target/address" || location == "/ticket/filed_by" ||
-		(strings.HasPrefix(location, "/comments/") && strings.HasSuffix(location, "/by"))
+	return location == "/target" || location == "/target/address"
 }
 
 // definedAt are the members, sorted, that schema defines for the object at the

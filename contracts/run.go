@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 )
 
@@ -178,10 +179,10 @@ type Documents struct {
 
 // HarnessDocument is the run's harness, documents.schema.json: the harness document
 // of the workspace in the form of qory.yaml,
-// https://qory.dev/contracts/harness/v1/config.schema.json, with exactly one member,
-// the harness section, which extends a stack or defines one. Every source is a remote
-// source. A source of the form {path}, a module given by name alone, link, the machine
-// harness settings and every other member of qory.yaml are refused.
+// https://qory.dev/contracts/harness/v1/config.schema.json, with the member harness, the
+// harness section, which extends a stack or defines one. Every source is a remote
+// source. A source of the form {path} and a module given by name alone are refused. A
+// reader ignores link, the machine harness settings and every other member of qory.yaml.
 type HarnessDocument struct {
 	Harness HarnessSection `json:"harness"`
 }
@@ -224,11 +225,22 @@ type HarnessSection struct {
 	Workflows map[string]HarnessWorkflow `json:"workflows,omitempty"`
 }
 
-// UnmarshalJSON reads a harness section, and returns an error for a kind of Bind that
-// is not agents, commands or skills, for a kind whose value is null, for a role whose
-// value is null, for a list on a role of the kind commands or skills, for an empty
-// list, and for a null item of a list: each fails documents.schema.json.
+// definesPointer reports whether a pointer below a HarnessSection leads to one of its
+// members. Below bind, the schema defines the kinds agents, commands and skills alone.
+func (HarnessSection) definesPointer(segments []string) bool {
+	if segments[0] == "bind" && len(segments) > 1 && !slices.Contains([]string{"agents", "commands", "skills"}, segments[1]) {
+		return false
+	}
+	return resolvesBelow(reflect.TypeFor[HarnessSection](), segments)
+}
+
+// UnmarshalJSON reads a harness section. It ignores a member of Bind that is not a
+// kind, agents, commands or skills, as documents.schema.json does, such as a role in
+// the flat form agents/writer. It returns an error for a kind whose value is null, for a
+// role whose value is null, for a list on a role of the kind commands or skills, for an
+// empty list, and for a null item of a list: each fails documents.schema.json.
 func (s *HarnessSection) UnmarshalJSON(b []byte) error {
+	b = withoutUndefinedBindKinds(b)
 	// A section that does not read as raw roles fails the decode below, which returns
 	// that error.
 	var raw struct {
@@ -248,6 +260,31 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// withoutUndefinedBindKinds returns the section b without the members of its bind that
+// are not a kind of bind. It returns b when b has no bind, or when it does not read as a
+// section with an object bind, since the decode of b returns the error for that.
+func withoutUndefinedBindKinds(b []byte) []byte {
+	var section map[string]json.RawMessage
+	if json.Unmarshal(b, &section) != nil {
+		return b
+	}
+	var bind map[string]json.RawMessage
+	if json.Unmarshal(section["bind"], &bind) != nil || bind == nil {
+		return b
+	}
+	for k := range bind {
+		if k != "agents" && k != "commands" && k != "skills" {
+			delete(bind, k)
+		}
+	}
+	section["bind"], _ = json.Marshal(bind)
+	out, err := json.Marshal(section)
+	if err != nil {
+		return b
+	}
+	return out
+}
+
 // checkBind returns the error of [HarnessSection.UnmarshalJSON] for the first kind, in
 // order, and then the first role of it, in order, that fails documents.schema.json for
 // one of the reasons that method lists, and nil for none. It returns nil at the first
@@ -255,10 +292,7 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 // that is not a string: the decode then returns the error for that value.
 func checkBind(bind map[string]map[string]json.RawMessage) error {
 	for _, k := range slices.Sorted(maps.Keys(bind)) {
-		switch {
-		case k != "agents" && k != "commands" && k != "skills":
-			return fmt.Errorf("use agents, commands or skills as a bind kind, not %q", k)
-		case bind[k] == nil:
+		if bind[k] == nil {
 			return fmt.Errorf("set the bind kind %q to an object of roles to names, not null", k)
 		}
 		for _, role := range slices.Sorted(maps.Keys(bind[k])) {
@@ -313,6 +347,11 @@ func (v BindValue) MarshalJSON() ([]byte, error) {
 		return json.Marshal(v.Names)
 	}
 	return json.Marshal(v.Name)
+}
+
+// definesPointer reports whether a pointer below a BindValue leads to an item of a list.
+func (BindValue) definesPointer(segments []string) bool {
+	return len(segments) == 1 && isIndex(segments[0])
 }
 
 // UnmarshalJSON reads a name, or a list of names. An empty list reads as Names set to
@@ -446,6 +485,11 @@ func (p HarnessPart) MarshalJSON() ([]byte, error) {
 		return []byte("true"), nil
 	}
 	return json.Marshal(p.Names)
+}
+
+// definesPointer reports whether a pointer below a HarnessPart leads to an item of a list.
+func (HarnessPart) definesPointer(segments []string) bool {
+	return len(segments) == 1 && isIndex(segments[0])
 }
 
 // UnmarshalJSON reads true, or an array of names.
@@ -749,6 +793,12 @@ type Tier struct {
 	Effort string
 	// object is true when the Tier was read from the object form.
 	object bool
+}
+
+// definesPointer reports whether a pointer below a Tier leads to model or to effort, the
+// members of the object form.
+func (Tier) definesPointer(segments []string) bool {
+	return len(segments) == 1 && (segments[0] == "model" || segments[0] == "effort")
 }
 
 // tierObject is the object form of a [Tier].

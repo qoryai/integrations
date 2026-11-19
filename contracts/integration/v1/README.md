@@ -31,7 +31,8 @@ feed. A writer may add a member, and an older reader reads the rest.
 - A reader refuses a bad value of a member that it defines.
 - The description's `settings` is the integration's settings schema. The contract
   neither opens nor closes it, and the schema accepts any pointer below it.
-- The `auth` and the `format` of an API follow the Forager contract.
+- The `auth` and the `format` of an API follow the Forager contract. The schema accepts a
+  pointer to them and refuses a pointer below them.
 
 Example: a program prints a description with the member `/roles/source/extra`, which an
 older control plane does not define. The older control plane ignores the member and reads
@@ -237,7 +238,7 @@ pointer of an entry is counted from the entry, such as `/target/collection`.
   does not define.
 - A `change_request` entry is the exception. The adapter sends
   `POST /v1/work-items/changes/failed` with reason `refused`. The `detail` starts with the
-  fix: `Use an adapter that defines "/target/later". The entry lists it in must_understand,
+  fix: `Use an adapter that defines "/target/extra". The entry lists it in must_understand,
   and this adapter does not define it.` The adapter then stops working on the entry.
   `contracts.CheckChangeMustUnderstand` returns that text.
 - The artifact type of the `change_kind` defines `data`, so this contract does not. The

@@ -6,5 +6,5 @@
     "collection": "R_1001"
   },
   "reason": "refused",
-  "detail": "Use an adapter that defines \"/target/later\". The entry lists it in must_understand, and this adapter does not define it."
+  "detail": "Use an adapter that defines \"/target/extra\". The entry lists it in must_understand, and this adapter does not define it."
 }

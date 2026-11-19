@@ -6,27 +6,38 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode/utf8"
 )
 
 // MustUnderstand is the member that lists, in a document that a writer sends to an
 // older reader, the members of the document that the reader must understand.
 const MustUnderstand = "must_understand"
 
+// The limits of a must_understand list in the schemas of this repository.
+const (
+	// MustUnderstandPointers is the most entries a must_understand list has.
+	MustUnderstandPointers = 32
+	// MustUnderstandPointerLength is the most characters an entry has.
+	MustUnderstandPointerLength = 256
+)
+
 // CheckMustUnderstand reports the first pointer in the must_understand member of the JSON
-// object b that is not a member of the document type v, and nil when b has no
-// must_understand, or it lists only members of v. Each entry is a JSON Pointer (RFC 6901)
+// object b that is not a member of the document type v. It returns nil when b has no
+// must_understand, or lists only members of v. Each entry is a JSON Pointer (RFC 6901)
 // counted from b, such as /run_settings/runtime. v is a struct, or a pointer to one, such
-// as [Documents], [NextSessionAnswer] or [Change]. A pointer resolves through the json
-// tags of structs, the index of a list, and any key of a map. Below a value that the type
-// reads itself, such as json.RawMessage, an interface, or a type with its own JSON
-// decoding and no tagged fields, any pointer resolves, since the type does not define
-// what is there. A reader that decodes b into v ignores a member that v does not have, so
-// it calls CheckMustUnderstand first, and refuses the document when it returns an error.
-// It returns an error too when b is not a JSON object, when must_understand is null or
-// not a list of strings, when an entry is not a pointer, and when an entry repeats. The
-// schema's limit on the count needs no check here: a list of distinct pointers to
-// members of v is never longer than the schema's maxItems for the documents of this
-// package.
+// as [Documents], [NextSessionAnswer] or [Changes].
+//
+// A pointer resolves through the json tags of structs, the index of a list, and any key
+// of a map. A type that decodes itself, such as [Tier], implements definesPointer for the members it defines. Below
+// a json.RawMessage or an interface, any pointer resolves, since the type does not define
+// what is there.
+//
+// A reader that decodes b into v ignores a member that v does not have. It calls
+// CheckMustUnderstand first, and refuses the document when it returns an error. It
+// returns an error too when b is not a JSON object, when must_understand is null or not a
+// list of strings, when an entry is not a pointer or has more than
+// [MustUnderstandPointerLength] characters, when an entry repeats, and when the list has
+// more than [MustUnderstandPointers] entries, the limits of the schemas.
 func CheckMustUnderstand(b []byte, v any) error {
 	p, err := unmetPointer(b, v)
 	if err != nil {
@@ -57,8 +68,14 @@ func unmetPointer(b []byte, v any) (string, error) {
 	if pointers == nil {
 		return "", errors.New("set must_understand to a list of JSON Pointers, or leave it out, not null")
 	}
+	if len(pointers) > MustUnderstandPointers {
+		return "", fmt.Errorf("list at most %d pointers in must_understand, not %d", MustUnderstandPointers, len(pointers))
+	}
 	seen := make(map[string]bool, len(pointers))
 	for _, p := range pointers {
+		if utf8.RuneCountInString(p) > MustUnderstandPointerLength {
+			return "", fmt.Errorf("write each pointer in must_understand with at most %d characters, not %d", MustUnderstandPointerLength, utf8.RuneCountInString(p))
+		}
 		if seen[p] {
 			return "", fmt.Errorf("list %q once in must_understand", p)
 		}
@@ -83,9 +100,21 @@ func resolves(t reflect.Type, segments []string) bool {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
-	if len(segments) == 0 || readsItself(t) {
+	if len(segments) == 0 {
 		return true
 	}
+	if r, ok := reflect.Zero(t).Interface().(pointerResolver); ok {
+		return r.definesPointer(segments)
+	}
+	if readsItself(t) {
+		return true
+	}
+	return resolvesBelow(t, segments)
+}
+
+// resolvesBelow reports whether the segments, one or more, lead to a member of the type t
+// by its fields, its map keys or its list items.
+func resolvesBelow(t reflect.Type, segments []string) bool {
 	seg := segments[0]
 	switch t.Kind() {
 	case reflect.Struct:
@@ -103,6 +132,14 @@ func resolves(t reflect.Type, segments []string) bool {
 		}
 	}
 	return false
+}
+
+// pointerResolver is implemented by a type that decodes itself from JSON, and defines the
+// members below it in a way that json tags cannot show.
+type pointerResolver interface {
+	// definesPointer reports whether the type defines the member that the segments, one or
+	// more, lead to below a value of the type.
+	definesPointer(segments []string) bool
 }
 
 // readsItself reports whether the type decodes its JSON by itself and defines no member

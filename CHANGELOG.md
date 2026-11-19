@@ -228,8 +228,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
     `change_request` entry. The adapter checks those pointers.
   - `changes.schema.json` accepts any snake_case `kind` and checks the members of the
     seven kinds it defines.
-  - The shared schemas `target`, `change_address`, `person` and `listing` in
-    `definitions.schema.json` ignore an unknown member too.
+  - The shared schemas `target` and `change_address` in `definitions.schema.json` ignore
+    an unknown member too, in every schema that refers to them, among them the explore
+    inputs, `source-collections.schema.json` and `source-items.schema.json`. `person` and
+    `listing` stay closed.
   - The replies `changes-submitted.schema.json` and `changes-failed.schema.json` stay
     closed at their root. The control plane serves only revisions that it implements.
   - A writer's test validates against a closed copy of the schema, so a misspelled
@@ -255,7 +257,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   file.
 - `contracts.CheckMustUnderstand` returns an error for a document whose `must_understand`
   lists a pointer that a Go type does not define. It also returns an error for a repeated
-  pointer, for null, and for a string that is no JSON Pointer.
+  pointer, for null, for a string that is no JSON Pointer, for more than
+  `contracts.MustUnderstandPointers` (32) pointers, and for a pointer of more than
+  `contracts.MustUnderstandPointerLength` (256) characters.
   `contracts.CheckChangeMustUnderstand` does the same for a feed entry, by its `kind`.
 - `contracts.Documents`, `contracts.NextSessionAnswer`, `contracts.Changes` and
   `contracts.Change` have `MustUnderstand`. The rule is in `contracts/run/v1/README.md`
@@ -880,10 +884,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a role that is not a group in the module manifests. In Go,
   `HarnessSection.Bind` is a `map[string]map[string]BindValue`: `BindValue.Name` is set
   for a name, and `BindValue.Names` for a list, and each is written back in the form it
-  was read in. Decoding a `HarnessSection` returns an error for a bind kind other than
-  `agents`, `commands` or `skills`, for one whose value is null, for a role whose value
-  is null, for a list on a `commands` or `skills` role, for an empty list, and for a null
-  item of a list.
+  was read in. Decoding a `HarnessSection` ignores a bind kind other than `agents`,
+  `commands` or `skills`. It returns an error for a kind whose value is null, for a role
+  whose value is null, for a list on a `commands` or `skills` role, for an empty list,
+  and for a null item of a list.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that

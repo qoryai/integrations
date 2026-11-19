@@ -396,7 +396,7 @@ func TestAHarnessIsRefusedForItsHarnessAlone(t *testing.T) {
 // TestASubmitIsRefusedForItsSubmitAlone pins that each invalid fixture refused at
 // /submit is refused for its submit and for nothing else: the same documents with the
 // submit of documents/explore-submit-with-harness.json are accepted. The refused values are a
-// member other than type and send, a type in upper case, with an underscore or of 65
+// type in upper case, with an underscore or of 65
 // characters, a send other than end_of_run and after_gate, and no type or no send.
 func TestASubmitIsRefusedForItsSubmitAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
@@ -1174,24 +1174,20 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 	}
 }
 
-// TestABindTheSchemaRefusesFailsToRead pins that a bind in the flat form, <kind>/<role>
-// to a name, a bind with a kind other than agents, commands and skills, a bind with a
-// kind whose value is null, a role whose value is null, a list on a commands or skills
-// role, an empty list, a null item of a list, and a role set to neither a name nor a
-// list fail to read into a HarnessSection with an
-// error, and that a bind with each kind, with a list on an agents role, or with empty
-// objects, reads.
+// TestABindTheSchemaRefusesFailsToRead pins that a bind with a kind whose value is null, a
+// role whose value is null, a list on a commands or skills role, an empty list, a null
+// item of a list, and a role set to neither a name nor a list fail to read into a
+// HarnessSection with an error, and that a bind with each kind, with a list on an agents
+// role, with empty objects, with a flat role <kind>/<role> or with a kind other than
+// agents, commands and skills, which the reader ignores, reads without those members.
 func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 	for _, c := range []struct{ in, err string }{
-		{`{"bind":{"agents/writer":"copywriter"}}`, "bind"},
-		{`{"bind":{"hooks":{"x":"y"}}}`, `use agents, commands or skills as a bind kind, not "hooks"`},
 		{`{"bind":{"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
 		{`{"bind":{"skills":{"review":"brand-review"},"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
 		{`{"bind":{"commands":{"publish":["post","schedule"]}}}`, `set the bind role "commands.publish" to one name, not a list: only an agents role can be a group`},
 		{`{"bind":{"skills":{"review":["brand-review"]}}}`, `set the bind role "skills.review" to one name, not a list: only an agents role can be a group`},
 		{`{"bind":{"agents":{"reviewers":[]}}}`, `write one name or more in the list of the bind role "agents.reviewers": the list is empty`},
 		{`{"bind":{"agents":{"writer":null}}}`, `set the bind role "agents.writer" to one name or a list of names, not null`},
-		{`{"bind":{"hooks":{"x":null}}}`, `use agents, commands or skills as a bind kind, not "hooks"`},
 		{`{"bind":{"agents":{"reviewers":["copy-reviewer",null]}}}`, `set item 2 of the list of the bind role "agents.reviewers" to a name, not null`},
 		{`{"bind":{"agents":{"reviewers":{"one":"copy-reviewer"}}}}`, "set a bind role to one name or a list of names"},
 		{`{"bind":{"agents":{"reviewers":["copy-reviewer",3]}}}`, "set a bind role to one name or a list of names"},
@@ -1212,10 +1208,18 @@ func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 		`{"bind":{"agents":{}}}`,
 		`{"bind":{}}`,
 		`{}`,
+		`{"bind":{"agents/writer":"copywriter"}}`,
+		`{"bind":{"hooks":{"x":"y"},"agents":{"writer":"copywriter"}}}`,
+		`{"bind":{"hooks":{"x":null}}}`,
 	} {
 		var s contracts.HarnessSection
 		if err := json.Unmarshal([]byte(in), &s); err != nil {
 			t.Errorf("%s: %v", in, err)
+		}
+		for kind := range s.Bind {
+			if kind != "agents" && kind != "commands" && kind != "skills" {
+				t.Errorf("%s reads with the bind kind %q", in, kind)
+			}
 		}
 	}
 }
