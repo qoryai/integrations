@@ -91,7 +91,6 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		"fixtures/invalid/description-vendor-empty.json":                                      "/vendor minLength; /vendor pattern",
 		"fixtures/invalid/description-vendor-line-feed.json":                                  "/vendor pattern",
 		"fixtures/invalid/description-vendor-not-string.json":                                 "/vendor type",
-		"fixtures/invalid/description-source-undefined-member.json":                           "/roles/source additionalProperties",
 		"fixtures/invalid/description-source-line-feed.json":                                  "/roles/source/connect pattern",
 		"fixtures/invalid/description-source-line-too-long.json":                              "/roles/source/access maxLength",
 		"fixtures/invalid/description-source-command-non-ascii.json":                          "/roles/source/start pattern",

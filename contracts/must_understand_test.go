@@ -55,6 +55,17 @@ func understoodSchemas() []understood {
 			sites:   []string{"/oneOf/0", "/oneOf/1"},
 			invalid: func(m map[string]any) { m["time_limit_minutes"] = json.Number("0") },
 		},
+		{
+			name:    "description.schema.json",
+			open:    func() (*jsonschema.Schema, error) { return contracts.Compile("description.schema.json") },
+			closed:  func() (*jsonschema.Schema, error) { return contracts.CompileClosed("description.schema.json") },
+			read:    contracts.Document,
+			dir:     "fixtures",
+			valid:   "fixtures/example-tracker.json",
+			places:  []string{"", "roles/source"},
+			sites:   []string{"", "/properties/roles/properties/source"},
+			invalid: func(m map[string]any) { m["name"] = "Upper Case" },
+		},
 	}
 }
 
@@ -186,6 +197,7 @@ func TestMustUnderstandListsTheMembersOfItsSchema(t *testing.T) {
 	}{
 		{understoodSchemas()[0], contracts.Documents{}},
 		{understoodSchemas()[1], contracts.NextSessionAnswer{}},
+		{understoodSchemas()[2], nil},
 	} {
 		raw, err := c.u.read(c.u.name)
 		if err != nil {

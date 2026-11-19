@@ -33,7 +33,7 @@ import (
 
 var (
 	descriptionSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
-		return contracts.Compile("description.schema.json")
+		return contracts.CompileClosed("description.schema.json")
 	})
 	credentialSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 		return forager.Compile("credential.schema.json")
@@ -93,8 +93,9 @@ func (r refusals) Unwrap() []error { return r.errs }
 // checks them: at most 262144 bytes, UTF-8, no \u escape of a lone surrogate, no
 // object that repeats a member, no string or member name over 16384 bytes of UTF-8, at
 // most 4096 JSON values and at most 64 levels of nesting; which the contract's
-// description.schema.json accepts; and whose every secret, a property marked writeOnly,
-// is a property of the settings themselves with a setting <name>_file beside it
+// description.schema.json accepts, and has no member that the schema does not define,
+// which a reader ignores but a misspelled member would be; and whose every secret, a
+// property marked writeOnly, is a property of the settings themselves with a setting <name>_file beside it
 // (contracts/integration/v1 §Describe); and whose model_provider role, when it has one,
 // keeps the rules of the role that the schema does not check, as
 // [contracts.CheckModelProvider] checks them, and whose APIs' auth, when it is of the
@@ -141,8 +142,8 @@ func Description(stdout []byte) error {
 // description.schema.json that no schema can express, as [contracts.CheckDescription]
 // checks them, the same checks as [Description]; which has no program_version, so it is
 // in the data form and not the program form; which the contract's
-// description.schema.json accepts, so its one role is model_provider; and whose
-// model_provider role keeps the rules of the role that the schema does not check, as
+// description.schema.json accepts, with no member that the schema does not define, so its
+// one role is model_provider; and whose model_provider role keeps the rules of the role that the schema does not check, as
 // [contracts.CheckModelProvider] checks them; whose APIs' auth, when it is of the
 // scheme header, sets no header that conformance reserves, as [Credential] refuses
 // them; and whose egress_hosts keeps the rules the schema does not check, as

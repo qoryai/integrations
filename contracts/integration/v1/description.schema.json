@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/integration/v1/description.schema.json",
   "title": "Integration description",
-  "description": "An integration's description: its name, the domains it works with, the settings it takes and the roles it plays, in one of two forms. In the program form, it is what <program> describe prints on its standard output, once, as one JSON document, and exits 0. describe takes no settings and reaches no network. A program that fails prints nothing on standard output, one line on standard error describing what failed, and exits non-zero. In the data form, the description has no program_version: it is a file of data that no program prints, its one role is model_provider, and its settings have no member writeOnly, at any depth. A data description's revision is the integrations commit a reader pins it at, and the reader records that pin with what it made from the description. A reader expands any declared integration into its definitions from this document alone. The document is JSON in UTF-8: no string, a member name included, contains invalid UTF-8 or a \\u escape of a lone surrogate, one of U+D800 to U+DFFF that is not in a valid pair, and no object repeats a member, at any depth. Every value of the document, the settings schema included, is bounded: an array has at most 1024 entries, an object at most 1024 members, and a string, a member name included, at most 16384 bytes of UTF-8; $defs.bounds sets that limit only as 16384 characters, since a schema counts characters. The document contains at most 4096 JSON values in all, the document itself, each array entry and each member's value counting one, a container or not, and member names not counting; it nests arrays and objects at most 64 levels deep, the top-level object being level 1; and its raw bytes are at most 262144 (256 KiB). The control plane refuses a description that breaks any of these rules or goes past any of these limits.",
+  "description": "An integration's description: its name, the domains it works with, the settings it takes and the roles it plays, in one of two forms. In the program form, it is what <program> describe prints on its standard output, once, as one JSON document, and exits 0. describe takes no settings and reaches no network. A program that fails prints nothing on standard output, one line on standard error describing what failed, and exits non-zero. In the data form, the description has no program_version: it is a file of data that no program prints, its one role is model_provider, and its settings have no member writeOnly, at any depth. A data description's revision is the integrations commit a reader pins it at, and the reader records that pin with what it made from the description. A reader expands any declared integration into its definitions from this document alone. The document is JSON in UTF-8: no string, a member name included, contains invalid UTF-8 or a \\u escape of a lone surrogate, one of U+D800 to U+DFFF that is not in a valid pair, and no object repeats a member, at any depth. Every value of the document, the settings schema included, is bounded: an array has at most 1024 entries, an object at most 1024 members, and a string, a member name included, at most 16384 bytes of UTF-8; $defs.bounds sets that limit only as 16384 characters, since a schema counts characters. The document contains at most 4096 JSON values in all, the document itself, each array entry and each member's value counting one, a container or not, and member names not counting; it nests arrays and objects at most 64 levels deep, the top-level object being level 1; and its raw bytes are at most 262144 (256 KiB). The control plane refuses a description that breaks any of these rules or goes past any of these limits. A reader ignores a member of the description, or of its source role, that this schema does not define, unless must_understand lists it. A reader refuses a description whose must_understand lists a member that the reader does not define.",
   "type": "object",
   "allOf": [{"$ref": "#/$defs/bounds"}],
-  "additionalProperties": false,
   "required": ["version", "name", "title", "settings", "roles"],
   "if": {"required": ["program_version"]},
   "else": {"properties": {"roles": {"propertyNames": {"const": "model_provider"}}, "settings": {"$ref": "#/$defs/no_secret"}}},
   "properties": {
+    "must_understand": {"$ref": "#/$defs/must_understand"},
     "version": {"description": "The contract's version.", "const": 1},
     "name": {
       "description": "The integration's name: the key a machine's configuration declares it under, unless the machine chooses another, and so the name of what it defines there. The key is the name of the gateway's credential and of the program qory-<key> of this repository's, so the name is the credential's grammar without the dot.",
@@ -39,6 +39,7 @@
       "type": "object",
       "minProperties": 1,
       "propertyNames": {"pattern": "^[a-z][a-z_]{0,63}$"},
+      "additionalProperties": true,
       "properties": {
         "credential": {
           "description": "The gateway's credential adapter. The program is started as <program> credential --settings <json> -- <argument> and prints the gateway's credential document.",
@@ -59,7 +60,6 @@
         "source": {
           "description": "The source adapter: the program that reads a source of work, such as a tracker, and speaks the integration contract to the control plane (adapter.schema.json). Every value here other than items, comments, targets, change_kinds, credential_scope and apply is the integration's words, which the control plane shows verbatim as plain text, never as Markdown or HTML. Each value other than items, comments, targets, change_kinds and apply is one line with no control characters, none of the format characters listed for a prose line ($defs.line) and no bidirectional controls, so no control character in a value overrides the order it is shown in, and each value other than items, comments, targets, change_kinds, item_noun, collection_noun, secrets, credential_scope, apply and guide refers to the system by its name, with no placeholder. A line of guide has no placeholder either, and need not refer to the system by its name. The source role is not one a reader starts: it is not started as <program> <role> --settings <json>, and it does not end by printing one document as those roles do: start runs the program as a server, and the enrol command prints only the settings to add, as described under program. A person runs setup.command, then the enrol command under program, then start, and the program runs as a server. The rules for how a role is started and how it ends apply to describe and to the roles a reader starts, not to this one. A prose line is 1 to 300 characters, and a command 1 to 200 characters of printable ASCII.",
           "type": "object",
-          "additionalProperties": false,
           "required": ["description", "program", "setup", "start", "connect", "access", "disconnect"],
           "properties": {
             "description": {"description": "The catalogue line: one sentence on what the source adapter does.", "$ref": "#/$defs/line"},
@@ -228,6 +228,13 @@
     }
   },
   "$defs": {
+    "must_understand": {
+      "description": "The members of the description that the reader must understand, by name: at most 16, each once, each a member that this schema defines. A reader ignores a member that it does not define, unless must_understand lists it. A reader refuses a description whose must_understand lists a member that it does not define, and a bad value of a member that it defines. The list has top-level members only.",
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {"enum": ["version", "name", "title", "description", "vendor", "domains", "program_version", "settings", "roles", "egress_hosts"]}
+    },
     "api": {
       "description": "One API of a model provider: its format, its endpoint, how the gateway sets the key on a request, the prefixes a key must start with, the runtimes that may use a key, the paths the key is set on, how the control plane signs a person in with a device code, when oauth_device is set, and how it refreshes an OAuth login.",
       "type": "object",

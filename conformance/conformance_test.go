@@ -91,6 +91,34 @@ func TestADescriptionIsOneDocumentWithItsSecretsOnTop(t *testing.T) {
 	}
 }
 
+// TestAMisspelledMemberFailsConformance pins that Description refuses a member that
+// description.schema.json does not define, at the root and in the source role, which a
+// reader of the schema ignores, so that a misspelled member fails an integration's test.
+func TestAMisspelledMemberFailsConformance(t *testing.T) {
+	b := []byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
+ "settings": {"type": "object"}, "titel": "Acme", "must_understand": ["name"],
+ "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}},
+ "egress_hosts": ["tracker.acme.example"]}`)
+	if err := conformance.Description(b); err == nil || !strings.Contains(err.Error(), "titel") {
+		t.Errorf("a description with titel: %v, want a refusal that names titel", err)
+	}
+	ok := strings.Replace(string(b), `"titel": "Acme", `, "", 1)
+	if err := conformance.Description([]byte(ok)); err != nil {
+		t.Errorf("a description with must_understand and no misspelled member: %v", err)
+	}
+	for name, fixture := range fixtures(t, "fixtures") {
+		if !strings.Contains(string(fixture), `"source"`) {
+			continue
+		}
+		source := strings.Replace(string(fixture), `"source": {`, `"source": {"butn": "Connect", `, 1)
+		if err := conformance.Description([]byte(source)); err == nil || !strings.Contains(err.Error(), "butn") {
+			t.Errorf("%s with butn in the source role: %v, want a refusal that names butn", name, err)
+		}
+		return
+	}
+	t.Error("no fixture has a source role")
+}
+
 // TestADescriptionKeepsTheRulesOnItsRawBytes pins what Description refuses on the raw
 // bytes before any decoder reads them: each document under fixtures/refused-by-reader,
 // and a description past each limit description.schema.json states in words.

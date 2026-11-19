@@ -16,6 +16,29 @@ under `https://qory.dev/contracts/integration/v1/`, as Forager's documents are
 A reader reads the versions it knows and refuses a description of any other. An
 addition keeps `version` 1; a change that breaks a reader is `version` 2.
 
+## Members a reader does not define
+
+A reader ignores a member of a description that `description.schema.json` does not define.
+That holds for the top-level members and for the members of the `source` role.
+
+- `must_understand` lists top-level members that the reader must understand, each name
+  once. A reader refuses a description whose `must_understand` lists a member that the
+  reader does not define.
+- A reader refuses a bad value of a member that it defines.
+- The other objects of a description stay closed: the settings schema, and the
+  `credential` and `model_provider` roles. A reader refuses a member that the schema does
+  not define there.
+
+Example: a program prints a description with a top-level member that an older control
+plane does not define. The older control plane ignores the member and reads the rest.
+When the program lists the member in `must_understand`, the older control plane refuses
+the description.
+
+A program's test checks its description against a closed copy of the schema, which
+refuses a member that the schema does not define, so a misspelled member fails the test.
+`conformance.Description` does this, and `contracts.CompileClosed` returns the closed
+copy.
+
 ## Describe
 
 ```sh
@@ -36,6 +59,7 @@ from it.
 | `program_version` | the program's version, a string, such as `0.1.0` |
 | `settings` | a JSON Schema, draft 2020-12, of type `object`: the settings document the program takes |
 | `roles` | the roles the program plays, an object keyed by the role's name; at least one |
+| `must_understand` | the names of the members above that the reader must understand, as [Members a reader does not define](#members-a-reader-does-not-define) describes; may be absent |
 
 ```json
 {"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
