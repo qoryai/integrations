@@ -85,7 +85,7 @@ type Documents struct {
 	TargetVersion string       `json:"target_version,omitempty"`
 	WorkItem      *WorkItem    `json:"work_item,omitempty"`
 	RunSettings   *RunSettings `json:"run_settings,omitempty"`
-	// TimeLimitMinutes is the time limit of session 1, in minutes, from 15 to 1440,
+	// TimeLimitMinutes is the time limit of session 1, in minutes, from 1 to 1440,
 	// and 0 when the control plane sets none. The machine sets it as that session's
 	// time limit. The limit of each later session is the TimeLimitMinutes of the
 	// [NextSessionAnswer]. It is set only for the step explore.
@@ -582,7 +582,7 @@ type NextSessionAnswer struct {
 	// other than the run's default model provider credential and the active key of its
 	// group.
 	ModelProviderCredentialName string `json:"model_provider_credential_name,omitempty"`
-	// TimeLimitMinutes is the time limit of the session, in minutes, from 15 to 1440.
+	// TimeLimitMinutes is the time limit of the session, in minutes, from 1 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
 	// FullSuite is true when the session runs the full test suite after the agent ends.
 	FullSuite bool `json:"full_suite,omitempty"`
