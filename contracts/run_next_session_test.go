@@ -560,3 +560,26 @@ func TestTheModelProviderCredentialNameIsAnyNameOfForagersRunConfiguration(t *te
 		}
 	}
 }
+
+// TestEachNextSessionRefusalCodeHasAFixture pins that the documents under
+// fixtures/next-session-refusal/ cover each code of error in
+// next-session-refusal.schema.json once, and no other code.
+func TestEachNextSessionRefusalCodeHasAFixture(t *testing.T) {
+	doc, err := contracts.RunDocument("next-session-refusal.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var codes []string
+	for _, c := range doc.(map[string]any)["properties"].(map[string]any)["error"].(map[string]any)["enum"].([]any) {
+		codes = append(codes, c.(string))
+	}
+	var got []string
+	for _, f := range runFiles(t, "fixtures/next-session-refusal") {
+		got = append(got, fixture(t, strings.TrimPrefix(f, "fixtures/"))["error"].(string))
+	}
+	slices.Sort(codes)
+	slices.Sort(got)
+	if !slices.Equal(got, codes) {
+		t.Errorf("the refusal fixtures have the codes %v, want %v", got, codes)
+	}
+}
