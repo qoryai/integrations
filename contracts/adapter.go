@@ -447,7 +447,7 @@ const (
 // [DraftUpdate] with the Number of the draft to edit.
 type DraftRequest struct {
 	Action string `json:"action"`
-	Number int    `json:"number,omitempty"`
+	Number int64  `json:"number,omitempty"`
 }
 
 // MarshalJSON writes the entry with the members of its kind alone, and refuses a kind
@@ -572,7 +572,7 @@ const (
 // merged is reported with [DraftKept] and its real state, and the adapter does not edit
 // it. Number may differ from the number in the entry: it is a hint.
 type SubmittedDraft struct {
-	Number int    `json:"number"`
+	Number int64  `json:"number"`
 	URL    string `json:"url"`
 	Title  string `json:"title"`
 	State  string `json:"state"`

@@ -246,9 +246,16 @@ forge on a port other than 443 is not a target. The steps:
    `commit_url` of each commit and of the base, and, for a target that had `draft`,
    `draft`: `{number, url, title, state, action}`. `state` is `draft`, `open`, `closed` or
    `merged`. A draft that a person closed or merged has the action `kept`. The `number`
-   may differ from the entry's. The reply has `draft` exactly when the entry's target had
-   a draft; the control plane refuses a reply that does not, 400. The control plane
-   stores the addresses and the draft.
+   may differ from the entry's, and is 1 to 9223372036854775807; the control plane refuses
+   a larger number, 400. An integer is written without a decimal point or exponent, and
+   the control plane refuses `34.0` with 400 `invalid_request`. The reply has `draft`
+   exactly when the entry's target had a draft; the control plane refuses a reply that
+   does not, 400. Each address, the `commit_url` of the base and of each commit and the
+   `url` of the draft, is on the `system` of its target (its host, in lower case, equals
+   the `system`), with no user information, port, query or fragment, and with a path that
+   is not empty or `/` alone, as in the submit program contract. The control plane
+   refuses a reply with another address, 400. The control plane stores the addresses and
+   the draft.
 5. After a failure that trying again cannot fix, or when its retries end, the adapter
    sends `POST /v1/work-items/changes/failed` (`changes-failed.schema.json`) with
    `submission_id`, `system`, `path`, `reason` and, optionally, `detail`: one line of 1

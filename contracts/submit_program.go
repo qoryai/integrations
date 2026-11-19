@@ -130,7 +130,7 @@ type SubmitResult struct {
 	Invalid    []SubmitLineError
 }
 
-var submitNumber = regexp.MustCompile(`^[1-9][0-9]{0,8}$`)
+var submitNumber = regexp.MustCompile(`^[1-9][0-9]{0,18}$`)
 
 // submitRules are the patterns that the schemas give to an address and to a title,
 // compiled from the schemas, so that a result line passes the rule that the adapter's
@@ -239,7 +239,7 @@ func ParseSubmitLines(output, system, draft string, commits []string) SubmitResu
 			bad(at[SubmitKeyDraftAction], "a draft that is closed or merged has the action "+DraftKept)
 			break
 		}
-		number, _ := strconv.Atoi(values[SubmitKeyDraftNumber])
+		number, _ := strconv.ParseInt(values[SubmitKeyDraftNumber], 10, 64)
 		res.Draft = &SubmittedDraft{Number: number, URL: values[SubmitKeyDraftURL], Title: values[SubmitKeyDraftTitle],
 			State: values[SubmitKeyDraftState], Action: values[SubmitKeyDraftAction]}
 	case len(values) > 0:
@@ -327,8 +327,8 @@ func submitControl(s string) bool {
 func submitDraftValue(key, value, system string) error {
 	switch key {
 	case SubmitKeyDraftNumber:
-		if !submitNumber.MatchString(value) {
-			return errors.New("the number is not a whole number of 1 to 9 digits, 1 or more")
+		if _, err := strconv.ParseInt(value, 10, 64); err != nil || !submitNumber.MatchString(value) {
+			return errors.New("the number is not a whole number from 1 to 9223372036854775807, without a leading zero")
 		}
 	case SubmitKeyDraftURL:
 		return submitAddress(value, system)
