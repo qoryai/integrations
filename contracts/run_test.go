@@ -44,8 +44,8 @@ func runFiles(t *testing.T, dir string) []string {
 // runSchemas are the schemas of the run contract: the files of run/v1.
 var runSchemas = []string{"documents", "next-session-answer", "next-session-refusal", "next-session-request", "outcome"}
 
-// TestRunSchemaIsTheContract pins that run/v1 contains exactly documents.schema.json,
-// next-session-answer.schema.json, next-session-refusal.schema.json,
+// TestRunSchemaIsTheContract pins that run/v1 contains exactly README.md,
+// documents.schema.json, next-session-answer.schema.json, next-session-refusal.schema.json,
 // next-session-request.schema.json and outcome.schema.json, each with the $id
 // RunBase/<file name>, and that each compiles.
 func TestRunSchemaIsTheContract(t *testing.T) {
@@ -59,7 +59,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 			got = append(got, e.Name())
 		}
 	}
-	want := "documents.schema.json,next-session-answer.schema.json,next-session-refusal.schema.json,next-session-request.schema.json,outcome.schema.json"
+	want := "README.md,documents.schema.json,next-session-answer.schema.json,next-session-refusal.schema.json,next-session-request.schema.json,outcome.schema.json"
 	if strings.Join(got, ",") != want {
 		t.Errorf("run/v1 contains %v, want %s", got, want)
 	}
@@ -116,7 +116,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-without-step.json":                                        {"documents", "/ required step"},
 		"documents-without-domain.json":                                      {"documents", "/ required domain"},
 		"documents-without-inputs.json":                                      {"documents", "/ required inputs"},
-		"documents-undefined-member.json":                                    {"documents", "/ additionalProperties"},
 		"documents-inputs-no-version.json":                                   {"documents", "/inputs required version"},
 		"documents-prebuild-inputs-target.json":                              {"documents", "/inputs additionalProperties"},
 		"documents-prebuild-with-subject.json":                               {"documents", "/ "},
@@ -146,27 +145,25 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-prebuild-with-time-limit-minutes.json":                    {"documents", "/step const"},
 		"documents-prebuild-with-shared-run.json":                            {"documents", "/step const"},
 		"documents-prebuild-with-full-suite.json":                            {"documents", "/step const"},
-		"next-session-answer-both-shapes.json":                               {"next-session-answer", "/next const; / additionalProperties"},
-		"next-session-answer-end-with-workflow.json":                         {"next-session-answer", "/ required session,time_limit_minutes,full_suite,inputs; /next const; / additionalProperties"},
-		"next-session-answer-inputs-without-version.json":                    {"next-session-answer", "/inputs required version; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-effort-without-model.json":         {"next-session-answer", "/model_choice dependentRequired/provider_models; /model_choice dependentRequired/effort; /model_choice dependentRequired/tiers; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-runtime-number.json":               {"next-session-answer", "/model_choice/runtime type; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-runtime-upper-case.json":           {"next-session-answer", "/model_choice/runtime pattern; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-runtime-effort-only.json":          {"next-session-answer", "/model_choice dependentRequired/effort; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-undefined-member.json":             {"next-session-answer", "/model_choice additionalProperties; /next const; / additionalProperties"},
-		"next-session-answer-model-provider-credential-name-upper-case.json": {"next-session-answer", "/model_provider_credential_name pattern; /next const; / additionalProperties"},
-		"next-session-answer-model-credential.json":                          {"next-session-answer", "/ additionalProperties; / additionalProperties; /next const"},
-		"next-session-answer-next-unknown.json":                              {"next-session-answer", "/next const; /next const; / additionalProperties"},
-		"next-session-answer-session-0.json":                                 {"next-session-answer", "/session minimum; /next const; / additionalProperties"},
-		"next-session-answer-session-without-full-suite.json":                {"next-session-answer", "/ required full_suite; /next const; / additionalProperties"},
-		"next-session-answer-session-without-inputs.json":                    {"next-session-answer", "/ required inputs; /next const; / additionalProperties"},
-		"next-session-answer-session-without-time-limit-minutes.json":        {"next-session-answer", "/ required time_limit_minutes; /next const; / additionalProperties"},
-		"next-session-answer-session-without-workflow.json":                  {"next-session-answer", "/ required workflow; /next const; / additionalProperties"},
-		"next-session-answer-time-limit-minutes-0.json":                      {"next-session-answer", "/time_limit_minutes minimum; /next const; / additionalProperties"},
-		"next-session-answer-time-limit-minutes-string.json":                 {"next-session-answer", "/time_limit_minutes type; /next const; / additionalProperties"},
-		"next-session-answer-time-limit-minutes-1441.json":                   {"next-session-answer", "/time_limit_minutes maximum; /next const; / additionalProperties"},
-		"next-session-answer-undefined-member.json":                          {"next-session-answer", "/ additionalProperties; /next const; / additionalProperties"},
-		"next-session-answer-without-next.json":                              {"next-session-answer", "/ required next; / required next; / additionalProperties"},
+		"next-session-answer-both-shapes.json":                               {"next-session-answer", "/next const; / "},
+		"next-session-answer-end-with-workflow.json":                         {"next-session-answer", "/ required session,time_limit_minutes,full_suite,inputs; /next const; / "},
+		"next-session-answer-inputs-without-version.json":                    {"next-session-answer", "/inputs required version; /next const; / "},
+		"next-session-answer-model-choice-effort-without-model.json":         {"next-session-answer", "/model_choice dependentRequired/provider_models; /model_choice dependentRequired/effort; /model_choice dependentRequired/tiers; /next const; / "},
+		"next-session-answer-model-choice-runtime-number.json":               {"next-session-answer", "/model_choice/runtime type; /next const; / "},
+		"next-session-answer-model-choice-runtime-upper-case.json":           {"next-session-answer", "/model_choice/runtime pattern; /next const; / "},
+		"next-session-answer-model-choice-runtime-effort-only.json":          {"next-session-answer", "/model_choice dependentRequired/effort; /next const; / "},
+		"next-session-answer-model-choice-undefined-member.json":             {"next-session-answer", "/model_choice additionalProperties; /next const; / "},
+		"next-session-answer-model-provider-credential-name-upper-case.json": {"next-session-answer", "/model_provider_credential_name pattern; /next const; / "},
+		"next-session-answer-next-unknown.json":                              {"next-session-answer", "/next const; /next const; / "},
+		"next-session-answer-session-0.json":                                 {"next-session-answer", "/session minimum; /next const; / "},
+		"next-session-answer-session-without-full-suite.json":                {"next-session-answer", "/ required full_suite; /next const; / "},
+		"next-session-answer-session-without-inputs.json":                    {"next-session-answer", "/ required inputs; /next const; / "},
+		"next-session-answer-session-without-time-limit-minutes.json":        {"next-session-answer", "/ required time_limit_minutes; /next const; / "},
+		"next-session-answer-session-without-workflow.json":                  {"next-session-answer", "/ required workflow; /next const; / "},
+		"next-session-answer-time-limit-minutes-0.json":                      {"next-session-answer", "/time_limit_minutes minimum; /next const; / "},
+		"next-session-answer-time-limit-minutes-string.json":                 {"next-session-answer", "/time_limit_minutes type; /next const; / "},
+		"next-session-answer-time-limit-minutes-1441.json":                   {"next-session-answer", "/time_limit_minutes maximum; /next const; / "},
+		"next-session-answer-without-next.json":                              {"next-session-answer", "/ required next; / required next; / "},
 		"next-session-request-reason-upper-case.json":                        {"next-session-request", "/reason type; /reason pattern"},
 		"next-session-request-session-0.json":                                {"next-session-request", "/session minimum"},
 		"next-session-request-session-string.json":                           {"next-session-request", "/session type"},
@@ -318,11 +315,10 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-subject-id-line-feed.json":                                {"documents", "/subject/id pattern"},
 		"documents-subject-id-201-characters.json":                           {"documents", "/subject/id maxLength"},
 		"documents-subject-title-line-feed.json":                             {"documents", "/subject/title pattern"},
-		"documents-subject-undefined-member.json":                            {"documents", "/subject additionalProperties"},
 		"documents-trigger-hyphen.json":                                      {"documents", "/trigger pattern"},
 		"documents-trigger-upper-case.json":                                  {"documents", "/trigger pattern"},
 		"documents-trigger-65-characters.json":                               {"documents", "/trigger maxLength"},
-		"documents-work-item-member.json":                                    {"documents", "/ additionalProperties; / required subject"},
+		"documents-work-item-member.json":                                    {"documents", "/ required subject"},
 	}
 	got := runFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -1453,9 +1449,10 @@ func TestRunSettingsReadFromTheFixture(t *testing.T) {
 	}
 }
 
-// TestASubmitModuleIsNoMemberOfAnyDocument pins that the run documents and the adapter's
-// start-up refuse a submit_module member: the submit program of a run with no run code is
-// found in the composed harness, so neither document has a module for it.
+// TestASubmitModuleIsNoMemberOfAnyDocument pins that the run documents define no
+// submit_module member, so a reader ignores it and the closed copy of the schema refuses
+// it, and that the adapter's start-up refuses it: the submit program of a run with no run
+// code is found in the composed harness, so neither document has a module for it.
 func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 	module := map[string]any{"source": map[string]any{
 		"git": "https://code.example.com/example-org/forge-module",
@@ -1469,12 +1466,19 @@ func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 		t.Fatalf("explore-submit-with-harness.json is refused: %v", err)
 	}
 	valid.(map[string]any)["submit_module"] = module
-	v, ok := schema.Validate(valid).(*jsonschema.ValidationError)
+	if err := schema.Validate(valid); err != nil {
+		t.Errorf("run documents with a submit_module are refused: %v", err)
+	}
+	closed, err := contracts.CompileRunClosed("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := closed.Validate(valid).(*jsonschema.ValidationError)
 	if !ok {
-		t.Fatal("run documents with a submit_module are accepted")
+		t.Fatal("the closed copy accepts run documents with a submit_module")
 	}
 	if r := strings.Join(leaves(v), "; "); r != "/ additionalProperties" {
-		t.Errorf("run documents with a submit_module are refused for %q, want %q", r, "/ additionalProperties")
+		t.Errorf("the closed copy refuses run documents with a submit_module for %q, want %q", r, "/ additionalProperties")
 	}
 	adapter, err := contracts.Document("fixtures/adapter/adapter/code-host.json")
 	if err != nil {

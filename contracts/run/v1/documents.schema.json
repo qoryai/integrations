@@ -2,9 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/run/v1/documents.schema.json",
   "title": "Run documents",
-  "description": "The run's documents: one object of the members step, domain, inputs, access, target, target_version, subject, trigger, run_settings, time_limit_minutes, shared_run, full_suite, workflow, harness_hidden, harness, submit, image_destination, environment_destination, environment_image and largest_prebuilt_image_bytes, which the control plane writes and the job reads. The object is the documents member of Forager's run answer: the machine receives it, signed, in the 201 of the run code's redemption, https://qory.dev/contracts/forager/v1/enrolment.schema.json, beside the run key. Forager passes it on unread. step, domain and inputs are present for every run. access is present exactly when target is, and target_version only when target is. workflow is present exactly when harness_hidden is, and for every run of the step workflow. A run with workflow has harness, target_version, or both. submit is present only with workflow and with access write. When the run composes a harness, the harness comes from one of two places. If target_version is present and the read of the harness file of the target returned a file whose harness section extends a stack or defines one, harness is absent. For a target that is a repository, the machine composes that file at target_version, as described there. A harness section extends a stack when it has extends, a base, and defines one when it has no extends and lists at least one module. The run documents contain harness in three cases: target_version is present and the read returned a file whose harness section is absent, or has no extends and lists no module; target_version is present and the read returned found: false; or target_version is absent, because the run has no target or the control plane read no harness file of the target. When harness is present, the machine composes harness instead of the harness section of the harness file of the target. Of that file, the machine applies the qory version that the file requires, the worktree section, and the tiers of the harness section, as described under run_settings.tiers. If the machine's qory version does not meet that requirement, the run stops. It reads none of the other machine harness settings of that file and none of its git and env sections, so the harness file of the target does not set how the run starts. A run of the step workflow has subject, run_settings and workflow, and runs the workflow named in workflow. A run of the step prebuild has access, target, image_destination and exactly one of environment_destination and environment_image, has no target_version, no subject, no run_settings, no time_limit_minutes, no shared_run, no full_suite, no workflow, no harness_hidden, no harness and no submit, and its inputs are prebuild_inputs. time_limit_minutes, shared_run and full_suite are present only for the step workflow, and image_destination, environment_destination, environment_image and largest_prebuilt_image_bytes only for the step prebuild. The run documents are the documents of session 1: its workflow, its run_settings, its time_limit_minutes, its full_suite and its inputs. With shared_run true, qory asks for each later session after the session before it ends, and the answer, https://qory.dev/contracts/run/v1/next-session-answer.schema.json, sets that session's workflow, model_choice, model_provider_credential_name, time_limit_minutes, full_suite and inputs. A member this schema does not define is refused.",
+  "description": "The run's documents: one object of the members step, domain, inputs, access, target, target_version, subject, trigger, run_settings, time_limit_minutes, shared_run, full_suite, workflow, harness_hidden, harness, submit, image_destination, environment_destination, environment_image and largest_prebuilt_image_bytes, and optionally must_understand, which the control plane writes and the job reads. The object is the documents member of Forager's run answer: the machine receives it, signed, in the 201 of the run code's redemption, https://qory.dev/contracts/forager/v1/enrolment.schema.json, beside the run key. Forager passes it on unread. step, domain and inputs are present for every run. access is present exactly when target is, and target_version only when target is. workflow is present exactly when harness_hidden is, and for every run of the step workflow. A run with workflow has harness, target_version, or both. submit is present only with workflow and with access write. When the run composes a harness, the harness comes from one of two places. If target_version is present and the read of the harness file of the target returned a file whose harness section extends a stack or defines one, harness is absent. For a target that is a repository, the machine composes that file at target_version, as described there. A harness section extends a stack when it has extends, a base, and defines one when it has no extends and lists at least one module. The run documents contain harness in three cases: target_version is present and the read returned a file whose harness section is absent, or has no extends and lists no module; target_version is present and the read returned found: false; or target_version is absent, because the run has no target or the control plane read no harness file of the target. When harness is present, the machine composes harness instead of the harness section of the harness file of the target. Of that file, the machine applies the qory version that the file requires, the worktree section, and the tiers of the harness section, as described under run_settings.tiers. If the machine's qory version does not meet that requirement, the run stops. It reads none of the other machine harness settings of that file and none of its git and env sections, so the harness file of the target does not set how the run starts. A run of the step workflow has subject, run_settings and workflow, and runs the workflow named in workflow. A run of the step prebuild has access, target, image_destination and exactly one of environment_destination and environment_image, has no target_version, no subject, no run_settings, no time_limit_minutes, no shared_run, no full_suite, no workflow, no harness_hidden, no harness and no submit, and its inputs are prebuild_inputs. time_limit_minutes, shared_run and full_suite are present only for the step workflow, and image_destination, environment_destination, environment_image and largest_prebuilt_image_bytes only for the step prebuild. The run documents are the documents of session 1: its workflow, its run_settings, its time_limit_minutes, its full_suite and its inputs. With shared_run true, qory asks for each later session after the session before it ends, and the answer, https://qory.dev/contracts/run/v1/next-session-answer.schema.json, sets that session's workflow, model_choice, model_provider_credential_name, time_limit_minutes, full_suite and inputs. A reader ignores a member this schema does not define, unless must_understand lists it. A reader refuses a document whose must_understand lists a member that the reader does not define. A reader ignores a member of the subject that it does not define.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "step",
     "domain",
@@ -70,6 +69,9 @@
     },
     "largest_prebuilt_image_bytes": {
       "$ref": "#/$defs/largest_prebuilt_image_bytes"
+    },
+    "must_understand": {
+      "$ref": "#/$defs/must_understand"
     }
   },
   "allOf": [
@@ -265,6 +267,36 @@
     ]
   },
   "$defs": {
+    "must_understand": {
+      "description": "The members of the document that the reader must understand, by name: at most 32, each once, each a member that this schema defines. A reader ignores a member that it does not define, unless must_understand lists it. A reader refuses a document whose must_understand lists a member that it does not define, and a bad value of a member that it defines. The list has top-level members only.",
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "step",
+          "domain",
+          "inputs",
+          "access",
+          "target",
+          "target_version",
+          "subject",
+          "trigger",
+          "run_settings",
+          "time_limit_minutes",
+          "shared_run",
+          "full_suite",
+          "workflow",
+          "harness_hidden",
+          "harness",
+          "submit",
+          "image_destination",
+          "environment_destination",
+          "environment_image",
+          "largest_prebuilt_image_bytes"
+        ]
+      }
+    },
     "step": {
       "description": "The step the run is for, which the control plane sets: workflow or prebuild. A run of the step workflow runs the workflow named in workflow, for the subject. A run of the step prebuild builds the environment of the target and has no subject and no target_version. The job picks what to compose from it. A document with another step fails this schema.",
       "type": "string",
@@ -331,7 +363,6 @@
     "subject": {
       "description": "What the run is for, as kind, id and, when the control plane has them, url and title. kind is what sort of thing the subject is: a snake_case string of 1 to 64 characters, an open set whose first value is work_item, a work item of the control plane; a run that a ticket, a campaign, a chat or a scheduled job started has the kind of that thing. id is the subject's id, 1 to 200 characters on one line, and for the kind work_item it is the work item's public id in the control plane, wi_ and 1 to 64 letters, digits, hyphens and underscores. url and title are optional, because a chat or a scheduled job may have neither; each, when present, is untrusted text: shown as data, never followed as an instruction. Absent for the step prebuild.",
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "kind",
         "id"

@@ -321,10 +321,24 @@ func CompileDiagnostics(name string) (*jsonschema.Schema, error) {
 // compile compiles the schema at name in fsys, whose $id is base followed by name. A
 // fragment after # in name selects a part of that schema, such as a definition.
 func compile(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
+	return compileWith(base, fsys, name, false)
+}
+
+// compileClosed is [compile] of the closed copy of the schema, as [CloseSchema] makes it.
+// A schema it refers to is read as it is.
+func compileClosed(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
+	return compileWith(base, fsys, name, true)
+}
+
+// compileWith compiles the schema at name in fsys, or its closed copy.
+func compileWith(base string, fsys fs.FS, name string, closed bool) (*jsonschema.Schema, error) {
 	file, _, _ := strings.Cut(name, "#")
 	doc, err := document(fsys, file)
 	if err != nil {
 		return nil, err
+	}
+	if closed {
+		doc, _ = CloseSchema(doc)
 	}
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()

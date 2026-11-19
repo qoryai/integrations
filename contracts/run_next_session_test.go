@@ -89,16 +89,11 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-answer-time-limit-minutes-string.json":                 func(m map[string]any) { m["time_limit_minutes"] = json.Number("30") },
 		"next-session-answer-time-limit-minutes-1441.json":                   func(m map[string]any) { m["time_limit_minutes"] = json.Number("1440") },
 		"next-session-answer-model-provider-credential-name-upper-case.json": func(m map[string]any) { m["model_provider_credential_name"] = "example-provider-1" },
-		"next-session-answer-model-credential.json": func(m map[string]any) {
-			delete(m, "model_credential")
-			m["model_provider_credential_name"] = "example-provider-1"
-		},
-		"next-session-answer-inputs-without-version.json":          func(m map[string]any) { m["inputs"] = session["inputs"] },
-		"next-session-answer-undefined-member.json":                func(m map[string]any) { delete(m, "verdict") },
-		"next-session-answer-next-unknown.json":                    func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-without-next.json":                    func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-model-choice-runtime-number.json":     func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
-		"next-session-answer-model-choice-runtime-upper-case.json": func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-inputs-without-version.json":                    func(m map[string]any) { m["inputs"] = session["inputs"] },
+		"next-session-answer-next-unknown.json":                              func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-without-next.json":                              func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-model-choice-runtime-number.json":               func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-model-choice-runtime-upper-case.json":           func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
 		"next-session-answer-model-choice-runtime-effort-only.json": func(m map[string]any) {
 			m["model_choice"].(map[string]any)["model"] = "example-large"
 			m["model_choice"].(map[string]any)["provider_models"] = session["model_choice"].(map[string]any)["provider_models"]

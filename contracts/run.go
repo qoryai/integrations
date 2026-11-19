@@ -44,7 +44,8 @@ const MaxInputs = 768 << 10
 // session 1: its Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With
 // SharedRun, each later session comes from the answer to the next-session request, as
 // [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
-// it, whose shape belongs to the step's schema.
+// it, whose shape belongs to the step's schema. A reader ignores a member of the documents
+// that Documents does not have, unless MustUnderstand lists it.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -167,6 +168,12 @@ type Documents struct {
 	// submission only from Submit, never from process.yaml. For what qory does when
 	// process.yaml has a different submit, see submit in documents.schema.json.
 	Submit *Submit `json:"submit,omitempty"`
+	// MustUnderstand lists members of the documents that the reader must understand. A
+	// reader ignores a member that this type does not have, unless MustUnderstand lists
+	// it, and refuses documents whose MustUnderstand lists a member that this type does not
+	// have: [CheckMustUnderstand] returns an error for them. It lists top-level members
+	// only.
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // HarnessDocument is the run's harness, documents.schema.json: the harness document
@@ -560,7 +567,7 @@ type NextSessionRequest struct {
 // NextSessionAnswer is the answer to the next-session request, run/v1
 // next-session-answer.schema.json: the next session of the run, with Next
 // [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and
-// no other member. The session shape has Session, Workflow, TimeLimitMinutes,
+// no member of the session shape. The session shape has Session, Workflow, TimeLimitMinutes,
 // FullSuite and Inputs, and optionally ModelChoice and ModelProviderCredentialName.
 // MarshalJSON writes the members of the shape that Next selects, and no member of the
 // other shape. Reading takes the members of either shape and leaves the others at their
@@ -594,6 +601,10 @@ type NextSessionAnswer struct {
 	FullSuite bool `json:"full_suite,omitempty"`
 	// Inputs is the input of the session, as [Documents.Inputs].
 	Inputs json.RawMessage `json:"inputs,omitempty"`
+	// MustUnderstand lists members of the answer that the reader must understand, as
+	// [Documents.MustUnderstand] does for the documents. An answer of either shape may
+	// have it.
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // The values of [NextSessionAnswer.Next].
@@ -602,16 +613,18 @@ const (
 	NextSessionKindEnd     = "end"
 )
 
-// MarshalJSON writes a. For Next "end" it writes {"next":"end"} and nothing else. For
-// Next "session" it writes the members of the session shape, and writes full_suite
-// when it is false. It returns an error for any other Next, the empty Next included,
+// MarshalJSON writes a. For Next "end" it writes {"next":"end"}, and MustUnderstand when
+// it is not empty, and nothing else. For Next "session" it writes the members of the
+// session shape, and MustUnderstand when it is not empty, and writes full_suite when it
+// is false. It returns an error for any other Next, the empty Next included,
 // and for a session answer whose Inputs is empty, which would be written as null.
 func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 	switch a.Next {
 	case NextSessionKindEnd:
 		return json.Marshal(struct {
-			Next string `json:"next"`
-		}{a.Next})
+			Next           string   `json:"next"`
+			MustUnderstand []string `json:"must_understand,omitempty"`
+		}{a.Next, a.MustUnderstand})
 	case NextSessionKindSession:
 		if len(a.Inputs) == 0 {
 			return nil, errors.New("set Inputs of a session answer to the input of the session, an object with a version")
@@ -628,8 +641,9 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		TimeLimitMinutes            int             `json:"time_limit_minutes"`
 		FullSuite                   bool            `json:"full_suite"`
 		Inputs                      json.RawMessage `json:"inputs"`
+		MustUnderstand              []string        `json:"must_understand,omitempty"`
 	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelProviderCredentialName,
-		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
+		a.TimeLimitMinutes, a.FullSuite, a.Inputs, a.MustUnderstand})
 }
 
 // RunOutcome is a run's end, run/v1 outcome.schema.json, titled Run end: how the run
