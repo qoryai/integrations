@@ -1,0 +1,17 @@
+{
+  "step": "workflow",
+  "domain": "support",
+  "subject": {
+    "kind": "ticket",
+    "id": "TRK-1",
+    "url": "https://tracker.example.com/items/TRK-1",
+    "title": "Checkout fails on an empty cart"
+  },
+  "trigger": "take_in",
+  "run_settings": {
+    "runtime": "claude"
+  },
+  "inputs": {
+    "version": 1
+  }
+}

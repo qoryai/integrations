@@ -125,7 +125,7 @@
 // redeems the run code for the run key and the run's documents.
 //
 // The run contract contains the run's documents, documents.schema.json: one object, whose
-// Go type is [Documents], with [RunSettings] and [WorkItem] among its members' types.
+// Go type is [Documents], with [RunSettings] and [Subject] among its members' types.
 // The object is the documents member of Forager's run answer: the machine receives it,
 // signed, in the 201 of the run code's redemption, and Forager passes it on unread. It
 // is a document, not a request. The run contract also contains the next-session call of

@@ -292,7 +292,7 @@ func TestTheNextSessionStateAndReasonRules(t *testing.T) {
 	}
 }
 
-// TestTheDocumentsMembersOfTheSessions pins that the run documents of the step explore
+// TestTheDocumentsMembersOfTheSessions pins that the run documents of the step workflow
 // contain time_limit_minutes, shared_run and full_suite and read them into
 // [contracts.Documents], that false for shared_run and full_suite is accepted and
 // reads as the member left out, and that time_limit_minutes accepts 1, 14, 15 and 1440

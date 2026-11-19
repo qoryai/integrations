@@ -1,5 +1,5 @@
 {
-  "step": "explore",
+  "step": "workflow",
   "domain": "software",
   "access": "read",
   "target": {
@@ -9,11 +9,13 @@
       "path": "acme/shop"
     }
   },
-  "work_item": {
+  "subject": {
+    "kind": "work_item",
     "id": "wi_8Kx2mQ4vT9",
-    "url": "http://control.example.com/work-items/wi_8Kx2mQ4vT9",
-    "title": "Checkout fails on an empty cart"
+    "url": "https://control.example.com/work-items/wi_8Kx2mQ4vT9",
+    "title": "Checkout fails\non an empty cart"
   },
+  "trigger": "take_in",
   "run_settings": {
     "runtime": "claude"
   },

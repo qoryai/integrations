@@ -1,0 +1,15 @@
+{
+  "step": "workflow",
+  "domain": "software",
+  "subject": {
+    "kind": "scheduled_job",
+    "id": "nightly-report"
+  },
+  "trigger": "schedule",
+  "run_settings": {
+    "runtime": "claude"
+  },
+  "inputs": {
+    "version": 1
+  }
+}

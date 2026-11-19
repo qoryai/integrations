@@ -1,0 +1,16 @@
+{
+  "step": "workflow",
+  "domain": "marketing",
+  "subject": {
+    "kind": "campaign",
+    "id": "cmp_2041",
+    "title": "Spring sale"
+  },
+  "trigger": "take_in",
+  "run_settings": {
+    "runtime": "claude"
+  },
+  "inputs": {
+    "version": 1
+  }
+}

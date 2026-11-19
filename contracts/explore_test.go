@@ -356,9 +356,9 @@ func definedAt(schema *jsonschema.Schema, where []string) []string {
 }
 
 // TestTheRunDocumentsExploreInputsValidate pins that the inputs of each run documents
-// fixture of the run contract whose step is explore are accepted by explore/v1
-// inputs.schema.json, the shape that run/v1 documents.schema.json refers to for the
-// inputs of that step. It checks every valid fixture, and every invalid fixture that
+// fixture of the run contract whose step is workflow and whose subject is a work item
+// are accepted by explore/v1 inputs.schema.json, the shape that run/v1
+// documents.schema.json refers to for the inputs of an Explore run. It checks every valid fixture, and every invalid fixture that
 // has inputs and whose refusal by documents.schema.json has no reason at /inputs or
 // below it.
 func TestTheRunDocumentsExploreInputsValidate(t *testing.T) {
@@ -372,7 +372,7 @@ func TestTheRunDocumentsExploreInputsValidate(t *testing.T) {
 				t.Fatal(err)
 			}
 			run, ok := doc.(map[string]any)
-			if !ok || run["step"] != "explore" {
+			if !ok || !isWorkItemWorkflow(run) {
 				continue
 			}
 			if dir == "fixtures/invalid" && (run["inputs"] == nil || refusedAtInputs(documents.Validate(doc))) {
@@ -384,9 +384,16 @@ func TestTheRunDocumentsExploreInputsValidate(t *testing.T) {
 			}
 		}
 		if checked == 0 {
-			t.Errorf("%s has no documents for the step explore whose inputs the test checks", dir)
+			t.Errorf("%s has no documents for the step workflow with a work item whose inputs the test checks", dir)
 		}
 	}
+}
+
+// isWorkItemWorkflow reports whether run is run documents of the step workflow whose
+// subject has the kind work_item: the run documents whose inputs are explore inputs.
+func isWorkItemWorkflow(run map[string]any) bool {
+	subject, _ := run["subject"].(map[string]any)
+	return run["step"] == "workflow" && subject["kind"] == "work_item"
 }
 
 // refusedAtInputs reports whether err, a refusal by run/v1 documents.schema.json, has
@@ -405,9 +412,10 @@ func refusedAtInputs(err error) bool {
 }
 
 // TestTheRunTargetDomainAndWorkItemAreItsExploreInputs pins that each valid run
-// documents fixture of the run contract whose step is explore has the same
+// documents fixture of the run contract whose step is workflow and whose subject has the
+// kind work_item has the same
 // target in target and in inputs.target, or neither, the same domain in domain and in
-// inputs.domain, and the same work item id in work_item.id and in inputs.work_item.id,
+// inputs.domain, and the same work item id in subject.id and in inputs.work_item.id,
 // as explore/v1 inputs.schema.json describes how the control plane writes them.
 func TestTheRunTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
 	explore := 0
@@ -417,7 +425,7 @@ func TestTheRunTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
 			t.Fatal(err)
 		}
 		run, ok := doc.(map[string]any)
-		if !ok || run["step"] != "explore" {
+		if !ok || !isWorkItemWorkflow(run) {
 			continue
 		}
 		explore++
@@ -428,13 +436,13 @@ func TestTheRunTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
 		if run["domain"] == nil || run["domain"] != inputs["domain"] {
 			t.Errorf("%s: domain is %v, and inputs.domain is %v", f, run["domain"], inputs["domain"])
 		}
-		item, _ := run["work_item"].(map[string]any)
+		item, _ := run["subject"].(map[string]any)
 		inputsItem, _ := inputs["work_item"].(map[string]any)
 		if item["id"] == nil || item["id"] != inputsItem["id"] {
-			t.Errorf("%s: work_item.id is %v, and inputs.work_item.id is %v", f, item["id"], inputsItem["id"])
+			t.Errorf("%s: subject.id is %v, and inputs.work_item.id is %v", f, item["id"], inputsItem["id"])
 		}
 	}
 	if explore == 0 {
-		t.Error("fixtures/documents has no documents for the step explore")
+		t.Error("fixtures/documents has no documents for the step workflow with a work item")
 	}
 }
