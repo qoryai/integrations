@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "key": "dp_8w3k0q9t2v7m4r6x",
+  "dispatch_id": "dp_8w3k0q9t2v7m4r6x",
   "pool": "np_f1xt0re000000000",
   "machine_spec": {
     "vcpus": 16,

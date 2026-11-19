@@ -58,11 +58,11 @@ type MachinesCheckAnswer struct {
 }
 
 // MachinesMake is the request of `<adapter> make --settings FILE`, make.schema.json: the
-// adapter makes one machine for the dispatch in Key, in the node pool in Pool, that fits
-// MachineSpec. MachineSpec is the MachineSpec of the [ClaimAnswer] for the dispatch in
-// Key. One Key makes at most one machine. A second make with the same Key makes no
-// machine, and its answer is the ID of the machine that the first make with that Key
-// made.
+// adapter makes one machine for the dispatch in DispatchID, in the node pool in Pool,
+// that fits MachineSpec. MachineSpec is the MachineSpec of the [ClaimAnswer] for the
+// dispatch in DispatchID. One DispatchID makes at most one machine. A second make with
+// the same DispatchID makes no machine, and its answer is the ID of the machine that the
+// first make with that DispatchID made.
 //
 // The adapter makes the smallest machine in its settings that fits MachineSpec, by vCPUs
 // and then by memory, a tie going to the order of the settings, and gives the machine a
@@ -76,16 +76,16 @@ type MachinesCheckAnswer struct {
 // the adapter never writes it to a log.
 type MachinesMake struct {
 	Version     int         `json:"version"`
-	Key         string      `json:"key"`
+	DispatchID  string      `json:"dispatch_id"`
 	Pool        string      `json:"pool"`
 	MachineSpec MachineSpec `json:"machine_spec"`
 	StartData   string      `json:"start_data"`
 }
 
 // MachinesMakeAnswer is the answer of make, make-answer.schema.json: the vendor's id of
-// the machine the adapter made for the request's Key, by this make or by the first make
-// with that Key. MachineType is the vendor's type of the machine, such as example-type,
-// and is empty when the vendor does not return the type.
+// the machine the adapter made for the request's DispatchID, by this make or by the
+// first make with that DispatchID. MachineType is the vendor's type of the machine, such
+// as example-type, and is empty when the vendor does not return the type.
 type MachinesMakeAnswer struct {
 	ID          string `json:"id"`
 	MachineType string `json:"machine_type,omitempty"`
@@ -115,14 +115,14 @@ func (a MachinesListAnswer) MarshalJSON() ([]byte, error) {
 }
 
 // Machine is one machine of a list answer: its id at the vendor, the dispatch it was
-// made for in Key, its State, one of [MachineStarting], [MachineRunning],
+// made for in DispatchID, its State, one of [MachineStarting], [MachineRunning],
 // [MachineStopped] and [MachineDeleting], and when the vendor started it, RFC 3339 in
 // UTC with whole seconds.
 type Machine struct {
-	ID      string `json:"id"`
-	Key     string `json:"key"`
-	State   string `json:"state"`
-	Started string `json:"started"`
+	ID         string `json:"id"`
+	DispatchID string `json:"dispatch_id"`
+	State      string `json:"state"`
+	Started    string `json:"started"`
 }
 
 // MachinesLog is the request of `<adapter> log --settings FILE`, log.schema.json: the

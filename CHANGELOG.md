@@ -13,6 +13,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   control plane writes `submit`, `write-no-push` in `access`, or `write-no-push` in the
   `access` of a workflow in `harness`, to the run documents: a reader that checks the
   run documents against an earlier copy refuses each of them.
+- Rename three members, which this module had after 0.3.0 and before this release, and
+  drop one. A run document, or a request or answer of the machines contract, with an
+  earlier name fails its schema. In the run documents, a workflow of a
+  `harness` section has no `time_limit`, and has `plan` and `tier`: `HarnessWorkflow`
+  loses `TimeLimit` and gains `Plan` and `Tier`. `time_limit_minutes` stays the time
+  limit of a session. In the machines contract, `key` of `make` and of each machine of
+  the `list` answer is `dispatch_id`, and `MachinesMake.Key` and `Machine.Key` are
+  `DispatchID`. In the diagnostics, `run.machine.key` is `run.machine.type`; the
+  diagnostics schema accepts a member it does not define, so a reader that reads
+  `key` finds none.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
@@ -569,9 +579,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   machine redeems and the gateway URL that the run code is bound to. A machine end has
   the `state` `deleting`, `gone` or `delete_failed`. A starter sends `gone` for every
   dispatch for which the machine adapter's `make` returned a machine, every dispatch
-  whose release was refused `409 machine_exists`, and every dispatch that is the `key` of
-  a machine in an answer of `list`. It sends `gone` again until the control plane accepts
-  it, or until a signed 400, 403 or 404 refusal ends the attempts. A starter sends `gone`
+  whose release was refused `409 machine_exists`, and every dispatch that is the
+  `dispatch_id` of a machine in an answer of `list`. It sends `gone` again until the
+  control plane accepts it, or until a signed 400, 403 or 404 refusal ends the attempts.
+  A starter sends `gone`
   when the machine adapter's delete call returned that no machine with the id exists at
   the vendor, or when it has no record of a machine for the dispatch and a successful
   answer of the machine adapter's `list`, received at or after `max_lifetime_minutes`
@@ -630,7 +641,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`
   and `delete`. Each command reads one JSON request on standard input and writes one
   answer of at most 1 MiB on standard output, or writes an error and exits with status 1.
-  A second `make` with the same `key` makes no machine. The `check` answer has `offers`,
+  A second `make` with the same `dispatch_id` makes no machine. The `check` answer has
+  `offers`,
   the machines the adapter can make with its settings, which the provisioner sends in its
   claims. `make` has `machine_spec`, and the adapter makes the smallest machine in its
   settings that fits it. The `make` answer may contain `machine_type`, the vendor's type
@@ -650,9 +662,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   or rotate it, and `leaked_secrets_omitted` counts those beyond the first 1000. Entries
   found in a machine log are present only when the document has the machine logs. The
   redacted fields of the run never appear as fields, and variables appear by name only.
-  `run.machine` contains the `key` and the display `name` of the machine type that the
+  `run.machine` contains the `type` and the display `name` of the machine type that the
   run used. `run.machine` is absent when the control plane has no record of the machine
-  type, and `key` or `name` is absent when the control plane has no value for it.
+  type, and `type` or `name` is absent when the control plane has no value for it.
   The run list, `contracts/diagnostics/v1/runs.schema.json`, is one page of the runs of
   the instance in the 200 answer to `GET /v1/runs`. The request is signed with a
   diagnostics key. The rows are ordered by `created_at`, the last first, then by id,
@@ -697,9 +709,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `target_version` contains the change.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
-  `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
-  `workflows` in `qory-stack.yaml`, so the stack declares the access level of each of its
-  workflows. A section that defines a stack, without `extends`, takes no target: the
+  `workflows`, each `<name>: {access, plan, tier}` with the names, keys and values of
+  `workflows` in `qory-stack.yaml`, so the stack declares the access level, the plan and
+  the tier of each of its workflows. `plan` is the artifact type whose launch version
+  sets what a run of the workflow may push, such as `build-plan`, and only a workflow
+  with `access` `write` has one. `tier` is `light`, `balanced` or `thinking`, the tier of
+  the model and effort of the run's main session. A section that defines a stack,
+  without `extends`, takes no target: the
   machine composes it for the runtime of the session: `run_settings.runtime` for session
   1; for a later session, the `runtime` of its `model_choice`, or `run_settings.runtime`
   when it has none. A section with `extends` takes

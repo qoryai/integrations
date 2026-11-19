@@ -117,8 +117,8 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 		"check-answer-offers-65.json":                   {"check-answer", "/offers maxItems"},
 		"check-answer-offers-arch-riscv64.json":         {"check-answer", "/offers/0/arch enum"},
 		"make-version-2.json":                           {"make", "/version const"},
-		"make-key-no-prefix.json":                       {"make", "/key pattern"},
-		"make-key-upper-case.json":                      {"make", "/key pattern"},
+		"make-dispatch-id-no-prefix.json":               {"make", "/dispatch_id pattern"},
+		"make-dispatch-id-upper-case.json":              {"make", "/dispatch_id pattern"},
 		"make-pool-dispatch.json":                       {"make", "/pool pattern"},
 		"make-without-machine-spec.json":                {"make", "/ required machine_spec"},
 		"make-with-size.json":                           {"make", "/ additionalProperties"},
@@ -128,7 +128,9 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 		"make-start-data-no-padding.json":               {"make", "/start_data pattern"},
 		"make-start-data-space.json":                    {"make", "/start_data pattern"},
 		"make-without-start-data.json":                  {"make", "/ required start_data"},
-		"make-without-key.json":                         {"make", "/ required key"},
+		"make-without-dispatch-id.json":                 {"make", "/ required dispatch_id"},
+		"make-key.json":                                 {"make", "/ additionalProperties"},
+		"list-answer-machine-key.json":                  {"list-answer", "/machines/0 additionalProperties"},
 		"make-undefined-member.json":                    {"make", "/ additionalProperties"},
 		"make-answer-id-dash.json":                      {"make-answer", "/id "},
 		"make-answer-id-empty.json":                     {"make-answer", "/id pattern"},
@@ -148,7 +150,7 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 		"list-answer-version.json":                      {"list-answer", "/ additionalProperties"},
 		"list-answer-undefined-member.json":             {"list-answer", "/ additionalProperties"},
 		"list-answer-id-dash.json":                      {"list-answer", "/machines/0/id "},
-		"list-answer-key-no-prefix.json":                {"list-answer", "/machines/0/key pattern"},
+		"list-answer-dispatch-id-no-prefix.json":        {"list-answer", "/machines/0/dispatch_id pattern"},
 		"list-answer-state-gone.json":                   {"list-answer", "/machines/0/state enum"},
 		"list-answer-started-offset.json":               {"list-answer", "/machines/0/started pattern"},
 		"list-answer-started-fraction.json":             {"list-answer", "/machines/0/started pattern"},
@@ -291,7 +293,7 @@ func TestAStartDataHasAtMost16384Bytes(t *testing.T) {
 		if strings.HasSuffix(data, "=") != c.padding {
 			t.Fatalf("%d bytes encode to base64 that ends in %q", c.bytes, data[len(data)-2:])
 		}
-		doc := map[string]any{"version": json.Number("1"), "key": "dp_8w3k0q9t2v7m4r6x",
+		doc := map[string]any{"version": json.Number("1"), "dispatch_id": "dp_8w3k0q9t2v7m4r6x",
 			"pool": "np_f1xt0re000000000", "machine_spec": map[string]any{"vcpus": json.Number("4"),
 				"memory_mib": json.Number("16384"), "disk_gib": json.Number("100"), "arch": "amd64", "virtualization": false},
 			"start_data": data}
@@ -399,9 +401,9 @@ func TestMachinesTypesMarshalToTheirSchemas(t *testing.T) {
 		{"check", contracts.MachinesCheck{Version: contracts.Version}, `{"version":1}`},
 		{"check-answer", contracts.MachinesCheckAnswer{Offers: []contracts.MachineSpec{standard}},
 			`{"offers":[{"vcpus":4,"memory_mib":16384,"disk_gib":100,"arch":"amd64","virtualization":false}]}`},
-		{"make", contracts.MachinesMake{Version: contracts.Version, Key: "dp_8w3k0q9t2v7m4r6x", Pool: "np_f1xt0re000000000",
+		{"make", contracts.MachinesMake{Version: contracts.Version, DispatchID: "dp_8w3k0q9t2v7m4r6x", Pool: "np_f1xt0re000000000",
 			MachineSpec: standard, StartData: base64.StdEncoding.EncodeToString([]byte("start"))},
-			`{"version":1,"key":"dp_8w3k0q9t2v7m4r6x","pool":"np_f1xt0re000000000",` +
+			`{"version":1,"dispatch_id":"dp_8w3k0q9t2v7m4r6x","pool":"np_f1xt0re000000000",` +
 				`"machine_spec":{"vcpus":4,"memory_mib":16384,"disk_gib":100,"arch":"amd64","virtualization":false},` +
 				`"start_data":"c3RhcnQ="}`},
 		{"make-answer", contracts.MachinesMakeAnswer{ID: "machine-1"}, `{"id":"machine-1"}`},
@@ -409,9 +411,9 @@ func TestMachinesTypesMarshalToTheirSchemas(t *testing.T) {
 			`{"id":"machine-1","machine_type":"example-type"}`},
 		{"list", contracts.MachinesList{Version: contracts.Version, Pool: "np_f1xt0re000000000"}, `{"version":1,"pool":"np_f1xt0re000000000"}`},
 		{"list-answer", contracts.MachinesListAnswer{}, `{"machines":[]}`},
-		{"list-answer", contracts.MachinesListAnswer{Machines: []contracts.Machine{{ID: "machine-1", Key: "dp_8w3k0q9t2v7m4r6x",
+		{"list-answer", contracts.MachinesListAnswer{Machines: []contracts.Machine{{ID: "machine-1", DispatchID: "dp_8w3k0q9t2v7m4r6x",
 			State: contracts.MachineStopped, Started: "2026-10-15T12:01:05Z"}}},
-			`{"machines":[{"id":"machine-1","key":"dp_8w3k0q9t2v7m4r6x","state":"stopped","started":"2026-10-15T12:01:05Z"}]}`},
+			`{"machines":[{"id":"machine-1","dispatch_id":"dp_8w3k0q9t2v7m4r6x","state":"stopped","started":"2026-10-15T12:01:05Z"}]}`},
 		{"log", contracts.MachinesLog{Version: contracts.Version, ID: "machine-1"}, `{"version":1,"id":"machine-1"}`},
 		{"log-answer", contracts.MachinesLogAnswer{}, `{"log":""}`},
 		{"delete", contracts.MachinesDelete{Version: contracts.Version, ID: "machine-1"}, `{"version":1,"id":"machine-1"}`},
@@ -434,7 +436,7 @@ func TestMachinesTypesMarshalToTheirSchemas(t *testing.T) {
 		}
 	}
 	for _, s := range []string{contracts.MachineStarting, contracts.MachineRunning, contracts.MachineStopped, contracts.MachineDeleting} {
-		b := fmt.Appendf(nil, `{"machines":[{"id":"machine-1","key":"dp_8w3k0q9t2v7m4r6x","state":%q,"started":"2026-10-15T12:01:05Z"}]}`, s)
+		b := fmt.Appendf(nil, `{"machines":[{"id":"machine-1","dispatch_id":"dp_8w3k0q9t2v7m4r6x","state":%q,"started":"2026-10-15T12:01:05Z"}]}`, s)
 		if err := validate(compileMachines(t, "list-answer.schema.json"), b); err != nil {
 			t.Errorf("the state %s is refused: %v", s, err)
 		}

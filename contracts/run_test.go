@@ -253,7 +253,9 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-without-extends-or-modules.json":                  {"documents", "/harness/harness required modules"},
 		"documents-harness-extends-and-workflows.json":                       {"documents", "/harness/harness/workflows "},
 		"documents-harness-workflow-access-admin.json":                       {"documents", "/harness/harness/workflows/hello/access enum"},
-		"documents-harness-workflow-time-limit-zero.json":                    {"documents", "/harness/harness/workflows/hello/time_limit "},
+		"documents-harness-workflow-time-limit.json":                         {"documents", "/harness/harness/workflows/hello additionalProperties"},
+		"documents-harness-workflow-tier-unknown.json":                       {"documents", "/harness/harness/workflows/hello/tier enum"},
+		"documents-harness-workflow-plan-without-write.json":                 {"documents", "/harness/harness/workflows/hello/access const"},
 		"documents-harness-workflow-name-56-characters.json":                 {"documents", "/ pattern"},
 		"documents-workflow-56-characters.json":                              {"documents", "/workflow pattern"},
 		"documents-harness-path-source.json":                                 {"documents", "/harness/harness/modules/0/source required git,ref"},
@@ -806,7 +808,7 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	defined := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
 		Modules: []contracts.HarnessModule{{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0", Module: "budgets"}}},
 		Workflows: map[string]contracts.HarnessWorkflow{
-			"hello":  {Access: "write", TimeLimit: "45m"},
+			"hello":  {Access: "write", Plan: "build-plan", Tier: "thinking"},
 			"review": {},
 		},
 	}}
