@@ -268,33 +268,13 @@
   },
   "$defs": {
     "must_understand": {
-      "description": "The members of the document that the reader must understand, by name: at most 32, each once, each a member that this schema defines. A reader ignores a member that it does not define, unless must_understand lists it. A reader refuses a document whose must_understand lists a member that it does not define, and a bad value of a member that it defines. The list has top-level members only.",
+      "description": "The members of the document that the reader must understand, each as a JSON Pointer (RFC 6901) counted from the document, such as /run_settings/runtime or /subject/kind: at most 32, each once, each a pointer to a member that this schema defines. A reader ignores a member that it does not define, unless must_understand lists it. A reader refuses a document whose must_understand lists a pointer to a member that it does not define, and a bad value of a member that it defines. Below inputs and below harness/harness/extensions the schema defines no member, so any pointer there is accepted.",
       "type": "array",
       "maxItems": 32,
       "uniqueItems": true,
       "items": {
-        "enum": [
-          "step",
-          "domain",
-          "inputs",
-          "access",
-          "target",
-          "target_version",
-          "subject",
-          "trigger",
-          "run_settings",
-          "time_limit_minutes",
-          "shared_run",
-          "full_suite",
-          "workflow",
-          "harness_hidden",
-          "harness",
-          "submit",
-          "image_destination",
-          "environment_destination",
-          "environment_image",
-          "largest_prebuilt_image_bytes"
-        ]
+        "type": "string",
+        "pattern": "^(?:/access|/domain|/environment_destination|/environment_image|/full_suite|/harness|/harness/harness|/harness/harness/bind|/harness/harness/bind/agents|/harness/harness/bind/agents/(?:[^/~]|~[01])+|/harness/harness/bind/agents/(?:[^/~]|~[01])+/(?:0|[1-9][0-9]*)|/harness/harness/bind/commands|/harness/harness/bind/commands/(?:[^/~]|~[01])+|/harness/harness/bind/skills|/harness/harness/bind/skills/(?:[^/~]|~[01])+|/harness/harness/description|/harness/harness/extends|/harness/harness/extends/git|/harness/harness/extends/path|/harness/harness/extends/ref|/harness/harness/extends/stack|/harness/harness/extensions|/harness/harness/extensions(?:/.*)?|/harness/harness/modules|/harness/harness/modules/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/agents|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/agents/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/commands|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/commands/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/env|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/env/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/files|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/files/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/hooks|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/hooks/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/instructions|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/mcp|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/mcp/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/output-styles|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/output-styles/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/settings|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/settings/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/skills|/harness/harness/modules/(?:0|[1-9][0-9]*)/exclude/skills/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/name|/harness/harness/modules/(?:0|[1-9][0-9]*)/only|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/agents|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/agents/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/commands|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/commands/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/env|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/env/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/files|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/files/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/hooks|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/hooks/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/instructions|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/mcp|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/mcp/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/output-styles|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/output-styles/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/settings|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/settings/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/skills|/harness/harness/modules/(?:0|[1-9][0-9]*)/only/skills/(?:0|[1-9][0-9]*)|/harness/harness/modules/(?:0|[1-9][0-9]*)/source|/harness/harness/modules/(?:0|[1-9][0-9]*)/source/git|/harness/harness/modules/(?:0|[1-9][0-9]*)/source/module|/harness/harness/modules/(?:0|[1-9][0-9]*)/source/path|/harness/harness/modules/(?:0|[1-9][0-9]*)/source/ref|/harness/harness/modules/(?:0|[1-9][0-9]*)/variant|/harness/harness/name|/harness/harness/workflows|/harness/harness/workflows/(?:[^/~]|~[01])+|/harness/harness/workflows/(?:[^/~]|~[01])+/access|/harness/harness/workflows/(?:[^/~]|~[01])+/plan|/harness/harness/workflows/(?:[^/~]|~[01])+/tier|/harness_hidden|/image_destination|/inputs|/inputs(?:/.*)?|/largest_prebuilt_image_bytes|/run_settings|/run_settings/effort|/run_settings/model|/run_settings/provider_models|/run_settings/provider_models/(?:0|[1-9][0-9]*)|/run_settings/provider_models/(?:0|[1-9][0-9]*)/effort|/run_settings/provider_models/(?:0|[1-9][0-9]*)/effort/(?:0|[1-9][0-9]*)|/run_settings/provider_models/(?:0|[1-9][0-9]*)/id|/run_settings/runtime|/run_settings/tiers|/run_settings/tiers/balanced|/run_settings/tiers/balanced/effort|/run_settings/tiers/balanced/model|/run_settings/tiers/light|/run_settings/tiers/light/effort|/run_settings/tiers/light/model|/run_settings/tiers/thinking|/run_settings/tiers/thinking/effort|/run_settings/tiers/thinking/model|/shared_run|/step|/subject|/subject/id|/subject/kind|/subject/title|/subject/url|/submit|/submit/send|/submit/type|/target|/target/address|/target/address/path|/target/address/system|/target/collection|/target_version|/time_limit_minutes|/trigger|/workflow)$"
       }
     },
     "step": {

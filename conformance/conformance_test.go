@@ -96,7 +96,7 @@ func TestADescriptionIsOneDocumentWithItsSecretsOnTop(t *testing.T) {
 // reader of the schema ignores, so that a misspelled member fails an integration's test.
 func TestAMisspelledMemberFailsConformance(t *testing.T) {
 	b := []byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
- "settings": {"type": "object"}, "titel": "Acme", "must_understand": ["name"],
+ "settings": {"type": "object"}, "titel": "Acme", "must_understand": ["/name"],
  "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}},
  "egress_hosts": ["tracker.acme.example"]}`)
 	if err := conformance.Description(b); err == nil || !strings.Contains(err.Error(), "titel") {

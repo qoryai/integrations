@@ -2,8 +2,8 @@ package contracts_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -146,8 +146,8 @@ func TestAReaderIgnoresAMemberItDoesNotDefine(t *testing.T) {
 		}
 		doc := u.fixture(t)
 		doc["later_member"] = "x"
-		doc["must_understand"] = []any{"later_member"}
-		if got, want := runRefusal(open.Validate(doc)), "/must_understand/0 enum"; !strings.Contains(got, want) {
+		doc["must_understand"] = []any{"/later_member"}
+		if got, want := runRefusal(open.Validate(doc)), "/must_understand/0 pattern"; !strings.Contains(got, want) {
 			t.Errorf("%s: a member that must_understand lists is refused for %q, want %q", u.name, got, want)
 		}
 		doc = u.fixture(t)
@@ -179,74 +179,46 @@ func firstKnown(t *testing.T, u understood) string {
 	t.Helper()
 	for _, name := range []string{"domain", "next", "name"} {
 		if _, ok := u.fixture(t)[name]; ok {
-			return name
+			return "/" + name
 		}
 	}
 	t.Fatalf("%s: the fixture %s has none of the known members", u.name, u.valid)
 	return ""
 }
 
-// TestMustUnderstandListsTheMembersOfItsSchema pins that the names that must_understand
-// accepts are the members that the schema defines and its Go type has: the root
-// properties of the run documents and of the description, and the properties of both
-// shapes of the next-session answer, without must_understand itself.
-func TestMustUnderstandListsTheMembersOfItsSchema(t *testing.T) {
+// TestMustUnderstandListsThePointersOfItsSchema pins that the pattern of each pointer that
+// must_understand accepts is the one built from the schema: the members that the schema
+// defines, at any depth, from the object that holds the list. It pins too that the Go type
+// of the document resolves every such pointer.
+func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 	for _, c := range []struct {
 		u    understood
+		base string
+		open []string
 		goes any
 	}{
-		{understoodSchemas()[0], contracts.Documents{}},
-		{understoodSchemas()[1], contracts.NextSessionAnswer{}},
-		{understoodSchemas()[2], nil},
+		{understoodSchemas()[0], contracts.RunBase, []string{"/inputs", "/harness/harness/extensions"}, contracts.Documents{}},
+		{understoodSchemas()[1], contracts.RunBase, []string{"/inputs"}, contracts.NextSessionAnswer{}},
+		{understoodSchemas()[2], contracts.Base, []string{"/settings"}, nil},
 	} {
 		raw, err := c.u.read(c.u.name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		schema := raw.(map[string]any)
-		var defined []string
-		if branches, ok := schema["oneOf"].([]any); ok {
-			for _, b := range branches {
-				for k := range b.(map[string]any)["properties"].(map[string]any) {
-					if k != "must_understand" && !slices.Contains(defined, k) {
-						defined = append(defined, k)
-					}
-				}
-			}
-		} else {
-			for k := range schema["properties"].(map[string]any) {
-				if k != "must_understand" {
-					defined = append(defined, k)
-				}
-			}
-		}
-		def := schema["$defs"].(map[string]any)["must_understand"].(map[string]any)
-		var listed []string
-		for _, v := range def["items"].(map[string]any)["enum"].([]any) {
-			listed = append(listed, v.(string))
-		}
-		slices.Sort(defined)
-		sorted := slices.Sorted(slices.Values(listed))
-		if !slices.Equal(defined, sorted) {
-			t.Errorf("%s: must_understand accepts %q, the schema defines %q", c.u.name, sorted, defined)
-		}
-		if max, _ := def["maxItems"].(json.Number).Int64(); int(max) < len(listed) {
-			t.Errorf("%s: must_understand has at most %d items for %d names", c.u.name, max, len(listed))
+		templates := definedPointers(c.base+"/"+c.u.name, raw, c.open...)
+		def := raw.(map[string]any)["$defs"].(map[string]any)["must_understand"].(map[string]any)
+		if got, want := def["items"].(map[string]any)["pattern"], pointerPattern(templates); got != want {
+			t.Errorf("%s: the pattern of must_understand is not the one built from the schema:\n got %v\nwant %v", c.u.name, got, want)
 		}
 		if c.goes == nil {
 			continue
 		}
-		var tags []string
-		typ := reflect.TypeOf(c.goes)
-		for i := range typ.NumField() {
-			name, _, _ := strings.Cut(typ.Field(i).Tag.Get("json"), ",")
-			if name != "must_understand" {
-				tags = append(tags, name)
+		for _, tpl := range templates {
+			p := strings.NewReplacer("/#", "/0", "/*", "/k", "/**", "/x/y").Replace(tpl)
+			doc := fmt.Sprintf(`{"must_understand": [%q]}`, p)
+			if err := contracts.CheckMustUnderstand([]byte(doc), c.goes); err != nil {
+				t.Errorf("%s: the Go type %T does not resolve %s: %v", c.u.name, c.goes, p, err)
 			}
-		}
-		slices.Sort(tags)
-		if !slices.Equal(tags, sorted) {
-			t.Errorf("%s: the Go type %T has the members %q, must_understand accepts %q", c.u.name, c.goes, tags, sorted)
 		}
 	}
 }
@@ -295,14 +267,21 @@ func TestCheckMustUnderstand(t *testing.T) {
 	}{
 		{`{"step": "workflow"}`, contracts.Documents{}, ""},
 		{`{"later_member": 1}`, &contracts.Documents{}, ""},
-		{`{"must_understand": ["step", "subject"], "later_member": 1}`, contracts.Documents{}, ""},
-		{`{"must_understand": ["step", "later_member"], "later_member": 1}`, contracts.Documents{}, `"later_member" in must_understand`},
-		{`{"must_understand": ["must_understand"]}`, contracts.Documents{}, `"must_understand" in must_understand`},
-		{`{"must_understand": ["next", "inputs"]}`, contracts.NextSessionAnswer{}, ""},
-		{`{"must_understand": ["step"]}`, contracts.NextSessionAnswer{}, `"step" in must_understand`},
+		{`{"must_understand": ["/step", "/subject/kind"], "later_member": 1}`, contracts.Documents{}, ""},
+		{`{"must_understand": ["/run_settings/runtime", "/harness/harness/modules/0/name"]}`, contracts.Documents{}, ""},
+		{`{"must_understand": ["/inputs/run/attempt", "/harness/harness/extensions/a~1b"]}`, contracts.Documents{}, ""},
+		{`{"must_understand": ["/step", "/later_member"], "later_member": 1}`, contracts.Documents{}, `"/later_member" in must_understand`},
+		{`{"must_understand": ["/subject/language"]}`, contracts.Documents{}, `"/subject/language" in must_understand`},
+		{`{"must_understand": ["/harness/harness/modules/01/name"]}`, contracts.Documents{}, "in must_understand"},
+		{`{"must_understand": ["/step/kind"]}`, contracts.Documents{}, "in must_understand"},
+		{`{"must_understand": ["/must_understand"]}`, contracts.Documents{}, `"/must_understand" in must_understand`},
+		{`{"must_understand": ["step"]}`, contracts.Documents{}, "starts with /"},
+		{`{"must_understand": [""]}`, contracts.Documents{}, "starts with /"},
+		{`{"must_understand": ["/next", "/inputs"]}`, contracts.NextSessionAnswer{}, ""},
+		{`{"must_understand": ["/step"]}`, contracts.NextSessionAnswer{}, `"/step" in must_understand`},
 		{`{"must_understand": "step"}`, contracts.Documents{}, "must_understand to a list"},
-		{`{"must_understand": null}`, contracts.Documents{}, "list of member names"},
-		{`{"must_understand": ["step", "step"]}`, contracts.Documents{}, `list "step" once`},
+		{`{"must_understand": null}`, contracts.Documents{}, "list of JSON Pointers"},
+		{`{"must_understand": ["/step", "/step"]}`, contracts.Documents{}, `list "/step" once`},
 		{`{"must_understand": []}`, contracts.Documents{}, ""},
 		{`[]`, contracts.Documents{}, "JSON object"},
 	} {
@@ -329,12 +308,12 @@ func TestMustUnderstandIsWrittenBack(t *testing.T) {
 		if err := json.Unmarshal(b, &a); err != nil {
 			t.Fatal(err)
 		}
-		a.MustUnderstand = []string{"next"}
+		a.MustUnderstand = []string{"/next"}
 		out, err := json.Marshal(a)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(out), `"must_understand":["next"]`) {
+		if !strings.Contains(string(out), `"must_understand":["/next"]`) {
 			t.Errorf("%s is written as %s, without must_understand", name, out)
 		}
 		if err := validate(answerSchema, out); err != nil {
@@ -349,7 +328,7 @@ func TestMustUnderstandIsWrittenBack(t *testing.T) {
 	if err := json.Unmarshal(b, &d); err != nil {
 		t.Fatal(err)
 	}
-	d.MustUnderstand = []string{"subject"}
+	d.MustUnderstand = []string{"/subject/kind"}
 	out, err := json.Marshal(d)
 	if err != nil {
 		t.Fatal(err)

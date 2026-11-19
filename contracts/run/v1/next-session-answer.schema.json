@@ -86,21 +86,13 @@
   ],
   "$defs": {
     "must_understand": {
-      "description": "The members of the answer that the reader must understand, by name: at most 8, each once, each a member that this schema defines. A reader ignores a member that it does not define, unless must_understand lists it. A reader refuses an answer whose must_understand lists a member that it does not define, and a bad value of a member that it defines.",
+      "description": "The members of the answer that the reader must understand, each as a JSON Pointer (RFC 6901) counted from the answer, such as /model_choice/runtime: at most 32, each once, each a pointer to a member that this schema defines. A reader ignores a member that it does not define, unless must_understand lists it. A reader refuses a answer whose must_understand lists a pointer to a member that it does not define, and a bad value of a member that it defines. Below inputs the schema defines no member, so any pointer there is accepted.",
       "type": "array",
-      "maxItems": 8,
+      "maxItems": 32,
       "uniqueItems": true,
       "items": {
-        "enum": [
-          "next",
-          "session",
-          "workflow",
-          "model_choice",
-          "model_provider_credential_name",
-          "time_limit_minutes",
-          "full_suite",
-          "inputs"
-        ]
+        "type": "string",
+        "pattern": "^(?:/full_suite|/inputs|/inputs(?:/.*)?|/model_choice|/model_choice/effort|/model_choice/model|/model_choice/provider_models|/model_choice/provider_models/(?:0|[1-9][0-9]*)|/model_choice/provider_models/(?:0|[1-9][0-9]*)/effort|/model_choice/provider_models/(?:0|[1-9][0-9]*)/effort/(?:0|[1-9][0-9]*)|/model_choice/provider_models/(?:0|[1-9][0-9]*)/id|/model_choice/runtime|/model_choice/tiers|/model_choice/tiers/balanced|/model_choice/tiers/balanced/effort|/model_choice/tiers/balanced/model|/model_choice/tiers/light|/model_choice/tiers/light/effort|/model_choice/tiers/light/model|/model_choice/tiers/thinking|/model_choice/tiers/thinking/effort|/model_choice/tiers/thinking/model|/model_provider_credential_name|/next|/session|/time_limit_minutes|/workflow)$"
       }
     }
   }

@@ -12,16 +12,21 @@ import (
 // older reader, the members of the document that the reader must understand.
 const MustUnderstand = "must_understand"
 
-// CheckMustUnderstand reports the first name in the must_understand member of the JSON
+// CheckMustUnderstand reports the first pointer in the must_understand member of the JSON
 // object b that is not a member of the document type v, and nil when b has no
-// must_understand, or it lists only members of v. v is a struct, or a pointer to one, such
-// as [Documents] or [NextSessionAnswer]; its members are the names in the json tags of its
-// fields, and must_understand itself is not one of them. A reader that decodes b into v
-// ignores a member that v does not have, so it calls CheckMustUnderstand first, and refuses
-// the document when it returns an error. It returns an error too when b is not a JSON
-// object, when must_understand is null or not a list of strings, and when a name repeats.
-// The schema's limit on the count needs no check here: a list of distinct members of v is
-// never longer than the schema's maxItems, which is at least the number of members.
+// must_understand, or it lists only members of v. Each entry is a JSON Pointer (RFC 6901)
+// counted from b, such as /run_settings/runtime. v is a struct, or a pointer to one, such
+// as [Documents], [NextSessionAnswer] or [Change]. A pointer resolves through the json
+// tags of structs, the index of a list, and any key of a map. Below a value that the type
+// reads itself, such as json.RawMessage, an interface, or a type with its own JSON
+// decoding and no tagged fields, any pointer resolves, since the type does not define
+// what is there. A reader that decodes b into v ignores a member that v does not have, so
+// it calls CheckMustUnderstand first, and refuses the document when it returns an error.
+// It returns an error too when b is not a JSON object, when must_understand is null or
+// not a list of strings, when an entry is not a pointer, and when an entry repeats. The
+// schema's limit on the count needs no check here: a list of distinct pointers to
+// members of v is never longer than the schema's maxItems for the documents of this
+// package.
 func CheckMustUnderstand(b []byte, v any) error {
 	var doc struct {
 		MustUnderstand json.RawMessage `json:"must_understand"`
@@ -32,39 +37,92 @@ func CheckMustUnderstand(b []byte, v any) error {
 	if len(doc.MustUnderstand) == 0 {
 		return nil
 	}
-	var names []string
-	if err := json.Unmarshal(doc.MustUnderstand, &names); err != nil {
-		return fmt.Errorf("set must_understand to a list of member names, or leave it out: %w", err)
+	var pointers []string
+	if err := json.Unmarshal(doc.MustUnderstand, &pointers); err != nil {
+		return fmt.Errorf("set must_understand to a list of JSON Pointers, or leave it out: %w", err)
 	}
-	if names == nil {
-		return errors.New("set must_understand to a list of member names, or leave it out, not null")
+	if pointers == nil {
+		return errors.New("set must_understand to a list of JSON Pointers, or leave it out, not null")
 	}
-	known := members(reflect.TypeOf(v))
-	seen := make(map[string]bool, len(names))
-	for _, name := range names {
-		if seen[name] {
-			return fmt.Errorf("list %q once in must_understand", name)
+	seen := make(map[string]bool, len(pointers))
+	for _, p := range pointers {
+		if seen[p] {
+			return fmt.Errorf("list %q once in must_understand", p)
 		}
-		seen[name] = true
-		if !known[name] {
-			return fmt.Errorf("the document lists %q in must_understand, and this reader has no member %q: use a reader that has it", name, name)
+		seen[p] = true
+		if !strings.HasPrefix(p, "/") {
+			return fmt.Errorf("write %q in must_understand as a JSON Pointer that starts with /", p)
+		}
+		segments := strings.Split(p[1:], "/")
+		for i, s := range segments {
+			segments[i] = strings.ReplaceAll(strings.ReplaceAll(s, "~1", "/"), "~0", "~")
+		}
+		if !resolves(reflect.TypeOf(v), segments) {
+			return fmt.Errorf("the document lists %q in must_understand, and this reader has no such member: use a reader that has it", p)
 		}
 	}
 	return nil
 }
 
-// members returns the JSON member names of the struct type t, or of the struct that it
-// points to, without must_understand.
-func members(t reflect.Type) map[string]bool {
+// resolves reports whether the pointer with the segments, unescaped, leads to a member
+// of the type t.
+func resolves(t reflect.Type, segments []string) bool {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
-	out := make(map[string]bool)
-	for i := range t.NumField() {
-		name, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
-		if name != "" && name != "-" && name != MustUnderstand {
-			out[name] = true
+	if len(segments) == 0 || readsItself(t) {
+		return true
+	}
+	seg := segments[0]
+	switch t.Kind() {
+	case reflect.Struct:
+		for i := range t.NumField() {
+			name, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
+			if name == seg && name != MustUnderstand && name != "-" {
+				return resolves(t.Field(i).Type, segments[1:])
+			}
+		}
+	case reflect.Map:
+		return resolves(t.Elem(), segments[1:])
+	case reflect.Slice, reflect.Array:
+		if isIndex(seg) {
+			return resolves(t.Elem(), segments[1:])
 		}
 	}
-	return out
+	return false
+}
+
+// readsItself reports whether the type decodes its JSON by itself and defines no member
+// below it: an interface, a type that decodes by a method and has no field with a json
+// tag, such as json.RawMessage.
+func readsItself(t reflect.Type) bool {
+	if t.Kind() == reflect.Interface {
+		return true
+	}
+	if !reflect.PointerTo(t).Implements(reflect.TypeFor[json.Unmarshaler]()) {
+		return false
+	}
+	if t.Kind() != reflect.Struct {
+		return true
+	}
+	for i := range t.NumField() {
+		if _, ok := t.Field(i).Tag.Lookup("json"); ok {
+			return false
+		}
+	}
+	return true
+}
+
+// isIndex reports whether s is an index of a list in a JSON Pointer: digits, with no
+// leading zero.
+func isIndex(s string) bool {
+	if s == "" || (len(s) > 1 && s[0] == '0') {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
