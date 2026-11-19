@@ -47,6 +47,11 @@ var closedRunFixtures = map[string]closedFixture{
 	"documents-undefined-member.json":                        {"documents", "/ additionalProperties"},
 	"next-session-answer-model-choice-undefined-member.json": {"next-session-answer", "/model_choice additionalProperties"},
 	"next-session-answer-model-credential.json":              {"next-session-answer", "/ additionalProperties"},
+	"next-session-request-undefined-member.json":             {"next-session-request", "/ additionalProperties"},
+	"next-session-request-verdict.json":                      {"next-session-request", "/ additionalProperties"},
+	"outcome-action.json":                                    {"outcome", "/ additionalProperties"},
+	"outcome-end-code-member.json":                           {"outcome", "/ additionalProperties"},
+	"outcome-message.json":                                   {"outcome", "/ additionalProperties"},
 	"next-session-answer-undefined-member.json":              {"next-session-answer", "/ additionalProperties"},
 }
 

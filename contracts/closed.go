@@ -20,9 +20,10 @@ func CompileClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(Base, FS, name)
 }
 
-// CompileRunClosed compiles the closed copy of documents.schema.json or of
-// next-session-answer.schema.json, as [CompileClosed] does for the integration contract,
-// and returns an error for any other name.
+// CompileRunClosed compiles the closed copy of documents.schema.json,
+// next-session-answer.schema.json, next-session-request.schema.json or outcome.schema.json,
+// as [CompileClosed] does for the integration contract, and returns an error for any other
+// name.
 func CompileRunClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(RunBase, RunFS, name)
 }
@@ -102,14 +103,16 @@ func isObjectForm(v any) bool {
 
 // closable are the schemas that have a closed copy, by $id.
 var closable = map[string]bool{
-	Base + "/description.schema.json":            true,
-	Base + "/adapter.schema.json":                true,
-	Base + "/changes.schema.json":                true,
-	Base + "/changes-submitted.schema.json":      true,
-	Base + "/changes-failed.schema.json":         true,
-	Base + "/source-items.schema.json":           true,
-	RunBase + "/documents.schema.json":           true,
-	RunBase + "/next-session-answer.schema.json": true,
+	Base + "/description.schema.json":             true,
+	Base + "/adapter.schema.json":                 true,
+	Base + "/changes.schema.json":                 true,
+	Base + "/changes-submitted.schema.json":       true,
+	Base + "/changes-failed.schema.json":          true,
+	Base + "/source-items.schema.json":            true,
+	RunBase + "/documents.schema.json":            true,
+	RunBase + "/next-session-answer.schema.json":  true,
+	RunBase + "/next-session-request.schema.json": true,
+	RunBase + "/outcome.schema.json":              true,
 }
 
 // closingLoader reads the schemas of the integration and run contracts, closed as

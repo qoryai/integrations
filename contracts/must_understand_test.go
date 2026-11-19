@@ -74,6 +74,28 @@ func understoodSchemas() []understood {
 			invalid:   func(m map[string]any) { m["time_limit_minutes"] = json.Number("0") },
 		},
 		{
+			name: "next-session-request.schema.json",
+			open: func() (*jsonschema.Schema, error) { return contracts.CompileRun("next-session-request.schema.json") },
+			closed: func() (*jsonschema.Schema, error) {
+				return contracts.CompileRunClosed("next-session-request.schema.json")
+			},
+			read:    contracts.RunDocument,
+			list:    runList("fixtures/next-session-request"),
+			valid:   "fixtures/next-session-request/succeeded.json",
+			known:   "/state",
+			invalid: func(m map[string]any) { m["session"] = json.Number("0") },
+		},
+		{
+			name:    "outcome.schema.json",
+			open:    func() (*jsonschema.Schema, error) { return contracts.CompileRun("outcome.schema.json") },
+			closed:  func() (*jsonschema.Schema, error) { return contracts.CompileRunClosed("outcome.schema.json") },
+			read:    contracts.RunDocument,
+			list:    runList("fixtures/outcome"),
+			valid:   "fixtures/outcome/failed.json",
+			known:   "/state",
+			invalid: func(m map[string]any) { m["state"] = "paused" },
+		},
+		{
 			name:      "description.schema.json",
 			open:      func() (*jsonschema.Schema, error) { return contracts.Compile("description.schema.json") },
 			closed:    func() (*jsonschema.Schema, error) { return contracts.CompileClosed("description.schema.json") },
@@ -212,7 +234,9 @@ var closedSites = map[string][]string{
 		"/$defs/run_settings/properties/provider_models/items", "/$defs/run_settings/properties/tiers",
 		"/$defs/subject", "/$defs/submit", "/$defs/tier/else",
 	},
-	"next-session-answer.schema.json": {"/oneOf/0", "/oneOf/1"},
+	"next-session-answer.schema.json":  {"/oneOf/0", "/oneOf/1"},
+	"next-session-request.schema.json": {""},
+	"outcome.schema.json":              {""},
 }
 
 // reachableFiles returns the files of the integration and run contracts that the schema at
@@ -274,7 +298,7 @@ func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 	for _, name := range []string{"description", "adapter", "changes", "changes-submitted", "changes-failed", "source-items"} {
 		reachableFiles(t, contracts.Base+"/"+name+".schema.json", reached)
 	}
-	for _, name := range []string{"documents", "next-session-answer"} {
+	for _, name := range []string{"documents", "next-session-answer", "next-session-request", "outcome"} {
 		reachableFiles(t, contracts.RunBase+"/"+name+".schema.json", reached)
 	}
 	var names []string
@@ -429,6 +453,8 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		{"documents.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs", "/harness/harness/extensions"}, contracts.Documents{}},
 		{"next-session-answer.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs"}, contracts.NextSessionAnswer{}},
 		{"description.schema.json", contracts.Base, contracts.Document, []string{"/settings"}, nil},
+		{"next-session-request.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.NextSessionRequest{}},
+		{"outcome.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.RunOutcome{}},
 		{"changes-submitted.schema.json", contracts.Base, contracts.Document, []string{"/data"}, contracts.ChangesSubmitted{}},
 		{"changes-failed.schema.json", contracts.Base, contracts.Document, nil, contracts.ChangesFailed{}},
 		{"adapter.schema.json", contracts.Base, contracts.Document, []string{"/description"}, contracts.Adapter{}},
@@ -761,9 +787,10 @@ func TestOnlyTheClosableSchemasHaveAClosedCopy(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"documents.schema.json", "next-session-answer.schema.json",
-		"next-session-refusal.schema.json", "outcome.schema.json", "documents.schema.json#/$defs/subject"} {
+		"next-session-request.schema.json", "outcome.schema.json",
+		"next-session-refusal.schema.json", "documents.schema.json#/$defs/subject"} {
 		_, err := contracts.CompileRunClosed(name)
-		want := name == "documents.schema.json" || name == "next-session-answer.schema.json"
+		want := name != "next-session-refusal.schema.json" && !strings.Contains(name, "#")
 		if (err == nil) != want {
 			t.Errorf("CompileRunClosed(%q): %v", name, err)
 		}
@@ -780,8 +807,13 @@ func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
 			t.Fatal(err)
 		}
 		var v any = &contracts.NextSessionAnswer{}
-		if strings.HasPrefix(path.Base(f), "documents-") {
+		switch name := path.Base(f); {
+		case strings.HasPrefix(name, "documents-"):
 			v = &contracts.Documents{}
+		case strings.HasPrefix(name, "next-session-request-"):
+			v = &contracts.NextSessionRequest{}
+		case strings.HasPrefix(name, "outcome-"):
+			v = &contracts.RunOutcome{}
 		}
 		if err := json.Unmarshal(b, v); err != nil {
 			t.Errorf("%s: %v", f, err)

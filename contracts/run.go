@@ -606,6 +606,9 @@ type NextSessionRequest struct {
 	// Reason is the reason of the session's dev.qory.session.exited, and nil, written
 	// as null, when that event has none.
 	Reason *string `json:"reason"`
+	// MustUnderstand lists the members of the request that the control plane must
+	// understand, as JSON Pointers counted from the request: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // NextSessionAnswer is the answer to the next-session request, run/v1
@@ -702,6 +705,9 @@ type RunOutcome struct {
 	// ExitCode is the run's exit code, from -1, and nil for none. A nil ExitCode is left
 	// out, and a pointer to 0 is written as 0.
 	ExitCode *int `json:"exit_code,omitempty"`
+	// MustUnderstand lists the members of the outcome that the control plane must
+	// understand, as JSON Pointers counted from the outcome: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // EndCode is a code that qory sets in [RunOutcome.Reason] to say why a run failed: a code
