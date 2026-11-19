@@ -119,6 +119,8 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-request-reason-interrupted-state-succeeded.json":  func(m map[string]any) { m["state"] = "cancelled" },
 		"next-session-request-reason-gateway-lost-state-cancelled.json": func(m map[string]any) { m["state"] = "failed" },
 		"next-session-request-without-session.json":                     func(m map[string]any) { m["session"] = json.Number("1") },
+		"next-session-refusal-unknown-code.json":                        func(m map[string]any) { m["error"] = "run_ended" },
+		"next-session-refusal-from-gateway.json":                        func(m map[string]any) { m["from"] = "apiary" },
 	}
 	n := 0
 	for _, f := range runFiles(t, "fixtures/invalid") {
@@ -129,6 +131,8 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 			schema = "next-session-answer"
 		case strings.HasPrefix(name, "next-session-request-"):
 			schema = "next-session-request"
+		case strings.HasPrefix(name, "next-session-refusal-"):
+			schema = "next-session-refusal"
 		default:
 			continue
 		}
@@ -554,5 +558,28 @@ func TestTheModelProviderCredentialNameIsAnyNameOfForagersRunConfiguration(t *te
 		if !ok && err == nil {
 			t.Errorf("the name %q is accepted", name)
 		}
+	}
+}
+
+// TestEachNextSessionRefusalCodeHasAFixture pins that the documents under
+// fixtures/next-session-refusal/ cover each code of error in
+// next-session-refusal.schema.json once, and no other code.
+func TestEachNextSessionRefusalCodeHasAFixture(t *testing.T) {
+	doc, err := contracts.RunDocument("next-session-refusal.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var codes []string
+	for _, c := range doc.(map[string]any)["properties"].(map[string]any)["error"].(map[string]any)["enum"].([]any) {
+		codes = append(codes, c.(string))
+	}
+	var got []string
+	for _, f := range runFiles(t, "fixtures/next-session-refusal") {
+		got = append(got, fixture(t, strings.TrimPrefix(f, "fixtures/"))["error"].(string))
+	}
+	slices.Sort(codes)
+	slices.Sort(got)
+	if !slices.Equal(got, codes) {
+		t.Errorf("the refusal fixtures have the codes %v, want %v", got, codes)
 	}
 }

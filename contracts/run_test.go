@@ -42,11 +42,12 @@ func runFiles(t *testing.T, dir string) []string {
 }
 
 // runSchemas are the schemas of the run contract: the files of run/v1.
-var runSchemas = []string{"documents", "next-session-answer", "next-session-request", "outcome"}
+var runSchemas = []string{"documents", "next-session-answer", "next-session-refusal", "next-session-request", "outcome"}
 
 // TestRunSchemaIsTheContract pins that run/v1 contains exactly documents.schema.json,
-// next-session-answer.schema.json, next-session-request.schema.json and
-// outcome.schema.json, each with the $id RunBase/<file name>, and that each compiles.
+// next-session-answer.schema.json, next-session-refusal.schema.json,
+// next-session-request.schema.json and outcome.schema.json, each with the $id
+// RunBase/<file name>, and that each compiles.
 func TestRunSchemaIsTheContract(t *testing.T) {
 	entries, err := fs.ReadDir(contracts.RunFS, ".")
 	if err != nil {
@@ -58,7 +59,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 			got = append(got, e.Name())
 		}
 	}
-	want := "documents.schema.json,next-session-answer.schema.json,next-session-request.schema.json,outcome.schema.json"
+	want := "documents.schema.json,next-session-answer.schema.json,next-session-refusal.schema.json,next-session-request.schema.json,outcome.schema.json"
 	if strings.Join(got, ",") != want {
 		t.Errorf("run/v1 contains %v, want %s", got, want)
 	}
@@ -76,7 +77,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 }
 
 // TestRunFixturesValidate pins that each document under fixtures/<name>/ of the run
-// contract is accepted by <name>.schema.json, for the four schemas of the contract,
+// contract is accepted by <name>.schema.json, for the five schemas of the contract,
 // and that fixtures/ contains no other folder of valid documents.
 func TestRunFixturesValidate(t *testing.T) {
 	for _, name := range runSchemas {
@@ -178,6 +179,8 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"next-session-request-reason-interrupted-state-succeeded.json":       {"next-session-request", "/state const"},
 		"next-session-request-reason-gateway-lost-state-cancelled.json":      {"next-session-request", "/state const"},
 		"next-session-request-without-session.json":                          {"next-session-request", "/ required session"},
+		"next-session-refusal-unknown-code.json":                             {"next-session-refusal", "/error enum"},
+		"next-session-refusal-from-gateway.json":                             {"next-session-refusal", "/from const"},
 		"outcome-end-code-succeeded.json":                                    {"outcome", "/state const"},
 		"outcome-environment-image-missing-succeeded.json":                   {"outcome", "/state const"},
 		"outcome-environment-image-missing-cancelled.json":                   {"outcome", "/state const"},
