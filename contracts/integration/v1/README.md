@@ -203,9 +203,9 @@ made. When a run stores a submission version, the forge's adapter, an adapter wh
 `source` role has `submissions: true`, reads it from the change feed and puts it on
 the forge. The adapter runs no program. A `system` is a host name without a port, so a
 forge on a port other than 443 is not a target. A target of a source collection, an item
-or a run is the `collection` ref of one of the adapter's collections and, optionally, an
-`address` with a `system` and a `path`. Each target of a `submission` entry has a `system`
-and a `path` and no `collection`. The steps:
+or a run is the `collection` ref of one of the adapter's collections. It may also have an
+`address` with a `system` and a `path`. Each target of a `submission` entry has a
+`system` and a `path`, and no `collection`. The steps:
 
 1. The control plane stores the submission version and writes a `submission` entry to
    the feed of the adapter of the run's target collection (`changes.schema.json`). The

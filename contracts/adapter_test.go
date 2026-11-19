@@ -429,9 +429,8 @@ func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
 
 // TestATargetIsACollectionWithAnOptionalAddress pins definitions.schema.json,
 // $defs.target: a collection ref is required, the address is optional and has a system
-// and a path, and the shape of a target before the collection, a system and a path
-// with no collection, is refused. It also pins that each schema that refers to a target
-// refuses that older shape.
+// and a path, and a target with a system and a path and no collection is refused. It
+// also pins that each schema that refers to a target refuses that shape.
 func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 	const address = `{"system":"code.example.com","path":"acme/shop"}`
 	schema := compile(t, "definitions.schema.json#/$defs/target")
@@ -453,6 +452,11 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 		{"an address with no path", `{"collection":"R_1001","address":{"system":"code.example.com"}}`, false},
 		{"an address with no system", `{"collection":"R_1001","address":{"path":"acme/shop"}}`, false},
 		{"an address with an empty path", `{"collection":"R_1001","address":{"system":"code.example.com","path":""}}`, false},
+		{"an address with a path of 200 characters", `{"collection":"R_1001","address":{"system":"code.example.com","path":"` + strings.Repeat("a", 200) + `"}}`, true},
+		{"an address with a path of 201 characters", `{"collection":"R_1001","address":{"system":"code.example.com","path":"` + strings.Repeat("a", 201) + `"}}`, false},
+		{"an address with a path with a line feed", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\nshop"}}`, false},
+		{"an address with a path with a tab", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\tshop"}}`, false},
+		{"an address with a path with U+007F", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\u007fshop"}}`, false},
 		{"an address with a system in upper case", `{"collection":"R_1001","address":{"system":"Code.example.com","path":"acme/shop"}}`, false},
 		{"an address with a system and a port", `{"collection":"R_1001","address":{"system":"code.example.com:8443","path":"acme/shop"}}`, false},
 		{"an address with another member", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop","port":1}}`, false},
@@ -461,8 +465,21 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
 		}
 	}
-	// Each schema that refers to a target refuses the older shape in place of the target.
-	old := map[string]any{"system": "code.example.com", "path": "acme/shop"}
+	// Each schema that refers to a target refuses, in place of the target, a system and
+	// a path with no collection, and an address path with a control character.
+	withPath := func(p string) map[string]any {
+		return map[string]any{"collection": "R_1001", "address": map[string]any{"system": "code.example.com", "path": p}}
+	}
+	refused := []struct {
+		name   string
+		target map[string]any
+	}{
+		{"a system and a path and no collection", map[string]any{"system": "code.example.com", "path": "acme/shop"}},
+		{"an address path with a line feed", withPath("acme/\nshop")},
+		{"an address path with a tab", withPath("acme/\tshop")},
+		{"an address path with U+007F", withPath("acme/\x7fshop")},
+		{"an address path with U+0000", withPath("acme/\x00shop")},
+	}
 	for _, f := range []struct {
 		file   string
 		schema *jsonschema.Schema
@@ -481,10 +498,12 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 		if _, ok := holder["target"].(map[string]any)["collection"]; !ok {
 			t.Errorf("%s: the target has no collection", f.file)
 		}
-		holder["target"] = old
-		b, _ := json.Marshal(doc)
-		if err := validate(f.schema, b); err == nil {
-			t.Errorf("%s: the target with a system and a path and no collection is accepted", f.file)
+		for _, r := range refused {
+			holder["target"] = r.target
+			b, _ := json.Marshal(doc)
+			if err := validate(f.schema, b); err == nil {
+				t.Errorf("%s: the target with %s is accepted", f.file, r.name)
+			}
 		}
 	}
 	for _, f := range []struct {
@@ -518,10 +537,12 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 		if err := validate(f.schema, raw); err != nil {
 			t.Errorf("%s: %v", f.file, err)
 		}
-		doc["target"] = old
-		b, _ := json.Marshal(doc)
-		if err := validate(f.schema, b); err == nil {
-			t.Errorf("%s: the target with a system and a path and no collection is accepted", f.file)
+		for _, r := range refused {
+			doc["target"] = r.target
+			b, _ := json.Marshal(doc)
+			if err := validate(f.schema, b); err == nil {
+				t.Errorf("%s: the target with %s is accepted", f.file, r.name)
+			}
 		}
 	}
 }

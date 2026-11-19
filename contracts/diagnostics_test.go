@@ -457,3 +457,48 @@ func TestTheMachineOfARunIsItsTypeAndName(t *testing.T) {
 		t.Errorf("run.machine defines %v, want [name type]", got)
 	}
 }
+
+// TestARunTargetIsACollectionWithAnOptionalAddress pins run.target of the diagnostics, the
+// same target as definitions.schema.json, $defs.target: a collection ref is required, the
+// address is optional and has a system and a path, and a target with a system and a path
+// and no collection is refused. As for every object of this contract, a member the schema
+// does not define is accepted.
+func TestARunTargetIsACollectionWithAnOptionalAddress(t *testing.T) {
+	schema := compileDiagnostics(t, "diagnostics.schema.json")
+	address := func() map[string]any { return map[string]any{"system": "forge.example.com", "path": "acme/example"} }
+	for _, c := range []struct {
+		name   string
+		target map[string]any
+		ok     bool
+	}{
+		{"a collection and no address", map[string]any{"collection": "AP_1234"}, true},
+		{"a collection and an address", map[string]any{"collection": "R_1001", "address": address()}, true},
+		{"a member the schema does not define", map[string]any{"collection": "R_1001", "extra": "x"}, true},
+		{"a collection of 200 characters", map[string]any{"collection": strings.Repeat("a", 200)}, true},
+		{"a path of 200 characters", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": strings.Repeat("a", 200)}}, true},
+		{"a member of the address the schema does not define", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/example", "extra": "x"}}, true},
+		{"a path of 201 characters", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": strings.Repeat("a", 201)}}, false},
+		{"a collection with U+0000", map[string]any{"collection": "R_\x00"}, false},
+		{"a path with a line feed", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\nexample"}}, false},
+		{"a path with a tab", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\texample"}}, false},
+		{"a path with U+007F", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\x7fexample"}}, false},
+		{"a path with U+0000", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\x00"}}, false},
+		{"no collection", map[string]any{"address": address()}, false},
+		{"an empty collection", map[string]any{"collection": ""}, false},
+		{"a collection of 201 characters", map[string]any{"collection": strings.Repeat("a", 201)}, false},
+		{"a system and a path and no collection", address(), false},
+		{"an address with no path", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com"}}, false},
+		{"an address with no system", map[string]any{"collection": "R_1001", "address": map[string]any{"path": "acme/example"}}, false},
+		{"an address with an empty path", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": ""}}, false},
+		{"an address with a system in upper case", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "Forge.example.com", "path": "acme/example"}}, false},
+	} {
+		doc, err := contracts.DiagnosticsDocument("fixtures/diagnostics/completed.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc.(map[string]any)["run"].(map[string]any)["target"] = c.target
+		if err := schema.Validate(doc); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+}
