@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"maps"
 	"math"
 	"path"
 	"slices"
@@ -69,7 +70,7 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 		"run-id-prefix.json":                                  {"diagnostics", "/run/id pattern"},
 		"workflow-56-characters.json":                         {"diagnostics", "/run/workflow pattern"},
 		"run-machine-empty.json":                              {"diagnostics", "/run/machine minProperties"},
-		"run-machine-type-upper-case.json":                    {"diagnostics", "/run/machine/key pattern"},
+		"run-machine-type-upper-case.json":                    {"diagnostics", "/run/machine/type pattern"},
 		"run-machine-name-empty.json":                         {"diagnostics", "/run/machine/name pattern"},
 		"run-machine-name-101-characters.json":                {"diagnostics", "/run/machine/name pattern"},
 		"run-machine-name-line-feed.json":                     {"diagnostics", "/run/machine/name pattern"},
@@ -438,5 +439,21 @@ func TestRunListEdgesAreAccepted(t *testing.T) {
 	}
 	if err := validate(compileDiagnostics(t, "runs-refusal.schema.json"), b); err != nil {
 		t.Errorf("a parameter of 64 characters fails runs-refusal.schema.json: %v", err)
+	}
+}
+
+// TestTheMachineOfARunIsItsTypeAndName pins the members that run.machine of the
+// diagnostics defines: type, the machine type, and name, its display name. A document
+// with another member, such as key, still passes, as for every object of this contract.
+func TestTheMachineOfARunIsItsTypeAndName(t *testing.T) {
+	doc, err := contracts.DiagnosticsDocument("diagnostics.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := doc.(map[string]any)["properties"].(map[string]any)["run"].(map[string]any)
+	machine := run["properties"].(map[string]any)["machine"].(map[string]any)
+	got := slices.Sorted(maps.Keys(machine["properties"].(map[string]any)))
+	if !slices.Equal(got, []string{"name", "type"}) {
+		t.Errorf("run.machine defines %v, want [name type]", got)
 	}
 }

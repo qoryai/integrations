@@ -17,7 +17,7 @@
         "additionalProperties": false,
         "required": [
           "id",
-          "key",
+          "dispatch_id",
           "state",
           "started"
         ],
@@ -26,8 +26,8 @@
             "$ref": "make-answer.schema.json#/$defs/id",
             "description": "The vendor's id of the machine."
           },
-          "key": {
-            "description": "The dispatch the machine was made for, the key of its make request.",
+          "dispatch_id": {
+            "description": "The dispatch the machine was made for, the dispatch_id of its make request.",
             "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/dispatch_id"
           },
           "state": {

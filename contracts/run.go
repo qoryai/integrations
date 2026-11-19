@@ -342,11 +342,14 @@ type HarnessWorkflow struct {
 	// "read", "write-no-push" or "write", as described under access in the run documents
 	// (see [Documents.Access]), and empty for read.
 	Access string `json:"access,omitempty"`
-	// TimeLimit is how long a run of the workflow may run, counted from the run's open,
-	// as a Go duration above zero, such as 7h or 45m, and empty when the workflow sets
-	// none. The run's time_limit_minutes, when the control plane sets it, applies
-	// instead.
-	TimeLimit string `json:"time_limit,omitempty"`
+	// Plan is the artifact type whose launch version sets what a run of the workflow
+	// may push, such as "build-plan", and empty for none. Only a workflow whose Access
+	// is "write" has a Plan.
+	Plan string `json:"plan,omitempty"`
+	// Tier is the tier of the model and effort of the main session of a run of the
+	// workflow, "light", "balanced" or "thinking", and empty for none. The control plane
+	// resolves the model and effort from the tier.
+	Tier string `json:"tier,omitempty"`
 }
 
 // HarnessBase is a remote source of a stack, the extends of a [HarnessSection]: Git and

@@ -253,7 +253,10 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-without-extends-or-modules.json":                  {"documents", "/harness/harness required modules"},
 		"documents-harness-extends-and-workflows.json":                       {"documents", "/harness/harness/workflows "},
 		"documents-harness-workflow-access-admin.json":                       {"documents", "/harness/harness/workflows/hello/access enum"},
-		"documents-harness-workflow-time-limit-zero.json":                    {"documents", "/harness/harness/workflows/hello/time_limit "},
+		"documents-harness-workflow-time-limit.json":                         {"documents", "/harness/harness/workflows/hello additionalProperties"},
+		"documents-harness-workflow-tier-unknown.json":                       {"documents", "/harness/harness/workflows/hello/tier enum"},
+		"documents-harness-workflow-plan-without-write.json":                 {"documents", "/harness/harness/workflows/hello/access const"},
+		"documents-harness-workflow-plan-without-access.json":                {"documents", "/harness/harness/workflows/hello required access"},
 		"documents-harness-workflow-name-56-characters.json":                 {"documents", "/ pattern"},
 		"documents-workflow-56-characters.json":                              {"documents", "/workflow pattern"},
 		"documents-harness-path-source.json":                                 {"documents", "/harness/harness/modules/0/source required git,ref"},
@@ -806,7 +809,7 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 	defined := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
 		Modules: []contracts.HarnessModule{{Source: contracts.HarnessSource{Git: source, Ref: "v2.4.0", Module: "budgets"}}},
 		Workflows: map[string]contracts.HarnessWorkflow{
-			"hello":  {Access: "write", TimeLimit: "45m"},
+			"hello":  {Access: "write", Plan: "build-plan", Tier: "thinking"},
 			"review": {},
 		},
 	}}
@@ -1469,5 +1472,41 @@ func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 	}
 	if r := strings.Join(leaves(v), "; "); r != "/ additionalProperties" {
 		t.Errorf("an adapter start-up with a submit_module is refused for %q, want %q", r, "/ additionalProperties")
+	}
+}
+
+// TestAWorkflowPlanAndTierFollowQorysHarnessFile pins plan and tier of a workflow in
+// harness, with the grammar of qory's harness file: plan is lower-case letters and
+// digits in groups joined by single hyphens, 1 to 64 characters, on a workflow with
+// access write only; tier is light, balanced or thinking.
+func TestAWorkflowPlanAndTierFollowQorysHarnessFile(t *testing.T) {
+	workflow := compileRun(t, runSchema("documents/harness_workflow"))
+	longest := strings.Repeat("a", 31) + "-" + strings.Repeat("b", 32)
+	for name, doc := range map[string]map[string]any{
+		"plan build-plan":            {"access": "write", "plan": "build-plan"},
+		"plan of 64 with a hyphen":   {"access": "write", "plan": longest},
+		"tier light":                 {"tier": "light"},
+		"tier balanced":              {"tier": "balanced"},
+		"tier thinking":              {"tier": "thinking"},
+		"plan and tier on one write": {"access": "write", "plan": "build-plan", "tier": "thinking"},
+	} {
+		if err := workflow.Validate(doc); err != nil {
+			t.Errorf("%s is refused: %v", name, err)
+		}
+	}
+	for name, doc := range map[string]map[string]any{
+		"plan Build_Plan":                {"access": "write", "plan": "Build_Plan"},
+		"plan empty":                     {"access": "write", "plan": ""},
+		"plan of 65":                     {"access": "write", "plan": longest + "c"},
+		"plan with a double hyphen":      {"access": "write", "plan": "build--plan"},
+		"plan with access read":          {"access": "read", "plan": "build-plan"},
+		"plan with access write-no-push": {"access": "write-no-push", "plan": "build-plan"},
+		"plan with no access":            {"plan": "build-plan"},
+		"tier fast":                      {"tier": "fast"},
+		"tier Thinking":                  {"tier": "Thinking"},
+	} {
+		if workflow.Validate(doc) == nil {
+			t.Errorf("%s is accepted", name)
+		}
 	}
 }

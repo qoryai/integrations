@@ -13,6 +13,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   control plane writes `submit`, `write-no-push` in `access`, or `write-no-push` in the
   `access` of a workflow in `harness`, to the run documents: a reader that checks the
   run documents against an earlier copy refuses each of them.
+- Rename three members, which this module had after 0.3.0 and before this release, and
+  drop one. In the run documents, a workflow of a `harness` section has no `time_limit`,
+  and has `plan` and `tier`; a workflow with `time_limit` fails `documents.schema.json`.
+  `HarnessWorkflow` no longer has `TimeLimit`, and has `Plan` and `Tier`.
+  `time_limit_minutes` stays the time limit of a session. In the machines contract,
+  `key` of `make` and of each machine of the `list` answer is `dispatch_id`; a request
+  or answer with `key` fails its schema. `MachinesMake.Key` and `Machine.Key` are
+  `DispatchID`. In the diagnostics, `run.machine.key` is `run.machine.type`; a document
+  with `key` passes the schema, which accepts a member it does not define, so a reader
+  that reads `key` finds none.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
@@ -569,28 +579,28 @@ change what an existing reader or program relies on, and notes it under Upgradin
   machine redeems and the gateway URL that the run code is bound to. A machine end has
   the `state` `deleting`, `gone` or `delete_failed`. A starter sends `gone` for every
   dispatch for which the machine adapter's `make` returned a machine, every dispatch
-  whose release was refused `409 machine_exists`, and every dispatch that is the `key` of
-  a machine in an answer of `list`. It sends `gone` again until the control plane accepts
-  it, or until a signed 400, 403 or 404 refusal ends the attempts. A starter sends `gone`
-  when the machine adapter's delete call returned that no machine with the id exists at
-  the vendor, or when it has no record of a machine for the dispatch and a successful
-  answer of the machine adapter's `list`, received at or after `max_lifetime_minutes`
-  after the claim, contained no machine for the dispatch; a failed `list` is no proof. A
-  starter that has no machine command (`make`, `delete` and `list` of a machine adapter)
-  runs the work of a dispatch as a process on its host, and the end of that process is
-  the end of the machine. Such a starter needs no `list` and no no-record case. For a
-  dispatch for which it started the process, it sends `gone` after the process exits.
-  When the starter could not start the process after an accepted `dispatched`, it sends
-  `gone` at once. For a dispatch whose `dispatched` was refused `409 lease_expired` or
-  `410 gone`, it sends `gone` once no process for the dispatch runs, because an earlier
-  `dispatched` may have been accepted with its answer lost. When a `dispatched` sent
-  again is refused while the process runs, the starter stops the process and sends `gone`
-  after the process exits. For a dispatch whose release was refused `409 machine_exists`,
-  it sends `gone` at once when no process for the dispatch runs. A
-  released dispatch may still get `gone` with no machine. When it had no earlier machine
-  event and no refusal took its slot again, its slot stays free; otherwise `gone` frees
-  it. `deleting` and `delete_failed` are optional, and a starter that has no machine
-  command does not send them. Each dispatch takes a slot of the node
+  whose release was refused `409 machine_exists`, and every dispatch that is the
+  `dispatch_id` of a machine in an answer of `list`. It sends `gone` again until the
+  control plane accepts it, or until a signed 400, 403 or 404 refusal ends the attempts.
+  A starter sends `gone` when the machine adapter's delete call returned that no machine
+  with the id exists at the vendor, or when it has no record of a machine for the
+  dispatch and a successful answer of the machine adapter's `list`, received at or after
+  `max_lifetime_minutes` after the claim, contained no machine for the dispatch; a
+  failed `list` is no proof. A starter that has no machine command (`make`, `delete` and
+  `list` of a machine adapter) runs the work of a dispatch as a process on its host, and
+  the end of that process is the end of the machine. Such a starter needs no `list` and
+  no no-record case. For a dispatch for which it started the process, it sends `gone`
+  after the process exits. When the starter could not start the process after an
+  accepted `dispatched`, it sends `gone` at once. For a dispatch whose `dispatched` was
+  refused `409 lease_expired` or `410 gone`, it sends `gone` once no process for the
+  dispatch runs, because an earlier `dispatched` may have been accepted with its answer
+  lost. When a `dispatched` sent again is refused while the process runs, the starter
+  stops the process and sends `gone` after the process exits. For a dispatch whose
+  release was refused `409 machine_exists`, it sends `gone` at once when no process for
+  the dispatch runs. A released dispatch may still get `gone` with no machine. When it
+  had no earlier machine event and no refusal took its slot again, its slot stays free;
+  otherwise `gone` frees it. `deleting` and `delete_failed` are optional, and a starter
+  that has no machine command does not send them. Each dispatch takes a slot of the node
   pool's instance limit at the claim. A machine event is an accepted `dispatched`, the
   machine's redemption of the run code, or an accepted machine end in any state; a
   machine log is not one. Until the first machine event, the release, the lapse of the
@@ -630,11 +640,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `<adapter> <command> --settings FILE` for the commands `check`, `make`, `list`, `log`
   and `delete`. Each command reads one JSON request on standard input and writes one
   answer of at most 1 MiB on standard output, or writes an error and exits with status 1.
-  A second `make` with the same `key` makes no machine. The `check` answer has `offers`,
-  the machines the adapter can make with its settings, which the provisioner sends in its
-  claims. `make` has `machine_spec`, and the adapter makes the smallest machine in its
-  settings that fits it. The `make` answer may contain `machine_type`, the vendor's type
-  of the machine.
+  A second `make` with the same `dispatch_id` makes no machine. The `check` answer has
+  `offers`, the machines the adapter can make with its settings, which the provisioner
+  sends in its claims. `make` has `machine_spec`, and the adapter makes the smallest
+  machine in its settings that fits it. The `make` answer may contain `machine_type`,
+  the vendor's type of the machine.
 - The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
   the step `explore`. In the inputs, `ticket` is absent when the work item was not taken
   in from an item at a source.
@@ -650,9 +660,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   or rotate it, and `leaked_secrets_omitted` counts those beyond the first 1000. Entries
   found in a machine log are present only when the document has the machine logs. The
   redacted fields of the run never appear as fields, and variables appear by name only.
-  `run.machine` contains the `key` and the display `name` of the machine type that the
+  `run.machine` contains the `type` and the display `name` of the machine type that the
   run used. `run.machine` is absent when the control plane has no record of the machine
-  type, and `key` or `name` is absent when the control plane has no value for it.
+  type, and `type` or `name` is absent when the control plane has no value for it.
   The run list, `contracts/diagnostics/v1/runs.schema.json`, is one page of the runs of
   the instance in the 200 answer to `GET /v1/runs`. The request is signed with a
   diagnostics key. The rows are ordered by `created_at`, the last first, then by id,
@@ -697,15 +707,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `target_version` contains the change.
 - The `harness` section of the run documents extends a stack or defines one. A section
   without `extends` defines a stack: it requires `modules`, at least one, and may contain
-  `workflows`, each `<name>: {access, time_limit}` with the names, keys and values of
-  `workflows` in `qory-stack.yaml`, so the stack declares the access level of each of its
-  workflows. A section that defines a stack, without `extends`, takes no target: the
-  machine composes it for the runtime of the session: `run_settings.runtime` for session
-  1; for a later session, the `runtime` of its `model_choice`, or `run_settings.runtime`
-  when it has none. A section with `extends` takes
-  the workflows of its base, and the schema rejects `workflows` in it. In Go,
-  `HarnessSection.Extends` is a pointer, nil for a section that defines a stack, and
-  `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
+  `workflows`, each `<name>: {access, plan, tier}` with the names, keys and values of
+  `workflows` in `qory-stack.yaml`, so the stack declares the access level, the plan and
+  the tier of each of its workflows. `plan` is the artifact type whose launch version
+  sets what a run of the workflow may push, such as `build-plan`, and only a workflow
+  with `access` `write` has one. `tier` is `light`, `balanced` or `thinking`, the tier of
+  the model and effort of the run's main session. A section that defines a stack,
+  without `extends`, takes no target: the machine composes it for the runtime of the
+  session: `run_settings.runtime` for session 1; for a later session, the `runtime` of
+  its `model_choice`, or `run_settings.runtime` when it has none. A section with
+  `extends` takes the workflows of its base, and the schema rejects `workflows` in it.
+  In Go, `HarnessSection.Extends` is a pointer, nil for a section that defines a stack,
+  and `HarnessSection.Workflows` and `HarnessWorkflow` are added. `bind` maps a kind,
   `agents`, `commands` or `skills`, to its roles, each to the name of one entry of that
   kind: `bind: {agents: {developer: web-developer}}`. A group role of the kind `agents`,
   a role that several agents fill, takes a list of 1 or more agents, as in qory's
