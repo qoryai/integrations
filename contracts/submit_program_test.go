@@ -589,7 +589,7 @@ func TestTheFeedDescribesTheMarkers(t *testing.T) {
 // space is collapsed to single spaces.
 func TestTheReadmeSaysWhichDraftOfSeveralIsTaken(t *testing.T) {
 	readme := strings.Join(strings.Fields(string(read(t, "README.md"))), " ")
-	const want = "With several drafts on the branch, the adapter takes the entry's `data.draft.number` when it is among them, otherwise the not-closed, not-merged draft with the highest number; with none, the closed or merged one with the highest number, reported as kept."
+	const want = "With several drafts on the branch, the adapter takes the entry's `data.draft.number` when it is among them. Otherwise it takes the not-closed, not-merged draft with the highest number. With none, it takes the closed or merged one with the highest number, reported as kept."
 	if !strings.Contains(readme, want) {
 		t.Errorf("the README does not contain %q", want)
 	}

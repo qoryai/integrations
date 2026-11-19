@@ -102,9 +102,8 @@ An address is an `https` address of at most 2048 characters, on the host in
 `QORY_SUBMIT_SYSTEM`, with no user information, port, query or fragment, and with a path.
 The host check runs when `QORY_SUBMIT_SYSTEM` is set and not empty. With no `system`,
 as for a target with a collection and no address, an address on any host passes, and
-every other rule of an address stays. A submit program runs only for a repository, and qory takes
-`QORY_SUBMIT_SYSTEM` from the `system` of the repository's address, so it is set for every
-run of a submit program.
+every other rule of an address stays. qory takes `QORY_SUBMIT_SYSTEM` from the `system` of
+the repository's target address, so it is set when the target has an `address`.
 qory checks no more of its form, so the same program contract serves a forge whose
 addresses end in `/pull/<number>` and one whose addresses end in
 `/-/merge_requests/<number>`.

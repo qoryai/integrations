@@ -30,17 +30,17 @@
       "pattern": "^av_[0-9a-hjkmnp-tv-z]{16}$"
     },
     "change_address": {
-      "description": "Where a change is at its target: url, the address of the change, and ref, the reference that the target gives it, such as the number of a pull request, 1 to 200 characters. The control plane compares ref and never reads meaning into it.",
+      "description": "Where a change is at its target: url, the address of the change, and ref, the reference that the target gives it, such as the number of a request at the target, 1 to 200 characters. The control plane compares ref and never reads meaning into it.",
       "type": "object",
       "additionalProperties": false,
       "required": ["url"],
       "properties": {
         "url": {"description": "The address of the change at its target.", "$ref": "#/$defs/url"},
-        "ref": {"description": "The reference that the target gives the change, such as the number of a pull request, as a string.", "$ref": "#/$defs/ref"}
+        "ref": {"description": "The reference that the target gives the change, such as the number of a request at the target, as a string.", "$ref": "#/$defs/ref"}
       }
     },
     "change_data": {
-      "description": "The part of a change request: the members that the kind defines, which this contract does not list. The artifact type that change_kind names, in the process of the workspace's type, defines the part of an entry, and the control plane validates the part of an entry against it. This contract states nothing about the part of a reply beyond the limits here. A part has at most 786432 bytes (768 KiB) serialized, which no schema can count: the control plane writes no larger part in an entry and refuses a larger one in a reply, 400 invalid_request. The numbers inside a part follow the schema of the kind, so they may have a fraction or an exponent; no object inside a part repeats a member, at any depth. A schema can express the limits of $defs.change_value, which apply to each value inside a part.",
+      "description": "The part of a change request: the members that the kind defines, which this contract does not list. The artifact type whose name is change_kind, in the process of the workspace's type, defines the part of an entry, and the control plane validates the part of an entry against it. This contract states nothing about the part of a reply beyond the limits here. A part has at most 786432 bytes (768 KiB) serialized, which no schema can count: the control plane writes no larger part in an entry and refuses a larger one in a reply, 400 invalid_request. The numbers inside a part follow the schema of the kind, so they may have a fraction or an exponent; no object inside a part repeats a member, at any depth. A schema can express the limits of $defs.change_value, which apply to each value inside a part.",
       "type": "object",
       "$ref": "#/$defs/change_value"
     },

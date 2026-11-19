@@ -372,7 +372,7 @@ const (
 // CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
 // adapter's declared default; a watch entry, which the control plane writes when a run
-// whose target collection is one of the adapter's collections stores a submission
+// whose target collection is one of the adapter's collections stores a change request
 // version, has WorkItemID and URL; a change_request entry, written for each target of
 // each change request version that a run stores, has ChangeRequestID, ChangeKind, Target,
 // Ref (the item's ref, empty when the work item came from no item), Title, Text, Previous
@@ -557,9 +557,8 @@ const (
 // [DraftStateDraft], [DraftStateOpen], [DraftStateClosed] or [DraftStateMerged], and
 // Action [DraftOpened], [DraftUpdated] or [DraftKept]. A draft that a person closed or
 // merged is reported with [DraftKept] and its real state, and the adapter does not edit
-// it. Number may differ from the number in the entry: it is a hint. A submit program
-// prints these values (submit_program.go); a reply of the pull-request kind may have
-// them in its Data as example data.
+// it. A submit program prints these values (submit_program.go); a reply of the
+// pull-request kind may have them in its Data as example data.
 type SubmittedDraft struct {
 	Number int64  `json:"number"`
 	URL    string `json:"url"`
