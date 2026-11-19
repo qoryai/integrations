@@ -155,6 +155,7 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 		"list-answer-started-offset.json":               {"list-answer", "/machines/0/started pattern"},
 		"list-answer-started-fraction.json":             {"list-answer", "/machines/0/started pattern"},
 		"list-answer-machine-without-started.json":      {"list-answer", "/machines/0 required started"},
+		"list-answer-machine-without-dispatch-id.json":  {"list-answer", "/machines/0 required dispatch_id"},
 		"list-answer-machine-undefined-member.json":     {"list-answer", "/machines/0 additionalProperties"},
 		"log-version-2.json":                            {"log", "/version const"},
 		"log-id-dash.json":                              {"log", "/id "},
