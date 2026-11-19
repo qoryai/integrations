@@ -202,9 +202,40 @@ change what an existing reader or program relies on, and notes it under Upgradin
   sends a `time_limit_minutes` below 15. `time_limit_minutes` is the time limit of a
   session, from 1 to 1440 minutes. Until this release the limit was 15 to 1440, and a
   reader built from an older copy of the schemas refuses 1 to 14.
+- Change each reader of the run documents, the next-session answer and a description to
+  ignore a member that its schema does not define. Before, `documents.schema.json`,
+  `next-session-answer.schema.json` and `description.schema.json` refused it.
+  - The rule covers the top level of each document, the `subject` of the run documents,
+    and the `source` role of a description. Every other object stays closed, among them
+    `run_settings`, `submit`, `harness`, and the `credential` and `model_provider` roles.
+  - The optional top-level `must_understand` lists the names of members that the reader
+    must understand, at most once each. A reader refuses a document whose
+    `must_understand` lists a member that it does not define. A reader still refuses a
+    bad value of a member that it defines.
+  - An answer with `next` `end` and a member of the session shape fails
+    `next-session-answer.schema.json`, as before.
+  - An adapter skips and acknowledges a change entry whose `kind` its revision does not
+    define. `changes.schema.json` accepts any snake_case `kind` and checks the members of
+    the seven kinds it defines. The members of an entry stay closed, since a revision
+    adds entry kinds and members.
+  - A writer's test validates against a closed copy of the schema, so a misspelled
+    member fails it. `conformance.Description` and `integration-conformance` do this for
+    a description, and refuse a member that the schema does not define.
+  - These fixtures are gone, because their documents are valid:
+    `documents-undefined-member.json`, `documents-subject-undefined-member.json`,
+    `next-session-answer-undefined-member.json`,
+    `next-session-answer-model-credential.json`,
+    `description-source-undefined-member.json`. `changes-unknown-kind.json` moved to
+    `fixtures/adapter/changes/unknown-kind.json`.
 
 ### Added
 
+- `contracts.CompileClosed` and `contracts.CompileRunClosed` compile the closed copy of a
+  schema, and `contracts.CloseSchema` makes it. `contracts.CheckMustUnderstand` returns an
+  error for a document whose `must_understand` lists a member that a Go type does not
+  have. `contracts.Documents` and `contracts.NextSessionAnswer` have `MustUnderstand`.
+  `contracts/run/v1/README.md` states the rule, and says that an unsigned 401 or 415 is
+  not one of the nine next-session refusal codes.
 - An API of `model_provider` can set `oauth_device`, next to `oauth_refresh`, in
   `description.schema.json`: the four URLs with which the control plane signs a person
   in with the OAuth device code flow. `usercode_url` is where the control plane sends
