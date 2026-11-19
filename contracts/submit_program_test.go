@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"math"
 	"path"
 	"regexp"
 	"slices"
@@ -133,7 +134,7 @@ var (
 func TestTheOutputFixturesAreRead(t *testing.T) {
 	for _, c := range []struct {
 		file, system, url, action, state string
-		number                           int
+		number                           int64
 		commits                          int
 	}{
 		{"github-like.txt", hostCode, "https://code.example.com/acme/shop/pull/34", "opened", "draft", 34, 2},
@@ -701,14 +702,19 @@ func TestAKeyKeepsItsFirstValidLine(t *testing.T) {
 	const rest = "draft_url https://code.example.com/acme/shop/pull/34\ndraft_title Show dates\ndraft_state draft\ndraft_action opened\n"
 	for _, c := range []struct {
 		name, output string
-		number       int
+		number       int64
 		invalid      []int
 	}{
 		{"number, invalid then valid", "draft_number 0\ndraft_number 34\n" + rest, 34, []int{1}},
 		{"number, valid then valid", "draft_number 34\ndraft_number 35\n" + rest, 34, []int{2}},
 		{"number, valid then invalid", "draft_number 34\ndraft_number 0\n" + rest, 34, []int{2}},
 		{"number of 9 digits", "draft_number 123456789\n" + rest, 123456789, nil},
-		{"number of 10 digits", "draft_number 1234567890\n" + rest, 0, []int{1, 2, 3, 4, 5}},
+		{"number of 10 digits", "draft_number 1234567890\n" + rest, 1234567890, nil},
+		{"the largest number", "draft_number 9223372036854775807\n" + rest, math.MaxInt64, nil},
+		{"the largest number and 1", "draft_number 9223372036854775808\n" + rest, 0, []int{1, 2, 3, 4, 5}},
+		{"number of 19 digits over the largest", "draft_number 9999999999999999999\n" + rest, 0, []int{1, 2, 3, 4, 5}},
+		{"number of 20 digits", "draft_number 10000000000000000000\n" + rest, 0, []int{1, 2, 3, 4, 5}},
+		{"number 0", "draft_number 0\n" + rest, 0, []int{1, 2, 3, 4, 5}},
 	} {
 		r := contracts.ParseSubmitLines(c.output, hostCode, contracts.DraftOpen, given)
 		var lines []int

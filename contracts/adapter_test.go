@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"path"
 	"regexp"
@@ -190,6 +191,8 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-submitted-draft-closed-updated.json":          {"changes-submitted", "/targets/0/draft/action const"},
 		"changes-submitted-draft-merged-opened.json":           {"changes-submitted", "/targets/0/draft/action const"},
 		"changes-submitted-draft-number-0.json":                {"changes-submitted", "/targets/0/draft/number minimum"},
+		"changes-submitted-draft-number-over-int64.json":       {"changes-submitted", "/targets/0/draft/number maximum"},
+		"changes-submission-draft-number-over-int64.json":      {"changes", "/changes/0/targets/0/draft/number maximum"},
 		"changes-submitted-draft-state-archived.json":          {"changes-submitted", "/targets/0/draft/state enum"},
 		"changes-submitted-draft-without-url.json":             {"changes-submitted", "/targets/0/draft required url"},
 		"changes-submitted-undefined-member.json":              {"changes-submitted", "/ additionalProperties"},
@@ -1449,16 +1452,112 @@ func strictJSON(schema string, b []byte) error {
 	return rawjson.Check(rest, rawjson.Rules{Integers: true})
 }
 
-// TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rule that an integer has no
-// fraction or exponent and that no object repeats a member: each document under
+// submittedAddressFault returns the first address of a changes-submitted reply that
+// breaks the address rule of the contract, or nil. The rule is the one of a result line
+// of a submit program, so the check is [contracts.ParseSubmitLines]: the address is
+// recorded as the commit_url of a commit only when it is on the system of its target,
+// with no user information, port, query or fragment, and with a path. The schema checks
+// the form of an address and not that rule, so the control plane refuses such a reply,
+// 400 invalid_request.
+func submittedAddressFault(b []byte) error {
+	type commit struct {
+		CommitURL string `json:"commit_url"`
+	}
+	var reply struct {
+		Targets []struct {
+			System  string   `json:"system"`
+			Base    commit   `json:"base"`
+			Commits []commit `json:"commits"`
+			Draft   *struct {
+				URL string `json:"url"`
+			} `json:"draft"`
+		} `json:"targets"`
+	}
+	if err := json.Unmarshal(b, &reply); err != nil {
+		return err
+	}
+	for i, tg := range reply.Targets {
+		addresses := map[string]string{fmt.Sprintf("/targets/%d/base/commit_url", i): tg.Base.CommitURL}
+		for j, c := range tg.Commits {
+			addresses[fmt.Sprintf("/targets/%d/commits/%d/commit_url", i, j)] = c.CommitURL
+		}
+		if tg.Draft != nil {
+			addresses[fmt.Sprintf("/targets/%d/draft/url", i)] = tg.Draft.URL
+		}
+		for at, address := range addresses {
+			r := contracts.ParseSubmitLines("commit_url "+commitMade+" "+address+"\n", tg.System, contracts.DraftOpen, given)
+			if len(r.CommitURLs) != 1 {
+				return fmt.Errorf("%s is %q, which breaks the address rule for the system %q: %+v", at, address, tg.System, r.Invalid)
+			}
+		}
+	}
+	return nil
+}
+
+// TestAnAddressOfAReplyHasTheRuleOfASubmitProgram pins, at the value on each side, that
+// the control plane applies the address rule of a submit program to the addresses of a
+// changes-submitted reply: the schema accepts every address here, and the rule accepts
+// only one on the system, compared in lower case, with a path and no port, query or
+// fragment.
+func TestAnAddressOfAReplyHasTheRuleOfASubmitProgram(t *testing.T) {
+	const reply = "fixtures/adapter/changes-submitted/github-like.json"
+	schema := compile(t, "changes-submitted.schema.json")
+	for _, c := range []struct {
+		name, address string
+		ok            bool
+	}{
+		{"the system", "https://code.example.com/acme/shop/pull/34", true},
+		{"the system in upper case", "https://Code.EXAMPLE.com/acme/shop/pull/34", true},
+		{"another host", "https://code.example.org/acme/shop/pull/34", false},
+		{"a subdomain of the system", "https://www.code.example.com/acme/shop/pull/34", false},
+		{"a parent of the system", "https://example.com/acme/shop/pull/34", false},
+		{"the system as a suffix", "https://evilcode.example.com/acme/shop/pull/34", false},
+		{"the system with a trailing dot", "https://code.example.com./acme/shop/pull/34", false},
+		{"a host with a percent-encoded character", "https://cod%C3%A9.example.com/acme/shop/pull/34", false},
+		{"a host in brackets", "https://[::1]/acme/shop/pull/34", false},
+		{"a port other than 443", "https://code.example.com:8443/acme/shop/pull/34", false},
+		{"port 443", "https://code.example.com:443/acme/shop/pull/34", false},
+		{"an empty port", "https://code.example.com:/acme/shop/pull/34", false},
+		{"a query", "https://code.example.com/acme/shop/pull/34?tab=files", false},
+		{"a fragment", "https://code.example.com/acme/shop/pull/34#files", false},
+		{"no path", "https://code.example.com", false},
+		{"the root path", "https://code.example.com/", false},
+		{"a query and no path", "https://code.example.com?a=b", false},
+	} {
+		var doc map[string]any
+		if err := json.Unmarshal(read(t, reply), &doc); err != nil {
+			t.Fatal(err)
+		}
+		doc["targets"].([]any)[0].(map[string]any)["draft"].(map[string]any)["url"] = c.address
+		b, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(schema, b); err != nil {
+			t.Errorf("%s: the schema refuses the address: %v", c.name, err)
+		}
+		if err := submittedAddressFault(b); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+}
+
+// TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rules that an integer has no
+// fraction or exponent, that no object repeats a member, and that an address of a
+// changes-submitted reply is on the system of its target: each document under
 // fixtures/adapter/refused-by-control-plane is accepted by its schema, since the rule is
 // not expressible in one, and breaks the rule on its raw bytes, so the control plane
 // refuses it, 400 invalid_request; and every accepted request fixture keeps the rule,
-// the integer rule outside an adapter start-up's description member.
+// the integer rule outside an adapter start-up's description member, the address rule in
+// every changes-submitted fixture.
 func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 	refused := map[string]string{
-		"adapter-integer-with-fraction.json": "adapter",
-		"adapter-repeated-member.json":       "adapter",
+		"adapter-integer-with-fraction.json":                "adapter",
+		"adapter-repeated-member.json":                      "adapter",
+		"changes-submitted-draft-number-decimal.json":       "changes-submitted",
+		"changes-submitted-base-commit-url-other-host.json": "changes-submitted",
+		"changes-submitted-commit-url-other-host.json":      "changes-submitted",
+		"changes-submitted-draft-url-other-host.json":       "changes-submitted",
 	}
 	got := files(t, "fixtures/adapter/refused-by-control-plane")
 	if len(got) != len(refused) {
@@ -1474,16 +1573,36 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		if err := validate(compile(t, schema+".schema.json"), b); err != nil {
 			t.Errorf("%s is refused by %s.schema.json, and the rule is the control plane's alone: %v", f, schema, err)
 		}
-		if strictJSON(schema, b) == nil {
+		switch name := path.Base(f); {
+		case strings.HasSuffix(name, "-other-host.json"):
+			if submittedAddressFault(b) == nil {
+				t.Errorf("%s keeps the address rule", f)
+			}
+			if err := strictJSON(schema, b); err != nil {
+				t.Errorf("%s breaks a raw rule beside the address rule: %v", f, err)
+			}
+		case strings.HasSuffix(name, "-decimal.json"):
+			if err := strictJSON(schema, b); err == nil || !strings.Contains(err.Error(), "34.0") {
+				t.Errorf("%s: the raw integer rule refuses it for %v, want the number 34.0", f, err)
+			}
+			if err := submittedAddressFault(b); err != nil {
+				t.Errorf("%s: %v", f, err)
+			}
+		case strictJSON(schema, b) == nil:
 			t.Errorf("%s keeps the rule on its raw bytes", f)
 		}
 	}
-	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
+	for _, d := range []string{"adapter", "changes", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
 		"connections-disconnect", "changes-failed", "changes-submitted", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
 		"resolve-answer", "read", "read-public", "read-answer", "run-credential", "run-credential-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
+			}
+			if d == "changes-submitted" {
+				if err := submittedAddressFault(read(t, f)); err != nil {
+					t.Errorf("%s: %v", f, err)
+				}
 			}
 		}
 	}

@@ -190,7 +190,7 @@
           "required": ["action"],
           "properties": {
             "action": {"description": "open: open a draft. update: edit the draft with number draft.number.", "type": "string", "enum": ["open", "update"]},
-            "number": {"description": "The number of the draft to update, as the adapter reported it in the reply to an earlier version. It is a hint: when the forge has no draft with that number, the adapter finds the draft from branch. Present exactly with update.", "type": "integer", "minimum": 1}
+            "number": {"description": "The number of the draft to update, as the adapter reported it in the reply to an earlier version, 1 to 9223372036854775807, the largest 64-bit signed integer. The control plane refuses a larger number in that reply, so the adapter never receives one. The control plane writes it without a decimal point or exponent. It is a hint: when the forge has no draft with that number, the adapter finds the draft from branch. Present exactly with update.", "type": "integer", "minimum": 1, "maximum": 9223372036854775807}
           },
           "if": {"properties": {"action": {"const": "update"}}},
           "then": {"required": ["number"]},

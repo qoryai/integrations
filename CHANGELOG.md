@@ -732,6 +732,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the
   machine log and revision 1 of the provisioner contract stay as they are.
+- The control plane refuses a `changes-submitted` reply, 400 `invalid_request`, when an
+  address (`base.commit_url`, a `commit_url` of a commit, or `draft.url`) is not on the
+  `system` of its target (its host, in lower case, equals the `system`), has a port, a
+  query or a fragment, or has a path that is empty or `/` alone, as in the submit
+  program contract. The schema accepts such a reply. The fixtures
+  `refused-by-control-plane/changes-submitted-*-other-host.json` show it.
+- `draft.number` of a `changes-submitted` reply is 1 to 9223372036854775807, the largest
+  64-bit signed integer. The control plane refuses a larger number, 400
+  `invalid_request`, and `changes.schema.json` has the same maximum for the
+  `draft.number` of a submission entry, so an adapter never receives a larger one. The
+  fixtures show it: `draft-number-int64-maximum.json` has the number
+  9223372036854775807 and is valid, and `*-draft-number-over-int64.json` has
+  9223372036854775808 and is refused. The `draft_number` line of a submit program has
+  the same limits; it was 1 to 999999999.
+- The control plane refuses `"number": 34.0` in a `changes-submitted` reply, 400
+  `invalid_request`, as it refuses every number with a decimal point or exponent where
+  the schema says `integer`. The schema accepts the reply, so the fixture
+  `refused-by-control-plane/changes-submitted-draft-number-decimal.json` shows it.
 
 ### Removed
 
