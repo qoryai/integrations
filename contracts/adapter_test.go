@@ -239,6 +239,10 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-created-at-hour-24.json":                 {"source-items", "/items/0/created_at format"},
 		"source-items-created-at-minute-60.json":               {"source-items", "/items/0/created_at format"},
 		"source-items-url-user-information.json":               {"source-items", "/items/0/url pattern"},
+		"source-items-url-host-percent-41.json":                {"source-items", "/items/0/url format"},
+		"source-items-url-host-percent-7f.json":                {"source-items", "/items/0/url format"},
+		"source-items-url-after-bracket-letters.json":          {"source-items", "/items/0/url format"},
+		"source-items-url-after-bracket-dot-digit.json":        {"source-items", "/items/0/url format"},
 		"source-items-url-bad-percent-escape.json":             {"source-items", "/items/0/url format"},
 		"source-items-url-port-0.json":                         {"source-items", "/items/0/url pattern"},
 		"source-items-url-port-65536.json":                     {"source-items", "/items/0/url pattern"},
@@ -383,9 +387,13 @@ func node(t *testing.T, name, pointer string) map[string]any {
 // reason, so without this test a pattern could stop refusing these values unnoticed.
 func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
 	for name, c := range map[string]struct{ member, bad, good string }{
-		"source-items-created-at-hour-24.json":     {"created_at", "2026-10-01T24:00:00Z", "2026-10-01T23:00:00Z"},
-		"source-items-created-at-minute-60.json":   {"created_at", "2026-10-01T09:60:00Z", "2026-10-01T09:59:00Z"},
-		"source-items-url-bad-percent-escape.json": {"url", "https://tracker.acme.example/TRK/TRK%2G1", "https://tracker.acme.example/TRK/TRK%2D1"},
+		"source-items-created-at-hour-24.json":          {"created_at", "2026-10-01T24:00:00Z", "2026-10-01T23:00:00Z"},
+		"source-items-created-at-minute-60.json":        {"created_at", "2026-10-01T09:60:00Z", "2026-10-01T09:59:00Z"},
+		"source-items-url-bad-percent-escape.json":      {"url", "https://tracker.acme.example/TRK/TRK%2G1", "https://tracker.acme.example/TRK/TRK%2D1"},
+		"source-items-url-host-percent-41.json":         {"url", "https://tracker.ex%41mple.example/TRK/TRK-1", "https://tracker.ex%C3%A9mple.example/TRK/TRK-1"},
+		"source-items-url-host-percent-7f.json":         {"url", "https://tracker.ex%7Fmple.example/TRK/TRK-1", "https://tracker.ex%FFmple.example/TRK/TRK-1"},
+		"source-items-url-after-bracket-letters.json":   {"url", "https://[2001:db8::1]ab/TRK/TRK-1", "https://[2001:db8::1]:8443/TRK/TRK-1"},
+		"source-items-url-after-bracket-dot-digit.json": {"url", "https://[2001:db8::1].5/TRK/TRK-1", "https://[2001:db8::1]/TRK/TRK-1"},
 	} {
 		if b := read(t, "fixtures/adapter/invalid/"+name); !bytes.Contains(b, []byte(`"`+c.member+`": "`+c.bad+`"`)) {
 			t.Errorf("%s contains no %s %q", name, c.member, c.bad)

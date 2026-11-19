@@ -719,6 +719,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Changed
 
+- The `pattern` of `$defs/url` in `definitions.schema.json` now refuses URLs that the
+  description excludes and that only the `format` keyword refused. A host takes only the
+  percent-encodings `%25` and `%80` to `%FF`, so `https://a%41.example/` fails the
+  pattern. After the closing bracket of an IPv6 host, the URL may only end or continue
+  with `:`, `/`, `?` or `#`, so `https://[::1]ab/x` and `https://[::1].5/x` fail it. The
+  description is unchanged.
 - `run_settings` has no `time_limit_minutes`. The time limit of session 1 is
   `time_limit_minutes` in the run documents, with the same limits, 15 to 1440 minutes.
   `contracts.RunSettings` has no `TimeLimitMinutes`.

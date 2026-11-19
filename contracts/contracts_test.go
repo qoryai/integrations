@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -558,6 +559,61 @@ func TestAURLHostTakesThePercentEncodingsItsTextNames(t *testing.T) {
 		}
 		if r := strings.Join(leaves(v), "; "); r != "/ format" {
 			t.Errorf("%s is refused for %q, want %q", url, r, "/ format")
+		}
+	}
+}
+
+// TestTheURLPatternFollowsItsText pins the pattern of the url of definitions.schema.json
+// alone, without the format keyword: a host takes %25 and %80 to %FF in either
+// case and no other percent-encoding, and only the end, a colon, a slash, a question
+// mark or a number sign follows the closing bracket of an IPv6 host. A percent-encoding
+// in the path, the query and the fragment is unchanged.
+func TestTheURLPatternFollowsItsText(t *testing.T) {
+	pattern, ok := node(t, "definitions.schema.json", "/$defs/url")["pattern"].(string)
+	if !ok {
+		t.Fatal("definitions.schema.json: the url has no pattern")
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, url := range []string{
+		"https://ex%C3%A9mple.com/",
+		"https://ex%c3%a9mple.com/",
+		"https://ex%80mple.com/",
+		"https://ex%FFmple.com/",
+		"https://ex%25mple.com/",
+		"https://example.com/a%41b?q=%41#f%41",
+		"https://[::1]",
+		"https://[::1]:",
+		"https://example.com:/x",
+		"https://ex%a5mple.com/",
+		"https://[::1]:443",
+		"https://[::1]/path",
+		"https://[::1]?q",
+		"https://[::1]#f",
+		"https://[2001:db8::1]:8443/a",
+	} {
+		if !re.MatchString(url) {
+			t.Errorf("the pattern refuses %s", url)
+		}
+	}
+	for _, url := range []string{
+		"https://ex%41mple.com/",
+		"https://ex%7Fmple.com/",
+		"https://ex%00mple.com/",
+		"https://ex%2fmple.com/",
+		"https://ex%7fmple.com/",
+		"https://ex%2mple.com/",
+		"https://ex%8mple.com/",
+		"https://ex%mple.com/",
+		"https://[::1]ab/x",
+		"https://[::1].5/x",
+		"https://[::1]5",
+		"https://[::1]%41",
+	} {
+		if re.MatchString(url) {
+			t.Errorf("the pattern accepts %s", url)
 		}
 	}
 }
