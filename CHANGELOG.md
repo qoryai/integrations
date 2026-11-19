@@ -9,6 +9,40 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Upgrading
 
+- Change each reader and writer of the `submission` entry of the change feed to the
+  `change_request` entry. The `submission` entry kind is gone, and so are `submissions:
+  true` in the `source` role of a description, the reasons `branch_gone` and
+  `forge_refused`, and every member that was specific to a pull request. `submission_id`
+  is `change_request_id`, with the same `av_` pattern. One entry has one `target`, a
+  `{collection, address}`, where a submission had `targets`, 1 to 20, each with `system`
+  and `path`. `text.title` is `title` and `text.description` is `text`. `previous_title`
+  is `previous.title`, and `previous.address` is added. `branch`, `base`, `commit`,
+  `commits`, `earlier_commits` and `draft` of a target are members of `data`, which the
+  artifact type of the entry's `change_kind` defines and this contract does not list.
+  `submissions: true` is `change_kinds`, a list of 1 to 16 kinds. The reply
+  `changes-submitted` has `change_request_id`, `target`, `address` (`url`, `ref`) with
+  `action` (`created`, `updated` or `kept`) together or both left out, and `data`, where
+  it had `targets` with `base`, `commits` and `draft`; a draft's `opened` is `created`.
+  The failure `changes-failed` has `change_request_id` and `target` where it had
+  `submission_id`, `system` and `path`, and its reasons are `not_permitted`,
+  `unreachable`, `target_gone`, `too_long` and `refused`. No release had these members.
+  In Go, `ChangeSubmission`, `SubmissionText`, `SubmissionTarget`, `SubmissionBase`,
+  `SubmissionCommit`, `DraftRequest`, `DraftUpdate`, `SubmittedTarget` and `CommitAddress`
+  are removed, and so are the members `SubmissionID`, `PreviousTitle`, `Text` (a pointer)
+  and `Targets` of `Change`, `SubmissionID`, `System` and `Path` of `ChangesFailed`, and
+  `SubmissionID` and `Targets` of `ChangesSubmitted`. `ChangeRequest`, `ChangeAddress`,
+  `ChangePrevious`, `ChangeCreated`, `ChangeUpdated` and `ChangeKept` are added. `Change`
+  has `ChangeRequestID`, `ChangeKind`, `Target`, `Title`, `Text` (a string), `Previous` and
+  `Data`, `ChangesFailed` has `ChangeRequestID` and `Target`, and `ChangesSubmitted` has
+  `ChangeRequestID`, `Target`, `Action`, `Address` and `Data`. `DraftOpen` stays as the
+  value of `QORY_SUBMIT_DRAFT`.
+- Stop relying on this contract for the numbers inside the `data` of a change request.
+  The integer rule (a number has no fraction or exponent) does not apply inside `data`,
+  so a bid of `1.25` is valid. The artifact type of the kind checks the numbers, and
+  JSON Schema counts `34.0` as an integer, so a schema cannot refuse `34.0` where it says
+  `integer`; the rule that the control plane enforced for `draft.number` and
+  `earlier_commits` no longer reaches them. No object inside `data` repeats a member, at
+  any depth, and the control plane refuses a repeat, 400 `invalid_request`.
 - Update a reader of the run documents to this `documents.schema.json` before the
   control plane writes `submit`, `write-no-push` in `access`, or `write-no-push` in the
   `access` of a workflow in `harness`, to the run documents: a reader that checks the
@@ -28,8 +62,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `Collection` and `Address`, a `*TargetAddress` with `System` and `Path`. A target with
   `system` and `path` and no `collection` fails `source-collections.schema.json`,
   `source-items.schema.json`, `explore/v1/inputs.schema.json`, `documents.schema.json`
-  and the `run.target` of `diagnostics.schema.json`. The `submission` entry and its
-  replies keep `system` and `path`. `$defs/system` is the host name that
+  and the `run.target` of `diagnostics.schema.json`. A `change_request` entry, its reply
+  and its failure report use this `target`. `$defs/system` is the host name that
   `$defs/target/properties/system` was.
 - Write the `run.target` of a diagnostics document by the new rules. `address.system` is a
   lower-case host name, `^[a-z0-9.-]{1,253}$`. The schema refuses an upper-case host, a
@@ -163,67 +197,68 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `descriptions/openai-subscription.json` sets it for OpenAI's device code sign-in, and
   its `description` now starts with "Runs use your ChatGPT subscription through a
   sign-in that Qory Apiary makes with OpenAI's device code."
-- The change feed has the entry kind `submission` (`changes.schema.json`): the control
-  plane writes one for each submission version that a run stores, in the feed of an
-  adapter whose `source` role has `submissions: true`, so that the forge's adapter opens
-  or updates a draft (a pull request or a merge request) from it, in the same words for
-  every forge. It has `submission_id`, `ref` (the ref of the item that the work item was
-  taken from, absent when it came from no item), `previous_title`, `text` (`title` and
-  `description`) and `targets`, 1 to 20, each system and path once. A target has
-  `system`, `path`, `branch`, `base` (`commit` and `branch`), the head `commit`,
-  `commits`, 1 to 100, each with `commit` and `step`, and `draft`, `{action: open}` or
-  `{action: update, number}`. `text` and `draft` are absent after a session that did not
-  pass, when the run wrote no text, and when the session escalated: the adapter then
-  only builds the address of each commit. With `open`, the adapter first looks for a
-  draft from `branch` in any state. The adapter finds a draft by its head branch,
-  `branch`, and the repository only, never by `base.branch`. With several drafts on the
-  branch, the adapter takes the entry's `draft.number` when it is among them, otherwise
-  the not-closed, not-merged draft with the highest number; with none, the closed or
-  merged one with the highest number, reported as kept. The `number` of an update is a
-  hint: when the forge has no such draft, the adapter finds the draft from `branch`. The
-  adapter edits a draft only while it is `draft` or `open`. The run's text sits in the
-  draft's description between the lines `<!-- qory:start -->` and `<!-- qory:end -->`:
-  an update takes the first end marker line that has a start marker line before it and
-  the last start marker line before that end line, replaces the text from the start line
-  to the end marker with the new block, keeps the rest, and adds a new block at the end
-  when no such pair exists. The new block uses the description's line ending, CRLF or
-  LF, only for the line endings that the adapter adds; the ones inside the text stay as
-  given. An update changes the draft's title only while it equals `previous_title`, the
-  title of the previous version. In Go, `ChangeSubmission`, `SubmissionText`,
-  `SubmissionTarget`, `SubmissionBase`, `SubmissionCommit`, `DraftRequest` with its
-  actions `DraftOpen` and `DraftUpdate`, and the `Change` members `SubmissionID`,
-  `PreviousTitle`, `Text` and `Targets` are added.
-- The `source` role may contain `submissions: true`: the adapter takes submissions from
-  the control plane. The control plane writes a `submission` entry only for an adapter
-  that sets it, whatever source the work item came from, and also when the work item
-  came from no item at a source. An adapter that does not set `submissions: true` never
-  receives a `submission` entry. A source with `submissions: true` also has `targets:
-  true`, because the run's target collection is one that `targets: true` offers.
-  `targets: true` still offers the collections as places for a run's changes and gates
-  the `watch` entry.
-- The adapter reports a submission entry with `POST /v1/work-items/changes/submitted`
-  (`changes-submitted.schema.json`): for each target that did not fail, the address of
-  each commit and of the base, and, for a target that had `draft`, `draft`, `{number,
-  url, title, state, action}`. `state` is `draft`, `open`, `closed` or `merged`. A draft
-  that a person closed or merged is reported with the action `kept` and is not edited.
-  `number` may differ from the entry's. A target that failed goes only to `POST
-  /v1/work-items/changes/failed`, which takes `comment_id`, or `submission_id` with
-  `system` and `path`, and for a submission the reason `not_permitted`, `unreachable`
-  (the forge timed out, could not be reached, or returned a busy or 5xx status until the
-  retries ended), `branch_gone`, `too_long` or `forge_refused` (the forge refused a
-  request with a status that no other reason covers, such as 400, or 422 for another
-  cause than a missing branch or a length limit). A failure of a submission may have
-  `detail`, one line of 1 to 1000 characters with what to do first, then the forge's
-  status and message; the adapter never puts an access token, a secret or a header in
-  it, and a failure of a comment has no `detail`. In Go, `ChangesSubmitted`,
-  `SubmittedTarget`, `CommitAddress` and `SubmittedDraft` are added, with the states
-  `DraftStateDraft`, `DraftStateOpen`, `DraftStateClosed` and `DraftStateMerged` and the
-  actions `DraftOpened`, `DraftUpdated` and `DraftKept`, and `ChangesFailed` has
-  `SubmissionID`, `System`, `Path` and `Detail`.
+- The change feed has the entry kind `change_request` (`changes.schema.json`): the
+  control plane writes one for each target of each change request version that a run
+  stores, in the feed of the adapter of the target's collection, so that the adapter
+  applies the change at that place. The entry is the same for every type of workspace
+  and every kind of change: a pull request for a repository, a reply to a customer, new
+  bids for a campaign. It has `change_request_id`, `change_kind`, `target`, `ref` (the ref
+  of the item that the work item was taken from, absent when it came from no item),
+  `title` (1 to 256 characters on one line), `text` (at most 20000 characters, possibly
+  empty, with no `<!-- qory:start -->` or `<!-- qory:end -->` line), `previous` (absent on
+  the first version: its `title` and `address`) and `data`, the part. This contract lists
+  no kind and no member of `data`: the artifact type that `change_kind` names, in the
+  process of the workspace's type, defines them, and the control plane validates the
+  `data` of an entry against it. `data` has at most 786432 bytes serialized, which the
+  control plane enforces, and the schema limits each value inside it: 1024 items in an
+  array, 256 members in an object, 20000 characters in a string, a member name of 1 to 128
+  characters and no U+0000. The adapter changes the title at the target only while it
+  equals `previous.title`, updates what is at `previous.address` when there is one, and
+  applies the entries with one `target.collection` in cursor order. `change_kind` has the
+  pattern of `submit.type` of the run documents: lower-case letters and digits in groups
+  joined by single hyphens, 1 to 64 characters. In Go, `ChangeRequest`, `ChangeAddress`
+  and `ChangePrevious` are added.
+- The `source` role may contain `change_kinds`: the kinds of change request that the
+  adapter applies, 1 to 16, each once, such as `pull-request`. The control plane writes a
+  `change_request` entry only for an adapter whose `change_kinds` lists the change's kind,
+  whatever source the work item came from, and also when the work item came from no item
+  at a source. An adapter without `change_kinds`, or without that kind in it, never
+  receives the entry, and the control plane keeps the change in the control plane only.
+  A source with `change_kinds` also has `targets: true`, because the run's target
+  collection is one that `targets: true` offers. `targets: true` still offers the
+  collections as places for a run's changes and gates the `watch` entry.
+- The adapter reports a `change_request` entry with `POST
+  /v1/work-items/changes/submitted` (`changes-submitted.schema.json`): `change_request_id`,
+  `target`, `address` (`url` and `ref`, the reference that the target gives the change)
+  with `action` (`created`, `updated`, or `kept` when it changed nothing), and `data`, the
+  result that the kind defines, such as the address of each commit of a pull request.
+  `address` and `action` are both present or both absent: a reply for an entry that asks
+  for no change at the target has neither. Where the entry's target has an `address`,
+  `address.url` is on its `system`; this contract checks no address inside `data`. An
+  adapter that stopped trying reports `POST /v1/work-items/changes/failed`, which takes
+  `comment_id`, or `change_request_id` with `target`, and for a change request the reason
+  `not_permitted`, `unreachable` (the target timed out, could not be reached, or returned a
+  busy or 5xx status until the retries ended), `target_gone` (the place the change goes
+  to does not exist), `too_long` or `refused` (the target refused a request with a status
+  that no other reason covers, or the adapter cannot apply the entry, as for a
+  `change_kind` that it did not list). A failure of a change request may have `detail`,
+  one line of 1 to 1000 characters with what to do first, then the target's status and
+  message; the adapter never puts an access token, a secret or a header in it, and a
+  failure of a comment has no `detail`. An adapter that gets a `change_kind` that it did
+  not list sends `refused` with a `detail`. In Go, `ChangesSubmitted` and `SubmittedDraft`
+  are added, with the actions `ChangeCreated`, `ChangeUpdated` and `ChangeKept`, the
+  states `DraftStateDraft`, `DraftStateOpen`, `DraftStateClosed` and `DraftStateMerged`
+  and the actions `DraftOpened`, `DraftUpdated` and `DraftKept` of a draft, and
+  `ChangesFailed` has `ChangeRequestID`, `Target` and `Detail`.
+- The README of the integration contract describes the `pull-request` kind of change
+  request, the one that the software factory uses: the members of its `data`, how the
+  adapter finds a draft by its head branch, the marked block of the draft's description
+  between `<!-- qory:start -->` and `<!-- qory:end -->`, and the title rule. The members
+  belong to the artifact type of the kind, not to this contract.
 - The submit program contract, `contracts/run/v1/submit-program/README.md`, is for the
   program that `qory run` runs on a run with no run code, with the login of the forge's
   command line that the person made. A run's draft is opened by the adapter from the
-  submission entry, and qory runs the module's submit program only on a run with no run
+  change_request entry, and qory runs the module's submit program only on a run with no run
   code. qory finds the program in the composed harness: the `submit_program` key,
   `{command: [<path>, <argument>, ...]}`, of the manifest of the forge's module, with
   the path relative to the module. A run with no run code has no work item and no
@@ -372,7 +407,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   with `type` and `send`, both required, and no other member. `type` is the name of the
   artifact type of the submission: lower-case letters and digits in groups joined by
   single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`: the control
-  plane writes the submission entry at the end of the run or after the gate of the stage
+  plane writes the change_request entry at the end of the run or after the gate of the stage
   passes. The control plane writes `submit` whenever the process version of the
   workspace has one. `submit` is present only on a run with `workflow` and with `access`
   `write`, and never on a run of the step `prebuild`. `submit` sets the `type` and the
@@ -380,7 +415,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   these two settings only from `submit`, never from `process.yaml`. If `process.yaml`
   has a different `submit`, qory prints one line with both values and uses `submit` of
   the run documents. On that run, the adapter of the forge opens the draft from the
-  submission entry, and no submit program runs. A run that a person starts with no run
+  change_request entry, and no submit program runs. A run that a person starts with no run
   code has no run documents, so it has no `submit`; it runs the submit program of the
   composed harness. In Go, `Submit` and `Documents.Submit` are added.
 - `access` in the run documents, and `access` of a workflow in `harness`, can be
@@ -466,7 +501,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   enrolment. `refusal.schema.json` lists the refusals.
 - The change feed entry kind `watch`, with `work_item_id` and `url`, the work item's
   page in the control plane. The control plane writes a `watch` entry whenever a run
-  stores a submission version, in the feed of the adapter of the run's target
+  stores a change request version, in the feed of the adapter of the run's target
   collection, whatever source the work item came from, and also when the work item came
   from no item at a source. In Go, `ChangeWatch` is added.
 - In the change feed, entries for one item, the `work_item` and `comment` entries with
@@ -765,15 +800,6 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `release.yml` attaches `description.json` to each release: the description that
   `<program> describe` prints and that passes the `conformance.Description` check.
   `checksums.txt` lists its SHA-256 beside the archives.
-- The target of a `submission` entry in `changes.schema.json` has the optional member
-  `earlier_commits`, an integer of at least 1: the number of commits of the run in the
-  repository that are older than the first entry of `commits` and are not listed. A run
-  of more than 100 commits in a repository is accepted: `commits` lists the newest 100,
-  oldest first, ending in `commit`, and `earlier_commits` is the number of the older
-  ones. `commits` still has at most 100 entries, and exactly 100 with `earlier_commits`.
-  The member is absent when `commits` lists each commit of the run. The reply in
-  `changes-submitted.schema.json` has an item for each listed commit and none for the
-  earlier ones, so the adapter builds no address for them.
 
 ### Changed
 
@@ -805,31 +831,19 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `POST /v1/dispatches/<dispatch_id>/machine-log`, contains the error text of its attempt
   to create one, such as the error that the machine adapter wrote. The members of the
   machine log and revision 1 of the provisioner contract stay as they are.
-- The control plane refuses a `changes-submitted` reply, 400 `invalid_request`, when an
-  address (`base.commit_url`, a `commit_url` of a commit, or `draft.url`) is not on the
-  `system` of its target (its host, in lower case, equals the `system`), has a port, a
-  query or a fragment, or has a path that is empty or `/` alone, as in the submit
-  program contract. The schema accepts such a reply. The fixtures
-  `refused-by-control-plane/changes-submitted-*-other-host.json` show it.
-- `draft.number` of a `changes-submitted` reply is 1 to 9223372036854775807, the largest
-  64-bit signed integer. The control plane refuses a larger number, 400
-  `invalid_request`, and `changes.schema.json` has the same maximum for the
-  `draft.number` of a submission entry, so an adapter never receives a larger one. The
-  fixtures show it: `draft-number-int64-maximum.json` has the number
-  9223372036854775807 and is valid, and `*-draft-number-over-int64.json` has
-  9223372036854775808 and is refused. The `draft_number` line of a submit program has
-  the same limits; it was 1 to 999999999.
-- The control plane refuses `"number": 34.0` in a `changes-submitted` reply, 400
-  `invalid_request`, as it refuses every number with a decimal point or exponent where
-  the schema says `integer`. The schema accepts the reply, so the fixture
-  `refused-by-control-plane/changes-submitted-draft-number-decimal.json` shows it.
+- The control plane refuses a `changes-submitted` reply, 400 `invalid_request`, when
+  `address.url` is not on the `system` of the entry's `target.address` (its host, in lower
+  case, equals the `system`), has a port, a query or a fragment, or has a path that is
+  empty or `/` alone, as in the submit program contract. Where the target has no
+  `address`, only the form of `$defs/url` applies. The schema accepts such a reply. The
+  fixture `refused-by-control-plane/changes-submitted-address-other-host.json` shows it.
 
 ### Removed
 
 - `submit_module` is no member of the adapter's start-up (`adapter.schema.json`) or of
   the run documents (`documents.schema.json`), and `$defs/submit_module` and
   `$defs/harness_pinned_source` are gone. A run with a run code has no submit program;
-  the forge's adapter opens the draft from the submission entry. In Go, `SubmitModule`,
+  the forge's adapter opens the draft from the change_request entry. In Go, `SubmitModule`,
   `Adapter.SubmitModule` and `Documents.SubmitModule` are removed.
 
 ## [0.3.0] - 2026-10-12
