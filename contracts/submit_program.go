@@ -160,8 +160,10 @@ var submitRules = sync.OnceValue(func() struct{ url, line, title *regexp.Regexp 
 
 // ParseSubmitLines reads the standard output of a submit program for a repository on
 // system, the lines the README of the contract describes, and returns what qory
-// records. draft is the value that qory gave the program in [SubmitEnvDraft], and commits
-// lists the commit ids that qory gave it, the base among them.
+// records. An empty system skips the check that an address is on the repository's
+// system; every other rule of an address stays. draft is the value that qory gave the
+// program in [SubmitEnvDraft], and commits lists the commit ids that qory gave it, the
+// base among them.
 //
 // qory strips one carriage return at the end of each line first. A line that is not
 // valid is left out and listed in Invalid; the lines before and after it count. A blank
@@ -357,8 +359,9 @@ func submitDraftValue(key, value, system string) error {
 }
 
 // submitAddress checks that addr passes the pattern of definitions.schema.json,
-// $defs.url, is at most 2048 characters, is on system, and has a path and no port, query
-// or fragment.
+// $defs.url, is at most 2048 characters, is on system when system is not empty, and has
+// a path and no port, query or fragment. An empty system is a target with no address
+// (definitions.schema.json, $defs.target), so no host check.
 func submitAddress(addr, system string) error {
 	if len(addr) > submitMaxURL {
 		return fmt.Errorf("the address is over %d characters", submitMaxURL)
@@ -374,7 +377,7 @@ func submitAddress(addr, system string) error {
 		return errors.New("the address has a port")
 	case u.RawQuery != "" || u.ForceQuery || strings.Contains(addr, "#"):
 		return errors.New("the address has a query or a fragment")
-	case !strings.EqualFold(u.Hostname(), system):
+	case system != "" && !strings.EqualFold(u.Hostname(), system):
 		return errors.New("the address is not on the repository's system")
 	case u.Path == "" || u.Path == "/":
 		return errors.New("the address has no path")

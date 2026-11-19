@@ -427,6 +427,126 @@ func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
 	}
 }
 
+// TestATargetIsACollectionWithAnOptionalAddress pins definitions.schema.json,
+// $defs.target: a collection ref is required, the address is optional and has a system
+// and a path, and a target with a system and a path and no collection is refused. It
+// also pins that each schema that refers to a target refuses that shape.
+func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
+	const address = `{"system":"code.example.com","path":"acme/shop"}`
+	schema := compile(t, "definitions.schema.json#/$defs/target")
+	for _, c := range []struct {
+		name, doc string
+		ok        bool
+	}{
+		{"a collection and no address", `{"collection":"AP_1234"}`, true},
+		{"a collection and an address", `{"collection":"R_1001","address":` + address + `}`, true},
+		{"a collection of 200 characters", `{"collection":"` + strings.Repeat("a", 200) + `"}`, true},
+		{"no collection", `{"address":` + address + `}`, false},
+		{"an empty object", `{}`, false},
+		{"system and path with no collection", address, false},
+		{"system and path beside the collection", `{"collection":"R_1001","system":"code.example.com","path":"acme/shop"}`, false},
+		{"an empty collection", `{"collection":""}`, false},
+		{"a collection of 201 characters", `{"collection":"` + strings.Repeat("a", 201) + `"}`, false},
+		{"a collection that is a number", `{"collection":1001}`, false},
+		{"an address that is null", `{"collection":"R_1001","address":null}`, false},
+		{"an address with no path", `{"collection":"R_1001","address":{"system":"code.example.com"}}`, false},
+		{"an address with no system", `{"collection":"R_1001","address":{"path":"acme/shop"}}`, false},
+		{"an address with an empty path", `{"collection":"R_1001","address":{"system":"code.example.com","path":""}}`, false},
+		{"an address with a path of 200 characters", `{"collection":"R_1001","address":{"system":"code.example.com","path":"` + strings.Repeat("a", 200) + `"}}`, true},
+		{"an address with a path of 201 characters", `{"collection":"R_1001","address":{"system":"code.example.com","path":"` + strings.Repeat("a", 201) + `"}}`, false},
+		{"an address with a path with a line feed", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\nshop"}}`, false},
+		{"an address with a path with a tab", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\tshop"}}`, false},
+		{"an address with a path with U+007F", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\u007fshop"}}`, false},
+		{"an address with a system in upper case", `{"collection":"R_1001","address":{"system":"Code.example.com","path":"acme/shop"}}`, false},
+		{"an address with a system and a port", `{"collection":"R_1001","address":{"system":"code.example.com:8443","path":"acme/shop"}}`, false},
+		{"an address with another member", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop","port":1}}`, false},
+	} {
+		if err := validate(schema, []byte(c.doc)); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	// Each schema that refers to a target refuses, in place of the target, a system and
+	// a path with no collection, and an address path with a control character.
+	withPath := func(p string) map[string]any {
+		return map[string]any{"collection": "R_1001", "address": map[string]any{"system": "code.example.com", "path": p}}
+	}
+	refused := []struct {
+		name   string
+		target map[string]any
+	}{
+		{"a system and a path and no collection", map[string]any{"system": "code.example.com", "path": "acme/shop"}},
+		{"an address path with a line feed", withPath("acme/\nshop")},
+		{"an address path with a tab", withPath("acme/\tshop")},
+		{"an address path with U+007F", withPath("acme/\x7fshop")},
+		{"an address path with U+0000", withPath("acme/\x00shop")},
+	}
+	for _, f := range []struct {
+		file   string
+		schema *jsonschema.Schema
+		where  func(doc map[string]any) map[string]any
+	}{
+		{"fixtures/adapter/source-collections/code-host.json", compile(t, "source-collections.schema.json"),
+			func(d map[string]any) map[string]any { return d["collections"].([]any)[0].(map[string]any) }},
+		{"fixtures/adapter/source-items/code-host-event.json", compile(t, "source-items.schema.json"),
+			func(d map[string]any) map[string]any { return d["items"].([]any)[0].(map[string]any) }},
+	} {
+		var doc map[string]any
+		if err := json.Unmarshal(read(t, f.file), &doc); err != nil {
+			t.Fatal(err)
+		}
+		holder := f.where(doc)
+		if _, ok := holder["target"].(map[string]any)["collection"]; !ok {
+			t.Errorf("%s: the target has no collection", f.file)
+		}
+		for _, r := range refused {
+			holder["target"] = r.target
+			b, _ := json.Marshal(doc)
+			if err := validate(f.schema, b); err == nil {
+				t.Errorf("%s: the target with %s is accepted", f.file, r.name)
+			}
+		}
+	}
+	for _, f := range []struct {
+		fsys   fs.FS
+		file   string
+		schema *jsonschema.Schema
+	}{
+		{contracts.RunFS, "fixtures/documents/explore.json", func() *jsonschema.Schema {
+			s, err := contracts.CompileRun("documents.schema.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			return s
+		}()},
+		{contracts.ExploreFS, "fixtures/inputs/first-attempt.json", func() *jsonschema.Schema {
+			s, err := contracts.CompileExplore("inputs.schema.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			return s
+		}()},
+	} {
+		raw, err := fs.ReadFile(f.fsys, f.file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(f.schema, raw); err != nil {
+			t.Errorf("%s: %v", f.file, err)
+		}
+		for _, r := range refused {
+			doc["target"] = r.target
+			b, _ := json.Marshal(doc)
+			if err := validate(f.schema, b); err == nil {
+				t.Errorf("%s: the target with %s is accepted", f.file, r.name)
+			}
+		}
+	}
+}
+
 // TestTypesMarshalToTheirSchemas marshals one value of each request and answer type,
 // with its optional members left out where it has them, and validates it against its
 // schema, so the types and the schemas cannot drift apart.
@@ -437,7 +557,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	reason := "Fixed"
 	listing := contracts.Listing{ID: "items-1", Part: 1, StartedAt: now, Complete: true}
 	person := contracts.Person{Name: "Ada Example", Kind: "person"}
-	target := &contracts.Target{System: "code.example.com", Path: "acme/shop"}
+	target := &contracts.Target{Collection: "SHOP", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}
 	noItems := false
 	const submission = "av_7k2m9q4v1x8z3c5d"
 	commitA, commitB := strings.Repeat("a", 40), strings.Repeat("b", 40)

@@ -140,14 +140,35 @@
       "type": "string",
       "pattern": "^[a-z][a-z ]{0,39}$"
     },
+    "system": {
+      "description": "A host name.",
+      "type": "string",
+      "pattern": "^[a-z0-9.-]{1,253}$"
+    },
+    "address_path": {
+      "description": "The path of a place in the address of a target: 1 to 200 characters, none of them a control character, U+0000 to U+001F or U+007F.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+    },
     "target": {
-      "description": "Where a change would go: the host name of a system and the path of a place on it.",
+      "description": "Where a change would go: one of the adapter's collections, and, when the place has one, its address on a system.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["system", "path"],
+      "required": ["collection"],
       "properties": {
-        "system": {"description": "A host name.", "type": "string", "pattern": "^[a-z0-9.-]{1,253}$"},
-        "path": {"description": "The place on that system, 1 to 200 characters.", "type": "string", "minLength": 1, "maxLength": 200, "$ref": "#/$defs/text"}
+        "collection": {"description": "The collection's ref, as the adapter's source-collections.schema.json listed it.", "$ref": "#/$defs/ref"},
+        "address": {
+          "description": "The address of the place on a system: the host name and the path. Absent when the place has no address, such as a place that is not on a host.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["system", "path"],
+          "properties": {
+            "system": {"description": "The host name of the system.", "$ref": "#/$defs/system"},
+            "path": {"description": "The place on that system.", "$ref": "#/$defs/address_path"}
+          }
+        }
       }
     },
     "secret_name": {
