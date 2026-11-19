@@ -59,6 +59,7 @@ func TestTheSubmissionLimitsAreExact(t *testing.T) {
 			tg["earlier_commits"] = 40
 		}, false},
 		{"earlier_commits 1", false, func(_, tg map[string]any) { tg["earlier_commits"] = 1 }, true},
+		{"earlier_commits 1.5", false, func(_, tg map[string]any) { tg["earlier_commits"] = 1.5 }, false},
 		{"earlier_commits 0", false, func(_, tg map[string]any) { tg["earlier_commits"] = 0 }, false},
 		{"earlier_commits -1", false, func(_, tg map[string]any) { tg["earlier_commits"] = -1 }, false},
 		{"earlier_commits as a string", false, func(_, tg map[string]any) { tg["earlier_commits"] = "40" }, false},

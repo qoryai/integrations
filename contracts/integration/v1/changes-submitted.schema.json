@@ -39,7 +39,7 @@
           }
         },
         "commits": {
-          "description": "One item for each commit that the entry's repository lists, in the entry's order, 1 to 100. The commits that earlier_commits counts in the entry have no item.",
+          "description": "One item for each commit that the entry's repository lists, in the entry's order, 1 to 100. The entry's earlier commits have no item.",
           "type": "array",
           "minItems": 1,
           "maxItems": 100,

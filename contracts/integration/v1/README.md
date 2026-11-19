@@ -209,16 +209,18 @@ forge on a port other than 443 is not a target. The steps:
    entry has `submission_id`, `targets` and `text`. Each target has `system`, `path`,
    `branch`, `base` (`commit` and `branch`), the head `commit`, `commits` (each with
    `commit` and the ledger `step`), `earlier_commits` and `draft`: `{action: open}` or
-   `{action: update, number}`. A run of more than 100 commits in a repository lists the
-   newest 100 in `commits`, oldest first, and `earlier_commits` counts the older ones, at
-   least 1. `earlier_commits` is absent when `commits` lists each commit of the run. `text` and `draft` are absent after a session that did
+   `{action: update, number}`. When a run has more than 100 commits in a repository, the
+   entry lists the newest 100 in `commits`, oldest first, and `earlier_commits` is the
+   number of the older commits, at least 1. `earlier_commits` is absent when `commits`
+   lists each commit of the run. `text` and `draft` are absent after a session that did
    not pass, when the run wrote no text, and when the session escalated: the adapter then
    only builds the address of each listed commit. A draft is a
    pull request or a merge request that people can still change before it is ready.
    The entry is the same for every forge, so one adapter opens a pull request and
    another a merge request from it.
 2. The adapter builds the forge's address of `base.commit` and of each listed commit, for
-   every target, builds none for the commits that `earlier_commits` counts, whether or not the session passed.
+   every target, whether or not the session passed. It builds no address for the commits
+   that `earlier_commits` is the number of.
 3. For a target with `draft`, the adapter opens the draft, or edits the draft with that
    `number`. The `number` is a hint: when the forge has no draft with that number, the
    adapter finds the draft from `branch` in any state and goes on with it, or opens a

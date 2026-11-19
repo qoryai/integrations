@@ -1558,7 +1558,9 @@ func TestAnAddressOfAReplyHasTheRuleOfASubmitProgram(t *testing.T) {
 
 // TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rules that an integer has no
 // fraction or exponent, that no object repeats a member, and that an address of a
-// changes-submitted reply is on the system of its target: each document under
+// changes-submitted reply is on the system of its target. For the feed entry, the
+// changes fixture, the integer rule binds the control plane as its writer: it writes
+// earlier_commits without a decimal point. Each document under
 // fixtures/adapter/refused-by-control-plane is accepted by its schema, since the rule is
 // not expressible in one, and breaks the rule on its raw bytes, so the control plane
 // refuses it, 400 invalid_request; and every accepted request fixture keeps the rule,
