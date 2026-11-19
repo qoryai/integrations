@@ -458,6 +458,9 @@ func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCred
 	properties := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)
 	answerChoice := properties["model_choice"].(map[string]any)["description"].(string)
 	credential := properties["model_provider_credential_name"].(map[string]any)["description"].(string)
+	settings := documents.(map[string]any)["$defs"].(map[string]any)["run_settings"].(map[string]any)
+	runSettings := settings["description"].(string)
+	providerModels := settings["properties"].(map[string]any)["provider_models"].(map[string]any)["description"].(string)
 	// prose returns the text of a Go or Markdown file without comment markers, backticks
 	// and line breaks, so that a sentence matches however the file wraps it.
 	prose := func(path string) string {
@@ -486,16 +489,20 @@ func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCred
 		"ModelChoice of run.go (no provider)":           {goDoc, "or, without one, the key of the run's default model provider credential (the active key of its group when it has a group)"},
 		"ModelProviderCredentialName of run.go":         {goDoc, "When empty, the session joins with the run's default model provider credential, " + group + "it" + outside},
 		"the CHANGELOG, model_provider_credential_name": {changelog, "Without model_provider_credential_name, the session joins with the run's default model provider credential, " + group + "model_provider_credential_name" + outside},
+		"run_settings of the documents":                 {runSettings, "With no provider chosen, model, effort, provider_models and tiers are absent: the run uses the run's default model provider credential, a local model provider credential when the run configuration has none, and the runtime's default model."},
+		"provider_models of the documents":              {providerModels, "When provider_models is absent, the agents run on the provider of the run's default model provider credential,"},
+		"RunSettings of run.go":                         {goDoc, "With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run uses the run's default model provider credential, a local model provider credential when the run configuration has none, and the runtime's default model."},
+		"ProviderModels of run.go":                      {goDoc, "When it is empty, the agents run on the provider of the run's default model provider credential,"},
 		"the CHANGELOG, runtime without a provider":     {changelog, "the session runs on that runtime with the run's default model provider credential (the active key of its group when it has a group) and that runtime's default model"},
 	} {
 		if !strings.Contains(c.text, c.want) {
 			t.Errorf("%s does not contain %q", name, c.want)
 		}
 	}
-	for name, d := range map[string]string{"documents model_choice": choice, "answer model_choice": answerChoice, "model_provider_credential_name": credential, "run.go": goDoc, "the CHANGELOG": changelog} {
-		for _, word := range []string{"configured key", "gateway's key", "group of the run's default"} {
+	for name, d := range map[string]string{"documents model_choice": choice, "answer model_choice": answerChoice, "model_provider_credential_name": credential, "run_settings": runSettings, "provider_models": providerModels, "run.go": goDoc, "the CHANGELOG": changelog} {
+		for _, word := range []string{"configured key", "gateway's key", "group of the run's default", "uses the local model provider credential", "provider of the local model provider credential"} {
 			if strings.Contains(d, word) {
-				t.Errorf("%s says %q instead of the run's default model provider credential, which has no group when it is local", name, word)
+				t.Errorf("%s says %q instead of the run's default model provider credential", name, word)
 			}
 		}
 	}
