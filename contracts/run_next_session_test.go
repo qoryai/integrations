@@ -87,12 +87,16 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-answer-time-limit-minutes-14.json":                     func(m map[string]any) { m["time_limit_minutes"] = json.Number("15") },
 		"next-session-answer-time-limit-minutes-1441.json":                   func(m map[string]any) { m["time_limit_minutes"] = json.Number("1440") },
 		"next-session-answer-model-provider-credential-name-upper-case.json": func(m map[string]any) { m["model_provider_credential_name"] = "example-provider-1" },
-		"next-session-answer-inputs-without-version.json":                    func(m map[string]any) { m["inputs"] = session["inputs"] },
-		"next-session-answer-undefined-member.json":                          func(m map[string]any) { delete(m, "verdict") },
-		"next-session-answer-next-unknown.json":                              func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-without-next.json":                              func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-model-choice-runtime-number.json":               func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
-		"next-session-answer-model-choice-runtime-upper-case.json":           func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-model-credential.json": func(m map[string]any) {
+			delete(m, "model_credential")
+			m["model_provider_credential_name"] = "example-provider-1"
+		},
+		"next-session-answer-inputs-without-version.json":          func(m map[string]any) { m["inputs"] = session["inputs"] },
+		"next-session-answer-undefined-member.json":                func(m map[string]any) { delete(m, "verdict") },
+		"next-session-answer-next-unknown.json":                    func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-without-next.json":                    func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-model-choice-runtime-number.json":     func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-model-choice-runtime-upper-case.json": func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
 		"next-session-answer-model-choice-runtime-effort-only.json": func(m map[string]any) {
 			m["model_choice"].(map[string]any)["model"] = "example-large"
 			m["model_choice"].(map[string]any)["provider_models"] = session["model_choice"].(map[string]any)["provider_models"]
@@ -431,12 +435,14 @@ func TestTheRuntimeOfAModelChoiceNamesTheCredentialRule(t *testing.T) {
 	}
 }
 
-// TestAnAbsentModelProviderCredentialNameJoinsWithTheStartKeyGroup pins that the descriptions of
-// model_choice and of the model_provider_credential_name of the next-session answer say that a
-// session without a model_provider_credential_name joins with the group of the run's default model provider credential, and
-// that the model_provider_credential_name description says when the control plane sets one. It pins
-// too that no description says the session uses the gateway's configured key.
-func TestAnAbsentModelProviderCredentialNameJoinsWithTheStartKeyGroup(t *testing.T) {
+// TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredentialGroup
+// pins that the descriptions of model_choice and of the model_provider_credential_name
+// of the next-session answer say that a session without a
+// model_provider_credential_name joins with the group of the run's default model
+// provider credential, and that the model_provider_credential_name description says
+// when the control plane sets one. It pins too that no description says the session
+// uses the gateway's configured key.
+func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredentialGroup(t *testing.T) {
 	documents, err := contracts.RunDocument("documents.schema.json")
 	if err != nil {
 		t.Fatal(err)
@@ -455,7 +461,7 @@ func TestAnAbsentModelProviderCredentialNameJoinsWithTheStartKeyGroup(t *testing
 	}
 	for name, c := range map[string]struct{ text, want string }{
 		"model_choice of the documents":           {choice, "joins with the group of the run's default model provider credential, which that runtime must be able to use"},
-		"model_choice of the next-session answer": {answerChoice, "with the key of the credential that its model_provider_credential_name names or, without one, of the group of the run's default model provider credential"},
+		"model_choice of the next-session answer": {answerChoice, "with the key of the credential whose name is in model_provider_credential_name or, without one, of the group of the run's default model provider credential"},
 	} {
 		if !strings.Contains(c.text, c.want) {
 			t.Errorf("the description of %s does not contain %q", name, c.want)

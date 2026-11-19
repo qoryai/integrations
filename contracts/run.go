@@ -34,8 +34,8 @@ const MaxInputs = 768 << 10
 // section, and the tiers of the harness section, as described under [RunSettings.Tiers].
 // If the machine's qory version does not meet that requirement, the run stops. It reads
 // none of the other machine harness settings of that file and none of its git and env
-// sections, so the harness file of the target does not set how the run starts. A run of the step
-// explore has WorkItem and RunSettings. A run of the step prebuild has Access, Target,
+// sections, so the harness file of the target does not set how the run starts. A run of
+// the step explore has WorkItem and RunSettings. A run of the step prebuild has Access, Target,
 // ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
 // no TargetVersion, WorkItem, RunSettings, TimeLimitMinutes, SharedRun, FullSuite,
 // Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun and FullSuite are set
@@ -498,10 +498,10 @@ type RunSettings struct {
 // a runtime that differs from it. Runtime can be the only member: the session
 // runs on that runtime with no provider chosen. With no provider chosen, Model, Effort,
 // ProviderModels and Tiers are empty: the session uses the default model of its
-// runtime, with the key of the credential that its ModelProviderCredentialName names
-// or, without one, of the group of the run's default model provider credential. The
-// four rules that [RunSettings] lists for the control plane apply to those four members
-// that are set. For a session whose ModelChoice has Runtime, the control plane sets a
+// runtime, with the key of the credential whose name is in
+// ModelProviderCredentialName or, without one, of the group of the run's default model
+// provider credential. The four rules that [RunSettings] lists for the control plane
+// apply to those four members that are set. For a session whose ModelChoice has Runtime, the control plane sets a
 // ModelProviderCredentialName only for a credential of an API whose runtimes, when
 // present, list that runtime and whose format that runtime sends. A session with
 // Runtime and no ModelProviderCredentialName joins with the group of the run's default
@@ -565,9 +565,9 @@ type NextSessionAnswer struct {
 	Workflow string `json:"workflow,omitempty"`
 	// ModelChoice is the model choice of the session, nil when the session runs on the
 	// runtime of [RunSettings] and no provider is chosen: the session uses the default
-	// model of that runtime, with the key of the credential that its
-	// ModelProviderCredentialName names or, without one, of the group of the run's
-	// default model provider credential.
+	// model of that runtime, with the key of the credential whose name is in
+	// ModelProviderCredentialName or, without one, of the group of the run's default
+	// model provider credential.
 	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
 	// ModelProviderCredentialName is the name of the credential of the run that the
 	// session joins with, such as <the provider's public id>-<its place from 1>. The

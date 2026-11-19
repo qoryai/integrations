@@ -32,7 +32,7 @@
           "$ref": "https://qory.dev/contracts/run/v1/documents.schema.json#/$defs/workflow"
         },
         "model_choice": {
-          "description": "The model choice of the session, as the runtime, model, effort, provider_models and tiers of run_settings. Absent when the session runs on the runtime of run_settings and no provider is chosen: the session uses the default model of that runtime, with the key of the credential that its model_provider_credential_name names or, without one, of the group of the run's default model provider credential. A session that changes only the runtime has a model_choice with only runtime.",
+          "description": "The model choice of the session, as the runtime, model, effort, provider_models and tiers of run_settings. Absent when the session runs on the runtime of run_settings and no provider is chosen: the session uses the default model of that runtime, with the key of the credential whose name is in model_provider_credential_name or, without one, of the group of the run's default model provider credential. A session that changes only the runtime has a model_choice with only runtime.",
           "$ref": "https://qory.dev/contracts/run/v1/documents.schema.json#/$defs/model_choice"
         },
         "model_provider_credential_name": {

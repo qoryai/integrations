@@ -154,6 +154,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"next-session-answer-model-choice-runtime-effort-only.json":          {"next-session-answer", "/model_choice dependentRequired/effort; /next const; / additionalProperties"},
 		"next-session-answer-model-choice-undefined-member.json":             {"next-session-answer", "/model_choice additionalProperties; /next const; / additionalProperties"},
 		"next-session-answer-model-provider-credential-name-upper-case.json": {"next-session-answer", "/model_provider_credential_name pattern; /next const; / additionalProperties"},
+		"next-session-answer-model-credential.json":                          {"next-session-answer", "/ additionalProperties; / additionalProperties; /next const"},
 		"next-session-answer-next-unknown.json":                              {"next-session-answer", "/next const; /next const; / additionalProperties"},
 		"next-session-answer-session-0.json":                                 {"next-session-answer", "/session minimum; /next const; / additionalProperties"},
 		"next-session-answer-session-without-full-suite.json":                {"next-session-answer", "/ required full_suite; /next const; / additionalProperties"},
