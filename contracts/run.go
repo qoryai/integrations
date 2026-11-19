@@ -463,8 +463,8 @@ type WorkItem struct {
 // no Runtime. Each run of the step explore has RunSettings, and a run of the step
 // prebuild has none. RunSettings contains no key or secret.
 // With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
-// uses the gateway's configured key and the runtime's default model. Effort
-// and Tiers are set only with Model, and ProviderModels is set exactly when Model is.
+// uses the local model provider credential and the runtime's default model. Effort and
+// Tiers are set only with Model, and ProviderModels is set exactly when Model is.
 // The control plane guarantees four rules that the schema cannot check: the ids in
 // ProviderModels are unique; Effort is listed for Model in ProviderModels; each tier's
 // model is in ProviderModels; and a tier's effort is listed for that tier's model in
@@ -478,13 +478,13 @@ type RunSettings struct {
 	// Effort is the effort value the run uses with Model.
 	Effort string `json:"effort,omitempty"`
 	// ProviderModels are the models of the run's provider, 1 to 256. When it is empty,
-	// the agents run on the provider of the gateway's key, and for a run with a target,
-	// the job applies the tier map set at the run's target as written, as on a local
-	// run. A run with no target has no such tier map: with ProviderModels empty, no tier
-	// map applies, and the run uses the runtime's default model. When it is set and the
-	// run has a target, an entry of the tier map set at the run's target applies only
-	// when its model id is listed in ProviderModels, and its effort only when that
-	// effort is listed for that model.
+	// the agents run on the provider of the local model provider credential, and for a
+	// run with a target, the job applies the tier map set at the run's target as
+	// written, as on a local run. A run with no target has no such tier map: with
+	// ProviderModels empty, no tier map applies, and the run uses the runtime's default
+	// model. When it is set and the run has a target, an entry of the tier map set at
+	// the run's target applies only when its model id is listed in ProviderModels, and
+	// its effort only when that effort is listed for that model.
 	ProviderModels []ProviderModel `json:"provider_models,omitempty"`
 	// Tiers is the tier map the control plane resolved for the run.
 	Tiers *Tiers `json:"tiers,omitempty"`

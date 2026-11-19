@@ -440,8 +440,8 @@ func TestTheRuntimeOfAModelChoiceNamesTheCredentialRule(t *testing.T) {
 // of the next-session answer say that a session without a
 // model_provider_credential_name joins with the group of the run's default model
 // provider credential, and that the model_provider_credential_name description says
-// when the control plane sets one. It pins too that no description says the session
-// uses the gateway's configured key.
+// when the control plane sets one. It pins too that no description calls the
+// local model provider credential the gateway's key or the gateway's configured key.
 func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredentialGroup(t *testing.T) {
 	documents, err := contracts.RunDocument("documents.schema.json")
 	if err != nil {
@@ -468,8 +468,10 @@ func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCred
 		}
 	}
 	for name, d := range map[string]string{"documents model_choice": choice, "answer model_choice": answerChoice, "model_provider_credential_name": credential} {
-		if strings.Contains(d, "configured key") {
-			t.Errorf("the description of %s says the session uses the gateway's configured key", name)
+		for _, word := range []string{"configured key", "gateway's key"} {
+			if strings.Contains(d, word) {
+				t.Errorf("the description of %s says %q instead of the local model provider credential", name, word)
+			}
 		}
 	}
 }
