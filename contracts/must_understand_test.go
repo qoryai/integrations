@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -615,6 +616,9 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		if c.goes == nil {
 			continue
 		}
+		if !hasMustUnderstandField(reflect.TypeOf(c.goes)) {
+			t.Errorf("%s: the Go type %T has no field with the json name must_understand", c.name, c.goes)
+		}
 		for _, tpl := range templates {
 			p := strings.NewReplacer("/**", "/0/kind", "/#", "/0", "/*", "/k").Replace(tpl)
 			doc := fmt.Sprintf(`{"must_understand": [%q]}`, p)
@@ -623,6 +627,17 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 			}
 		}
 	}
+}
+
+// hasMustUnderstandField reports whether the struct type t has a field with the json name
+// must_understand.
+func hasMustUnderstandField(t reflect.Type) bool {
+	for i := range t.NumField() {
+		if name, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ","); name == contracts.MustUnderstand {
+			return true
+		}
+	}
+	return false
 }
 
 // TestAnEntryListsThePointersOfItsKind pins, for each kind of entry, that the pattern of
