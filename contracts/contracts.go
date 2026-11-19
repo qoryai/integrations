@@ -47,9 +47,9 @@
 // deployed: members and entry kinds come only with a new revision of the feed. An
 // adapter skips and acknowledges a change entry whose kind its revision does not define:
 // it reads the kind alone, applies nothing else in the entry, and moves its cursor past
-// it. The description and the run documents go from a newer writer to an older reader
-// without a revision, so they follow the rule of must_understand instead, in
-// description.schema.json and in run/v1. The Forager contract makes additions safe the
+// it. The description and the run documents, which a newer writer sends to an older
+// reader, follow the rule of must_understand instead, in description.schema.json and in
+// run/v1. The Forager contract makes additions safe the
 // other way, with lenient answers whose unknown members are ignored.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
@@ -331,6 +331,9 @@ func compile(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
 // compileClosed is [compile] of the closed copy of the schema, as [CloseSchema] makes it.
 // A schema it refers to is read as it is.
 func compileClosed(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
+	if !closable[base+"/"+name] {
+		return nil, fmt.Errorf("%s has no closed copy: only description.schema.json, documents.schema.json and next-session-answer.schema.json have one", name)
+	}
 	return compileWith(base, fsys, name, true)
 }
 

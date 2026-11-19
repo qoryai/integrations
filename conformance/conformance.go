@@ -93,9 +93,9 @@ func (r refusals) Unwrap() []error { return r.errs }
 // checks them: at most 262144 bytes, UTF-8, no \u escape of a lone surrogate, no
 // object that repeats a member, no string or member name over 16384 bytes of UTF-8, at
 // most 4096 JSON values and at most 64 levels of nesting; which the contract's
-// description.schema.json accepts, and has no member that the schema does not define,
-// which a reader ignores but a misspelled member would be; and whose every secret, a
-// property marked writeOnly, is a property of the settings themselves with a setting <name>_file beside it
+// description.schema.json accepts, and has no member that the schema does not define: a
+// reader ignores such a member, and the closed copy of the schema refuses it, so a
+// misspelled member fails; and whose every secret, a property marked writeOnly, is a property of the settings themselves with a setting <name>_file beside it
 // (contracts/integration/v1 §Describe); and whose model_provider role, when it has one,
 // keeps the rules of the role that the schema does not check, as
 // [contracts.CheckModelProvider] checks them, and whose APIs' auth, when it is of the

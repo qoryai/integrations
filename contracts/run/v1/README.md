@@ -42,5 +42,4 @@ applies the rule to a document that a reader decodes into a Go type.
 ## Next-session refusals
 
 `next-session-refusal.schema.json` has nine codes. An unsigned 401 or 415 from Qory
-Apiary is outside them. The gateway always signs its requests and sends JSON, so Qory
-Apiary does not answer the next-session request with either.
+Apiary is outside them, because the gateway always signs its requests and sends JSON.

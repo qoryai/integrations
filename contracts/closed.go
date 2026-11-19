@@ -7,18 +7,19 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// CompileClosed compiles the closed copy of one schema of the integration contract, by
-// its path under integration/v1, "description.schema.json" say. A reader ignores a member
-// that the schema does not define, and the closed copy refuses it, so a writer's tests
-// validate against the closed copy, and a misspelled member fails a test. See
-// [CloseSchema]. A schema that it refers to is read as it is.
+// CompileClosed compiles the closed copy of description.schema.json, the one schema of
+// the integration contract whose reader ignores a member that it does not define. The
+// closed copy refuses such a member, so a writer's tests validate against the closed
+// copy, and a misspelled member fails a test. See [CloseSchema]. A schema that it refers
+// to is read as it is. It returns an error for any other name, because the closed copy
+// of a schema that lists only some members of an object refuses members it defines.
 func CompileClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(Base, FS, name)
 }
 
-// CompileRunClosed compiles the closed copy of one schema of the run contract, by its
-// path under run/v1, "documents.schema.json" say, as [CompileClosed] does for the
-// integration contract.
+// CompileRunClosed compiles the closed copy of documents.schema.json or of
+// next-session-answer.schema.json, as [CompileClosed] does for the integration contract,
+// and returns an error for any other name.
 func CompileRunClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(RunBase, RunFS, name)
 }
@@ -33,7 +34,9 @@ func CompileRunClosed(name string) (*jsonschema.Schema, error) {
 // stays as it is, such as roles in a description, which leaves a role it does not know
 // alone, or the inputs of a run, whose shape another schema defines. A schema that lists
 // no properties stays as it is too, such as a map of extensions. The copy keeps
-// must_understand as it is: the list of names stays the schema's.
+// must_understand as it is: the list of names stays the schema's. It is for a schema whose
+// objects list all their members, and [CompileClosed] and [CompileRunClosed] accept only
+// three schemas.
 func CloseSchema(doc any) (closed any, sites []string) {
 	closed = closeNode(doc, "", true, &sites)
 	return closed, sites
@@ -78,6 +81,13 @@ func closeNode(n any, ptr string, instance bool, sites *[]string) any {
 		*sites = append(*sites, ptr)
 	}
 	return out
+}
+
+// closable are the schemas that have a closed copy, by $id.
+var closable = map[string]bool{
+	Base + "/description.schema.json":            true,
+	RunBase + "/documents.schema.json":           true,
+	RunBase + "/next-session-answer.schema.json": true,
 }
 
 // escapePointer escapes a member name for a JSON pointer.

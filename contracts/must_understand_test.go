@@ -385,3 +385,24 @@ func TestAnAdapterSkipsAnEntryOfAnUnknownKind(t *testing.T) {
 		}
 	}
 }
+
+// TestOnlyTheOpenedSchemasHaveAClosedCopy pins that CompileClosed and CompileRunClosed
+// return an error for a schema other than the three that a reader reads leniently: the
+// closed copy of a schema that lists only some members of an object, such as the change
+// feed or the next-session refusal, refuses members that it defines.
+func TestOnlyTheOpenedSchemasHaveAClosedCopy(t *testing.T) {
+	for _, name := range []string{"description.schema.json", "changes.schema.json", "adapter.schema.json"} {
+		_, err := contracts.CompileClosed(name)
+		if (err == nil) != (name == "description.schema.json") {
+			t.Errorf("CompileClosed(%q): %v", name, err)
+		}
+	}
+	for _, name := range []string{"documents.schema.json", "next-session-answer.schema.json",
+		"next-session-refusal.schema.json", "outcome.schema.json", "documents.schema.json#/$defs/subject"} {
+		_, err := contracts.CompileRunClosed(name)
+		want := name == "documents.schema.json" || name == "next-session-answer.schema.json"
+		if (err == nil) != want {
+			t.Errorf("CompileRunClosed(%q): %v", name, err)
+		}
+	}
+}
