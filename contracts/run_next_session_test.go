@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"maps"
+	"os"
 	"path"
 	"reflect"
 	"slices"
@@ -79,20 +80,24 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 				}
 			}
 		},
-		"next-session-answer-session-without-time-limit-minutes.json": func(m map[string]any) { m["time_limit_minutes"] = json.Number("60") },
-		"next-session-answer-session-without-full-suite.json":         func(m map[string]any) { m["full_suite"] = false },
-		"next-session-answer-session-without-workflow.json":           func(m map[string]any) { m["workflow"] = "review-changes" },
-		"next-session-answer-session-without-inputs.json":             func(m map[string]any) { m["inputs"] = session["inputs"] },
-		"next-session-answer-session-0.json":                          func(m map[string]any) { m["session"] = json.Number("2") },
-		"next-session-answer-time-limit-minutes-14.json":              func(m map[string]any) { m["time_limit_minutes"] = json.Number("15") },
-		"next-session-answer-time-limit-minutes-1441.json":            func(m map[string]any) { m["time_limit_minutes"] = json.Number("1440") },
-		"next-session-answer-model-credential-upper-case.json":        func(m map[string]any) { m["model_credential"] = "example-provider-1" },
-		"next-session-answer-inputs-without-version.json":             func(m map[string]any) { m["inputs"] = session["inputs"] },
-		"next-session-answer-undefined-member.json":                   func(m map[string]any) { delete(m, "verdict") },
-		"next-session-answer-next-unknown.json":                       func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-without-next.json":                       func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-model-choice-runtime-number.json":        func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
-		"next-session-answer-model-choice-runtime-upper-case.json":    func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-session-without-time-limit-minutes.json":        func(m map[string]any) { m["time_limit_minutes"] = json.Number("60") },
+		"next-session-answer-session-without-full-suite.json":                func(m map[string]any) { m["full_suite"] = false },
+		"next-session-answer-session-without-workflow.json":                  func(m map[string]any) { m["workflow"] = "review-changes" },
+		"next-session-answer-session-without-inputs.json":                    func(m map[string]any) { m["inputs"] = session["inputs"] },
+		"next-session-answer-session-0.json":                                 func(m map[string]any) { m["session"] = json.Number("2") },
+		"next-session-answer-time-limit-minutes-14.json":                     func(m map[string]any) { m["time_limit_minutes"] = json.Number("15") },
+		"next-session-answer-time-limit-minutes-1441.json":                   func(m map[string]any) { m["time_limit_minutes"] = json.Number("1440") },
+		"next-session-answer-model-provider-credential-name-upper-case.json": func(m map[string]any) { m["model_provider_credential_name"] = "example-provider-1" },
+		"next-session-answer-model-credential.json": func(m map[string]any) {
+			delete(m, "model_credential")
+			m["model_provider_credential_name"] = "example-provider-1"
+		},
+		"next-session-answer-inputs-without-version.json":          func(m map[string]any) { m["inputs"] = session["inputs"] },
+		"next-session-answer-undefined-member.json":                func(m map[string]any) { delete(m, "verdict") },
+		"next-session-answer-next-unknown.json":                    func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-without-next.json":                    func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-model-choice-runtime-number.json":     func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-model-choice-runtime-upper-case.json": func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
 		"next-session-answer-model-choice-runtime-effort-only.json": func(m map[string]any) {
 			m["model_choice"].(map[string]any)["model"] = "example-large"
 			m["model_choice"].(map[string]any)["provider_models"] = session["model_choice"].(map[string]any)["provider_models"]
@@ -172,13 +177,13 @@ func TestTheNextSessionTypesMarshalToTheirSchemas(t *testing.T) {
 			Workflow: "build", TimeLimitMinutes: 15, Inputs: inputs},
 			`{"next":"session","session":2,"workflow":"build","time_limit_minutes":15,"full_suite":false,"inputs":{"version":1}}`},
 		{"next-session-answer", contracts.NextSessionAnswer{Next: contracts.NextSessionKindSession, Session: 3,
-			Workflow: "review", ModelCredential: "example-provider-2", TimeLimitMinutes: 1440, FullSuite: true, Inputs: inputs,
+			Workflow: "review", ModelProviderCredentialName: "example-provider-2", TimeLimitMinutes: 1440, FullSuite: true, Inputs: inputs,
 			ModelChoice: &contracts.ModelChoice{Model: "example-large", Effort: "high",
 				ProviderModels: []contracts.ProviderModel{{ID: "example-large", Effort: []string{"low", "high"}}},
 				Tiers:          &contracts.Tiers{Thinking: &contracts.Tier{Model: "example-large"}}}},
 			`{"next":"session","session":3,"workflow":"review","model_choice":{"model":"example-large","effort":"high",` +
 				`"provider_models":[{"id":"example-large","effort":["low","high"]}],"tiers":{"thinking":"example-large"}},` +
-				`"model_credential":"example-provider-2","time_limit_minutes":1440,"full_suite":true,"inputs":{"version":1}}`},
+				`"model_provider_credential_name":"example-provider-2","time_limit_minutes":1440,"full_suite":true,"inputs":{"version":1}}`},
 		{"documents/model_choice", contracts.ModelChoice{}, `{}`},
 		{"documents/model_choice", contracts.ModelChoice{Runtime: "codex"}, `{"runtime":"codex"}`},
 		{"documents/model_choice", contracts.ModelChoice{Runtime: "codex", Model: "example-large",
@@ -409,7 +414,7 @@ func TestTheNextSessionSchemasNameTheLink(t *testing.T) {
 }
 
 // TestTheRuntimeOfAModelChoiceNamesTheCredentialRule pins that the descriptions of
-// model_choice and of the model_credential of the next-session answer say that, for a
+// model_choice and of the model_provider_credential_name of the next-session answer say that, for a
 // session with a runtime, the credential's API lists that runtime in runtimes when it
 // has any.
 func TestTheRuntimeOfAModelChoiceNamesTheCredentialRule(t *testing.T) {
@@ -423,20 +428,24 @@ func TestTheRuntimeOfAModelChoiceNamesTheCredentialRule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	credential := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)["model_credential"].(map[string]any)["description"].(string)
-	for name, d := range map[string]string{"model_choice": choice, "model_credential": credential} {
+	credential := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)["model_provider_credential_name"].(map[string]any)["description"].(string)
+	for name, d := range map[string]string{"model_choice": choice, "model_provider_credential_name": credential} {
 		if !strings.Contains(d, rule) {
 			t.Errorf("the description of %s does not contain %q", name, rule)
 		}
 	}
 }
 
-// TestAnAbsentModelCredentialJoinsWithTheStartKeyGroup pins that the descriptions of
-// model_choice and of the model_credential of the next-session answer say that a
-// session without a model_credential joins with the group of the run's start key, and
-// that the model_credential description says when the control plane sets one. It pins
-// too that no description says the session uses the gateway's configured key.
-func TestAnAbsentModelCredentialJoinsWithTheStartKeyGroup(t *testing.T) {
+// TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredential
+// pins that the descriptions of model_choice and of the model_provider_credential_name
+// of the next-session answer, the doc comments in run.go and the CHANGELOG say that a
+// session without a model_provider_credential_name joins with the run's default model
+// provider credential, with the active key of its group when it has a group, and that
+// the model_provider_credential_name description says when the control plane sets one.
+// It pins too that none of them calls the local model provider credential the gateway's
+// key or the gateway's configured key, or says that the session joins with "the group of
+// the run's default" credential: a local default credential has no group.
+func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredential(t *testing.T) {
 	documents, err := contracts.RunDocument("documents.schema.json")
 	if err != nil {
 		t.Fatal(err)
@@ -448,40 +457,71 @@ func TestAnAbsentModelCredentialJoinsWithTheStartKeyGroup(t *testing.T) {
 	}
 	properties := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)
 	answerChoice := properties["model_choice"].(map[string]any)["description"].(string)
-	credential := properties["model_credential"].(map[string]any)["description"].(string)
-	sentence := "When absent, the session joins with the group of the run's start key. The control plane sets model_credential for every later session whose key is a credential of the run configuration outside that group."
-	if !strings.Contains(credential, sentence) {
-		t.Errorf("the description of model_credential does not contain %q", sentence)
+	credential := properties["model_provider_credential_name"].(map[string]any)["description"].(string)
+	settings := documents.(map[string]any)["$defs"].(map[string]any)["run_settings"].(map[string]any)
+	runSettings := settings["description"].(string)
+	providerModels := settings["properties"].(map[string]any)["provider_models"].(map[string]any)["description"].(string)
+	// prose returns the text of a Go or Markdown file without comment markers, backticks
+	// and line breaks, so that a sentence matches however the file wraps it.
+	prose := func(path string) string {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var lines []string
+		for _, line := range strings.Split(string(b), "\n") {
+			line = strings.TrimSpace(line)
+			line = strings.TrimSpace(strings.TrimPrefix(line, "//"))
+			lines = append(lines, line)
+		}
+		return strings.Join(strings.Fields(strings.ReplaceAll(strings.Join(lines, " "), "`", "")), " ")
 	}
+	goDoc := prose("run.go")
+	changelog := prose("../CHANGELOG.md")
+	const group = "with the active key of its group when it has a group. The control plane sets "
+	const outside = " for every later session whose key is a credential of the run configuration other than the run's default model provider credential and the active key of its group."
 	for name, c := range map[string]struct{ text, want string }{
-		"model_choice of the documents":           {choice, "joins with the group of the run's start key, which that runtime must be able to use"},
-		"model_choice of the next-session answer": {answerChoice, "with the key of its model_credential or, without one, of the group of the run's start key"},
+		"model_choice of the documents":                 {choice, "joins with the run's default model provider credential (the active key of its group when it has a group), which that runtime must be able to use"},
+		"model_choice of the documents (no provider)":   {choice, "or, without one, the key of the run's default model provider credential (the active key of its group when it has a group)"},
+		"model_choice of the next-session answer":       {answerChoice, "or, without one, the key of the run's default model provider credential (the active key of its group when it has a group)"},
+		"model_provider_credential_name of the answer":  {credential, "When absent, the session joins with the run's default model provider credential, " + group + "model_provider_credential_name" + outside},
+		"ModelChoice of run.go":                         {goDoc, "joins with the run's default model provider credential (the active key of its group when it has a group), which that runtime must be able to use"},
+		"ModelChoice of run.go (no provider)":           {goDoc, "or, without one, the key of the run's default model provider credential (the active key of its group when it has a group)"},
+		"ModelProviderCredentialName of run.go":         {goDoc, "When empty, the session joins with the run's default model provider credential, " + group + "it" + outside},
+		"the CHANGELOG, model_provider_credential_name": {changelog, "Without model_provider_credential_name, the session joins with the run's default model provider credential, " + group + "model_provider_credential_name" + outside},
+		"run_settings of the documents":                 {runSettings, "With no provider chosen, model, effort, provider_models and tiers are absent: the run uses the run's default model provider credential, a local model provider credential when the run configuration has none, and the runtime's default model."},
+		"provider_models of the documents":              {providerModels, "When provider_models is absent, the agents run on the provider of the run's default model provider credential,"},
+		"RunSettings of run.go":                         {goDoc, "With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run uses the run's default model provider credential, a local model provider credential when the run configuration has none, and the runtime's default model."},
+		"ProviderModels of run.go":                      {goDoc, "When it is empty, the agents run on the provider of the run's default model provider credential,"},
+		"the CHANGELOG, runtime without a provider":     {changelog, "the session runs on that runtime with the run's default model provider credential (the active key of its group when it has a group) and that runtime's default model"},
 	} {
 		if !strings.Contains(c.text, c.want) {
-			t.Errorf("the description of %s does not contain %q", name, c.want)
+			t.Errorf("%s does not contain %q", name, c.want)
 		}
 	}
-	for name, d := range map[string]string{"documents model_choice": choice, "answer model_choice": answerChoice, "model_credential": credential} {
-		if strings.Contains(d, "configured key") {
-			t.Errorf("the description of %s says the session uses the gateway's configured key", name)
+	for name, d := range map[string]string{"documents model_choice": choice, "answer model_choice": answerChoice, "model_provider_credential_name": credential, "run_settings": runSettings, "provider_models": providerModels, "run.go": goDoc, "the CHANGELOG": changelog} {
+		for _, word := range []string{"configured key", "gateway's key", "group of the run's default", "uses the local model provider credential", "provider of the local model provider credential"} {
+			if strings.Contains(d, word) {
+				t.Errorf("%s says %q instead of the run's default model provider credential", name, word)
+			}
 		}
 	}
 }
 
-// TestTheModelCredentialIsAnyNameOfForagersRunConfiguration pins that the
-// model_credential of the next-session answer is a $ref to the credential_name of
+// TestTheModelProviderCredentialNameIsAnyNameOfForagersRunConfiguration pins that the
+// model_provider_credential_name of the next-session answer is a $ref to the credential_name of
 // Forager's run-configuration.schema.json, that its description gives the form of a
 // provider key's name and the grammar of a credential's name, and that the answer
 // accepts the names of that grammar that do not end in a hyphen and a place, and
 // refuses the others.
-func TestTheModelCredentialIsAnyNameOfForagersRunConfiguration(t *testing.T) {
+func TestTheModelProviderCredentialNameIsAnyNameOfForagersRunConfiguration(t *testing.T) {
 	answer, err := contracts.RunDocument("next-session-answer.schema.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	property := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)["model_credential"].(map[string]any)
+	property := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)["model_provider_credential_name"].(map[string]any)
 	if got, want := property["$ref"], "https://qory.dev/contracts/forager/v1/run-configuration.schema.json#/$defs/credential_name"; got != want {
-		t.Errorf("model_credential refers to %v, want %s", got, want)
+		t.Errorf("model_provider_credential_name refers to %v, want %s", got, want)
 	}
 	description := property["description"].(string)
 	for _, sentence := range []string{
@@ -489,7 +529,7 @@ func TestTheModelCredentialIsAnyNameOfForagersRunConfiguration(t *testing.T) {
 		"1 to 64 of a-z, 0-9, underscore, dot and dash, starting with a letter or a digit",
 	} {
 		if !strings.Contains(description, sentence) {
-			t.Errorf("the description of model_credential does not contain %q", sentence)
+			t.Errorf("the description of model_provider_credential_name does not contain %q", sentence)
 		}
 	}
 	schema := compileRun(t, runSchema("next-session-answer"))
@@ -506,7 +546,7 @@ func TestTheModelCredentialIsAnyNameOfForagersRunConfiguration(t *testing.T) {
 		"":                      false,
 	} {
 		m := fixture(t, "next-session-answer/session-runtime-with-model.json")
-		m["model_credential"] = name
+		m["model_provider_credential_name"] = name
 		err := schema.Validate(m)
 		if ok && err != nil {
 			t.Errorf("the name %q is refused: %v", name, err)

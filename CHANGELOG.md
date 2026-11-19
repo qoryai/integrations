@@ -274,29 +274,32 @@ change what an existing reader or program relies on, and notes it under Upgradin
   answer, `next-session-answer.schema.json`, is one of two shapes, and an answer with the
   members of both fails. `{"next": "session", ...}` has `session`, the control plane's
   number of the session in the run; `workflow`; `time_limit_minutes`; `full_suite`;
-  `inputs`; and optionally `model_choice` and `model_credential`. `{"next": "end"}` has
-  no other member. qory sends the request through Forager's link, and the gateway forwards
-  it to the control plane; a container cannot send it. In Go,
+  `inputs`; and optionally `model_choice` and `model_provider_credential_name`.
+  `{"next": "end"}` has no other member. qory sends the request through Forager's link,
+  and the gateway forwards it to the control plane; a container cannot send it. In Go,
   `NextSessionRequest`, `NextSessionAnswer`, `NextSessionKindSession` and
   `NextSessionKindEnd` are added.
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
   `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning.
-  `model_credential` is the name of a credential of the run, such as the provider's
-  public id, a hyphen and the key's place from 1. The schema checks only the grammar of
-  a credential's name in Forager's `run-configuration.schema.json`: 1 to 64 of `a-z`,
-  `0-9`, underscore, dot and dash, starting with a letter or a digit. Without
-  `model_credential`, the session joins with the group of the run's start key. The
-  control plane sets `model_credential` for every later session whose key is a
-  credential of the run configuration outside that group.
+  `model_provider_credential_name` is the name of a credential of the run, such as the
+  provider's public id, a hyphen and the key's place from 1. The schema checks only the
+  grammar of a credential's name in Forager's `run-configuration.schema.json`: 1 to 64
+  of `a-z`, `0-9`, underscore, dot and dash, starting with a letter or a digit. Without
+  `model_provider_credential_name`, the session joins with the run's default model
+  provider credential, with the active key of its group when it has a group. The control
+  plane sets `model_provider_credential_name` for every later session whose key is a
+  credential of the run configuration other than the run's default model provider
+  credential and the active key of its group.
 - A session after session 1 may choose its runtime: `model_choice` gains `runtime`
   (`ModelChoice.Runtime` in Go), a runtime name in Forager's runtime descriptor, as
   `run_settings.runtime`. A `model_choice` without `runtime` runs the session on the
   runtime of `run_settings`, and `runtime` can be its only member: the session runs on
-  that runtime with the group of the run's start key and that runtime's default model.
+  that runtime with the run's default model provider credential (the active key of its
+  group when it has a group) and that runtime's default model.
   The `runtime` of `run_settings` is the runtime of session 1 and of each later session
   whose `model_choice` has none. For a session with `runtime`, the control plane sets a
-  `model_credential` only for a credential of an API whose `runtimes`, when present,
-  list that runtime and whose format that runtime sends.
+  `model_provider_credential_name` only for a credential of an API whose `runtimes`,
+  when present, list that runtime and whose format that runtime sends.
 - The next-session request follows the rules of `dev.qory.session.exited` for `state`
   and `reason` that do not depend on its `exit_code`: a `cancelled` session has a
   `reason`, the reasons `timeout` and `interrupted` are for a `cancelled` session only,

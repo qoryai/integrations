@@ -33,9 +33,9 @@ const MaxInputs = 768 << 10
 // file, the machine applies the qory version that the file requires, the worktree
 // section, and the tiers of the harness section, as described under [RunSettings.Tiers].
 // If the machine's qory version does not meet that requirement, the run stops. It reads
-// none of the other machine keys of that file and none of its git and env sections, so
-// the harness file of the target does not set how the run starts. A run of the step
-// explore has WorkItem and RunSettings. A run of the step prebuild has Access, Target,
+// none of the other machine harness settings of that file and none of its git and env
+// sections, so the harness file of the target does not set how the run starts. A run of
+// the step explore has WorkItem and RunSettings. A run of the step prebuild has Access, Target,
 // ImageDestination and exactly one of EnvironmentDestination and EnvironmentImage, and
 // no TargetVersion, WorkItem, RunSettings, TimeLimitMinutes, SharedRun, FullSuite,
 // Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun and FullSuite are set
@@ -122,9 +122,9 @@ type Documents struct {
 	// harness file of the target. Of that file, the machine applies the qory version that
 	// the file requires, the worktree section, and the tiers of the harness section, as
 	// described under [RunSettings.Tiers]. If the machine's qory version does not meet
-	// that requirement, the run stops. It reads none of the other machine keys of that
-	// file and none of its git and env sections, so the harness file of the target does
-	// not set how the run starts.
+	// that requirement, the run stops. It reads none of the other machine harness
+	// settings of that file and none of its git and env sections, so the harness file of
+	// the target does not set how the run starts.
 	Harness *HarnessDocument `json:"harness,omitempty"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
@@ -169,9 +169,8 @@ type Documents struct {
 // of the workspace in the form of qory.yaml,
 // https://qory.dev/contracts/harness/v1/config.schema.json, with exactly one member,
 // the harness section, which extends a stack or defines one. Every source is a remote
-// source. A source of the form {path},
-// a module given by name alone, link, the machine keys and every other member of
-// qory.yaml are refused.
+// source. A source of the form {path}, a module given by name alone, link, the machine
+// harness settings and every other member of qory.yaml are refused.
 type HarnessDocument struct {
 	Harness HarnessSection `json:"harness"`
 }
@@ -464,8 +463,9 @@ type WorkItem struct {
 // no Runtime. Each run of the step explore has RunSettings, and a run of the step
 // prebuild has none. RunSettings contains no key or secret.
 // With no provider chosen, Model, Effort, ProviderModels and Tiers are empty: the run
-// uses the gateway's configured key and the runtime's default model. Effort
-// and Tiers are set only with Model, and ProviderModels is set exactly when Model is.
+// uses the run's default model provider credential, a local model provider credential
+// when the run configuration has none, and the runtime's default model. Effort and
+// Tiers are set only with Model, and ProviderModels is set exactly when Model is.
 // The control plane guarantees four rules that the schema cannot check: the ids in
 // ProviderModels are unique; Effort is listed for Model in ProviderModels; each tier's
 // model is in ProviderModels; and a tier's effort is listed for that tier's model in
@@ -479,13 +479,13 @@ type RunSettings struct {
 	// Effort is the effort value the run uses with Model.
 	Effort string `json:"effort,omitempty"`
 	// ProviderModels are the models of the run's provider, 1 to 256. When it is empty,
-	// the agents run on the provider of the gateway's key, and for a run with a target,
-	// the job applies the tier map set at the run's target as written, as on a local
-	// run. A run with no target has no such tier map: with ProviderModels empty, no tier
-	// map applies, and the run uses the runtime's default model. When it is set and the
-	// run has a target, an entry of the tier map set at the run's target applies only
-	// when its model id is listed in ProviderModels, and its effort only when that
-	// effort is listed for that model.
+	// the agents run on the provider of the run's default model provider credential, and
+	// for a run with a target, the job applies the tier map set at the run's target as
+	// written, as on a local run. A run with no target has no such tier map: with
+	// ProviderModels empty, no tier map applies, and the run uses the runtime's default
+	// model. When it is set and the run has a target, an entry of the tier map set at
+	// the run's target applies only when its model id is listed in ProviderModels, and
+	// its effort only when that effort is listed for that model.
 	ProviderModels []ProviderModel `json:"provider_models,omitempty"`
 	// Tiers is the tier map the control plane resolved for the run.
 	Tiers *Tiers `json:"tiers,omitempty"`
@@ -499,14 +499,15 @@ type RunSettings struct {
 // a runtime that differs from it. Runtime can be the only member: the session
 // runs on that runtime with no provider chosen. With no provider chosen, Model, Effort,
 // ProviderModels and Tiers are empty: the session uses the default model of its
-// runtime, with the key of its ModelCredential or, without one, of the group of the
-// run's start key. The four rules that [RunSettings] lists for the
-// control plane apply to those four members that are set. For a session whose
-// ModelChoice has Runtime, the control plane sets a ModelCredential only for a
-// credential of an API whose runtimes, when present, list that runtime and whose format
-// that runtime sends. A session with Runtime and no ModelCredential joins with the
-// group of the run's start key, which that runtime must be able to use. The model
-// members suit that runtime.
+// runtime, with the key of the credential whose name is in
+// ModelProviderCredentialName or, without one, the key of the run's default model
+// provider credential (the active key of its group when it has a group). The four rules that [RunSettings] lists for the control plane
+// apply to those four members that are set. For a session whose ModelChoice has Runtime, the control plane sets a
+// ModelProviderCredentialName only for a credential of an API whose runtimes, when
+// present, list that runtime and whose format that runtime sends. A session with
+// Runtime and no ModelProviderCredentialName joins with the run's default model
+// provider credential (the active key of its group when it has a group), which that
+// runtime must be able to use. The model members suit that runtime.
 type ModelChoice struct {
 	// Runtime is the runtime's name in Forager's runtime descriptor, such as claude. It
 	// is the runtime the session runs on; empty, the runtime of [RunSettings].
@@ -551,9 +552,10 @@ type NextSessionRequest struct {
 // next-session-answer.schema.json: the next session of the run, with Next
 // [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and
 // no other member. The session shape has Session, Workflow, TimeLimitMinutes,
-// FullSuite and Inputs, and optionally ModelChoice and ModelCredential. MarshalJSON
-// writes the members of the shape that Next selects, and no member of the other shape.
-// Reading takes the members of either shape and leaves the others at their zero values.
+// FullSuite and Inputs, and optionally ModelChoice and ModelProviderCredentialName.
+// MarshalJSON writes the members of the shape that Next selects, and no member of the
+// other shape. Reading takes the members of either shape and leaves the others at their
+// zero values.
 type NextSessionAnswer struct {
 	// Next is the kind of the answer: "session" or "end".
 	Next string `json:"next"`
@@ -564,16 +566,19 @@ type NextSessionAnswer struct {
 	Workflow string `json:"workflow,omitempty"`
 	// ModelChoice is the model choice of the session, nil when the session runs on the
 	// runtime of [RunSettings] and no provider is chosen: the session uses the default
-	// model of that runtime, with the key of its ModelCredential or, without one, of the
-	// group of the run's start key.
+	// model of that runtime, with the key of the credential whose name is in
+	// ModelProviderCredentialName or, without one, the key of the run's default model
+	// provider credential (the active key of its group when it has a group).
 	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
-	// ModelCredential is the credential of the run that the session joins with, such as
-	// <the provider's public id>-<its place from 1>. The schema checks only the grammar
-	// of a credential's name in Forager's run configuration. When empty, the session
-	// joins with the group of the run's start key. The control plane sets it for every
-	// later session whose key is a credential of the run configuration outside that
+	// ModelProviderCredentialName is the name of the credential of the run that the
+	// session joins with, such as <the provider's public id>-<its place from 1>. The
+	// schema checks only the grammar of a credential's name in Forager's run
+	// configuration. When empty, the session joins with the run's default model provider
+	// credential, with the active key of its group when it has a group. The control plane
+	// sets it for every later session whose key is a credential of the run configuration
+	// other than the run's default model provider credential and the active key of its
 	// group.
-	ModelCredential string `json:"model_credential,omitempty"`
+	ModelProviderCredentialName string `json:"model_provider_credential_name,omitempty"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 15 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
 	// FullSuite is true when the session runs the full test suite after the agent ends.
@@ -606,15 +611,15 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		return nil, fmt.Errorf("set Next of an answer to %q or %q, not %q", NextSessionKindSession, NextSessionKindEnd, a.Next)
 	}
 	return json.Marshal(struct {
-		Next             string          `json:"next"`
-		Session          int             `json:"session"`
-		Workflow         string          `json:"workflow"`
-		ModelChoice      *ModelChoice    `json:"model_choice,omitempty"`
-		ModelCredential  string          `json:"model_credential,omitempty"`
-		TimeLimitMinutes int             `json:"time_limit_minutes"`
-		FullSuite        bool            `json:"full_suite"`
-		Inputs           json.RawMessage `json:"inputs"`
-	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelCredential,
+		Next                        string          `json:"next"`
+		Session                     int             `json:"session"`
+		Workflow                    string          `json:"workflow"`
+		ModelChoice                 *ModelChoice    `json:"model_choice,omitempty"`
+		ModelProviderCredentialName string          `json:"model_provider_credential_name,omitempty"`
+		TimeLimitMinutes            int             `json:"time_limit_minutes"`
+		FullSuite                   bool            `json:"full_suite"`
+		Inputs                      json.RawMessage `json:"inputs"`
+	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelProviderCredentialName,
 		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
 }
 
