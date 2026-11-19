@@ -285,16 +285,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   provider's public id, a hyphen and the key's place from 1. The schema checks only the
   grammar of a credential's name in Forager's `run-configuration.schema.json`: 1 to 64
   of `a-z`, `0-9`, underscore, dot and dash, starting with a letter or a digit. Without
-  `model_provider_credential_name`, the session joins with the group of the run's
-  default model provider credential. The control plane sets
-  `model_provider_credential_name` for every later session whose key is a credential of
-  the run configuration outside that group.
+  `model_provider_credential_name`, the session joins with the run's default model
+  provider credential, with the active key of its group when it has a group. The control
+  plane sets `model_provider_credential_name` for every later session whose key is a
+  credential of the run configuration other than the run's default model provider
+  credential and the active key of its group.
 - A session after session 1 may choose its runtime: `model_choice` gains `runtime`
   (`ModelChoice.Runtime` in Go), a runtime name in Forager's runtime descriptor, as
   `run_settings.runtime`. A `model_choice` without `runtime` runs the session on the
   runtime of `run_settings`, and `runtime` can be its only member: the session runs on
-  that runtime with the group of the run's default model provider credential and that
-  runtime's default model.
+  that runtime with the run's default model provider credential (the active key of its
+  group when it has a group) and that runtime's default model.
   The `runtime` of `run_settings` is the runtime of session 1 and of each later session
   whose `model_choice` has none. For a session with `runtime`, the control plane sets a
   `model_provider_credential_name` only for a credential of an API whose `runtimes`,

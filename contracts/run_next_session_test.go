@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"maps"
+	"os"
 	"path"
 	"reflect"
 	"slices"
@@ -435,14 +436,16 @@ func TestTheRuntimeOfAModelChoiceNamesTheCredentialRule(t *testing.T) {
 	}
 }
 
-// TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredentialGroup
+// TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredential
 // pins that the descriptions of model_choice and of the model_provider_credential_name
-// of the next-session answer say that a session without a
-// model_provider_credential_name joins with the group of the run's default model
-// provider credential, and that the model_provider_credential_name description says
-// when the control plane sets one. It pins too that no description calls the
-// local model provider credential the gateway's key or the gateway's configured key.
-func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredentialGroup(t *testing.T) {
+// of the next-session answer, the doc comments in run.go and the CHANGELOG say that a
+// session without a model_provider_credential_name joins with the run's default model
+// provider credential, with the active key of its group when it has a group, and that
+// the model_provider_credential_name description says when the control plane sets one.
+// It pins too that none of them calls the local model provider credential the gateway's
+// key or the gateway's configured key, or says that the session joins with "the group of
+// the run's default" credential: a local default credential has no group.
+func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCredential(t *testing.T) {
 	documents, err := contracts.RunDocument("documents.schema.json")
 	if err != nil {
 		t.Fatal(err)
@@ -455,22 +458,44 @@ func TestAnAbsentModelProviderCredentialNameJoinsWithTheDefaultModelProviderCred
 	properties := answer.(map[string]any)["oneOf"].([]any)[0].(map[string]any)["properties"].(map[string]any)
 	answerChoice := properties["model_choice"].(map[string]any)["description"].(string)
 	credential := properties["model_provider_credential_name"].(map[string]any)["description"].(string)
-	sentence := "When absent, the session joins with the group of the run's default model provider credential. The control plane sets model_provider_credential_name for every later session whose key is a credential of the run configuration outside that group."
-	if !strings.Contains(credential, sentence) {
-		t.Errorf("the description of model_provider_credential_name does not contain %q", sentence)
+	// prose returns the text of a Go or Markdown file without comment markers, backticks
+	// and line breaks, so that a sentence matches however the file wraps it.
+	prose := func(path string) string {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var lines []string
+		for _, line := range strings.Split(string(b), "\n") {
+			line = strings.TrimSpace(line)
+			line = strings.TrimSpace(strings.TrimPrefix(line, "//"))
+			lines = append(lines, line)
+		}
+		return strings.Join(strings.Fields(strings.ReplaceAll(strings.Join(lines, " "), "`", "")), " ")
 	}
+	goDoc := prose("run.go")
+	changelog := prose("../CHANGELOG.md")
+	const group = "with the active key of its group when it has a group. The control plane sets "
+	const outside = " for every later session whose key is a credential of the run configuration other than the run's default model provider credential and the active key of its group."
 	for name, c := range map[string]struct{ text, want string }{
-		"model_choice of the documents":           {choice, "joins with the group of the run's default model provider credential, which that runtime must be able to use"},
-		"model_choice of the next-session answer": {answerChoice, "with the key of the credential whose name is in model_provider_credential_name or, without one, of the group of the run's default model provider credential"},
+		"model_choice of the documents":                 {choice, "joins with the run's default model provider credential (the active key of its group when it has a group), which that runtime must be able to use"},
+		"model_choice of the documents (no provider)":   {choice, "or, without one, the key of the run's default model provider credential (the active key of its group when it has a group)"},
+		"model_choice of the next-session answer":       {answerChoice, "or, without one, the key of the run's default model provider credential (the active key of its group when it has a group)"},
+		"model_provider_credential_name of the answer":  {credential, "When absent, the session joins with the run's default model provider credential, " + group + "model_provider_credential_name" + outside},
+		"ModelChoice of run.go":                         {goDoc, "joins with the run's default model provider credential (the active key of its group when it has a group), which that runtime must be able to use"},
+		"ModelChoice of run.go (no provider)":           {goDoc, "or, without one, the key of the run's default model provider credential (the active key of its group when it has a group)"},
+		"ModelProviderCredentialName of run.go":         {goDoc, "When empty, the session joins with the run's default model provider credential, " + group + "it" + outside},
+		"the CHANGELOG, model_provider_credential_name": {changelog, "Without model_provider_credential_name, the session joins with the run's default model provider credential, " + group + "model_provider_credential_name" + outside},
+		"the CHANGELOG, runtime without a provider":     {changelog, "the session runs on that runtime with the run's default model provider credential (the active key of its group when it has a group) and that runtime's default model"},
 	} {
 		if !strings.Contains(c.text, c.want) {
-			t.Errorf("the description of %s does not contain %q", name, c.want)
+			t.Errorf("%s does not contain %q", name, c.want)
 		}
 	}
-	for name, d := range map[string]string{"documents model_choice": choice, "answer model_choice": answerChoice, "model_provider_credential_name": credential} {
-		for _, word := range []string{"configured key", "gateway's key"} {
+	for name, d := range map[string]string{"documents model_choice": choice, "answer model_choice": answerChoice, "model_provider_credential_name": credential, "run.go": goDoc, "the CHANGELOG": changelog} {
+		for _, word := range []string{"configured key", "gateway's key", "group of the run's default"} {
 			if strings.Contains(d, word) {
-				t.Errorf("the description of %s says %q instead of the local model provider credential", name, word)
+				t.Errorf("%s says %q instead of the run's default model provider credential, which has no group when it is local", name, word)
 			}
 		}
 	}

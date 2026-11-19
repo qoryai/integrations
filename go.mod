@@ -3,7 +3,7 @@ module github.com/qoryai/integrations
 go 1.27.4
 
 require (
-	github.com/qoryai/forager v0.7.1-0.20261118114010-92ccf76845ce
+	github.com/qoryai/forager v0.7.1-0.20261119101310-5e9ca86dacd7
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	gopkg.in/yaml.v3 v3.0.1
 )
