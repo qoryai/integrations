@@ -167,7 +167,7 @@
           "pattern": "^ng_[0-9a-hjkmnp-tv-z]{16}$"
         },
         "machine": {
-          "description": "The machine type that the run used, one of the machine types of the instance: its type and its display name, with at least one member; absent when Qory Apiary has no record of the machine type.",
+          "description": "The machine type that the run used, one of the machine types of the instance: type and name, with at least one member; absent when Qory Apiary has no record of the machine type.",
           "type": "object",
           "minProperties": 1,
           "properties": {

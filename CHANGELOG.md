@@ -582,26 +582,25 @@ change what an existing reader or program relies on, and notes it under Upgradin
   whose release was refused `409 machine_exists`, and every dispatch that is the
   `dispatch_id` of a machine in an answer of `list`. It sends `gone` again until the
   control plane accepts it, or until a signed 400, 403 or 404 refusal ends the attempts.
-  A starter sends `gone`
-  when the machine adapter's delete call returned that no machine with the id exists at
-  the vendor, or when it has no record of a machine for the dispatch and a successful
-  answer of the machine adapter's `list`, received at or after `max_lifetime_minutes`
-  after the claim, contained no machine for the dispatch; a failed `list` is no proof. A
-  starter that has no machine command (`make`, `delete` and `list` of a machine adapter)
-  runs the work of a dispatch as a process on its host, and the end of that process is
-  the end of the machine. Such a starter needs no `list` and no no-record case. For a
-  dispatch for which it started the process, it sends `gone` after the process exits.
-  When the starter could not start the process after an accepted `dispatched`, it sends
-  `gone` at once. For a dispatch whose `dispatched` was refused `409 lease_expired` or
-  `410 gone`, it sends `gone` once no process for the dispatch runs, because an earlier
-  `dispatched` may have been accepted with its answer lost. When a `dispatched` sent
-  again is refused while the process runs, the starter stops the process and sends `gone`
-  after the process exits. For a dispatch whose release was refused `409 machine_exists`,
-  it sends `gone` at once when no process for the dispatch runs. A
-  released dispatch may still get `gone` with no machine. When it had no earlier machine
-  event and no refusal took its slot again, its slot stays free; otherwise `gone` frees
-  it. `deleting` and `delete_failed` are optional, and a starter that has no machine
-  command does not send them. Each dispatch takes a slot of the node
+  A starter sends `gone` when the machine adapter's delete call returned that no machine
+  with the id exists at the vendor, or when it has no record of a machine for the
+  dispatch and a successful answer of the machine adapter's `list`, received at or after
+  `max_lifetime_minutes` after the claim, contained no machine for the dispatch; a
+  failed `list` is no proof. A starter that has no machine command (`make`, `delete` and
+  `list` of a machine adapter) runs the work of a dispatch as a process on its host, and
+  the end of that process is the end of the machine. Such a starter needs no `list` and
+  no no-record case. For a dispatch for which it started the process, it sends `gone`
+  after the process exits. When the starter could not start the process after an
+  accepted `dispatched`, it sends `gone` at once. For a dispatch whose `dispatched` was
+  refused `409 lease_expired` or `410 gone`, it sends `gone` once no process for the
+  dispatch runs, because an earlier `dispatched` may have been accepted with its answer
+  lost. When a `dispatched` sent again is refused while the process runs, the starter
+  stops the process and sends `gone` after the process exits. For a dispatch whose
+  release was refused `409 machine_exists`, it sends `gone` at once when no process for
+  the dispatch runs. A released dispatch may still get `gone` with no machine. When it
+  had no earlier machine event and no refusal took its slot again, its slot stays free;
+  otherwise `gone` frees it. `deleting` and `delete_failed` are optional, and a starter
+  that has no machine command does not send them. Each dispatch takes a slot of the node
   pool's instance limit at the claim. A machine event is an accepted `dispatched`, the
   machine's redemption of the run code, or an accepted machine end in any state; a
   machine log is not one. Until the first machine event, the release, the lapse of the
@@ -642,11 +641,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   and `delete`. Each command reads one JSON request on standard input and writes one
   answer of at most 1 MiB on standard output, or writes an error and exits with status 1.
   A second `make` with the same `dispatch_id` makes no machine. The `check` answer has
-  `offers`,
-  the machines the adapter can make with its settings, which the provisioner sends in its
-  claims. `make` has `machine_spec`, and the adapter makes the smallest machine in its
-  settings that fits it. The `make` answer may contain `machine_type`, the vendor's type
-  of the machine.
+  `offers`, the machines the adapter can make with its settings, which the provisioner
+  sends in its claims. `make` has `machine_spec`, and the adapter makes the smallest
+  machine in its settings that fits it. The `make` answer may contain `machine_type`,
+  the vendor's type of the machine.
 - The explore contract, `contracts/explore/v1`: `inputs.schema.json`, the run's inputs for
   the step `explore`. In the inputs, `ticket` is absent when the work item was not taken
   in from an item at a source.

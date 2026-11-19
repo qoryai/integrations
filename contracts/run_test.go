@@ -256,6 +256,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-workflow-time-limit.json":                         {"documents", "/harness/harness/workflows/hello additionalProperties"},
 		"documents-harness-workflow-tier-unknown.json":                       {"documents", "/harness/harness/workflows/hello/tier enum"},
 		"documents-harness-workflow-plan-without-write.json":                 {"documents", "/harness/harness/workflows/hello/access const"},
+		"documents-harness-workflow-plan-without-access.json":                {"documents", "/harness/harness/workflows/hello required access"},
 		"documents-harness-workflow-name-56-characters.json":                 {"documents", "/ pattern"},
 		"documents-workflow-56-characters.json":                              {"documents", "/workflow pattern"},
 		"documents-harness-path-source.json":                                 {"documents", "/harness/harness/modules/0/source required git,ref"},
