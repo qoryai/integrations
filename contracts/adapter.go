@@ -378,7 +378,8 @@ const (
 // Ref (the item's ref, empty when the work item came from no item), Title, Text, Previous
 // (nil on the first version) and Data, the part that the artifact type of ChangeKind
 // defines, which marshals as {} when nil. It marshals with the members of its kind
-// alone.
+// alone. A reader skips and acknowledges an entry whose Kind its revision does not
+// define, and applies nothing of it.
 //
 // AuthorName is plain text, and the control plane sends it as it is, with no escaping.
 // The adapter writes it as plain text: it escapes each character or sequence that the

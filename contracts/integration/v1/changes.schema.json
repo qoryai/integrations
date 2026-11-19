@@ -30,11 +30,11 @@
   },
   "$defs": {
     "change": {
-      "description": "One entry, of the kind set in kind, with the members of that kind. A reader refuses a kind it does not know.",
+      "description": "One entry, of the kind set in kind, with the members of that kind. An adapter skips and acknowledges an entry whose kind its revision does not define: it applies nothing of it, and its cursor moves past it. The control plane sends no such entry to an adapter at that revision, so the rule covers an entry that arrives anyway.",
       "type": "object",
       "required": ["kind"],
       "properties": {
-        "kind": {"description": "The entry's kind.", "type": "string", "enum": ["work_item", "comment", "collection", "grant", "sync", "watch", "change_request"]}
+        "kind": {"description": "The entry's kind, in snake_case: work_item, comment, collection, grant, sync, watch or change_request at the revision that this schema describes. An adapter skips and acknowledges an entry of a kind that its revision does not define.", "type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"}
       },
       "allOf": [
         {"if": {"properties": {"kind": {"const": "work_item"}}}, "then": {"$ref": "#/$defs/work_item"}},

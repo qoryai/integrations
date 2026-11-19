@@ -356,3 +356,32 @@ func TestMustUnderstandIsWrittenBack(t *testing.T) {
 		t.Errorf("the documents with must_understand: %v", err)
 	}
 }
+
+// TestAnAdapterSkipsAnEntryOfAnUnknownKind pins the feed rule: changes.schema.json accepts
+// an entry of a kind that it does not define, with any members, so an adapter reads its
+// kind, skips it and moves on; it refuses a kind that is not snake_case; and it still
+// refuses a member that an entry of a defined kind does not have, since a revision adds
+// members.
+func TestAnAdapterSkipsAnEntryOfAnUnknownKind(t *testing.T) {
+	schema := compile(t, "changes.schema.json")
+	feed := func(entries string) []byte {
+		return []byte(`{"version": 1, "revision": 1, "cursor": "c_2", "changes": ` + entries + `}`)
+	}
+	sync := `{"kind": "sync", "interval": 600}`
+	for _, c := range []struct {
+		name, entries string
+		accepted      bool
+	}{
+		{"an unknown kind with members", `[{"kind": "settings", "interval": 600, "later": {"a": 1}}, ` + sync + `]`, true},
+		{"an unknown kind alone", `[{"kind": "settings"}]`, true},
+		{"a kind in upper case", `[{"kind": "Settings"}]`, false},
+		{"a kind that is not a string", `[{"kind": 7}]`, false},
+		{"no kind", `[{"interval": 600}]`, false},
+		{"a defined kind with a member it lacks", `[{"kind": "sync", "interval": 600, "later": 1}]`, false},
+		{"a defined kind with a bad value", `[{"kind": "sync", "interval": 30}]`, false},
+	} {
+		if err := validate(schema, feed(c.entries)); (err == nil) != c.accepted {
+			t.Errorf("%s: accepted %v, want %v: %v", c.name, err == nil, c.accepted, err)
+		}
+	}
+}

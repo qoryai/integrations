@@ -129,7 +129,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-description-string.json":                                       {"adapter", "/description type"},
 		"adapter-description-without-roles.json":                                {"adapter", "/description required roles"},
 		"changes-sync-interval-30.json":                                         {"changes", "/changes/0/interval minimum"},
-		"changes-unknown-kind.json":                                             {"changes", "/changes/0/kind enum"},
 		"changes-work-item-status-linked.json":                                  {"changes", "/changes/0/status enum"},
 		"changes-work-item-url-http.json":                                       {"changes", "/changes/0/url pattern"},
 		"changes-watch-url-http.json":                                           {"changes", "/changes/0/url pattern"},

@@ -43,10 +43,14 @@
 // entry of it, and neither sends nor stores the answer's cursor. An answer's signature
 // covers its body and is bound to the request's signature, so the revision the answer
 // was built for is signed. So the answers' schemas stay strict, refusing a member they
-// do not define and an entry of a kind they do not know, and an addition to the
-// contract never breaks an adapter already deployed. The Forager contract makes
-// additions safe the other way, with lenient answers whose unknown members are ignored;
-// both conventions are safe, and they apply to different contracts.
+// do not define, and an addition to the contract never breaks an adapter already
+// deployed: members and entry kinds come only with a new revision of the feed. An
+// adapter skips and acknowledges a change entry whose kind its revision does not define:
+// it reads the kind alone, applies nothing else in the entry, and moves its cursor past
+// it. The description and the run documents go from a newer writer to an older reader
+// without a revision, so they follow the rule of must_understand instead, in
+// description.schema.json and in run/v1. The Forager contract makes additions safe the
+// other way, with lenient answers whose unknown members are ignored.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;

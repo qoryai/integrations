@@ -211,6 +211,14 @@ The feed answer has at least one entry whenever the feed has an entry of a kind 
 revision in the request's `X-Qory-Contract-Version` defines after the cursor. The
 adapter reads the next entries from the feed answer's `cursor`.
 
+The feed changes only with a new revision of this contract. A new entry kind or a new
+member comes with a new revision, and the control plane sends an adapter only the kinds
+and members of the revision in its `X-Qory-Contract-Version`. An adapter skips and
+acknowledges an entry of a kind that its revision does not define: it applies nothing of
+the entry and moves its cursor past it. Example: an adapter at an older revision skips
+and acknowledges an entry of a kind that a newer revision defines, and reads the next
+entry.
+
 The control plane writes a `watch` entry, with `work_item_id` and `url`, whenever a run
 stores a change request version, and a `change_request` entry for each target of that
 version, as [Change requests](#change-requests) describes. It writes both entries in the
