@@ -46,7 +46,7 @@ func understoodSchemas() []understood {
 	intList := func(dir string) func(*testing.T) []string {
 		return func(t *testing.T) []string { return files(t, dir) }
 	}
-	return []understood{
+	list := []understood{
 		{
 			name:      "documents.schema.json",
 			open:      func() (*jsonschema.Schema, error) { return contracts.CompileRun("documents.schema.json") },
@@ -150,7 +150,35 @@ func understoodSchemas() []understood {
 			freePlac: regexp.MustCompile(`^/changes/\d+/data$|^/changes/\d+/data/`),
 		},
 	}
+	return append(list,
+		provisionerUnderstood("claim.schema.json", "claim/with-offers.json", "/wait_seconds", func(m map[string]any) { m["wait_seconds"] = json.Number("26") }),
+		provisionerUnderstood("claim-answer.schema.json", "claim-answer/machine.json", "/run_code", func(m map[string]any) { m["revision"] = json.Number("2") }),
+		provisionerUnderstood("dispatched.schema.json", "dispatched/with-external.json", "/time", version2),
+		provisionerUnderstood("machine-end.schema.json", "machine-end/gone.json", "/state", func(m map[string]any) { m["state"] = "unknown" }),
+		provisionerUnderstood("machine-log.schema.json", "machine-log/whole.json", "/log", version2),
+		provisionerUnderstood("refusal.schema.json", "refusal/no-gateway.json", "/error", func(m map[string]any) { m["error"] = json.Number("7") }),
+		provisionerUnderstood("release.schema.json", "release/no-capacity.json", "/reason", version2),
+	)
 }
+
+// provisionerUnderstood is the understood entry of a root schema of the provisioner
+// contract.
+func provisionerUnderstood(name, valid, known string, invalid func(m map[string]any)) understood {
+	base := strings.TrimSuffix(name, ".schema.json")
+	return understood{
+		name:    name,
+		open:    func() (*jsonschema.Schema, error) { return contracts.CompileProvisioner(name) },
+		closed:  func() (*jsonschema.Schema, error) { return contracts.CompileProvisionerClosed(name) },
+		read:    contracts.ProvisionerDocument,
+		list:    func(t *testing.T) []string { return provisionerFiles(t, "fixtures/"+base) },
+		valid:   "fixtures/" + valid,
+		known:   known,
+		invalid: invalid,
+	}
+}
+
+// version2 sets version to 2, which the schemas refuse.
+func version2(m map[string]any) { m["version"] = json.Number("2") }
 
 // objectPlaces returns the JSON pointer of each object in doc, "" for doc itself.
 func objectPlaces(doc any, ptr string) []string {
@@ -209,7 +237,7 @@ func (u understood) fixture(t *testing.T) map[string]any {
 // leaves open, and the objects of a shared schema, which stay open in every other
 // compilation.
 var closedSites = map[string][]string{
-	"description.schema.json": {
+	"integration/description.schema.json": {
 		"", "/$defs/api", "/$defs/api/properties/endpoint/else", "/$defs/api/properties/oauth_device",
 		"/$defs/api/properties/oauth_refresh", "/$defs/apply", "/$defs/guide_part",
 		"/properties/egress_hosts/items/else", "/properties/roles/properties/credential",
@@ -221,25 +249,60 @@ var closedSites = map[string][]string{
 		"/properties/roles/properties/source/properties/item_noun",
 		"/properties/roles/properties/source/properties/setup",
 	},
-	"adapter.schema.json":           {"", "/properties/sync"},
-	"changes.schema.json":           {"", "/$defs/change_request", "/$defs/change_request/properties/previous", "/$defs/collection", "/$defs/comment", "/$defs/grant", "/$defs/sync", "/$defs/watch", "/$defs/work_item"},
-	"changes-submitted.schema.json": {""},
-	"changes-failed.schema.json":    {""},
-	"source-items.schema.json":      {},
-	"definitions.schema.json":       {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
-	"documents.schema.json": {
+	"integration/adapter.schema.json":           {"", "/properties/sync"},
+	"integration/changes.schema.json":           {"", "/$defs/change_request", "/$defs/change_request/properties/previous", "/$defs/collection", "/$defs/comment", "/$defs/grant", "/$defs/sync", "/$defs/watch", "/$defs/work_item"},
+	"integration/changes-submitted.schema.json": {""},
+	"integration/changes-failed.schema.json":    {""},
+	"integration/source-items.schema.json":      {},
+	"integration/definitions.schema.json":       {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
+	"run/documents.schema.json": {
 		"", "/$defs/harness", "/$defs/harness_base", "/$defs/harness_module", "/$defs/harness_section",
 		"/$defs/harness_section/properties/bind", "/$defs/harness_selection", "/$defs/harness_source",
 		"/$defs/harness_workflow", "/$defs/model_choice", "/$defs/prebuild_inputs", "/$defs/run_settings",
 		"/$defs/run_settings/properties/provider_models/items", "/$defs/run_settings/properties/tiers",
 		"/$defs/subject", "/$defs/submit", "/$defs/tier/else",
 	},
-	"next-session-answer.schema.json":  {"/oneOf/0", "/oneOf/1"},
-	"next-session-request.schema.json": {""},
-	"outcome.schema.json":              {""},
+	"run/next-session-answer.schema.json":  {"/oneOf/0", "/oneOf/1"},
+	"run/next-session-request.schema.json": {""},
+	"run/outcome.schema.json":              {""},
+	"provisioner/claim.schema.json":        {""},
+	"provisioner/claim-answer.schema.json": {""},
+	"provisioner/dispatched.schema.json":   {"", "/properties/external"},
+	"provisioner/machine-end.schema.json":  {""},
+	"provisioner/machine-log.schema.json":  {""},
+	"provisioner/refusal.schema.json":      {""},
+	"provisioner/release.schema.json":      {""},
+	"provisioner/definitions.schema.json":  {"/$defs/machine_spec"},
+	"integration/refusal.schema.json":      {},
 }
 
-// reachableFiles returns the files of the integration and run contracts that the schema at
+// contractTree is a contract of the repository whose schemas a closed copy can reach: the
+// base of its $id, its name in the keys of closedSites, and the function that reads one of
+// its files.
+type contractTree struct {
+	base, short string
+	read        func(string) (any, error)
+}
+
+var contractTrees = []contractTree{
+	{contracts.Base, "integration", contracts.Document},
+	{contracts.RunBase, "run", contracts.RunDocument},
+	{contracts.ProvisionerBase, "provisioner", contracts.ProvisionerDocument},
+	{contracts.MachinesBase, "machines", contracts.MachinesDocument},
+	{contracts.ExploreBase, "explore", contracts.ExploreDocument},
+}
+
+// siteKey is the key of closedSites for the schema file at the URL: the contract and the file name.
+func siteKey(file string) string {
+	for _, c := range contractTrees {
+		if n, ok := strings.CutPrefix(file, c.base+"/"); ok {
+			return c.short + "/" + n
+		}
+	}
+	return file
+}
+
+// reachableFiles returns the files of the contracts of contractTrees that the schema at
 // url refers to by $ref, directly or through another file, the file itself included.
 func reachableFiles(t *testing.T, url string, seen map[string]bool) {
 	t.Helper()
@@ -247,17 +310,17 @@ func reachableFiles(t *testing.T, url string, seen map[string]bool) {
 	if seen[file] {
 		return
 	}
-	var name string
 	var doc any
 	var err error
-	switch {
-	case strings.HasPrefix(file, contracts.Base+"/"):
-		name = strings.TrimPrefix(file, contracts.Base+"/")
-		doc, err = contracts.Document(name)
-	case strings.HasPrefix(file, contracts.RunBase+"/"):
-		name = strings.TrimPrefix(file, contracts.RunBase+"/")
-		doc, err = contracts.RunDocument(name)
-	default:
+	found := false
+	for _, c := range contractTrees {
+		if n, ok := strings.CutPrefix(file, c.base+"/"); ok {
+			found = true
+			doc, err = c.read(n)
+			break
+		}
+	}
+	if !found {
 		return
 	}
 	if err != nil {
@@ -298,12 +361,15 @@ func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 	for _, name := range []string{"description", "adapter", "changes", "changes-submitted", "changes-failed", "source-items"} {
 		reachableFiles(t, contracts.Base+"/"+name+".schema.json", reached)
 	}
+	for _, name := range []string{"claim", "claim-answer", "dispatched", "machine-end", "machine-log", "refusal", "release"} {
+		reachableFiles(t, contracts.ProvisionerBase+"/"+name+".schema.json", reached)
+	}
 	for _, name := range []string{"documents", "next-session-answer", "next-session-request", "outcome"} {
 		reachableFiles(t, contracts.RunBase+"/"+name+".schema.json", reached)
 	}
 	var names []string
 	for file := range reached {
-		names = append(names, file[strings.LastIndex(file, "/")+1:])
+		names = append(names, siteKey(file))
 	}
 	slices.Sort(names)
 	var pinned []string
@@ -315,19 +381,20 @@ func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 		t.Errorf("the closed copies compile the files %q, and the test pins the sites of %q", names, pinned)
 	}
 	for file := range reached {
-		name := file[strings.LastIndex(file, "/")+1:]
-		read := contracts.Document
-		if strings.HasPrefix(file, contracts.RunBase+"/") {
-			read = contracts.RunDocument
+		var doc any
+		var err error
+		for _, c := range contractTrees {
+			if n, ok := strings.CutPrefix(file, c.base+"/"); ok {
+				doc, err = c.read(n)
+			}
 		}
-		doc, err := read(name)
 		if err != nil {
 			t.Fatal(err)
 		}
 		_, sites := contracts.CloseSchema(doc)
 		slices.Sort(sites)
-		if want := closedSites[name]; !slices.Equal(sites, want) && (len(sites) != 0 || len(want) != 0) {
-			t.Errorf("%s: the closed copy closes %q, want %q", name, sites, want)
+		if want := closedSites[siteKey(file)]; !slices.Equal(sites, want) && (len(sites) != 0 || len(want) != 0) {
+			t.Errorf("%s: the closed copy closes %q, want %q", siteKey(file), sites, want)
 		}
 	}
 }
@@ -455,6 +522,13 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		{"description.schema.json", contracts.Base, contracts.Document, []string{"/settings"}, nil},
 		{"next-session-request.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.NextSessionRequest{}},
 		{"outcome.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.RunOutcome{}},
+		{"claim.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.Claim{}},
+		{"claim-answer.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.ClaimAnswer{}},
+		{"dispatched.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.Dispatched{}},
+		{"machine-end.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.MachineEnd{}},
+		{"machine-log.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.MachineLog{}},
+		{"refusal.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, nil},
+		{"release.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.Release{}},
 		{"changes-submitted.schema.json", contracts.Base, contracts.Document, []string{"/data"}, contracts.ChangesSubmitted{}},
 		{"changes-failed.schema.json", contracts.Base, contracts.Document, nil, contracts.ChangesFailed{}},
 		{"adapter.schema.json", contracts.Base, contracts.Document, []string{"/description"}, contracts.Adapter{}},
@@ -814,6 +888,32 @@ func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
 			v = &contracts.NextSessionRequest{}
 		case strings.HasPrefix(name, "outcome-"):
 			v = &contracts.RunOutcome{}
+		}
+		if err := json.Unmarshal(b, v); err != nil {
+			t.Errorf("%s: %v", f, err)
+		}
+	}
+	for _, f := range treeFiles(t, contracts.ProvisionerFS, "fixtures/closed") {
+		b, err := fs.ReadFile(contracts.ProvisionerFS, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var v any
+		switch name := path.Base(f); {
+		case strings.HasPrefix(name, "claim-answer-"):
+			v = &contracts.ClaimAnswer{}
+		case strings.HasPrefix(name, "claim-"):
+			v = &contracts.Claim{}
+		case strings.HasPrefix(name, "dispatched-"):
+			v = &contracts.Dispatched{}
+		case strings.HasPrefix(name, "machine-end-"):
+			v = &contracts.MachineEnd{}
+		case strings.HasPrefix(name, "machine-log-"):
+			v = &contracts.MachineLog{}
+		case strings.HasPrefix(name, "release-"):
+			v = &contracts.Release{}
+		default:
+			continue
 		}
 		if err := json.Unmarshal(b, v); err != nil {
 			t.Errorf("%s: %v", f, err)

@@ -88,6 +88,21 @@ var closedAdapterFixtures = map[string]closedFixture{
 	"source-items-filed-by-undefined-member.json":         {"source-items", "/items/0/filed_by additionalProperties"},
 }
 
+// closedProvisionerFixtures are the fixtures of provisioner/v1/fixtures/closed, by file
+// name.
+var closedProvisionerFixtures = map[string]closedFixture{
+	"claim-answer-machine-spec-undefined-member.json": {"claim-answer", "/machine_spec additionalProperties"},
+	"claim-answer-run-id.json":                        {"claim-answer", "/ additionalProperties"},
+	"claim-offers-undefined-member.json":              {"claim", "/offers/0 additionalProperties"},
+	"claim-undefined-member.json":                     {"claim", "/ additionalProperties"},
+	"dispatched-external-undefined-member.json":       {"dispatched", "/external additionalProperties"},
+	"dispatched-undefined-member.json":                {"dispatched", "/ additionalProperties"},
+	"machine-end-undefined-member.json":               {"machine-end", "/ additionalProperties"},
+	"machine-log-undefined-member.json":               {"machine-log", "/ additionalProperties"},
+	"refusal-undefined-member.json":                   {"refusal", "/ additionalProperties"},
+	"release-with-retry.json":                         {"release", "/ additionalProperties"},
+}
+
 // checkClosedFixtures pins that the files under dir are exactly the keys of want, that each
 // validates against the open schema of its fixture, and that the closed copy refuses it at
 // the reason of its fixture.
@@ -140,6 +155,13 @@ func TestTheClosedRunFixturesAreAcceptedAndRefusedByTheClosedCopy(t *testing.T) 
 func TestTheClosedDescriptionFixturesAreAcceptedAndRefusedByTheClosedCopy(t *testing.T) {
 	checkClosedFixtures(t, treeFiles(t, contracts.FS, "fixtures/closed"), closedDescriptionFixtures,
 		contracts.Document, contracts.Compile, contracts.CompileClosed)
+}
+
+// TestTheClosedProvisionerFixturesAreAcceptedAndRefusedByTheClosedCopy checks
+// provisioner/v1/fixtures/closed.
+func TestTheClosedProvisionerFixturesAreAcceptedAndRefusedByTheClosedCopy(t *testing.T) {
+	checkClosedFixtures(t, provisionerFiles(t, "fixtures/closed"), closedProvisionerFixtures,
+		contracts.ProvisionerDocument, contracts.CompileProvisioner, contracts.CompileProvisionerClosed)
 }
 
 // TestTheClosedAdapterFixturesAreAcceptedAndRefusedByTheClosedCopy checks

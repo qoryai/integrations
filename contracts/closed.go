@@ -28,6 +28,15 @@ func CompileRunClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(RunBase, RunFS, name)
 }
 
+// CompileProvisionerClosed compiles the closed copy of claim.schema.json,
+// claim-answer.schema.json, dispatched.schema.json, machine-end.schema.json,
+// machine-log.schema.json, refusal.schema.json or release.schema.json of the provisioner
+// contract, as [CompileClosed] does for the integration contract, and returns an error for
+// any other name.
+func CompileProvisionerClosed(name string) (*jsonschema.Schema, error) {
+	return compileClosed(ProvisionerBase, ProvisionerFS, name)
+}
+
 // CloseSchema returns a copy of the schema doc, as [Document] reads it, that refuses a
 // member the schema does not define, and the JSON pointers of the places it closed, ""
 // for the root. It sets additionalProperties to false in each schema that lists properties
@@ -113,23 +122,34 @@ var closable = map[string]bool{
 	RunBase + "/next-session-answer.schema.json":  true,
 	RunBase + "/next-session-request.schema.json": true,
 	RunBase + "/outcome.schema.json":              true,
+
+	ProvisionerBase + "/claim.schema.json":        true,
+	ProvisionerBase + "/claim-answer.schema.json": true,
+	ProvisionerBase + "/dispatched.schema.json":   true,
+	ProvisionerBase + "/machine-end.schema.json":  true,
+	ProvisionerBase + "/machine-log.schema.json":  true,
+	ProvisionerBase + "/refusal.schema.json":      true,
+	ProvisionerBase + "/release.schema.json":      true,
 }
 
-// closingLoader reads the schemas of the integration and run contracts, closed as
+// closingLoader reads the schemas of the contracts that this package embeds, closed as
 // [CloseSchema] closes them, and any other schema as [loader] reads it. A closed copy
 // compiles with it, so the schemas that the copy refers to are closed too, in this
 // compilation alone: the schemas that a reader compiles stay open.
 type closingLoader struct{ loader }
 
-// Load returns the closed document of a schema of the integration or run contract, and
-// the document of any other schema as it is.
+// Load returns the closed document of a schema of an embedded contract, and the document of
+// any other schema as it is.
 func (l closingLoader) Load(url string) (any, error) {
 	doc, err := l.loader.Load(url)
 	if err != nil {
 		return nil, err
 	}
-	if strings.HasPrefix(url, Base+"/") || strings.HasPrefix(url, RunBase+"/") {
-		doc, _ = CloseSchema(doc)
+	for _, t := range trees {
+		if strings.HasPrefix(url, t.base+"/") {
+			doc, _ = CloseSchema(doc)
+			break
+		}
 	}
 	return doc, nil
 }
