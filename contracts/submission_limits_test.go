@@ -50,6 +50,26 @@ func TestTheSubmissionLimitsAreExact(t *testing.T) {
 		{"101 commits", false, func(_, tg map[string]any) {
 			tg["commits"] = commits(101, func(i int) any { return map[string]any{"commit": commit(i), "step": "s"} })
 		}, false},
+		{"100 commits and earlier_commits 40", false, func(_, tg map[string]any) {
+			tg["commits"] = commits(100, func(i int) any { return map[string]any{"commit": commit(i), "step": "s"} })
+			tg["earlier_commits"] = 40
+		}, true},
+		{"101 commits and earlier_commits 40", false, func(_, tg map[string]any) {
+			tg["commits"] = commits(101, func(i int) any { return map[string]any{"commit": commit(i), "step": "s"} })
+			tg["earlier_commits"] = 40
+		}, false},
+		{"earlier_commits 1", false, withEarlier(100, 1), true},
+		{"earlier_commits 9223372036854775807", false, withEarlier(100, json.Number("9223372036854775807")), true},
+		{"earlier_commits 9223372036854775808", false, withEarlier(100, json.Number("9223372036854775808")), false},
+		{"earlier_commits 1.5", false, withEarlier(100, 1.5), false},
+		{"earlier_commits 0", false, withEarlier(100, 0), false},
+		{"earlier_commits -1", false, withEarlier(100, -1), false},
+		{"earlier_commits as a string", false, withEarlier(100, "40"), false},
+		{"earlier_commits null", false, withEarlier(100, nil), false},
+		{"earlier_commits 40 with 99 commits", false, withEarlier(99, 40), false},
+		{"earlier_commits 40 with 1 commit", false, withEarlier(1, 40), false},
+		{"earlier_commits 40 with 100 commits", false, withEarlier(100, 40), true},
+		{"earlier_commits in the reply", true, func(_, tg map[string]any) { tg["earlier_commits"] = 40 }, false},
 		{"100 commits in the reply", true, func(_, tg map[string]any) {
 			tg["commits"] = commits(100, func(i int) any {
 				return map[string]any{"commit": commit(i), "commit_url": "https://code.example.com/acme/shop/commit/" + commit(i)}
@@ -144,6 +164,16 @@ func TestTheSubmissionLimitsAreExact(t *testing.T) {
 		if (err == nil) != c.ok {
 			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
 		}
+	}
+}
+
+// withEarlier sets n commits and the member earlier_commits to v on a target.
+func withEarlier(n int, v any) func(doc, target map[string]any) {
+	return func(_, tg map[string]any) {
+		tg["commits"] = commits(n, func(i int) any {
+			return map[string]any{"commit": fmt.Sprintf("%040x", i+1), "step": "s"}
+		})
+		tg["earlier_commits"] = v
 	}
 }
 

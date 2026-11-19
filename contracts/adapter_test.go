@@ -164,6 +164,12 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-submission-branch-with-space.json":            {"changes", "/changes/0/targets/0/branch pattern"},
 		"changes-submission-commit-short.json":                 {"changes", "/changes/0/targets/0/commits/0/commit pattern"},
 		"changes-submission-commits-empty.json":                {"changes", "/changes/0/targets/0/commits minItems"},
+		"changes-submission-commits-101.json":                  {"changes", "/changes/0/targets/0/commits maxItems"},
+		"changes-submission-earlier-commits-0.json":            {"changes", "/changes/0/targets/0/earlier_commits minimum"},
+		"changes-submission-earlier-commits-negative.json":     {"changes", "/changes/0/targets/0/earlier_commits minimum"},
+		"changes-submission-earlier-commits-string.json":       {"changes", "/changes/0/targets/0/earlier_commits type"},
+		"changes-submission-earlier-commits-over-int64.json":   {"changes", "/changes/0/targets/0/earlier_commits maximum"},
+		"changes-submission-earlier-commits-99-commits.json":   {"changes", "/changes/0/targets/0/commits minItems"},
 		"changes-submission-description-20001.json":            {"changes", "/changes/0/text/description maxLength"},
 		"changes-submission-description-marker.json":           {"changes", "/changes/0/text/description "},
 		"changes-submission-draft-action-close.json":           {"changes", "/changes/0/targets/0/draft/action enum"},
@@ -427,6 +433,7 @@ func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
 func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	now := contracts.FormatTime(time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
 	interval := 600
+	earlier := int64(9223372036854775807)
 	reason := "Fixed"
 	listing := contracts.Listing{ID: "items-1", Part: 1, StartedAt: now, Complete: true}
 	person := contracts.Person{Name: "Ada Example", Kind: "person"}
@@ -434,6 +441,11 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	noItems := false
 	const submission = "av_7k2m9q4v1x8z3c5d"
 	commitA, commitB := strings.Repeat("a", 40), strings.Repeat("b", 40)
+	newest := make([]contracts.SubmissionCommit, 100)
+	for i := range newest {
+		newest[i] = contracts.SubmissionCommit{Commit: fmt.Sprintf("%040x", i+1), Step: "deliverable:d-1"}
+	}
+	newest[99].Commit = commitB
 	values := []struct {
 		schema string
 		v      any
@@ -495,10 +507,11 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 				Text: &contracts.SubmissionText{Title: "Show delivery dates", Description: "The page lists dates."},
 				Targets: []contracts.SubmissionTarget{{
 					System: "code.example.com", Path: "acme/shop", Branch: "qory/wi_1",
-					Base:    contracts.SubmissionBase{Commit: commitA, Branch: "main"},
-					Commit:  commitB,
-					Commits: []contracts.SubmissionCommit{{Commit: commitB, Step: "deliverable:d-1"}},
-					Draft:   &contracts.DraftRequest{Action: contracts.DraftUpdate, Number: 34}}}},
+					Base:           contracts.SubmissionBase{Commit: commitA, Branch: "main"},
+					Commit:         commitB,
+					Commits:        newest,
+					EarlierCommits: &earlier,
+					Draft:          &contracts.DraftRequest{Action: contracts.DraftUpdate, Number: 34}}}},
 		}}},
 		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, CommentID: "sc_7k2m9q4v1x8z3c5d", Reason: "too_long"}},
 		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, SubmissionID: submission,
@@ -1552,7 +1565,9 @@ func TestAnAddressOfAReplyHasTheRuleOfASubmitProgram(t *testing.T) {
 
 // TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rules that an integer has no
 // fraction or exponent, that no object repeats a member, and that an address of a
-// changes-submitted reply is on the system of its target: each document under
+// changes-submitted reply is on the system of its target. For the feed entry, the
+// changes fixture, the integer rule binds the control plane as its writer: it writes
+// earlier_commits without a decimal point. Each document under
 // fixtures/adapter/refused-by-control-plane is accepted by its schema, since the rule is
 // not expressible in one, and breaks the rule on its raw bytes, so the control plane
 // refuses it, 400 invalid_request; and every accepted request fixture keeps the rule,
@@ -1563,6 +1578,7 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		"adapter-integer-with-fraction.json":                "adapter",
 		"adapter-repeated-member.json":                      "adapter",
 		"changes-submitted-draft-number-decimal.json":       "changes-submitted",
+		"changes-submission-earlier-commits-decimal.json":   "changes",
 		"changes-submitted-base-commit-url-other-host.json": "changes-submitted",
 		"changes-submitted-commit-url-other-host.json":      "changes-submitted",
 		"changes-submitted-draft-url-other-host.json":       "changes-submitted",
@@ -1590,11 +1606,14 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 				t.Errorf("%s breaks a raw rule beside the address rule: %v", f, err)
 			}
 		case strings.HasSuffix(name, "-decimal.json"):
-			if err := strictJSON(schema, b); err == nil || !strings.Contains(err.Error(), "34.0") {
-				t.Errorf("%s: the raw integer rule refuses it for %v, want the number 34.0", f, err)
+			number := map[string]string{"changes": "40.0", "changes-submitted": "34.0"}[schema]
+			if err := strictJSON(schema, b); err == nil || !strings.Contains(err.Error(), number) {
+				t.Errorf("%s: the raw integer rule refuses it for %v, want the number %s", f, err, number)
 			}
-			if err := submittedAddressFault(b); err != nil {
-				t.Errorf("%s: %v", f, err)
+			if schema == "changes-submitted" {
+				if err := submittedAddressFault(b); err != nil {
+					t.Errorf("%s: %v", f, err)
+				}
 			}
 		case strictJSON(schema, b) == nil:
 			t.Errorf("%s keeps the rule on its raw bytes", f)

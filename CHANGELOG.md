@@ -747,6 +747,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `release.yml` attaches `description.json` to each release: the description that
   `<program> describe` prints and that passes the `conformance.Description` check.
   `checksums.txt` lists its SHA-256 beside the archives.
+- The target of a `submission` entry in `changes.schema.json` has the optional member
+  `earlier_commits`, an integer of at least 1: the number of commits of the run in the
+  repository that are older than the first entry of `commits` and are not listed. A run
+  of more than 100 commits in a repository is accepted: `commits` lists the newest 100,
+  oldest first, ending in `commit`, and `earlier_commits` is the number of the older
+  ones. `commits` still has at most 100 entries, and exactly 100 with `earlier_commits`.
+  The member is absent when `commits` lists each commit of the run. The reply in
+  `changes-submitted.schema.json` has an item for each listed commit and none for the
+  earlier ones, so the adapter builds no address for them.
 
 ### Changed
 

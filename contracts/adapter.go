@@ -411,8 +411,9 @@ type SubmissionText struct {
 
 // SubmissionTarget is one repository of a submission entry, changes.schema.json:
 // where it is, the Branch that the run pushed, the Base it started at, the head Commit,
-// the Commits from the base to the head, oldest first, and Draft, nil when the entry
-// asks for no draft.
+// the Commits from the base to the head, oldest first (the newest 100 of a longer run),
+// EarlierCommits, the number of older commits of the run that Commits does not list, nil
+// when it lists each commit, and Draft, nil when the entry asks for no draft.
 type SubmissionTarget struct {
 	System  string             `json:"system"`
 	Path    string             `json:"path"`
@@ -420,7 +421,11 @@ type SubmissionTarget struct {
 	Base    SubmissionBase     `json:"base"`
 	Commit  string             `json:"commit"`
 	Commits []SubmissionCommit `json:"commits"`
-	Draft   *DraftRequest      `json:"draft,omitempty"`
+	// EarlierCommits is a pointer so that an absent member differs from 0, which the
+	// schema refuses. It is 1 to 9223372036854775807, and Commits has exactly 100 entries
+	// when it is set: the schema checks both.
+	EarlierCommits *int64        `json:"earlier_commits,omitempty"`
+	Draft          *DraftRequest `json:"draft,omitempty"`
 }
 
 // SubmissionBase is where a run started: the Commit, and the Branch that the draft is
