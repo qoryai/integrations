@@ -7,72 +7,79 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// CompileClosed compiles the closed copy of a schema of the integration contract that has
-// one: description.schema.json, adapter.schema.json, changes.schema.json,
-// changes-submitted.schema.json, changes-failed.schema.json or source-items.schema.json,
-// whose closed copy closes the listing and the person that the definitions share. A reader of these ignores a
-// member that its schema does not define. The closed copy refuses such a member, in the
-// schema and in each schema of the integration and run contracts that it refers to, so a
-// writer's tests validate against the closed copy, and a misspelled member fails a test.
-// See [CloseSchema]. It returns an error for any other name, because the closed copy of a
-// schema that lists only some members of an object refuses members it defines.
+// CompileClosed compiles the closed copy of a schema of the integration contract. A reader
+// of the schema ignores a member that the schema does not define. The closed copy refuses
+// such a member, in the schema and in each schema of the embedded contracts that it refers
+// to. A writer's test validates against the closed copy, so a misspelled member fails the
+// test. See [CloseSchema].
+//
+// These schemas have a closed copy: description.schema.json, adapter.schema.json,
+// changes.schema.json, changes-submitted.schema.json, changes-failed.schema.json and
+// source-items.schema.json. The copy of source-items.schema.json closes the listing and the
+// person that the definitions share. CompileClosed returns an error for any other name,
+// because the copy of a schema that lists only some members of an object refuses members
+// that it defines.
 func CompileClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(Base, FS, name)
 }
 
-// CompileRunClosed compiles the closed copy of documents.schema.json,
-// next-session-answer.schema.json, next-session-request.schema.json or outcome.schema.json,
-// as [CompileClosed] does for the integration contract, and returns an error for any other
-// name.
+// CompileRunClosed compiles the closed copy of a schema of the run contract, as
+// [CompileClosed] does for the integration contract. These schemas have a closed copy:
+// documents.schema.json, next-session-answer.schema.json, next-session-request.schema.json
+// and outcome.schema.json. It returns an error for any other name.
 func CompileRunClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(RunBase, RunFS, name)
 }
 
-// CompileProvisionerClosed compiles the closed copy of claim.schema.json,
-// claim-answer.schema.json, dispatched.schema.json, machine-end.schema.json,
-// machine-log.schema.json, refusal.schema.json or release.schema.json of the provisioner
-// contract, as [CompileClosed] does for the integration contract, and returns an error for
-// any other name.
+// CompileProvisionerClosed compiles the closed copy of a schema of the provisioner
+// contract, as [CompileClosed] does for the integration contract. These schemas have a
+// closed copy: claim.schema.json, claim-answer.schema.json, dispatched.schema.json,
+// machine-end.schema.json, machine-log.schema.json, refusal.schema.json and
+// release.schema.json. It returns an error for any other name.
 func CompileProvisionerClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(ProvisionerBase, ProvisionerFS, name)
 }
 
-// CompileMachinesClosed compiles the closed copy of any schema of the machines contract,
-// as [CompileClosed] does for the integration contract, and returns an error for any other
-// name.
+// CompileMachinesClosed compiles the closed copy of a schema of the machines contract, as
+// [CompileClosed] does for the integration contract. Each of the eleven schemas has a
+// closed copy. It returns an error for any other name.
 func CompileMachinesClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(MachinesBase, MachinesFS, name)
 }
 
-// CompileExploreClosed compiles the closed copy of inputs.schema.json of the explore
-// contract, as [CompileClosed] does for the integration contract, and returns an error for
-// any other name.
+// CompileExploreClosed compiles the closed copy of inputs.schema.json, the one schema of
+// the explore contract, as [CompileClosed] does for the integration contract. It returns an
+// error for any other name.
 func CompileExploreClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(ExploreBase, ExploreFS, name)
 }
 
 // CloseSchema returns a copy of the schema doc, as [Document] reads it, that refuses a
-// member the schema does not define, and the JSON pointers of the places it closed, ""
-// for the root. It sets additionalProperties to false in each schema that lists properties
-// and sets no additionalProperties, at the root, under $defs, properties, patternProperties
-// and items, in the schema of additionalProperties, in each branch of oneOf and anyOf, and
-// in an else or then that sets type object, which is the object form of a value that has
-// two forms. It closes no other schema inside allOf, if, then, else, not or
-// dependentSchemas, which list only some of the members of their object. A schema that sets
-// additionalProperties stays as it is, such as roles in a description, which leaves a role
-// it does not know alone, or the inputs of a run, whose shape another schema defines. A
-// schema that lists no properties stays as it is too, such as a map of extensions or the
-// settings of a description, whose schema is the integration's. The copy keeps
-// must_understand as it is. It is for a schema whose objects list all their members, and
-// [CompileClosed] and [CompileRunClosed] accept only the schemas of closable.
+// member the schema does not define. It also returns the JSON pointers of the places it
+// closed, "" for the root.
+//
+// It sets additionalProperties to false in each schema that lists properties and sets no
+// additionalProperties. It does so at the root and under $defs, properties,
+// patternProperties and items. It does so in the schema of additionalProperties and in each
+// branch of oneOf and anyOf. It does so in an else or then that sets type object, the
+// object form of a value that has two forms.
+//
+// It closes no other schema inside allOf, if, then, else, not or dependentSchemas, which
+// list only some of the members of their object. A schema that sets additionalProperties
+// stays as it is. Examples are roles in a description, which leaves a role it does not know
+// alone, and the inputs of a run, whose shape another schema defines. A schema that lists
+// no properties stays as it is too. Examples are a map of extensions and the settings of a
+// description, whose schema is the integration's. The copy keeps must_understand as it is.
+// It is for a schema whose objects list all their members. The functions that compile a
+// closed copy accept only the schemas of closable.
 func CloseSchema(doc any) (closed any, sites []string) {
 	closed = closeNode(doc, "", true, &sites)
 	return closed, sites
 }
 
-// closeNode copies the schema n and closes it, and the schemas inside it. instance is
-// true when n describes a whole object, as opposed to a branch that lists only part of
-// one. ptr is the JSON pointer of n.
+// closeNode copies the schema n and closes it and the schemas inside it. The argument
+// instance is true when n describes a whole object, and false for a branch that lists only
+// part of one. The argument ptr is the JSON pointer of n.
 func closeNode(n any, ptr string, instance bool, sites *[]string) any {
 	m, ok := n.(map[string]any)
 	if !ok {
@@ -113,8 +120,8 @@ func closeNode(n any, ptr string, instance bool, sites *[]string) any {
 	return out
 }
 
-// isObjectForm reports whether the then or else schema v is the object form of a value
-// that has two forms: it sets type object, and lists properties.
+// isObjectForm reports whether the then or else schema v is the object form of a value with
+// two forms. The object form sets type object and lists properties.
 func isObjectForm(v any) bool {
 	m, ok := v.(map[string]any)
 	if !ok {
@@ -160,10 +167,10 @@ var closable = map[string]bool{
 	ExploreBase + "/inputs.schema.json": true,
 }
 
-// closingLoader reads the schemas of the contracts that this package embeds, closed as
-// [CloseSchema] closes them, and any other schema as [loader] reads it. A closed copy
-// compiles with it, so the schemas that the copy refers to are closed too, in this
-// compilation alone: the schemas that a reader compiles stay open.
+// closingLoader reads the schemas of the embedded contracts closed as [CloseSchema] closes
+// them, and any other schema as [loader] reads it. A closed copy compiles with it. The
+// schemas that the copy refers to are closed too, in this compilation alone. The schemas
+// that a reader compiles stay open.
 type closingLoader struct{ loader }
 
 // Load returns the closed document of a schema of an embedded contract, and the document of

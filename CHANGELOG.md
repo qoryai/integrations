@@ -201,9 +201,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   sends a `time_limit_minutes` below 15. `time_limit_minutes` is the time limit of a
   session, from 1 to 1440 minutes. Until this release the limit was 15 to 1440, and a
   reader built from an older copy of the schemas refuses 1 to 14.
-- Change each reader of the run documents, the next-session answer, a description and
-  the change feed. A reader ignores a member that its schema does not define, in any
-  object. Before, these schemas and the objects inside them refused such a member.
+- Change each reader of the documents of the integration, run, provisioner, machines and
+  explore contracts. A reader ignores a member that its schema does not define, in any
+  object. Before, these schemas and the objects inside them refused such a member. The
+  Forager-defined objects of a description stay as the next lines say.
   - The optional `must_understand` of a document lists the members that the reader must
     understand. Each is a JSON Pointer (RFC 6901) counted from the document, such as
     `/run_settings/full_suite`. Before, it was a list of top-level member names.
@@ -213,11 +214,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
     pointer below `inputs`, below `harness.harness.extensions` and below the
     description's `settings`.
   - The description's `settings` stays the integration's settings schema. The `auth` and
-    `format` of an API follow the Forager contract.
+    `format` of an API follow the Forager contract and refuse an undefined member until
+    Forager reads by the same rule.
+  - A reader refuses a pointer that has a line break, a `~` that is not `~0` or `~1`, or
+    an empty name of a map key. `minProperties` counts members, defined or not, so
+    `previous` of a change and `only` of a harness selection read as empty when they
+    have only an undefined member.
   - An answer with `next` `end` and a member of the session shape fails
     `next-session-answer.schema.json`, as before.
   - Each entry of the change feed has an optional `must_understand`. The answer has none.
     An adapter ignores an unknown member of the answer and of an entry of a defined kind.
+    The detail of a refused entry has at most 1000 characters, and a pointer of more than
+    300 bytes is cut.
   - An adapter skips and acknowledges an entry in two cases. The `kind` of the entry is
     one that its revision does not define, or its `must_understand` lists a pointer that
     the adapter does not define.
@@ -228,20 +236,32 @@ change what an existing reader or program relies on, and notes it under Upgradin
     `change_request` entry. The adapter checks those pointers.
   - `changes.schema.json` accepts any snake_case `kind` and checks the members of the
     seven kinds it defines.
-  - The shared schemas `target` and `change_address` in `definitions.schema.json` ignore
-    an unknown member too, in every schema that refers to them, among them the explore
-    inputs, `source-collections.schema.json` and `source-items.schema.json`. `person` and
-    `listing` stay closed.
-  - The replies `changes-submitted.schema.json` and `changes-failed.schema.json` stay
-    closed at their root. The control plane serves only revisions that it implements.
+  - The shared schemas `target`, `change_address`, `person` and `listing` in
+    `definitions.schema.json` ignore an unknown member too, in every schema that refers
+    to them, among them the explore inputs, `source-collections.schema.json` and
+    `source-items.schema.json`.
+  - The replies `changes-submitted.schema.json` and `changes-failed.schema.json`, the
+    body of `adapter.schema.json` and its `sync`, the request and the outcome of the
+    run contract, the seven schemas of the provisioner contract, the eleven schemas of
+    the machines contract and the seven objects of `explore/v1/inputs.schema.json` ignore
+    an unknown member. Each root of these, except the explore inputs, has an optional
+    `must_understand`. The explore inputs use the list of the run documents.
+  - The machines contract defines no failure for a machines answer, a provisioner answer
+    or a refusal that lists a pointer the reader does not define. The reader refuses the
+    document as it refuses any document that the schema refuses.
   - A writer's test validates against a closed copy of the schema, so a misspelled
     member fails it. The copy covers the schema and each schema of this repository that
     it refers to.
   - `conformance.Description` and `integration-conformance` validate a description
     against the closed copy.
   - `fixtures/closed` contains the documents that the schema accepts and the closed copy
-    refuses. 42 fixtures moved there from `fixtures/invalid`. Five removed fixtures came
-    back: `documents-undefined-member.json`, `documents-subject-undefined-member.json`,
+    refuses: 103 documents in all contracts, of which 87 moved there from
+    `fixtures/invalid`. These fixtures moved there because a retired or secret member
+    was a refusal before: `claim-answer-run-id`, `release-with-retry`, the adapter
+    `submit_module`, the reply `targets`, the outcome `end_code`, `action` and `message`,
+    the request `verdict` and `attempt`, and the machines `*-version.json` answers. A
+    reader ignores each of these members. Five removed fixtures came back:
+    `documents-undefined-member.json`, `documents-subject-undefined-member.json`,
     `next-session-answer-undefined-member.json`,
     `next-session-answer-model-credential.json` and
     `description-source-undefined-member.json`.
@@ -249,22 +269,29 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
-- `contracts.CompileClosed` and `contracts.CompileRunClosed` compile the closed copy of a
-  schema, and return an error for a schema without one. Seven schemas have a closed copy:
-  `description.schema.json`, `adapter.schema.json`, `changes.schema.json`,
-  `changes-submitted.schema.json`, `changes-failed.schema.json`, `documents.schema.json`
-  and `next-session-answer.schema.json`. `contracts.CloseSchema` makes the copy of one
-  file.
+- `contracts.CompileClosed`, `contracts.CompileRunClosed`,
+  `contracts.CompileProvisionerClosed`, `contracts.CompileMachinesClosed` and
+  `contracts.CompileExploreClosed` compile the closed copy of a schema, and return an
+  error for a schema without one. Twenty-nine schemas have a closed copy: six of the
+  integration contract (`description`, `adapter`, `changes`, `changes-submitted`,
+  `changes-failed` and `source-items`), four of the run contract (`documents`,
+  `next-session-answer`, `next-session-request` and `outcome`), the seven of the
+  provisioner contract, the eleven of the machines contract and `inputs` of the explore
+  contract. `contracts.CloseSchema` makes the copy of one file.
 - `contracts.CheckMustUnderstand` returns an error for a document whose `must_understand`
   lists a pointer that a Go type does not define. It also returns an error for a repeated
-  pointer, for null, for a string that is no JSON Pointer, for more than
+  pointer, for null, for a string that is no JSON Pointer, for a pointer with a line
+  break, with a `~` that is not `~0` or `~1` or with an empty map key, for more than
   `contracts.MustUnderstandPointers` (32) pointers, and for a pointer of more than
   `contracts.MustUnderstandPointerLength` (256) characters.
   `contracts.CheckChangeMustUnderstand` does the same for a feed entry, by its `kind`.
-- `contracts.Documents`, `contracts.NextSessionAnswer`, `contracts.Changes` and
-  `contracts.Change` have `MustUnderstand`. The rule is in `contracts/run/v1/README.md`
-  and `contracts/integration/v1/README.md`, with a note that an unsigned 401 or 415 is
-  not one of the nine next-session refusal codes.
+- `contracts.Documents`, `contracts.NextSessionAnswer`, `contracts.NextSessionRequest`,
+  `contracts.RunOutcome`, `contracts.Adapter`, `contracts.ChangesSubmitted`,
+  `contracts.ChangesFailed`, `contracts.Change`, the provisioner types `Claim`,
+  `ClaimAnswer`, `Dispatched`, `Release`, `MachineLog` and `MachineEnd`, and the eleven
+  `contracts.Machines*` types have `MustUnderstand`. `contracts.Changes` has none. The
+  rule is in `contracts/run/v1/README.md` and `contracts/integration/v1/README.md`, with a
+  note that an unsigned 401 or 415 is not one of the nine next-session refusal codes.
 - An API of `model_provider` can set `oauth_device`, next to `oauth_refresh`, in
   `description.schema.json`: the four URLs with which the control plane signs a person
   in with the OAuth device code flow. `usercode_url` is where the control plane sends
@@ -885,8 +912,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `HarnessSection.Bind` is a `map[string]map[string]BindValue`: `BindValue.Name` is set
   for a name, and `BindValue.Names` for a list, and each is written back in the form it
   was read in. Decoding a `HarnessSection` ignores a bind kind other than `agents`,
-  `commands` or `skills`. It returns an error for a kind whose value is null, for a role
-  whose value is null, for a list on a `commands` or `skills` role, for an empty list,
+  `commands` or `skills`. A module role that no bind fills stays unfilled, and the reader
+  must not compose it. Decoding returns an error for a kind whose value is null, for a
+  role whose value is null, for a list on a `commands` or `skills` role, for an empty list,
   and for a null item of a list.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,

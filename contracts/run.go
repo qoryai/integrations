@@ -172,15 +172,15 @@ type Documents struct {
 	// MustUnderstand lists members of the documents that the reader must understand, as
 	// JSON Pointers counted from the documents, such as "/run_settings/full_suite". A
 	// reader ignores a member that this type does not have, unless MustUnderstand lists
-	// it, and refuses documents whose MustUnderstand lists a pointer to a member that this
-	// type does not have: [CheckMustUnderstand] returns an error for them.
+	// it. A reader refuses documents whose MustUnderstand lists a pointer to a member that
+	// this type does not have: [CheckMustUnderstand] returns an error for them.
 	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
-// HarnessDocument is the run's harness, documents.schema.json: the harness document
+// HarnessDocument is the run's harness, documents.schema.json. It is the harness document
 // of the workspace in the form of qory.yaml,
-// https://qory.dev/contracts/harness/v1/config.schema.json, with the member harness, the
-// harness section, which extends a stack or defines one. Every source is a remote
+// https://qory.dev/contracts/harness/v1/config.schema.json. It has the member harness,
+// the harness section, which extends a stack or defines one. Every source is a remote
 // source. A source of the form {path} and a module given by name alone are refused. A
 // reader ignores link, the machine harness settings and every other member of qory.yaml.
 type HarnessDocument struct {
@@ -234,11 +234,15 @@ func (HarnessSection) definesPointer(segments []string) bool {
 	return resolvesBelow(reflect.TypeFor[HarnessSection](), segments)
 }
 
-// UnmarshalJSON reads a harness section. It ignores a member of Bind that is not a
-// kind, agents, commands or skills, as documents.schema.json does, such as a role in
-// the flat form agents/writer. It returns an error for a kind whose value is null, for a
-// role whose value is null, for a list on a role of the kind commands or skills, for an
-// empty list, and for a null item of a list: each fails documents.schema.json.
+// UnmarshalJSON reads a harness section. It ignores a member of Bind that is not a kind,
+// agents, commands or skills, as documents.schema.json does. An example is a role in the
+// flat form agents/writer. It returns an error in these cases, and each fails
+// documents.schema.json:
+//   - a kind whose value is null
+//   - a role whose value is null
+//   - a list on a role of the kind commands or skills
+//   - an empty list
+//   - a null item of a list
 func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 	b = withoutUndefinedBindKinds(b)
 	// A section that does not read as raw roles fails the decode below, which returns
@@ -262,7 +266,7 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 
 // withoutUndefinedBindKinds returns the section b without the members of its bind that
 // are not a kind of bind. It returns b when b has no bind, or when it does not read as a
-// section with an object bind, since the decode of b returns the error for that.
+// section with an object bind. The decode of b returns the error for that.
 func withoutUndefinedBindKinds(b []byte) []byte {
 	var section map[string]json.RawMessage
 	if json.Unmarshal(b, &section) != nil {
@@ -612,9 +616,9 @@ type NextSessionRequest struct {
 }
 
 // NextSessionAnswer is the answer to the next-session request, run/v1
-// next-session-answer.schema.json: the next session of the run, with Next
-// [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and
-// no member of the session shape. The session shape has Session, Workflow, TimeLimitMinutes,
+// next-session-answer.schema.json. It is the next session of the run, with Next
+// [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and no
+// member of the session shape. The session shape has Session, Workflow, TimeLimitMinutes,
 // FullSuite and Inputs, and optionally ModelChoice and ModelProviderCredentialName.
 // MarshalJSON writes the members of the shape that Next selects, and no member of the
 // other shape. Reading takes the members of either shape and leaves the others at their

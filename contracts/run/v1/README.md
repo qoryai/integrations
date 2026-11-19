@@ -14,9 +14,10 @@ against.
 
 ## Members a reader does not define
 
-A reader ignores a member that the schema of the run documents or of the next-session
-answer does not define, at any depth. This holds at the top level, and in `subject`,
-`run_settings`, `submit`, `harness`, `model_choice` and each other object inside them.
+A reader ignores a member that the schema of a document does not define, at any depth.
+The rule covers the run documents, the next-session answer, the next-session request and
+the outcome. It applies at the top level, and in `subject`, `run_settings`, `submit`,
+`harness`, `model_choice` and each other object inside them.
 
 - `must_understand` lists the members that the reader must understand. Each is a JSON
   Pointer ([RFC 6901](https://www.rfc-editor.org/rfc/rfc6901)) counted from the document,
@@ -25,6 +26,10 @@ answer does not define, at any depth. This holds at the top level, and in `subje
   it does not define. The schema accepts a pointer to a member that the schema defines.
 - Another schema defines the members below `inputs` and below
   `harness.harness.extensions`. The schema accepts any pointer there.
+- The control plane refuses a request whose `must_understand` lists a pointer that it does
+  not define, with 400 `invalid_request`. The contract defines no answer for an outcome
+  with such a list, so the control plane refuses it as it refuses any outcome that the
+  schema refuses.
 - A reader refuses a bad value of a member that it defines.
 
 Examples:
@@ -38,9 +43,10 @@ Examples:
 
 A control plane's tests check its documents against a closed copy of the schema. The
 closed copy refuses a member that the schema does not define, so a misspelled member
-fails the test. It covers each object of `documents.schema.json` and of the integration
-contract that it reaches by reference. `contracts.CompileRunClosed` returns the closed
-copy.
+fails the test. It covers each object of the schema and of the integration contract that
+it reaches by reference. `contracts.CompileRunClosed` returns the closed copy of
+`documents.schema.json`, `next-session-answer.schema.json`,
+`next-session-request.schema.json` or `outcome.schema.json`.
 
 `contracts.CheckMustUnderstand` applies the rule to a document that a reader decodes into
 a Go type. It resolves each pointer through the `json` tags of the type.

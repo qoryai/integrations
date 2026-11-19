@@ -512,17 +512,22 @@ var entryTypes = map[string]reflect.Type{
 }
 
 // CheckChangeMustUnderstand reports whether an adapter that implements this revision of
-// the contract can apply the feed entry, the JSON object entry. It returns nil when the
-// entry has no must_understand, or lists only pointers to members that the kind of the
-// entry defines, as [CheckMustUnderstand] reads them. It returns an error when the entry
-// lists a pointer to a member that its kind does not define, or when its kind is not one
-// that this revision defines. Below data, which the artifact type of change_kind defines,
-// every pointer passes: the adapter checks that pointer against the artifact type. The
-// adapter that gets an error skips the entry and acknowledges it, that is, moves its
-// cursor past it. For a change_request entry, it reports the entry failed, with Reason
-// "refused" and the text of the error as Detail. That text is a sentence that starts
-// with what to do. It has no control character and at most 1000 characters, since the text
-// writes the pointer escaped and cut.
+// the contract can apply the feed entry, the JSON object entry.
+//
+// It returns nil when the entry has no must_understand. It also returns nil when the entry
+// lists only pointers to members that the kind of the entry defines, as
+// [CheckMustUnderstand] reads them. It returns an error when the entry lists a pointer to a
+// member that its kind does not define. It also returns an error when this revision does
+// not define the kind.
+//
+// Every pointer below data passes, because the artifact type of change_kind defines data.
+// The adapter checks that pointer against the artifact type.
+//
+// An adapter that gets an error skips the entry and acknowledges it: it moves its cursor
+// past the entry. For a change_request entry, the adapter reports the entry failed, with
+// Reason "refused" and the text of the error as Detail. That text starts with what to do.
+// It has no control character and at most 1000 characters, because it writes the pointer
+// escaped and cut.
 func CheckChangeMustUnderstand(entry []byte) error {
 	var head struct {
 		Kind string `json:"kind"`
@@ -579,9 +584,10 @@ func (c Change) MarshalJSON() ([]byte, error) {
 // comment, the control plane marks the comment not posted and stores Reason; for a
 // change request, it stores Reason, and Detail when it is set, with the change request
 // version. Detail is for a change request only: one line of 1 to 1000 characters, what
-// to do first, then the target's status and message. An adapter reports an entry whose
-// change kind it did not list, or whose must_understand lists a pointer that it does not
-// define ([CheckChangeMustUnderstand]), with Reason "refused" and a Detail.
+// to do first, then the target's status and message. An adapter reports two kinds of
+// entry with Reason "refused" and a Detail: an entry whose change kind it did not list, and
+// an entry whose must_understand lists a pointer that it does not define
+// ([CheckChangeMustUnderstand]).
 type ChangesFailed struct {
 	Version         int     `json:"version"`
 	Time            string  `json:"time"`

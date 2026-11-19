@@ -46,24 +46,26 @@
 // signature, so the revision that the answer was built for is signed.
 //
 // Each member and each entry kind belongs to the revision of the feed that defines it. An
-// adapter ignores a member of the answer or of an entry that its revision does not
-// define, unless the must_understand of the entry lists it, as changes.schema.json
-// describes. An adapter skips and acknowledges a change entry whose kind its revision
-// does not define. It does the same for an entry whose must_understand lists a pointer
-// that it does not define. It reads the kind and must_understand alone, applies nothing
-// else in the entry, and moves its cursor past it. The exception is a change_request
-// entry, which the adapter reports failed with reason refused (changes-failed.schema.json).
+// adapter ignores a member of the answer or of an entry that its revision does not define.
+// The must_understand of an entry overrides that for the members it lists, as
+// changes.schema.json describes. An adapter skips and acknowledges a change entry whose
+// kind its revision does not define. It does the same for an entry whose must_understand
+// lists a pointer that it does not define. It reads the kind and must_understand alone,
+// applies nothing else in the entry, and moves its cursor past it. The exception is a
+// change_request entry, which the adapter reports failed with reason refused
+// (changes-failed.schema.json).
 //
 // The control plane reads the bodies of adapter.schema.json, changes-submitted.schema.json
 // and changes-failed.schema.json by the same rule. It ignores an undefined member of the
-// body, unless the must_understand of the body lists it, and refuses a body whose
+// body, unless the must_understand of the body lists it. It refuses a body whose
 // must_understand lists a pointer that it does not define. An adapter sends only the
 // members of the revision that the control plane implements.
 //
-// The description and the run documents, which a writer sends to a reader that defines
-// fewer members, follow the same rule of must_understand, in description.schema.json and
-// in run/v1. The Forager contract makes additions safe in the same way, with lenient
-// answers whose unknown members are ignored.
+// The description, the run documents and the documents of the provisioner and machines
+// contracts follow the same rule of must_understand. A writer sends them to a reader that
+// may define fewer members. Each schema describes the rule for its document. The Forager
+// contract makes additions safe in the same way, with lenient answers whose unknown
+// members are ignored.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;

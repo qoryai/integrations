@@ -19,20 +19,30 @@ addition keeps `version` 1; a change that breaks a reader is `version` 2.
 ## Members a reader does not define
 
 A reader ignores a member that the schema of a document does not define, at any depth.
-The rule covers a description, the answer of the change feed, and each entry of the
-feed. A writer may add a member, and an older reader reads the rest.
+The rule covers the description, the answer of the change feed and each entry of it, the
+replies `changes-submitted.schema.json` and `changes-failed.schema.json`, the body of
+`adapter.schema.json`, the listing and the person of `source-items.schema.json`, the
+documents of the run, provisioner and machines contracts, and the explore inputs. A writer
+may add a member, and an older reader reads the rest.
 
 - `must_understand` lists the members that the reader must understand. Each is a JSON
   Pointer ([RFC 6901](https://www.rfc-editor.org/rfc/rfc6901)) counted from the object
   that has the list, such as `/roles/source/program` in a description. Write a pointer
-  once.
+  once. A document root may have the list, and each entry of the change feed may have one.
 - A reader refuses a document whose `must_understand` lists a pointer to a member that
   it does not define. The schema accepts a pointer to a member that the schema defines.
+- A reader refuses a pointer that has a line break, a `~` that is not `~0` or `~1`, or an
+  empty name of a map key. Below a place that the schema leaves open, such as `data` of a
+  change or the `settings` of a description, the schema accepts an empty name.
 - A reader refuses a bad value of a member that it defines.
 - The description's `settings` is the integration's settings schema. The contract
   neither opens nor closes it, and the schema accepts any pointer below it.
-- The `auth` and the `format` of an API follow the Forager contract. The schema accepts a
-  pointer to them and refuses a pointer below them.
+- The objects that the Forager contract defines, such as the `auth` and the `format` of an
+  API, refuse an undefined member until Forager reads by the same rule. The schema
+  accepts a pointer to them and refuses a pointer below them.
+- `minProperties` counts members, defined or not. The `previous` object of a change and
+  the selection `only` of a harness read as empty when they have only an undefined member,
+  such as `{"zz": 1}`.
 
 Example: a program prints a description with the member `/roles/source/extra`, which an
 older control plane does not define. The older control plane ignores the member and reads
@@ -41,15 +51,20 @@ plane then refuses the description.
 
 A program's test checks its description against a closed copy of the schema. The closed
 copy refuses a member that the schema does not define, so a misspelled member fails the
-test. It covers each object of the integration and run contracts that the schema reaches
-by reference. A schema that several documents share, such as `definitions.schema.json`,
-stays open for a reader and is closed in the copy.
+test. It covers each object of the contracts that the schema reaches by reference. A schema
+that several documents share, such as `definitions.schema.json`, stays open for a reader
+and is closed in the copy.
 
-`conformance.Description` validates against the closed copy. `contracts.CompileClosed`
-returns the closed copy of `description.schema.json`, `adapter.schema.json`,
-`changes.schema.json`, `changes-submitted.schema.json` or `changes-failed.schema.json`.
-`adapter.schema.json` embeds the description, so its closed copy checks that description
-too.
+`conformance.Description` validates against the closed copy. These functions return the
+closed copy of a schema:
+
+- `contracts.CompileClosed`, for `description.schema.json`, `adapter.schema.json`,
+  `changes.schema.json`, `changes-submitted.schema.json`, `changes-failed.schema.json` or
+  `source-items.schema.json`. `adapter.schema.json` embeds the description, so its closed
+  copy checks that description too.
+- `contracts.CompileRunClosed`, `contracts.CompileProvisionerClosed`,
+  `contracts.CompileMachinesClosed` and `contracts.CompileExploreClosed`, for the schemas
+  of those contracts.
 
 ## Describe
 
@@ -71,7 +86,7 @@ from it.
 | `program_version` | the program's version, a string, such as `0.1.0` |
 | `settings` | a JSON Schema, draft 2020-12, of type `object`: the settings document the program takes |
 | `roles` | the roles the program plays, an object keyed by the role's name; at least one |
-| `must_understand` | the JSON Pointers of the members above, and of the members below them, that the reader must understand, as [Members a reader does not define](#members-a-reader-does-not-define) describes; may be absent |
+| `must_understand` | the JSON Pointers of the members of the description that the reader must understand, as [Members a reader does not define](#members-a-reader-does-not-define) describes; may be absent |
 
 ```json
 {"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
@@ -238,16 +253,19 @@ pointer of an entry is counted from the entry, such as `/target/collection`.
   entry. It applies nothing of it and moves its cursor past it, as for a kind that it
   does not define.
 - A `change_request` entry is the exception. The adapter sends
-  `POST /v1/work-items/changes/failed` with reason `refused`. The `detail` starts with the
-  fix: `Use an adapter that defines "/target/extra". The entry lists it in must_understand,
-  and this adapter does not define it.` The adapter then stops working on the entry.
+  `POST /v1/work-items/changes/failed` with reason `refused`. The `detail` has at most
+  1000 characters and starts with the fix: `Use an adapter that defines "/target/extra".
+  The entry lists it in must_understand, and this adapter does not define it.` A pointer
+  of more than 300 bytes is cut. The adapter then stops working on the entry.
   `contracts.CheckChangeMustUnderstand` returns that text.
 - The artifact type of the `change_kind` defines `data`, so this contract does not. The
   schema accepts any pointer below `data`. The adapter checks it against the artifact
-  type, and reports the entry failed as above when the artifact type does not define it.
-- The replies `changes-submitted.schema.json` and `changes-failed.schema.json` stay closed
-  at their root. The control plane serves only the revisions that it implements. An
-  adapter never writes a reply with a member that the control plane's revision lacks.
+  type, and reports the entry failed as it does for a pointer that this contract does
+  not define, when the artifact type does not define the pointer.
+- The replies `changes-submitted.schema.json` and `changes-failed.schema.json` have a
+  `must_understand` at their root. The control plane ignores an undefined member of a
+  reply, unless the list names it. An adapter sends only the members of the revision that
+  the control plane implements.
 - The `target` and the `address` in a reply are shared with the entries. They ignore an
   undefined member.
 

@@ -10,8 +10,8 @@ import (
 	"unicode/utf8"
 )
 
-// MustUnderstand is the member that lists, in a document that a writer sends to an
-// older reader, the members of the document that the reader must understand.
+// MustUnderstand is the member that lists the members of a document that the reader must
+// understand. A writer sends it in a document to a reader that may be older.
 const MustUnderstand = "must_understand"
 
 // The limits of a must_understand list in the schemas of this repository.
@@ -25,21 +25,25 @@ const (
 // CheckMustUnderstand reports the first pointer in the must_understand member of the JSON
 // object b that is not a member of the document type v. It returns nil when b has no
 // must_understand, or lists only members of v. Each entry is a JSON Pointer (RFC 6901)
-// counted from b, such as /run_settings/runtime. v is a struct, or a pointer to one, such
-// as [Documents], [NextSessionAnswer] or [Changes].
+// counted from b, such as /run_settings/runtime. The argument v is a struct, or a pointer
+// to one, such as [Documents], [NextSessionAnswer] or [Changes].
 //
-// A pointer resolves through the json tags of structs, the index of a list, and any key
-// of a map, a key that is not empty. A type that decodes itself, such as [Tier], implements
+// A pointer resolves through the json tags of structs, the index of a list, and any
+// non-empty key of a map. A type that decodes itself, such as [Tier], implements
 // definesPointer for the members it defines. Below a json.RawMessage or an interface, any
 // pointer resolves, since the type does not define what is there.
 //
 // A reader that decodes b into v ignores a member that v does not have. It calls
-// CheckMustUnderstand first, and refuses the document when it returns an error. It
-// returns an error too when b is not a JSON object, when must_understand is null or not a
-// list of strings, when an entry is not a pointer, has a line feed, has a ~ that is not
-// ~0 or ~1, or has more than [MustUnderstandPointerLength] characters, when an entry
-// repeats, and when the list has more than [MustUnderstandPointers] entries, the limits
-// of the schemas.
+// CheckMustUnderstand first, and refuses the document when it returns an error.
+//
+// CheckMustUnderstand returns an error in these cases, which follow the limits of the
+// schemas:
+//   - b is not a JSON object.
+//   - must_understand is null or not a list of strings.
+//   - An entry is not a pointer, has a line feed, or has a ~ that is not ~0 or ~1.
+//   - An entry has more than [MustUnderstandPointerLength] characters.
+//   - An entry repeats.
+//   - The list has more than [MustUnderstandPointers] entries.
 func CheckMustUnderstand(b []byte, v any) error {
 	p, err := unmetPointer(b, v)
 	if err != nil {
@@ -107,8 +111,8 @@ const quotedPointerLimit = 300
 
 // quotePointer writes the pointer p in double quotes, as %q does, so the text has no
 // control character and no line break. It cuts a pointer whose quoted form has more than
-// 300 bytes, such as 256 control characters, and ends the cut text with "...", so a message
-// that has it stays within the 1000 characters of the detail of [ChangesFailed].
+// 300 bytes, such as 256 control characters, and ends the cut text with "...". A message
+// that has the result stays within the 1000 characters of the detail of [ChangesFailed].
 func quotePointer(p string) string {
 	q := strconv.Quote(p)
 	if len(q)-2 <= quotedPointerLimit {
@@ -126,8 +130,8 @@ func quotePointer(p string) string {
 	return `"` + sb.String() + `..."`
 }
 
-// unescape returns the member name that the pointer segment s writes: ~1 is /, and ~0 is
-// ~, in that order, so ~01 is the two characters ~1.
+// unescape returns the member name that the pointer segment s writes. It replaces ~1 with
+// / first and ~0 with ~ second, so ~01 is the two characters ~1.
 func unescape(s string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(s, "~1", "/"), "~0", "~")
 }
@@ -160,8 +164,8 @@ func resolves(t reflect.Type, segments []string) bool {
 	return resolvesBelow(t, segments)
 }
 
-// resolvesBelow reports whether the segments, one or more, lead to a member of the type t
-// by its fields, its map keys or its list items.
+// resolvesBelow reports whether the segments, one or more, lead to a member of the type t.
+// The segments are fields, map keys or list items.
 func resolvesBelow(t reflect.Type, segments []string) bool {
 	seg := segments[0]
 	switch t.Kind() {
@@ -191,8 +195,8 @@ type pointerResolver interface {
 }
 
 // readsItself reports whether the type decodes its JSON by itself and defines no member
-// below it: an interface, a type that decodes by a method and has no field with a json
-// tag, such as json.RawMessage.
+// below it. Examples are an interface and json.RawMessage, a type that decodes by a method
+// and has no field with a json tag.
 func readsItself(t reflect.Type) bool {
 	if t.Kind() == reflect.Interface {
 		return true
