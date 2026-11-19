@@ -145,9 +145,10 @@
 // [NextTitle] that decides the draft's title.
 //
 // The explore contract contains one schema, inputs.schema.json, which defines the
-// inputs member of the run's documents, run/v1 documents.schema.json, for the step
-// workflow. The inputs are a document of a step, not a request, and the signature of
-// the run's documents covers them.
+// inputs member of the run's documents, run/v1 documents.schema.json, for a run of the
+// step workflow whose workflow reads these inputs, such as an Explore run. The inputs
+// are a document of a step, not a request, and the signature of the run's documents
+// covers them.
 //
 // The machines contract contains the protocol of a machine adapter, a program that makes
 // and deletes machines at one vendor, which the provisioner runs as `<adapter>

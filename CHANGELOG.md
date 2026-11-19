@@ -12,17 +12,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - Change each reader and writer of the run documents from step `explore` to step
   `workflow`, and from `work_item` to `subject`. `step` was a pattern. It is the closed
   enum `workflow` or `prebuild`, so a document with step `explore` fails
-  `documents.schema.json`. A step `workflow` runs the workflow named in `workflow`, and
-  `workflow` is required for it, and with it come `harness_hidden`, and `harness` or
-  `target_version`, as before. `run_settings`, `time_limit_minutes`, `shared_run` and
+  `documents.schema.json`. A step `workflow` runs the workflow named in `workflow`. A step
+  `workflow` requires `workflow`. `workflow` still requires `harness_hidden`, and
+  `harness` or `target_version`. `run_settings`, `time_limit_minutes`, `shared_run` and
   `full_suite` apply to every step `workflow`.
   `subject` is `{kind, id, url, title}`, and a document with `work_item` fails the
   schema. `kind` is a snake_case string of at most 64 characters, with `work_item` as
   its first value. `id` is 1 to 200 characters on one line, and starts with `wi_` when
   `kind` is `work_item`. `url` and `title` are optional. `title` narrows from 1 to 1024
   characters, line breaks allowed, to 1 to 256 characters on one line. The optional
-  `trigger` is a snake_case string of at most 64 characters, with `take_in` as its first
-  value: the control plane took in the subject. In Go, `contracts.WorkItem` is removed.
+  `trigger` is a snake_case string of at most 64 characters. Its first value is
+  `take_in`: the control plane took in the subject. In Go, `contracts.WorkItem` is removed.
   `contracts.Subject` has `Kind`, `ID`, and the optional `URL` and `Title`.
   `contracts.Documents` has `Subject` and `Trigger` in place of `WorkItem`.
   `explore/v1/inputs.schema.json` keeps its `work_item`, and `inputs.work_item.id` is
