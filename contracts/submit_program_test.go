@@ -320,7 +320,8 @@ func TestAnAddressHasTheRuleOfTheSchema(t *testing.T) {
 // TestAnEmptySystemSkipsOnlyTheHostCheck pins that for a target with no system, as a
 // target with a collection and no address, an address on any host is accepted, and every
 // other rule of an address stays: with a system, the same address on another host is
-// refused.
+// refused. It pins this for the address of a commit and for the address of the draft,
+// the latter through ReadSubmitRun.
 func TestAnEmptySystemSkipsOnlyTheHostCheck(t *testing.T) {
 	for _, c := range []struct {
 		name, addr string
@@ -341,6 +342,14 @@ func TestAnEmptySystemSkipsOnlyTheHostCheck(t *testing.T) {
 		r := contracts.ParseSubmitLines(line, c.system, contracts.DraftOpen, given)
 		if recorded := len(r.CommitURLs) == 1; recorded != c.ok {
 			t.Errorf("%s: %+v, want accepted %v", c.name, r, c.ok)
+		}
+		// The address of the draft goes through the same check, here with a whole
+		// program output and the record that qory makes after exit 0.
+		out := strings.Replace(submitFile(t, "fixtures/output/github-like.txt"),
+			"https://code.example.com/acme/shop/pull/34", c.addr, 1)
+		rec := contracts.ReadSubmitRun(ended(0), out, c.system, contracts.DraftOpen, given)
+		if (rec.Draft != nil) != c.ok || (rec.Failed == nil) != c.ok {
+			t.Errorf("%s: the draft address: draft %v, failed %v, want accepted %v", c.name, rec.Draft != nil, rec.Failed != nil, c.ok)
 		}
 	}
 }

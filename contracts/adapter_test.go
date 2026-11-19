@@ -429,9 +429,8 @@ func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
 
 // TestATargetIsACollectionWithAnOptionalAddress pins definitions.schema.json,
 // $defs.target: a collection ref is required, the address is optional and has a system
-// and a path, and the shape of a target before the collection, a system and a path
-// with no collection, is refused. It also pins that each schema that refers to a target
-// refuses that older shape.
+// and a path, and a target with a system and a path and no collection is refused. It
+// also pins that each schema that refers to a target refuses that shape.
 func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 	const address = `{"system":"code.example.com","path":"acme/shop"}`
 	schema := compile(t, "definitions.schema.json#/$defs/target")
@@ -461,7 +460,8 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
 		}
 	}
-	// Each schema that refers to a target refuses the older shape in place of the target.
+	// Each schema that refers to a target refuses a system and a path with no
+	// collection in place of the target.
 	old := map[string]any{"system": "code.example.com", "path": "acme/shop"}
 	for _, f := range []struct {
 		file   string

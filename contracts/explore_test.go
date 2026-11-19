@@ -252,12 +252,12 @@ func TestExploreLengthFixturesAreOneCharacterPastTheBound(t *testing.T) {
 
 // TestExploreMembersAreRequiredAndClosed pins two rules that inputs.schema.json sets
 // for every object at every level: every member is required, except target, ticket and
-// the address of the target, and a member the schema does not define is refused. It first checks that
-// each object of fixtures/inputs/first-attempt.json has every member that the schema
-// defines at that location. It then removes each member in turn, then adds the member
-// undefined to each object in turn, and checks the refusal of each document. Without
-// ticket, the schema requires comments to be empty and comments_omitted to be 0, so
-// the document without ticket also has those values.
+// the address of the target, and a member the schema does not define is refused. It
+// first checks that each object of fixtures/inputs/first-attempt.json has every member
+// that the schema defines at that location. It then removes each member in turn, then
+// adds the member undefined to each object in turn, and checks the refusal of each
+// document. Without ticket, the schema requires comments to be empty and
+// comments_omitted to be 0, so the document without ticket also has those values.
 func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 	const fixture = "fixtures/inputs/first-attempt.json"
 	schema := compileExplore(t, "inputs.schema.json")
