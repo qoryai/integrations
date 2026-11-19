@@ -399,7 +399,7 @@ type Submit struct {
 	// joined by single hyphens, 1 to 64 bytes. The schema cannot check that
 	// artifact_types has that entry.
 	Type string `json:"type"`
-	// Send is when the control plane writes the submission entry to the change feed. With
+	// Send is when the control plane writes the change_request entry to the change feed. With
 	// "end_of_run", it writes the entry at the end of the run. With "after_gate", it stores
 	// the submission and writes the entry after the gate of the stage passes.
 	Send string `json:"send"`

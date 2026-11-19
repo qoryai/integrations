@@ -13,9 +13,9 @@
 // work such as a tracker, sends the control plane, and their answers: [Adapter] at
 // start-up, [SourceCollections], [SourceItems], [SourceItemComments], [SourcesDisconnect]
 // and [ConnectionsDisconnect], the change feed [Changes] it reads back, the
-// [ChangesFailed] report of a comment or of a submission target it stopped trying to
-// post, the [ChangesSubmitted] reply with which it reports what it put on the forge for a
-// submission entry of the feed, the secrets it stores in the
+// [ChangesFailed] report of a comment or of a change request it stopped trying to
+// post or apply, the [ChangesSubmitted] reply with which it reports what it did at the
+// target for a change_request entry of the feed, the secrets it stores in the
 // control plane, [AdapterSecrets], sealed to the server key, and reads
 // back sealed to its access key, [AdapterSecretsAnswer], the [Grant] it reports for a
 // connection, the [GrantEnd] it reports when the source no longer covers a grant, and
