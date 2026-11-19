@@ -130,10 +130,12 @@
 // signed, in the 201 of the run code's redemption, and Forager passes it on unread. It
 // is a document, not a request. The run contract also contains the next-session call of
 // a run of several sessions: next-session-request.schema.json, whose Go type is
-// [NextSessionRequest], and next-session-answer.schema.json, whose Go type is
-// [NextSessionAnswer]. It also contains a run's end, outcome.schema.json, whose Go
-// type is [RunOutcome]: how the run ended, with the end codes, [EndCode], that qory sets
-// in its reason for a failed run. The schema lists each end code with its cause.
+// [NextSessionRequest], next-session-answer.schema.json, whose Go type is
+// [NextSessionAnswer], and next-session-refusal.schema.json, the control plane's coded
+// refusal of the request, as Forager's gateway passes it on with from apiary.
+// It also contains a run's end, outcome.schema.json, whose Go type is [RunOutcome]: how
+// the run ended, with the end codes, [EndCode], that qory sets in its reason for a failed
+// run. The schema lists each end code with its cause.
 //
 // The run contract also has the submit program contract, run/v1/submit-program/README.md:
 // the plain inputs and result lines of the program that qory runs on a run with no run
