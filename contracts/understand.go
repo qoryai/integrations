@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -28,23 +29,24 @@ const (
 // as [Documents], [NextSessionAnswer] or [Changes].
 //
 // A pointer resolves through the json tags of structs, the index of a list, and any key
-// of a map. A type that decodes itself, such as [Tier], implements definesPointer for the members it defines. Below
-// a json.RawMessage or an interface, any pointer resolves, since the type does not define
-// what is there.
+// of a map, a key that is not empty. A type that decodes itself, such as [Tier], implements
+// definesPointer for the members it defines. Below a json.RawMessage or an interface, any
+// pointer resolves, since the type does not define what is there.
 //
 // A reader that decodes b into v ignores a member that v does not have. It calls
 // CheckMustUnderstand first, and refuses the document when it returns an error. It
 // returns an error too when b is not a JSON object, when must_understand is null or not a
-// list of strings, when an entry is not a pointer or has more than
-// [MustUnderstandPointerLength] characters, when an entry repeats, and when the list has
-// more than [MustUnderstandPointers] entries, the limits of the schemas.
+// list of strings, when an entry is not a pointer, has a line feed, has a ~ that is not
+// ~0 or ~1, or has more than [MustUnderstandPointerLength] characters, when an entry
+// repeats, and when the list has more than [MustUnderstandPointers] entries, the limits
+// of the schemas.
 func CheckMustUnderstand(b []byte, v any) error {
 	p, err := unmetPointer(b, v)
 	if err != nil {
 		return err
 	}
 	if p != "" {
-		return fmt.Errorf("use a reader that defines %q: the document lists it in must_understand, and this reader has no such member", p)
+		return fmt.Errorf("use a reader that defines %s: the document lists it in must_understand, and this reader has no such member", quotePointer(p))
 	}
 	return nil
 }
@@ -77,21 +79,67 @@ func unmetPointer(b []byte, v any) (string, error) {
 			return "", fmt.Errorf("write each pointer in must_understand with at most %d characters, not %d", MustUnderstandPointerLength, utf8.RuneCountInString(p))
 		}
 		if seen[p] {
-			return "", fmt.Errorf("list %q once in must_understand", p)
+			return "", fmt.Errorf("list %s once in must_understand", quotePointer(p))
 		}
 		seen[p] = true
 		if !strings.HasPrefix(p, "/") {
-			return "", fmt.Errorf("write %q in must_understand as a JSON Pointer that starts with /", p)
+			return "", fmt.Errorf("write %s in must_understand as a JSON Pointer that starts with /", quotePointer(p))
+		}
+		if strings.Contains(p, "\n") {
+			return "", fmt.Errorf("write %s in must_understand without a line break", quotePointer(p))
 		}
 		segments := strings.Split(p[1:], "/")
 		for i, s := range segments {
-			segments[i] = strings.ReplaceAll(strings.ReplaceAll(s, "~1", "/"), "~0", "~")
+			if !validEscapes(s) {
+				return "", fmt.Errorf("write %s in must_understand with ~ only as ~0 or ~1", quotePointer(p))
+			}
+			segments[i] = unescape(s)
 		}
 		if !resolves(reflect.TypeOf(v), segments) {
 			return p, nil
 		}
 	}
 	return "", nil
+}
+
+// quotedPointerLimit is the most bytes that [quotePointer] writes between the quotes.
+const quotedPointerLimit = 300
+
+// quotePointer writes the pointer p in double quotes, as %q does, so the text has no
+// control character and no line break. It cuts a pointer whose quoted form has more than
+// 300 bytes, such as 256 control characters, and ends the cut text with "...", so a message
+// that has it stays within the 1000 characters of the detail of [ChangesFailed].
+func quotePointer(p string) string {
+	q := strconv.Quote(p)
+	if len(q)-2 <= quotedPointerLimit {
+		return q
+	}
+	var sb strings.Builder
+	for _, r := range p {
+		piece := strconv.Quote(string(r))
+		piece = piece[1 : len(piece)-1]
+		if sb.Len()+len(piece) > quotedPointerLimit-3 {
+			break
+		}
+		sb.WriteString(piece)
+	}
+	return `"` + sb.String() + `..."`
+}
+
+// unescape returns the member name that the pointer segment s writes: ~1 is /, and ~0 is
+// ~, in that order, so ~01 is the two characters ~1.
+func unescape(s string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(s, "~1", "/"), "~0", "~")
+}
+
+// validEscapes reports whether each ~ in the pointer segment s is ~0 or ~1.
+func validEscapes(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '~' && (i+1 == len(s) || (s[i+1] != '0' && s[i+1] != '1')) {
+			return false
+		}
+	}
+	return true
 }
 
 // resolves reports whether the pointer with the segments, unescaped, leads to a member
@@ -125,7 +173,7 @@ func resolvesBelow(t reflect.Type, segments []string) bool {
 			}
 		}
 	case reflect.Map:
-		return resolves(t.Elem(), segments[1:])
+		return seg != "" && resolves(t.Elem(), segments[1:])
 	case reflect.Slice, reflect.Array:
 		if isIndex(seg) {
 			return resolves(t.Elem(), segments[1:])

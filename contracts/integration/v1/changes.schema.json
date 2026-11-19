@@ -34,7 +34,8 @@
       "items": {
         "type": "string",
         "maxLength": 256,
-        "pattern": "^(?:/changes|/changes(?:/[\\s\\S]*)?|/cursor|/revision|/version)$"
+        "not": {"pattern": "\\n"},
+        "pattern": "^(?:/changes|/changes(?:/(?:[^/~]|~[01])*)*|/cursor|/revision|/version)$"
       }
     }
   },
@@ -70,6 +71,7 @@
         "items": {
           "type": "string",
           "maxLength": 256,
+          "not": {"pattern": "\\n"},
           "pattern": "^(?:/kind|/ref|/status|/url|/work_item_id)$"
         }
       },
@@ -93,6 +95,7 @@
         "items": {
           "type": "string",
           "maxLength": 256,
+          "not": {"pattern": "\\n"},
           "pattern": "^(?:/author_name|/body|/comment_id|/kind|/ref)$"
         }
       },
@@ -116,6 +119,7 @@
         "items": {
           "type": "string",
           "maxLength": 256,
+          "not": {"pattern": "\\n"},
           "pattern": "^(?:/collection_ref|/kind|/status)$"
         }
       },
@@ -137,6 +141,7 @@
         "items": {
           "type": "string",
           "maxLength": 256,
+          "not": {"pattern": "\\n"},
           "pattern": "^(?:/connection_id|/grant_ref|/kind|/status)$"
         }
       },
@@ -159,6 +164,7 @@
         "items": {
           "type": "string",
           "maxLength": 256,
+          "not": {"pattern": "\\n"},
           "pattern": "^(?:/interval|/kind)$"
         }
       },
@@ -179,6 +185,7 @@
         "items": {
           "type": "string",
           "maxLength": 256,
+          "not": {"pattern": "\\n"},
           "pattern": "^(?:/kind|/url|/work_item_id)$"
         }
       },
@@ -200,7 +207,8 @@
         "items": {
           "type": "string",
           "maxLength": 256,
-          "pattern": "^(?:/change_kind|/change_request_id|/data|/data(?:/[\\s\\S]*)?|/kind|/previous|/previous/address|/previous/address/ref|/previous/address/url|/previous/title|/ref|/target|/target/address|/target/address/path|/target/address/system|/target/collection|/text|/title)$"
+          "not": {"pattern": "\\n"},
+          "pattern": "^(?:/change_kind|/change_request_id|/data|/data(?:/(?:[^/~]|~[01])*)*|/kind|/previous|/previous/address|/previous/address/ref|/previous/address/url|/previous/title|/ref|/target|/target/address|/target/address/path|/target/address/system|/target/collection|/text|/title)$"
         }
       },
         "kind": {"const": "change_request"},

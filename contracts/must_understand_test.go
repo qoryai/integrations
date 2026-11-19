@@ -1,6 +1,7 @@
 package contracts_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -9,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/qoryai/integrations/contracts"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -30,7 +32,10 @@ type understood struct {
 	only     *regexp.Regexp // when set, the places that the schema leaves open; the others are closed in both
 	valid    string
 	known    string
-	invalid  func(m map[string]any) // sets a known member to a bad value
+	// openPlace is a pointer below which the schema defines no members, so must_understand
+	// accepts any pointer there, or "".
+	openPlace string
+	invalid   func(m map[string]any) // sets a known member to a bad value
 }
 
 // understoodSchemas lists them.
@@ -43,15 +48,16 @@ func understoodSchemas() []understood {
 	}
 	return []understood{
 		{
-			name:     "documents.schema.json",
-			open:     func() (*jsonschema.Schema, error) { return contracts.CompileRun("documents.schema.json") },
-			closed:   func() (*jsonschema.Schema, error) { return contracts.CompileRunClosed("documents.schema.json") },
-			read:     contracts.RunDocument,
-			list:     runList("fixtures/documents"),
-			freePlac: regexp.MustCompile(`^/(inputs|harness/harness/extensions|harness/harness/workflows|harness/harness/bind/(agents|commands|skills))$|^/inputs/|^/harness/harness/extensions/`),
-			valid:    "fixtures/documents/explore.json",
-			known:    "/domain",
-			invalid:  func(m map[string]any) { m["time_limit_minutes"] = json.Number("0") },
+			name:      "documents.schema.json",
+			open:      func() (*jsonschema.Schema, error) { return contracts.CompileRun("documents.schema.json") },
+			closed:    func() (*jsonschema.Schema, error) { return contracts.CompileRunClosed("documents.schema.json") },
+			read:      contracts.RunDocument,
+			list:      runList("fixtures/documents"),
+			freePlac:  regexp.MustCompile(`^/(inputs|harness/harness/extensions|harness/harness/workflows|harness/harness/bind/(agents|commands|skills))$|^/inputs/|^/harness/harness/extensions/`),
+			valid:     "fixtures/documents/explore.json",
+			known:     "/domain",
+			openPlace: "/inputs",
+			invalid:   func(m map[string]any) { m["time_limit_minutes"] = json.Number("0") },
 		},
 		{
 			name: "next-session-answer.schema.json",
@@ -59,23 +65,25 @@ func understoodSchemas() []understood {
 			closed: func() (*jsonschema.Schema, error) {
 				return contracts.CompileRunClosed("next-session-answer.schema.json")
 			},
-			read:     contracts.RunDocument,
-			list:     runList("fixtures/next-session-answer"),
-			freePlac: regexp.MustCompile(`^/inputs$|^/inputs/`),
-			valid:    "fixtures/next-session-answer/session.json",
-			known:    "/next",
-			invalid:  func(m map[string]any) { m["time_limit_minutes"] = json.Number("0") },
+			read:      contracts.RunDocument,
+			list:      runList("fixtures/next-session-answer"),
+			freePlac:  regexp.MustCompile(`^/inputs$|^/inputs/`),
+			valid:     "fixtures/next-session-answer/session.json",
+			known:     "/next",
+			openPlace: "/inputs",
+			invalid:   func(m map[string]any) { m["time_limit_minutes"] = json.Number("0") },
 		},
 		{
-			name:     "description.schema.json",
-			open:     func() (*jsonschema.Schema, error) { return contracts.Compile("description.schema.json") },
-			closed:   func() (*jsonschema.Schema, error) { return contracts.CompileClosed("description.schema.json") },
-			read:     contracts.Document,
-			list:     intList("fixtures"),
-			freePlac: regexp.MustCompile(`^/settings$|^/settings/|^/roles$|^/roles/[^/]+$|^/roles/model_provider/apis/\d+/auth$`),
-			valid:    "fixtures/example-tracker.json",
-			known:    "/name",
-			invalid:  func(m map[string]any) { m["name"] = "Upper Case" },
+			name:      "description.schema.json",
+			open:      func() (*jsonschema.Schema, error) { return contracts.Compile("description.schema.json") },
+			closed:    func() (*jsonschema.Schema, error) { return contracts.CompileClosed("description.schema.json") },
+			read:      contracts.Document,
+			list:      intList("fixtures"),
+			freePlac:  regexp.MustCompile(`^/settings$|^/settings/|^/roles$|^/roles/[^/]+$|^/roles/model_provider/apis/\d+/auth$`),
+			valid:     "fixtures/example-tracker.json",
+			known:     "/name",
+			openPlace: "/settings",
+			invalid:   func(m map[string]any) { m["name"] = "Upper Case" },
 		},
 		{
 			name:     "adapter.schema.json",
@@ -347,6 +355,26 @@ func TestAReaderIgnoresAMemberItDoesNotDefine(t *testing.T) {
 		if got, want := runRefusal(open.Validate(doc)), "/must_understand/0 "; !strings.Contains(got, want) {
 			t.Errorf("%s: a pointer of 257 characters is refused for %q, want %q", u.name, got, want)
 		}
+		doc["must_understand"] = []any{u.known + "\n"}
+		if got, want := runRefusal(open.Validate(doc)), "/must_understand/0 "; !strings.Contains(got, want) {
+			t.Errorf("%s: a pointer with a line feed is refused for %q, want %q", u.name, got, want)
+		}
+		if u.openPlace != "" {
+			// An open place matches the pattern with a line feed in it, so only the not
+			// of the list refuses the pointer.
+			doc["must_understand"] = []any{u.openPlace + "/a\nb"}
+			if got, want := runRefusal(open.Validate(doc)), "/must_understand/0 "; !strings.Contains(got, want) || strings.Contains(got, want+"pattern") {
+				t.Errorf("%s: a pointer below %s with a line feed is refused for %q, want %q alone", u.name, u.openPlace, got, want)
+			}
+			doc["must_understand"] = []any{u.openPlace + "//a~01b/x"}
+			if err := open.Validate(doc); err != nil {
+				t.Errorf("%s: a pointer below %s is refused: %v", u.name, u.openPlace, err)
+			}
+			doc["must_understand"] = []any{u.openPlace + "/a~2b"}
+			if got, want := runRefusal(open.Validate(doc)), "/must_understand/0 pattern"; !strings.Contains(got, want) {
+				t.Errorf("%s: a pointer below %s with ~2 is refused for %q, want %q", u.name, u.openPlace, got, want)
+			}
+		}
 		delete(doc, "must_understand")
 		u.invalid(doc)
 		if err := open.Validate(doc); err == nil {
@@ -505,6 +533,13 @@ func TestCheckMustUnderstand(t *testing.T) {
 		{`{"must_understand": [` + strings.TrimSuffix(strings.Repeat(`"/step",`, 33), ",") + `]}`, contracts.Documents{}, "at most 32 pointers"},
 		{`{"must_understand": ["/` + strings.Repeat("a", 256) + `"]}`, contracts.Documents{}, "at most 256 characters"},
 		{`{"must_understand": []}`, contracts.Documents{}, ""},
+		{`{"must_understand": ["/harness/harness/workflows//access"]}`, contracts.Documents{}, "use a reader that defines"},
+		{`{"must_understand": ["/harness/harness/workflows/a~2b/access"]}`, contracts.Documents{}, "with ~ only as ~0 or ~1"},
+		{`{"must_understand": ["/inputs/a~2b"]}`, contracts.Documents{}, "with ~ only as ~0 or ~1"},
+		{`{"must_understand": ["/inputs/a~"]}`, contracts.Documents{}, "with ~ only as ~0 or ~1"},
+		{`{"must_understand": ["/inputs/a~01b", "/inputs//x"]}`, contracts.Documents{}, ""},
+		{`{"must_understand": ["/domain\n"]}`, contracts.Documents{}, "without a line break"},
+		{`{"must_understand": ["/inputs/a\nb"]}`, contracts.Documents{}, "without a line break"},
 		{`[]`, contracts.Documents{}, "JSON object"},
 	} {
 		err := contracts.CheckMustUnderstand([]byte(c.doc), c.v)
@@ -771,6 +806,123 @@ func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
 		var v contracts.Changes
 		if err := json.Unmarshal(b, &v); err != nil {
 			t.Errorf("%s: %v", f, err)
+		}
+	}
+}
+
+// TestEveryMustUnderstandListRefusesALineFeed pins, for each must_understand list of each
+// schema of the contracts, that an item has at most 256 characters, matches a pattern that
+// starts with ^ and ends with $, and has a not that refuses a line feed. A regular
+// expression engine that lets $ match before a final line feed, such as PCRE, would
+// accept "/domain" followed by a line feed without the not.
+func TestEveryMustUnderstandListRefusesALineFeed(t *testing.T) {
+	trees := map[string]fs.FS{"integration": contracts.FS, "run": contracts.RunFS, "provisioner": contracts.ProvisionerFS,
+		"machines": contracts.MachinesFS, "explore": contracts.ExploreFS, "diagnostics": contracts.DiagnosticsFS}
+	checked := 0
+	for name, fsys := range trees {
+		entries, err := fs.ReadDir(fsys, ".")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".schema.json") {
+				continue
+			}
+			doc, err := document(fsys, e.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var walk func(n any)
+			walk = func(n any) {
+				switch v := n.(type) {
+				case map[string]any:
+					for k, x := range v {
+						list, ok := x.(map[string]any)
+						if k != "must_understand" || !ok {
+							walk(x)
+							continue
+						}
+						if _, ok := list["$ref"]; ok {
+							continue
+						}
+						checked++
+						item, _ := list["items"].(map[string]any)
+						pattern, _ := item["pattern"].(string)
+						not, _ := item["not"].(map[string]any)
+						if item["maxLength"] != json.Number("256") || !strings.HasPrefix(pattern, "^") || !strings.HasSuffix(pattern, "$") || not["pattern"] != `\n` {
+							t.Errorf("%s/%s: an item of must_understand is %v, want maxLength 256, a pattern from ^ to $ and not pattern \\n", name, e.Name(), item)
+						}
+					}
+				case []any:
+					for _, x := range v {
+						walk(x)
+					}
+				}
+			}
+			walk(doc)
+		}
+	}
+	if checked < 10 {
+		t.Errorf("the test found %d must_understand lists, want at least 10", checked)
+	}
+}
+
+func document(fsys fs.FS, name string) (any, error) {
+	b, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, err
+	}
+	return jsonschema.UnmarshalJSON(bytes.NewReader(b))
+}
+
+// TestTheDetailOfAnUnmetPointerStaysWithinItsLimit pins that CheckChangeMustUnderstand
+// returns, for a pointer of 256 characters that need escapes, an error of at most 1000
+// characters that starts with the fix and that changes-failed.schema.json accepts as the
+// detail of a failure report.
+func TestTheDetailOfAnUnmetPointerStaysWithinItsLimit(t *testing.T) {
+	schema := compile(t, "changes-failed.schema.json")
+	base, err := contracts.Document("fixtures/adapter/changes-failed/change-request-must-understand.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := func(p string) []byte {
+		b, err := json.Marshal(map[string]any{"kind": "change_request", "change_request_id": "av_0123456789abcdef",
+			"change_kind": "pull-request", "target": map[string]any{"collection": "R_1001"}, "title": "t", "text": "x",
+			"must_understand": []string{p}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	long := func(prefix, unit string, n int) string { return prefix + strings.Repeat(unit, n) }
+	for _, c := range []struct{ name, pointer, start string }{
+		{"control characters", long("/", "\x01", 255), "Use an adapter that defines "},
+		{"zero-width spaces", long("/", "​", 255), "Use an adapter that defines "},
+		{"tag characters", long("/", "\U000e0001", 255), "Use an adapter that defines "},
+		{"a long ordinary pointer", long("/", "a", 255), "Use an adapter that defines "},
+		{"no leading slash", long("", "\x01", 256), "write "},
+		{"a line feed", long("/", "\n", 255), "write "},
+		{"a bad escape", long("/", "~2", 127), "write "},
+	} {
+		err := contracts.CheckChangeMustUnderstand(entry(c.pointer))
+		if err == nil {
+			t.Errorf("%s: CheckChangeMustUnderstand returns no error", c.name)
+			continue
+		}
+		if !strings.HasPrefix(err.Error(), c.start) {
+			t.Errorf("%s: the text starts with %.40q, want %q", c.name, err.Error(), c.start)
+		}
+		if n := utf8.RuneCountInString(err.Error()); n > 1000 {
+			t.Errorf("%s: the text has %d characters, want at most 1000", c.name, n)
+		}
+		report := map[string]any{}
+		for k, v := range base.(map[string]any) {
+			report[k] = v
+		}
+		report["detail"] = err.Error()
+		b, _ := json.Marshal(report)
+		if err := validate(schema, b); err != nil {
+			t.Errorf("%s: changes-failed.schema.json refuses the report: %v", c.name, err)
 		}
 	}
 }

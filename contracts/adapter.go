@@ -521,7 +521,8 @@ var entryTypes = map[string]reflect.Type{
 // adapter that gets an error skips the entry and acknowledges it, that is, moves its
 // cursor past it. For a change_request entry, it reports the entry failed, with Reason
 // "refused" and the text of the error as Detail. That text is a sentence that starts
-// with what to do. It has no control character, since %q escapes it.
+// with what to do. It has no control character and at most 1000 characters, since the text
+// writes the pointer escaped and cut.
 func CheckChangeMustUnderstand(entry []byte) error {
 	var head struct {
 		Kind string `json:"kind"`
@@ -538,7 +539,7 @@ func CheckChangeMustUnderstand(entry []byte) error {
 		return err
 	}
 	if p != "" {
-		return fmt.Errorf("Use an adapter that defines %q. The entry lists it in must_understand, and this adapter does not define it.", p)
+		return fmt.Errorf("Use an adapter that defines %s. The entry lists it in must_understand, and this adapter does not define it.", quotePointer(p))
 	}
 	return nil
 }

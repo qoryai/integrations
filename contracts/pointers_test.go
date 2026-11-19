@@ -167,7 +167,7 @@ func pointerPattern(templates []string) string {
 			}
 		}
 		if open {
-			sb.WriteString(`(?:/[\s\S]*)?`)
+			sb.WriteString(`(?:/(?:[^/~]|~[01])*)*`)
 		}
 		alts = append(alts, sb.String())
 	}

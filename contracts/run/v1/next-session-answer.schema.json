@@ -93,7 +93,8 @@
       "items": {
         "type": "string",
         "maxLength": 256,
-        "pattern": "^(?:/full_suite|/inputs|/inputs(?:/[\\s\\S]*)?|/model_choice|/model_choice/effort|/model_choice/model|/model_choice/provider_models|/model_choice/provider_models/(?:0|[1-9][0-9]*)|/model_choice/provider_models/(?:0|[1-9][0-9]*)/effort|/model_choice/provider_models/(?:0|[1-9][0-9]*)/effort/(?:0|[1-9][0-9]*)|/model_choice/provider_models/(?:0|[1-9][0-9]*)/id|/model_choice/runtime|/model_choice/tiers|/model_choice/tiers/balanced|/model_choice/tiers/balanced/effort|/model_choice/tiers/balanced/model|/model_choice/tiers/light|/model_choice/tiers/light/effort|/model_choice/tiers/light/model|/model_choice/tiers/thinking|/model_choice/tiers/thinking/effort|/model_choice/tiers/thinking/model|/model_provider_credential_name|/next|/session|/time_limit_minutes|/workflow)$"
+        "not": {"pattern": "\\n"},
+        "pattern": "^(?:/full_suite|/inputs|/inputs(?:/(?:[^/~]|~[01])*)*|/model_choice|/model_choice/effort|/model_choice/model|/model_choice/provider_models|/model_choice/provider_models/(?:0|[1-9][0-9]*)|/model_choice/provider_models/(?:0|[1-9][0-9]*)/effort|/model_choice/provider_models/(?:0|[1-9][0-9]*)/effort/(?:0|[1-9][0-9]*)|/model_choice/provider_models/(?:0|[1-9][0-9]*)/id|/model_choice/runtime|/model_choice/tiers|/model_choice/tiers/balanced|/model_choice/tiers/balanced/effort|/model_choice/tiers/balanced/model|/model_choice/tiers/light|/model_choice/tiers/light/effort|/model_choice/tiers/light/model|/model_choice/tiers/thinking|/model_choice/tiers/thinking/effort|/model_choice/tiers/thinking/model|/model_provider_credential_name|/next|/session|/time_limit_minutes|/workflow)$"
       }
     }
   }
