@@ -520,7 +520,8 @@ var entryTypes = map[string]reflect.Type{
 // every pointer passes: the adapter checks that pointer against the artifact type. The
 // adapter that gets an error skips the entry and acknowledges it, that is, moves its
 // cursor past it. For a change_request entry, it reports the entry failed, with Reason
-// "refused" and the text of the error as Detail, which starts with what to do.
+// "refused" and the text of the error as Detail. That text is a sentence that starts
+// with what to do. It has no control character, since %q escapes it.
 func CheckChangeMustUnderstand(entry []byte) error {
 	var head struct {
 		Kind string `json:"kind"`
@@ -537,7 +538,7 @@ func CheckChangeMustUnderstand(entry []byte) error {
 		return err
 	}
 	if p != "" {
-		return fmt.Errorf("use an adapter that defines %q: the entry lists it in must_understand, and this adapter does not define it", p)
+		return fmt.Errorf("Use an adapter that defines %q. The entry lists it in must_understand, and this adapter does not define it.", p)
 	}
 	return nil
 }
@@ -578,7 +579,8 @@ func (c Change) MarshalJSON() ([]byte, error) {
 // change request, it stores Reason, and Detail when it is set, with the change request
 // version. Detail is for a change request only: one line of 1 to 1000 characters, what
 // to do first, then the target's status and message. An adapter reports an entry whose
-// change kind it did not list with Reason "refused" and a Detail.
+// change kind it did not list, or whose must_understand lists a pointer that it does not
+// define ([CheckChangeMustUnderstand]), with Reason "refused" and a Detail.
 type ChangesFailed struct {
 	Version         int     `json:"version"`
 	Time            string  `json:"time"`

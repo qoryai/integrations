@@ -618,18 +618,18 @@ func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 		checkErr    string
 	}{
 		{"a listed member of the kind", `{"kind": "sync", "interval": 600, "must_understand": ["/interval"]}`, true, ""},
-		{"a listed member of another kind", `{"kind": "sync", "interval": 600, "must_understand": ["/url"]}`, false, `use an adapter that defines "/url"`},
+		{"a listed member of another kind", `{"kind": "sync", "interval": 600, "must_understand": ["/url"]}`, false, `Use an adapter that defines "/url"`},
 		{"a member that the kind does not define, not listed", `{"kind": "sync", "interval": 600, "later": 1}`, true, ""},
 		{"an empty list", `{"kind": "sync", "interval": 600, "must_understand": []}`, true, ""},
 		{"a list that is null", `{"kind": "sync", "interval": 600, "must_understand": null}`, false, "not null"},
 		{"a member listed twice", `{"kind": "sync", "interval": 600, "must_understand": ["/kind", "/kind"]}`, false, `list "/kind" once`},
 		{"a name, not a pointer", `{"kind": "sync", "interval": 600, "must_understand": ["interval"]}`, false, "starts with /"},
-		{"must_understand itself", `{"kind": "sync", "interval": 600, "must_understand": ["/must_understand"]}`, false, `use an adapter that defines "/must_understand"`},
+		{"must_understand itself", `{"kind": "sync", "interval": 600, "must_understand": ["/must_understand"]}`, false, `Use an adapter that defines "/must_understand"`},
 		{"a nested member of a change request", changeRequest(`["/target/address/path", "/previous/title"]`), true, ""},
 		{"a member of data", changeRequest(`["/data/a"]`), true, ""},
 		{"a member of data that the entry lacks", changeRequest(`["/data/later/deep"]`), true, ""},
-		{"a member of the target that it does not define", changeRequest(`["/target/later"]`), false, `use an adapter that defines "/target/later"`},
-		{"a member of a work item in data", `{"kind": "work_item", "work_item_id": "wi_1", "ref": "r", "status": "taken_in", "url": "https://x.example", "must_understand": ["/data/a"]}`, false, `use an adapter that defines "/data/a"`},
+		{"a member of the target that it does not define", changeRequest(`["/target/later"]`), false, `Use an adapter that defines "/target/later"`},
+		{"a member of a work item in data", `{"kind": "work_item", "work_item_id": "wi_1", "ref": "r", "status": "taken_in", "url": "https://x.example", "must_understand": ["/data/a"]}`, false, `Use an adapter that defines "/data/a"`},
 	} {
 		if err := validate(schema, feed(c.entry)); (err == nil) != c.schemaOK {
 			t.Errorf("%s: the schema accepts it: %v, want %v: %v", c.name, err == nil, c.schemaOK, err)
@@ -644,6 +644,20 @@ func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 	}
 	if err := contracts.CheckChangeMustUnderstand([]byte(`{"kind": "settings", "must_understand": ["/later"]}`)); err == nil || !strings.HasPrefix(err.Error(), "skip the entry and acknowledge it") {
 		t.Errorf("an entry of an unknown kind: %v, want an error that starts with skip the entry and acknowledge it", err)
+	}
+	// The failure report of an entry that the adapter cannot meet has the text of the error as
+	// its detail, and the schema accepts it.
+	entry := changeRequest(`["/target/later"]`)
+	err := contracts.CheckChangeMustUnderstand([]byte(entry))
+	report, rerr := contracts.Document("fixtures/adapter/changes-failed/change-request-must-understand.json")
+	if rerr != nil || err == nil {
+		t.Fatalf("the fixture: %v, the check: %v", rerr, err)
+	}
+	if got := report.(map[string]any)["detail"]; got != err.Error() {
+		t.Errorf("the detail of the fixture is %q, and CheckChangeMustUnderstand returns %q", got, err)
+	}
+	if got := report.(map[string]any)["reason"]; got != "refused" {
+		t.Errorf("the reason of the fixture is %v, want refused", got)
 	}
 	root := func(mu string) []byte {
 		return []byte(`{"version": 1, "revision": 1, "cursor": "c_2", "changes": [], "must_understand": ` + mu + `}`)

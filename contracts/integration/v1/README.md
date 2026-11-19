@@ -237,8 +237,9 @@ pointer of an entry is counted from the entry, such as `/target/collection`.
   does not define.
 - A `change_request` entry is the exception. The adapter sends
   `POST /v1/work-items/changes/failed` with reason `refused`. The `detail` starts with the
-  fix: "Use an adapter that defines /data/draft. The entry lists it in must_understand, and
-  this adapter does not define it." The adapter then stops working on the entry.
+  fix: `Use an adapter that defines "/target/later". The entry lists it in must_understand,
+  and this adapter does not define it.` The adapter then stops working on the entry.
+  `contracts.CheckChangeMustUnderstand` returns that text.
 - The artifact type of the `change_kind` defines `data`, so this contract does not. The
   schema accepts any pointer below `data`. The adapter checks it against the artifact
   type, and reports the entry failed as above when the artifact type does not define it.
