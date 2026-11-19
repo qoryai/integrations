@@ -31,6 +31,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   and the `run.target` of `diagnostics.schema.json`. The `submission` entry and its
   replies keep `system` and `path`. `$defs/system` is the host name that
   `$defs/target/properties/system` was.
+- Write the `run.target` of a diagnostics document by the new rules. `address.system` is a
+  lower-case host name, `^[a-z0-9.-]{1,253}$`. The schema refuses an upper-case host, a
+  port and a non-ASCII host. `address.path` has 1 to 200 characters and no control character,
+  U+0000 to U+001F or U+007F. The schema refuses a path of 201 to 256 characters, which
+  the earlier limit of 256 allowed.
 - `contracts.Compile` asserts the `format` keyword, so `conformance.Description`,
   `integration-conformance` and a check against an integration contract schema refuse
   values they accepted before: a malformed URI or date in an integration document, such
@@ -778,7 +783,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `address`. `ParseSubmitLines` and `ReadSubmitRun` check that an address is on the
   repository's system only where `system` is not empty. The other rules of an address
   stay. `run.target` of `diagnostics.schema.json` has the same two members, and still
-  accepts a member it does not define.
+  accepts a member it does not define. Its `address.system` and `address.path` have the
+  rules of `$defs/target`. `$defs/address_path` is the path of an address: 1 to 200
+  characters and no control character.
 - The `pattern` of `$defs/url` in `definitions.schema.json` now refuses URLs that the
   description excludes and that only the `format` keyword refused. A host takes only the
   percent-encodings `%25` and `%80` to `%FF`, so `https://a%41.example/` fails the

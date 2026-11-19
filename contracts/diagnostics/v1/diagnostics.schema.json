@@ -165,11 +165,8 @@
                   "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/system"
                 },
                 "path": {
-                  "description": "The place on that system, 1 to 200 characters.",
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 200,
-                  "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/text"
+                  "description": "The place on that system.",
+                  "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/address_path"
                 }
               }
             }
