@@ -75,6 +75,12 @@ var closedAdapterFixtures = map[string]closedFixture{
 	"changes-change-request-previous-unknown-member.json": {"changes", "/changes/0/previous additionalProperties"},
 	"changes-change-request-with-url.json":                {"changes", "/changes/0 additionalProperties"},
 	"changes-watch-with-ref.json":                         {"changes", "/changes/0 additionalProperties"},
+	"changes-submitted-undefined-member.json":             {"changes-submitted", "/ additionalProperties"},
+	"changes-failed-undefined-member.json":                {"changes-failed", "/ additionalProperties"},
+	"adapter-undefined-member.json":                       {"adapter", "/ additionalProperties"},
+	"adapter-sync-undefined-member.json":                  {"adapter", "/sync additionalProperties"},
+	"source-items-listing-undefined-member.json":          {"source-items", "/listing additionalProperties"},
+	"source-items-filed-by-undefined-member.json":         {"source-items", "/items/0/filed_by additionalProperties"},
 }
 
 // checkClosedFixtures pins that the files under dir are exactly the keys of want, that each

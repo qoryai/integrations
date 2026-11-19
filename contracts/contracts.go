@@ -33,32 +33,37 @@
 // X-Qory-Contract-Version is the revision of the contract the adapter implements,
 // [Revision] here, and the control plane refuses one that is missing, sent twice, not a
 // decimal integer, or a revision it does not serve, 400 unsupported_contract_version.
-// The control plane's answer contains only the members, and the change feed only the
-// entry kinds, that the named revision defines: an entry of a kind newer than that
-// revision is skipped for that adapter, not sent, and the feed's cursor still moves
-// past it, so a replay from the start stays in step. The header alone never selects
-// what an adapter accepts: every answer whose content the revision bounds contains that
-// revision in its signed body, as [Changes] does in Revision, and the adapter refuses
-// one that contains another revision than the one it implements and sent, applies no
-// entry of it, and neither sends nor stores the answer's cursor. An answer's signature
-// covers its body and is bound to the request's signature, so the revision the answer
-// was built for is signed.
+// The control plane's answer contains only the members that the named revision defines.
+// The change feed contains only the entry kinds that the named revision defines. An entry
+// of a kind that a higher revision defines is skipped for that adapter and not sent. The
+// feed's cursor still moves past it, so a replay from the start stays in step.
 //
-// So an addition to this contract never breaks an adapter already deployed: each member
-// and entry kind belongs to the revision of the feed that defines it, and an adapter
-// ignores a member of the answer or of an entry that its revision does not define, unless
-// must_understand lists it, as changes.schema.json describes. An adapter skips and
-// acknowledges a change entry whose kind its revision does not define, and a change entry
-// whose must_understand lists a pointer that it does not define: it reads the kind and
-// must_understand alone, applies nothing else in the entry, and moves its cursor past it.
-// The exception is a change_request entry, which the adapter reports failed with reason
-// refused (changes-failed.schema.json). The replies that an adapter sends,
-// changes-submitted.schema.json and changes-failed.schema.json, stay closed at their
-// root, since the control plane serves only revisions that it implements. The description
-// and the run documents, which a writer sends to a reader that defines fewer members,
-// follow the same rule of must_understand, in description.schema.json and in run/v1. The
-// Forager contract makes additions safe in the same way, with lenient answers whose
-// unknown members are ignored.
+// The header alone does not select what an adapter accepts. Every answer whose content
+// the revision bounds contains that revision in its signed body, as [Changes] does in
+// Revision. The adapter refuses an answer that contains another revision than the one it
+// implements and sent. It applies no entry of that answer, and neither sends nor stores
+// its cursor. An answer's signature covers its body and is bound to the request's
+// signature, so the revision that the answer was built for is signed.
+//
+// Each member and each entry kind belongs to the revision of the feed that defines it. An
+// adapter ignores a member of the answer or of an entry that its revision does not
+// define, unless the must_understand of the entry lists it, as changes.schema.json
+// describes. An adapter skips and acknowledges a change entry whose kind its revision
+// does not define. It does the same for an entry whose must_understand lists a pointer
+// that it does not define. It reads the kind and must_understand alone, applies nothing
+// else in the entry, and moves its cursor past it. The exception is a change_request
+// entry, which the adapter reports failed with reason refused (changes-failed.schema.json).
+//
+// The control plane reads the bodies of adapter.schema.json, changes-submitted.schema.json
+// and changes-failed.schema.json by the same rule. It ignores an undefined member of the
+// body, unless the must_understand of the body lists it, and refuses a body whose
+// must_understand lists a pointer that it does not define. An adapter sends only the
+// members of the revision that the control plane implements.
+//
+// The description and the run documents, which a writer sends to a reader that defines
+// fewer members, follow the same rule of must_understand, in description.schema.json and
+// in run/v1. The Forager contract makes additions safe in the same way, with lenient
+// answers whose unknown members are ignored.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;

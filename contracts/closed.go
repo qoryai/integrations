@@ -9,7 +9,8 @@ import (
 
 // CompileClosed compiles the closed copy of a schema of the integration contract that has
 // one: description.schema.json, adapter.schema.json, changes.schema.json,
-// changes-submitted.schema.json or changes-failed.schema.json. A reader of these ignores a
+// changes-submitted.schema.json, changes-failed.schema.json or source-items.schema.json,
+// whose closed copy closes the listing and the person that the definitions share. A reader of these ignores a
 // member that its schema does not define. The closed copy refuses such a member, in the
 // schema and in each schema of the integration and run contracts that it refers to, so a
 // writer's tests validate against the closed copy, and a misspelled member fails a test.
@@ -106,6 +107,7 @@ var closable = map[string]bool{
 	Base + "/changes.schema.json":                true,
 	Base + "/changes-submitted.schema.json":      true,
 	Base + "/changes-failed.schema.json":         true,
+	Base + "/source-items.schema.json":           true,
 	RunBase + "/documents.schema.json":           true,
 	RunBase + "/next-session-answer.schema.json": true,
 }

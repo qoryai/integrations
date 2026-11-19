@@ -86,13 +86,38 @@ func understoodSchemas() []understood {
 			invalid:   func(m map[string]any) { m["name"] = "Upper Case" },
 		},
 		{
-			name:     "adapter.schema.json",
-			open:     func() (*jsonschema.Schema, error) { return contracts.Compile("adapter.schema.json") },
-			closed:   func() (*jsonschema.Schema, error) { return contracts.CompileClosed("adapter.schema.json") },
-			read:     contracts.Document,
-			list:     intList("fixtures/adapter/adapter"),
-			only:     regexp.MustCompile(`^/description`),
-			freePlac: regexp.MustCompile(`^/description/settings$|^/description/settings/|^/description/roles$|^/description/roles/[^/]+$|^/description/roles/model_provider/apis/\d+/auth$|^/settings$|^/settings/`),
+			name:      "adapter.schema.json",
+			open:      func() (*jsonschema.Schema, error) { return contracts.Compile("adapter.schema.json") },
+			closed:    func() (*jsonschema.Schema, error) { return contracts.CompileClosed("adapter.schema.json") },
+			read:      contracts.Document,
+			list:      intList("fixtures/adapter/adapter"),
+			freePlac:  regexp.MustCompile(`^/description/settings$|^/description/settings/|^/description/roles$|^/description/roles/[^/]+$|^/description/roles/model_provider/apis/\d+/auth$|^/settings$|^/settings/`),
+			valid:     "fixtures/adapter/adapter/acme-tracker.json",
+			known:     "/connect_url",
+			invalid:   func(m map[string]any) { m["version"] = json.Number("2") },
+			openPlace: "/description",
+		},
+		{
+			name:      "changes-submitted.schema.json",
+			open:      func() (*jsonschema.Schema, error) { return contracts.Compile("changes-submitted.schema.json") },
+			closed:    func() (*jsonschema.Schema, error) { return contracts.CompileClosed("changes-submitted.schema.json") },
+			read:      contracts.Document,
+			list:      intList("fixtures/adapter/changes-submitted"),
+			freePlac:  regexp.MustCompile(`^/data$|^/data/`),
+			valid:     "fixtures/adapter/changes-submitted/pull-request-created.json",
+			known:     "/action",
+			openPlace: "/data",
+			invalid:   func(m map[string]any) { m["version"] = json.Number("2") },
+		},
+		{
+			name:    "changes-failed.schema.json",
+			open:    func() (*jsonschema.Schema, error) { return contracts.Compile("changes-failed.schema.json") },
+			closed:  func() (*jsonschema.Schema, error) { return contracts.CompileClosed("changes-failed.schema.json") },
+			read:    contracts.Document,
+			list:    intList("fixtures/adapter/changes-failed"),
+			valid:   "fixtures/adapter/changes-failed/change-request-refused.json",
+			known:   "/reason",
+			invalid: func(m map[string]any) { m["version"] = json.Number("2") },
 		},
 		{
 			name:     "changes.schema.json",
@@ -174,11 +199,12 @@ var closedSites = map[string][]string{
 		"/properties/roles/properties/source/properties/item_noun",
 		"/properties/roles/properties/source/properties/setup",
 	},
-	"adapter.schema.json":           {},
+	"adapter.schema.json":           {"", "/properties/sync"},
 	"changes.schema.json":           {"", "/$defs/change_request", "/$defs/change_request/properties/previous", "/$defs/collection", "/$defs/comment", "/$defs/grant", "/$defs/sync", "/$defs/watch", "/$defs/work_item"},
-	"changes-submitted.schema.json": {},
-	"changes-failed.schema.json":    {},
-	"definitions.schema.json":       {"/$defs/change_address", "/$defs/target", "/$defs/target/properties/address"},
+	"changes-submitted.schema.json": {""},
+	"changes-failed.schema.json":    {""},
+	"source-items.schema.json":      {},
+	"definitions.schema.json":       {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
 	"documents.schema.json": {
 		"", "/$defs/harness", "/$defs/harness_base", "/$defs/harness_module", "/$defs/harness_section",
 		"/$defs/harness_section/properties/bind", "/$defs/harness_selection", "/$defs/harness_source",
@@ -245,7 +271,7 @@ func reachableFiles(t *testing.T, url string, seen map[string]bool) {
 // closed copies of the schemas reach no other file of those contracts.
 func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 	reached := map[string]bool{}
-	for _, name := range []string{"description", "adapter", "changes", "changes-submitted", "changes-failed"} {
+	for _, name := range []string{"description", "adapter", "changes", "changes-submitted", "changes-failed", "source-items"} {
 		reachableFiles(t, contracts.Base+"/"+name+".schema.json", reached)
 	}
 	for _, name := range []string{"documents", "next-session-answer"} {
@@ -303,7 +329,7 @@ func TestAReaderIgnoresAMemberItDoesNotDefine(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, place := range objectPlaces(raw, "") {
-				if u.freePlac.MatchString(place) || (u.only != nil && !u.only.MatchString(place)) {
+				if (u.freePlac != nil && u.freePlac.MatchString(place)) || (u.only != nil && !u.only.MatchString(place)) {
 					continue
 				}
 				doc, _ := u.read(f)
@@ -403,12 +429,19 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		{"documents.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs", "/harness/harness/extensions"}, contracts.Documents{}},
 		{"next-session-answer.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs"}, contracts.NextSessionAnswer{}},
 		{"description.schema.json", contracts.Base, contracts.Document, []string{"/settings"}, nil},
+		{"changes-submitted.schema.json", contracts.Base, contracts.Document, []string{"/data"}, contracts.ChangesSubmitted{}},
+		{"changes-failed.schema.json", contracts.Base, contracts.Document, nil, contracts.ChangesFailed{}},
+		{"adapter.schema.json", contracts.Base, contracts.Document, []string{"/description"}, contracts.Adapter{}},
 	} {
 		raw, err := c.read(c.name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		def := raw.(map[string]any)["$defs"].(map[string]any)["must_understand"].(map[string]any)
+		defs, _ := raw.(map[string]any)["$defs"].(map[string]any)
+		def, ok := defs["must_understand"].(map[string]any)
+		if !ok {
+			def = raw.(map[string]any)["properties"].(map[string]any)["must_understand"].(map[string]any)
+		}
 		templates := definedPointers(c.base+"/"+c.name, raw, c.open...)
 		if got, want := def["items"].(map[string]any)["pattern"], pointerPattern(templates); got != want {
 			t.Errorf("%s: the pattern of must_understand is not the one built from the schema:\n got %v\nwant %v", c.name, got, want)
@@ -713,53 +746,16 @@ func TestAnEntryListsWhatTheAdapterMustUnderstand(t *testing.T) {
 	}
 }
 
-// TestTheRepliesStayClosedAtTheirRoot pins that changes-submitted.schema.json and
-// changes-failed.schema.json, which the adapter writes and the control plane reads from an
-// adapter of a revision that it serves, refuse a member of the reply that they do not
-// define, and that their closed copy follows the references into definitions.schema.json:
-// the target of a reply ignores an undefined member, and the closed copy refuses it.
-func TestTheRepliesStayClosedAtTheirRoot(t *testing.T) {
-	for _, c := range []struct{ name, fixture string }{
-		{"changes-submitted", "fixtures/adapter/changes-submitted/pull-request-created.json"},
-		{"changes-failed", "fixtures/adapter/changes-failed/change-request-refused.json"},
-	} {
-		doc, err := contracts.Document(c.fixture)
-		if err != nil {
-			t.Fatal(err)
-		}
-		open := compile(t, c.name+".schema.json")
-		closed, err := contracts.CompileClosed(c.name + ".schema.json")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := closed.Validate(doc); err != nil {
-			t.Errorf("%s: the closed copy refuses %s: %v", c.name, c.fixture, err)
-		}
-		doc.(map[string]any)["extra"] = "x"
-		if got := runRefusal(open.Validate(doc)); got != "/ additionalProperties" {
-			t.Errorf("%s: the reply with a member that it does not define is refused for %q", c.name, got)
-		}
-		delete(doc.(map[string]any), "extra")
-		doc.(map[string]any)["target"].(map[string]any)["extra"] = "x"
-		if err := open.Validate(doc); err != nil {
-			t.Errorf("%s: a target with a member that the schema does not define is refused: %v", c.name, err)
-		}
-		if got := runRefusal(closed.Validate(doc)); !strings.Contains(got, "/target additionalProperties") {
-			t.Errorf("%s: the closed copy refuses the target for %q", c.name, got)
-		}
-	}
-}
-
 // TestOnlyTheClosableSchemasHaveAClosedCopy pins that CompileClosed and CompileRunClosed
 // return an error for a schema other than the ones that a reader reads leniently: the
 // closed copy of a schema that lists only some members of an object, such as the
 // next-session refusal, refuses members that it defines.
 func TestOnlyTheClosableSchemasHaveAClosedCopy(t *testing.T) {
 	for _, name := range []string{"description.schema.json", "adapter.schema.json", "changes.schema.json",
-		"changes-submitted.schema.json", "changes-failed.schema.json", "definitions.schema.json",
-		"read.schema.json", "description.schema.json#/$defs/api"} {
+		"changes-submitted.schema.json", "changes-failed.schema.json", "source-items.schema.json", "definitions.schema.json",
+		"read.schema.json", "source-collections.schema.json", "description.schema.json#/$defs/api"} {
 		_, err := contracts.CompileClosed(name)
-		want := !strings.HasPrefix(name, "definitions") && !strings.HasPrefix(name, "read") && !strings.Contains(name, "#")
+		want := !strings.HasPrefix(name, "definitions") && !strings.HasPrefix(name, "read") && !strings.HasPrefix(name, "source-collections") && !strings.Contains(name, "#")
 		if (err == nil) != want {
 			t.Errorf("CompileClosed(%q): %v", name, err)
 		}
@@ -796,8 +792,18 @@ func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var v contracts.Changes
-		if err := json.Unmarshal(b, &v); err != nil {
+		var v any = &contracts.Changes{}
+		switch name := path.Base(f); {
+		case strings.HasPrefix(name, "changes-submitted-"):
+			v = &contracts.ChangesSubmitted{}
+		case strings.HasPrefix(name, "changes-failed-"):
+			v = &contracts.ChangesFailed{}
+		case strings.HasPrefix(name, "adapter-"):
+			v = &contracts.Adapter{}
+		case strings.HasPrefix(name, "source-items-"):
+			v = &contracts.SourceItems{}
+		}
+		if err := json.Unmarshal(b, v); err != nil {
 			t.Errorf("%s: %v", f, err)
 		}
 	}

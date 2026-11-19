@@ -6,6 +6,7 @@ import (
 	"maps"
 	"path"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -335,9 +336,11 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 
 // sharedObject reports whether the object at the location is one of the objects that the
 // explore inputs share with the run documents and the change feed, the target and its
-// address, whose members a reader ignores when it does not define them.
+// address, and the person of the ticket and of each comment, whose members a reader
+// ignores when it does not define them.
 func sharedObject(location string) bool {
-	return location == "/target" || location == "/target/address"
+	return location == "/target" || location == "/target/address" || location == "/ticket/filed_by" ||
+		regexp.MustCompile(`^/comments/\d+/by$`).MatchString(location)
 }
 
 // definedAt are the members, sorted, that schema defines for the object at the

@@ -36,8 +36,9 @@ func definedPointers(base string, node any, open ...string) []string {
 	})
 }
 
-// loadSchema reads the schema document of a URL of the integration or run contract, and
-// nil for a schema of another contract, whose members the walk does not follow.
+// loadSchema reads the schema document of a URL of the integration, run, provisioner,
+// machines or explore contract, and nil for a schema of another contract, whose members the
+// walk does not follow.
 func loadSchema(url string) (any, string) {
 	file, _, _ := strings.Cut(url, "#")
 	var doc any
@@ -47,6 +48,12 @@ func loadSchema(url string) (any, string) {
 		doc, err = contracts.Document(strings.TrimPrefix(file, contracts.Base+"/"))
 	case strings.HasPrefix(file, contracts.RunBase+"/"):
 		doc, err = contracts.RunDocument(strings.TrimPrefix(file, contracts.RunBase+"/"))
+	case strings.HasPrefix(file, contracts.ProvisionerBase+"/"):
+		doc, err = contracts.ProvisionerDocument(strings.TrimPrefix(file, contracts.ProvisionerBase+"/"))
+	case strings.HasPrefix(file, contracts.MachinesBase+"/"):
+		doc, err = contracts.MachinesDocument(strings.TrimPrefix(file, contracts.MachinesBase+"/"))
+	case strings.HasPrefix(file, contracts.ExploreBase+"/"):
+		doc, err = contracts.ExploreDocument(strings.TrimPrefix(file, contracts.ExploreBase+"/"))
 	default:
 		return nil, file
 	}

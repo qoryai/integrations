@@ -196,7 +196,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-submitted-data-array.json":                                     {"changes-submitted", "/data type"},
 		"changes-submitted-data-nul-character.json":                             {"changes-submitted", "/data/note pattern"},
 		"changes-submitted-target-without-collection.json":                      {"changes-submitted", "/target required collection"},
-		"changes-submitted-undefined-member.json":                               {"changes-submitted", "/ additionalProperties"},
 		"changes-submitted-without-change-request-id.json":                      {"changes-submitted", "/ required change_request_id"},
 		"changes-submitted-without-target.json":                                 {"changes-submitted", "/ required target"},
 		"changes-failed-comment-detail.json":                                    {"changes-failed", "/detail "},

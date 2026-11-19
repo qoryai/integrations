@@ -140,6 +140,9 @@ type Adapter struct {
 	CallURL     string          `json:"call_url,omitempty"`
 	Sync        Sync            `json:"sync"`
 	Description json.RawMessage `json:"description"`
+	// MustUnderstand lists the members of the body that the control plane must
+	// understand, as JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // Sync is how often an adapter pulls changes from the source, in seconds, and whether
@@ -587,6 +590,9 @@ type ChangesFailed struct {
 	Target          *Target `json:"target,omitempty"`
 	Reason          string  `json:"reason"`
 	Detail          string  `json:"detail,omitempty"`
+	// MustUnderstand lists the members of the body that the control plane must
+	// understand, as JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // The actions of a [ChangesSubmitted] reply.
@@ -610,6 +616,9 @@ type ChangesSubmitted struct {
 	Action          string          `json:"action,omitempty"`
 	Address         *ChangeAddress  `json:"address,omitempty"`
 	Data            json.RawMessage `json:"data,omitempty"`
+	// MustUnderstand lists the members of the body that the control plane must
+	// understand, as JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // The states and actions of a [SubmittedDraft].

@@ -1428,8 +1428,8 @@ func TestRunSettingsReadFromTheFixture(t *testing.T) {
 
 // TestASubmitModuleIsNoMemberOfAnyDocument pins that the run documents define no
 // submit_module member, so a reader ignores it and the closed copy of the schema refuses
-// it, and that the adapter's start-up refuses it: the submit program of a run with no run
-// code is found in the composed harness, so neither document has a module for it.
+// it, and that the adapter's start-up defines none either: the submit program of a run with
+// no run code is found in the composed harness, so neither document has a module for it.
 func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 	module := map[string]any{"source": map[string]any{
 		"git": "https://code.example.com/example-org/forge-module",
@@ -1469,12 +1469,19 @@ func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 		t.Fatalf("code-host.json is refused: %v", err)
 	}
 	adapter.(map[string]any)["submit_module"] = module
-	v, ok = start.Validate(adapter).(*jsonschema.ValidationError)
+	if err := start.Validate(adapter); err != nil {
+		t.Errorf("an adapter start-up with a submit_module is refused: %v", err)
+	}
+	startClosed, err := contracts.CompileClosed("adapter.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = startClosed.Validate(adapter).(*jsonschema.ValidationError)
 	if !ok {
-		t.Fatal("an adapter start-up with a submit_module is accepted")
+		t.Fatal("the closed copy accepts an adapter start-up with a submit_module")
 	}
 	if r := strings.Join(leaves(v), "; "); r != "/ additionalProperties" {
-		t.Errorf("an adapter start-up with a submit_module is refused for %q, want %q", r, "/ additionalProperties")
+		t.Errorf("the closed copy refuses an adapter start-up with a submit_module for %q, want %q", r, "/ additionalProperties")
 	}
 }
 

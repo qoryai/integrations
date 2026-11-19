@@ -154,7 +154,7 @@ func TestTheChangeRequestLimitsAreExact(t *testing.T) {
 		{"reply with a string of 20001 characters in data", true, data(map[string]any{"a": strings.Repeat("a", 20001)}), false},
 		{"reply with U+0000 in data", true, data(map[string]any{"a": "x\x00y"}), false},
 		{"reply without a change request id", true, func(d map[string]any) { delete(d, "change_request_id") }, false},
-		{"reply with the old members", true, set("targets", []any{}), false},
+		{"reply with a member that the schema does not define", true, set("targets", []any{}), true},
 	} {
 		fixture, schema := entry, feed
 		if c.reply {
