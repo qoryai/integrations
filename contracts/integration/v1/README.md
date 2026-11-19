@@ -208,15 +208,17 @@ forge on a port other than 443 is not a target. The steps:
    the feed of the adapter of the run's target collection (`changes.schema.json`). The
    entry has `submission_id`, `targets` and `text`. Each target has `system`, `path`,
    `branch`, `base` (`commit` and `branch`), the head `commit`, `commits` (each with
-   `commit` and the ledger `step`) and `draft`: `{action: open}` or
-   `{action: update, number}`. `text` and `draft` are absent after a session that did
+   `commit` and the ledger `step`), `earlier_commits` and `draft`: `{action: open}` or
+   `{action: update, number}`. A run of more than 100 commits in a repository lists the
+   newest 100 in `commits`, oldest first, and `earlier_commits` counts the older ones, at
+   least 1. `earlier_commits` is absent when `commits` lists each commit of the run. `text` and `draft` are absent after a session that did
    not pass, when the run wrote no text, and when the session escalated: the adapter then
-   only builds the address of each commit. A draft is a
+   only builds the address of each listed commit. A draft is a
    pull request or a merge request that people can still change before it is ready.
    The entry is the same for every forge, so one adapter opens a pull request and
    another a merge request from it.
-2. The adapter builds the forge's address of `base.commit` and of each commit, for every
-   target, whether or not the session passed.
+2. The adapter builds the forge's address of `base.commit` and of each listed commit, for
+   every target, builds none for the commits that `earlier_commits` counts, whether or not the session passed.
 3. For a target with `draft`, the adapter opens the draft, or edits the draft with that
    `number`. The `number` is a hint: when the forge has no draft with that number, the
    adapter finds the draft from `branch` in any state and goes on with it, or opens a
@@ -243,14 +245,14 @@ forge on a port other than 443 is not a target. The steps:
    adapter that links the draft to that item.
 4. The adapter sends `POST /v1/work-items/changes/submitted`
    (`changes-submitted.schema.json`) with `submission_id` and, for each target that did not fail, the
-   `commit_url` of each commit and of the base, and, for a target that had `draft`,
+   `commit_url` of each listed commit and of the base, and, for a target that had `draft`,
    `draft`: `{number, url, title, state, action}`. `state` is `draft`, `open`, `closed` or
    `merged`. A draft that a person closed or merged has the action `kept`. The `number`
    may differ from the entry's, and is 1 to 9223372036854775807; the control plane refuses
    a larger number, 400. An integer is written without a decimal point or exponent, and
    the control plane refuses `34.0` with 400 `invalid_request`. The reply has `draft`
    exactly when the entry's target had a draft; the control plane refuses a reply that
-   does not, 400. Each address, the `commit_url` of the base and of each commit and the
+   does not, 400. Each address, the `commit_url` of the base and of each listed commit and the
    `url` of the draft, is on the `system` of its target (its host, in lower case, equals
    the `system`), with no user information, port, query or fragment, and with a path that
    is not empty or `/` alone, as in the submit program contract. The control plane
@@ -335,7 +337,7 @@ with `items: false` has no items, and its `source` role has no `comments`.
 | Path | Contains | Validated against |
 |---|---|---|
 | `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential`; `example-source-apply-bearer.json`, a source role with an apply item of the scheme `bearer` whose paths are templates with `{target.path}` and a path without it; `example-source-apply-basic.json`, one with an apply item of the scheme `basic` and its `username`; `example-source-apply-header.json`, one with an apply item of the scheme `header` and its `header`, on a DNS name and an IPv4 address; `example-source-guide.json`, a source role with a `guide`: a `setup` part with `before`, three `steps` and `after`, and a `connect` part with two `steps` alone; `example-source-targets.json`, a source role with `targets: true`; `example-source-submissions.json`, a source role with `targets: true` and `submissions: true`; `example-source-comments.json`, a source role with `comments: true` | `description.schema.json` |
-| `fixtures/adapter/<name>/` | the requests and answers of the adapter, named by their schema; among them `changes/submission-github-like.json` and `changes/submission-gitlab-like.json`, a submission entry that opens a draft on one host and one that updates a draft on another, `changes/submission-two-versions.json`, a first version with no `previous_title` and a second that has the title of the first, `changes-submitted/github-like.json` and `changes-submitted/gitlab-like.json`, the replies, and `changes-failed/submission-*.json`, one for each reason of a submission | `<name>.schema.json` |
+| `fixtures/adapter/<name>/` | the requests and answers of the adapter, named by their schema; among them `changes/submission-github-like.json` and `changes/submission-gitlab-like.json`, a submission entry that opens a draft on one host and one that updates a draft on another, `changes/submission-two-versions.json`, a first version with no `previous_title` and a second that has the title of the first, `changes/submission-earlier-commits.json` and `changes/submission-earlier-commits-minimum.json`, a target with 100 listed commits and `earlier_commits` 40 and 1, `changes-submitted/github-like.json` and `changes-submitted/gitlab-like.json`, the replies, and `changes-failed/submission-*.json`, one for each reason of a submission | `<name>.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define; `description-source-comments-false.json`, `comments: false`; `description-source-submissions-false.json`, `submissions: false`; `description-source-submissions-string.json`, `submissions` as the string `"true"`; `description-source-submissions-without-targets.json`, `submissions: true` with no `targets`; and `description-source-items-false-with-comments.json`, `comments` beside `items: false` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.

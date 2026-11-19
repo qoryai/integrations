@@ -50,6 +50,20 @@ func TestTheSubmissionLimitsAreExact(t *testing.T) {
 		{"101 commits", false, func(_, tg map[string]any) {
 			tg["commits"] = commits(101, func(i int) any { return map[string]any{"commit": commit(i), "step": "s"} })
 		}, false},
+		{"100 commits and earlier_commits 40", false, func(_, tg map[string]any) {
+			tg["commits"] = commits(100, func(i int) any { return map[string]any{"commit": commit(i), "step": "s"} })
+			tg["earlier_commits"] = 40
+		}, true},
+		{"101 commits and earlier_commits 40", false, func(_, tg map[string]any) {
+			tg["commits"] = commits(101, func(i int) any { return map[string]any{"commit": commit(i), "step": "s"} })
+			tg["earlier_commits"] = 40
+		}, false},
+		{"earlier_commits 1", false, func(_, tg map[string]any) { tg["earlier_commits"] = 1 }, true},
+		{"earlier_commits 0", false, func(_, tg map[string]any) { tg["earlier_commits"] = 0 }, false},
+		{"earlier_commits -1", false, func(_, tg map[string]any) { tg["earlier_commits"] = -1 }, false},
+		{"earlier_commits as a string", false, func(_, tg map[string]any) { tg["earlier_commits"] = "40" }, false},
+		{"earlier_commits null", false, func(_, tg map[string]any) { tg["earlier_commits"] = nil }, false},
+		{"earlier_commits in the reply", true, func(_, tg map[string]any) { tg["earlier_commits"] = 40 }, false},
 		{"100 commits in the reply", true, func(_, tg map[string]any) {
 			tg["commits"] = commits(100, func(i int) any {
 				return map[string]any{"commit": commit(i), "commit_url": "https://code.example.com/acme/shop/commit/" + commit(i)}

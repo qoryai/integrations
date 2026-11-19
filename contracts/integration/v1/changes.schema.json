@@ -149,7 +149,7 @@
       "then": {"required": ["text"]}
     },
     "submission_target": {
-      "description": "One repository of the submission: where it is, the branch that the run pushed, the base it started at, the commits it made, and what to do with the draft.",
+      "description": "One repository of the submission: where it is, the branch that the run pushed, the base it started at, the commits it made, or the newest 100 of them with a count of the earlier ones, and what to do with the draft.",
       "type": "object",
       "additionalProperties": false,
       "required": ["system", "path", "branch", "base", "commit", "commits"],
@@ -169,7 +169,7 @@
         },
         "commit": {"description": "The head of branch: the last entry of commits.", "$ref": "definitions.schema.json#/$defs/commit_id"},
         "commits": {
-          "description": "Each commit from the base to the head, oldest first, 1 to 100, ending in commit. The adapter builds the address of each one.",
+          "description": "The commits of the run in this repository, oldest first, 1 to 100, ending in commit. Without earlier_commits, the list has each commit from the base to the head. With earlier_commits, it has the newest 100. The adapter builds the address of each listed commit.",
           "type": "array",
           "minItems": 1,
           "maxItems": 100,
@@ -183,6 +183,7 @@
             }
           }
         },
+        "earlier_commits": {"description": "The number of commits of the run in this repository that are older than the first entry of commits and are not listed, at least 1. Absent when commits lists each commit from the base to the head. Present only when the run has more than 100 commits in the repository: commits then has the newest 100, and the adapter builds no address for the earlier commits.", "type": "integer", "minimum": 1},
         "draft": {
           "description": "What to do with the draft of the repository. Absent after a session that did not pass, when the run wrote no text, and when the session escalated: the adapter then only builds the address of each commit.",
           "type": "object",
