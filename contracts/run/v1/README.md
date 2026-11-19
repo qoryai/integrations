@@ -34,9 +34,9 @@ Examples:
 - The same top-level member is listed in `must_understand`. The older qory refuses the
   run documents, and the run ends with `run_documents_invalid`.
 
-A control plane's tests check its documents against a closed copy of the schema, which
-refuses a member that the schema does not define, so a misspelled member fails the test.
-`contracts.CompileRunClosed` returns the closed copy. `contracts.CheckMustUnderstand`
+A control plane's tests check its documents against a closed copy of the schema. The
+closed copy refuses a member that the schema does not define, so a misspelled member
+fails the test. `contracts.CompileRunClosed` returns the closed copy. `contracts.CheckMustUnderstand`
 applies the rule to a document that a reader decodes into a Go type.
 
 ## Next-session refusals

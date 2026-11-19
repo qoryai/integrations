@@ -34,10 +34,10 @@ plane does not define. The older control plane ignores the member and reads the 
 When the program lists the member in `must_understand`, the older control plane refuses
 the description.
 
-A program's test checks its description against a closed copy of the schema, which
-refuses a member that the schema does not define, so a misspelled member fails the test.
-`conformance.Description` does this, and `contracts.CompileClosed` returns the closed
-copy.
+A program's test checks its description against a closed copy of the schema. The closed
+copy refuses a member that the schema does not define, so a misspelled member fails the
+test. `conformance.Description` does this, and `contracts.CompileClosed` returns the
+closed copy.
 
 ## Describe
 
@@ -212,9 +212,9 @@ revision in the request's `X-Qory-Contract-Version` defines after the cursor. Th
 adapter reads the next entries from the feed answer's `cursor`.
 
 The feed changes only with a new revision of this contract. A new entry kind or a new
-member comes with a new revision, and the control plane sends an adapter only the kinds
-and members of the revision in its `X-Qory-Contract-Version`. An adapter skips and
-acknowledges an entry of a kind that its revision does not define: it applies nothing of
+member comes with a new revision. The control plane sends an adapter only the kinds and
+members of the revision in its `X-Qory-Contract-Version`. An adapter skips and
+acknowledges an entry of a kind that its revision does not define. It applies nothing of
 the entry and moves its cursor past it. Example: an adapter at an older revision skips
 and acknowledges an entry of a kind that a newer revision defines, and reads the next
 entry.
