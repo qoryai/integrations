@@ -170,7 +170,7 @@ func TestInvalidFixturesAreRefused(t *testing.T) {
 		"fixtures/invalid/description-model-provider-endpoint-bare-host.json":                 "/roles/model_provider/apis/0/endpoint pattern",
 		"fixtures/invalid/description-model-provider-endpoint-fragment.json":                  "/roles/model_provider/apis/0/endpoint pattern",
 		"fixtures/invalid/description-model-provider-endpoint-http.json":                      "/roles/model_provider/apis/0/endpoint pattern",
-		"fixtures/invalid/description-model-provider-endpoint-object-without-setting.json":    "/roles/model_provider/apis/0/endpoint required setting; /roles/model_provider/apis/0/endpoint additionalProperties",
+		"fixtures/invalid/description-model-provider-endpoint-object-without-setting.json":    "/roles/model_provider/apis/0/endpoint required setting",
 		"fixtures/invalid/description-model-provider-endpoint-query.json":                     "/roles/model_provider/apis/0/endpoint pattern",
 		"fixtures/invalid/description-model-provider-endpoint-setting-and-path.json":          "/roles/model_provider/apis/0/endpoint additionalProperties",
 		"fixtures/invalid/description-model-provider-endpoint-user-information.json":          "/roles/model_provider/apis/0/endpoint pattern",

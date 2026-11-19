@@ -28,40 +28,53 @@ const MustUnderstand = "must_understand"
 // members of v is never longer than the schema's maxItems for the documents of this
 // package.
 func CheckMustUnderstand(b []byte, v any) error {
+	p, err := unmetPointer(b, v)
+	if err != nil {
+		return err
+	}
+	if p != "" {
+		return fmt.Errorf("use a reader that defines %q: the document lists it in must_understand, and this reader has no such member", p)
+	}
+	return nil
+}
+
+// unmetPointer returns the first pointer of the must_understand member of b that v does
+// not define, or "" when there is none.
+func unmetPointer(b []byte, v any) (string, error) {
 	var doc struct {
 		MustUnderstand json.RawMessage `json:"must_understand"`
 	}
 	if err := json.Unmarshal(b, &doc); err != nil {
-		return fmt.Errorf("read the document as a JSON object: %w", err)
+		return "", fmt.Errorf("read the document as a JSON object: %w", err)
 	}
 	if len(doc.MustUnderstand) == 0 {
-		return nil
+		return "", nil
 	}
 	var pointers []string
 	if err := json.Unmarshal(doc.MustUnderstand, &pointers); err != nil {
-		return fmt.Errorf("set must_understand to a list of JSON Pointers, or leave it out: %w", err)
+		return "", fmt.Errorf("set must_understand to a list of JSON Pointers, or leave it out: %w", err)
 	}
 	if pointers == nil {
-		return errors.New("set must_understand to a list of JSON Pointers, or leave it out, not null")
+		return "", errors.New("set must_understand to a list of JSON Pointers, or leave it out, not null")
 	}
 	seen := make(map[string]bool, len(pointers))
 	for _, p := range pointers {
 		if seen[p] {
-			return fmt.Errorf("list %q once in must_understand", p)
+			return "", fmt.Errorf("list %q once in must_understand", p)
 		}
 		seen[p] = true
 		if !strings.HasPrefix(p, "/") {
-			return fmt.Errorf("write %q in must_understand as a JSON Pointer that starts with /", p)
+			return "", fmt.Errorf("write %q in must_understand as a JSON Pointer that starts with /", p)
 		}
 		segments := strings.Split(p[1:], "/")
 		for i, s := range segments {
 			segments[i] = strings.ReplaceAll(strings.ReplaceAll(s, "~1", "/"), "~0", "~")
 		}
 		if !resolves(reflect.TypeOf(v), segments) {
-			return fmt.Errorf("the document lists %q in must_understand, and this reader has no such member: use a reader that has it", p)
+			return p, nil
 		}
 	}
-	return nil
+	return "", nil
 }
 
 // resolves reports whether the pointer with the segments, unescaped, leads to a member

@@ -98,10 +98,7 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 			m["model_choice"].(map[string]any)["model"] = "example-large"
 			m["model_choice"].(map[string]any)["provider_models"] = session["model_choice"].(map[string]any)["provider_models"]
 		},
-		"next-session-answer-model-choice-effort-without-model.json": func(m map[string]any) { m["model_choice"] = session["model_choice"] },
-		"next-session-answer-model-choice-undefined-member.json": func(m map[string]any) {
-			delete(m["model_choice"].(map[string]any), "time_limit_minutes")
-		},
+		"next-session-answer-model-choice-effort-without-model.json":    func(m map[string]any) { m["model_choice"] = session["model_choice"] },
 		"next-session-request-verdict.json":                             func(m map[string]any) { delete(m, "verdict") },
 		"next-session-request-session-0.json":                           func(m map[string]any) { m["session"] = json.Number("1") },
 		"next-session-request-session-string.json":                      func(m map[string]any) { m["session"] = json.Number("1") },
@@ -377,8 +374,8 @@ func TestTheModelChoiceIsTheModelMembersOfRunSettings(t *testing.T) {
 	if _, ok := choice["required"]; ok {
 		t.Error("model_choice requires a member")
 	}
-	if choice["additionalProperties"] != false {
-		t.Error("model_choice accepts members it does not define")
+	if _, ok := choice["additionalProperties"]; ok {
+		t.Error("model_choice sets additionalProperties: a reader ignores a member it does not define")
 	}
 	if _, ok := settings["properties"].(map[string]any)["time_limit_minutes"]; ok {
 		t.Error("run_settings has time_limit_minutes")

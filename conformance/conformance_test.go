@@ -56,6 +56,17 @@ func TestEveryRefusedFixtureDoesNot(t *testing.T) {
 	}
 }
 
+// TestEveryClosedFixtureFailsConformance pins that Description, which validates against the
+// closed copy of the schema, fails each description that the open schema accepts and the
+// closed copy refuses, since the description has a member that the schema does not define.
+func TestEveryClosedFixtureFailsConformance(t *testing.T) {
+	for name, b := range fixtures(t, "fixtures/closed") {
+		if err := conformance.Description(b); err == nil {
+			t.Errorf("%s conforms", name)
+		}
+	}
+}
+
 const tracker = `{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
  "settings": %s,
  "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}},

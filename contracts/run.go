@@ -168,11 +168,11 @@ type Documents struct {
 	// submission only from Submit, never from process.yaml. For what qory does when
 	// process.yaml has a different submit, see submit in documents.schema.json.
 	Submit *Submit `json:"submit,omitempty"`
-	// MustUnderstand lists members of the documents that the reader must understand. A
+	// MustUnderstand lists members of the documents that the reader must understand, as
+	// JSON Pointers counted from the documents, such as "/run_settings/full_suite". A
 	// reader ignores a member that this type does not have, unless MustUnderstand lists
-	// it, and refuses documents whose MustUnderstand lists a member that this type does not
-	// have: [CheckMustUnderstand] returns an error for them. It lists top-level members
-	// only.
+	// it, and refuses documents whose MustUnderstand lists a pointer to a member that this
+	// type does not have: [CheckMustUnderstand] returns an error for them.
 	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 

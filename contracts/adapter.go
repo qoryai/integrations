@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -341,6 +342,9 @@ type Changes struct {
 	Revision int      `json:"revision"`
 	Cursor   string   `json:"cursor"`
 	Changes  []Change `json:"changes"`
+	// MustUnderstand lists the members of the answer that the adapter must understand, as
+	// JSON Pointers: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MarshalJSON writes the document, a nil Changes as an empty list.
@@ -412,6 +416,10 @@ type Change struct {
 	Text            string          `json:"text,omitempty"`
 	Previous        *ChangePrevious `json:"previous,omitempty"`
 	Data            json.RawMessage `json:"data,omitempty"`
+
+	// MustUnderstand lists the members of the entry that the adapter must understand, as
+	// JSON Pointers counted from the entry: see [CheckChangeMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // ChangeAddress is where a change is at its target: URL, the address of the change, and
@@ -435,66 +443,127 @@ type ChangePrevious struct {
 // draft, as the submit program contract describes.
 const DraftOpen = "open"
 
+// The members of each kind of entry, as the schema defines them. MarshalJSON writes them,
+// and [CheckChangeMustUnderstand] resolves a pointer through them.
+type (
+	workItemEntry struct {
+		Kind           string   `json:"kind"`
+		WorkItemID     string   `json:"work_item_id"`
+		Ref            string   `json:"ref"`
+		Status         string   `json:"status"`
+		URL            string   `json:"url"`
+		MustUnderstand []string `json:"must_understand,omitempty"`
+	}
+	commentEntry struct {
+		Kind           string   `json:"kind"`
+		CommentID      string   `json:"comment_id"`
+		Ref            string   `json:"ref"`
+		AuthorName     string   `json:"author_name"`
+		Body           string   `json:"body"`
+		MustUnderstand []string `json:"must_understand,omitempty"`
+	}
+	collectionEntry struct {
+		Kind           string   `json:"kind"`
+		CollectionRef  string   `json:"collection_ref"`
+		Status         string   `json:"status"`
+		MustUnderstand []string `json:"must_understand,omitempty"`
+	}
+	grantEntry struct {
+		Kind           string   `json:"kind"`
+		ConnectionID   string   `json:"connection_id"`
+		GrantRef       string   `json:"grant_ref"`
+		Status         string   `json:"status"`
+		MustUnderstand []string `json:"must_understand,omitempty"`
+	}
+	syncEntry struct {
+		Kind           string   `json:"kind"`
+		Interval       *int     `json:"interval"`
+		MustUnderstand []string `json:"must_understand,omitempty"`
+	}
+	watchEntry struct {
+		Kind           string   `json:"kind"`
+		WorkItemID     string   `json:"work_item_id"`
+		URL            string   `json:"url"`
+		MustUnderstand []string `json:"must_understand,omitempty"`
+	}
+	changeRequestEntry struct {
+		Kind            string          `json:"kind"`
+		ChangeRequestID string          `json:"change_request_id"`
+		ChangeKind      string          `json:"change_kind"`
+		Target          *Target         `json:"target"`
+		Ref             string          `json:"ref,omitempty"`
+		Title           string          `json:"title"`
+		Text            string          `json:"text"`
+		Previous        *ChangePrevious `json:"previous,omitempty"`
+		Data            json.RawMessage `json:"data"`
+		MustUnderstand  []string        `json:"must_understand,omitempty"`
+	}
+)
+
+// entryTypes are the types of the entries of each kind that the feed defines.
+var entryTypes = map[string]reflect.Type{
+	ChangeWorkItem:   reflect.TypeFor[workItemEntry](),
+	ChangeComment:    reflect.TypeFor[commentEntry](),
+	ChangeCollection: reflect.TypeFor[collectionEntry](),
+	ChangeGrant:      reflect.TypeFor[grantEntry](),
+	ChangeSync:       reflect.TypeFor[syncEntry](),
+	ChangeWatch:      reflect.TypeFor[watchEntry](),
+	ChangeRequest:    reflect.TypeFor[changeRequestEntry](),
+}
+
+// CheckChangeMustUnderstand reports whether an adapter that implements this revision of
+// the contract can apply the feed entry, the JSON object entry. It returns nil when the
+// entry has no must_understand, or lists only pointers to members that the kind of the
+// entry defines, as [CheckMustUnderstand] reads them. It returns an error when the entry
+// lists a pointer to a member that its kind does not define, or when its kind is not one
+// that this revision defines. Below data, which the artifact type of change_kind defines,
+// every pointer passes: the adapter checks that pointer against the artifact type. The
+// adapter that gets an error skips the entry and acknowledges it, that is, moves its
+// cursor past it. For a change_request entry, it reports the entry failed, with Reason
+// "refused" and the text of the error as Detail, which starts with what to do.
+func CheckChangeMustUnderstand(entry []byte) error {
+	var head struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.Unmarshal(entry, &head); err != nil {
+		return fmt.Errorf("read the entry as a JSON object: %w", err)
+	}
+	t, ok := entryTypes[head.Kind]
+	if !ok {
+		return fmt.Errorf("skip the entry and acknowledge it: this revision of the contract defines no kind %q", head.Kind)
+	}
+	p, err := unmetPointer(entry, reflect.New(t).Interface())
+	if err != nil {
+		return err
+	}
+	if p != "" {
+		return fmt.Errorf("use an adapter that defines %q: the entry lists it in must_understand, and this adapter does not define it", p)
+	}
+	return nil
+}
+
 // MarshalJSON writes the entry with the members of its kind alone, and refuses a kind
 // the feed does not define.
 func (c Change) MarshalJSON() ([]byte, error) {
 	switch c.Kind {
 	case ChangeWorkItem:
-		return json.Marshal(struct {
-			Kind       string `json:"kind"`
-			WorkItemID string `json:"work_item_id"`
-			Ref        string `json:"ref"`
-			Status     string `json:"status"`
-			URL        string `json:"url"`
-		}{c.Kind, c.WorkItemID, c.Ref, c.Status, c.URL})
+		return json.Marshal(workItemEntry{c.Kind, c.WorkItemID, c.Ref, c.Status, c.URL, c.MustUnderstand})
 	case ChangeComment:
-		return json.Marshal(struct {
-			Kind       string `json:"kind"`
-			CommentID  string `json:"comment_id"`
-			Ref        string `json:"ref"`
-			AuthorName string `json:"author_name"`
-			Body       string `json:"body"`
-		}{c.Kind, c.CommentID, c.Ref, c.AuthorName, c.Body})
+		return json.Marshal(commentEntry{c.Kind, c.CommentID, c.Ref, c.AuthorName, c.Body, c.MustUnderstand})
 	case ChangeCollection:
-		return json.Marshal(struct {
-			Kind          string `json:"kind"`
-			CollectionRef string `json:"collection_ref"`
-			Status        string `json:"status"`
-		}{c.Kind, c.CollectionRef, c.Status})
+		return json.Marshal(collectionEntry{c.Kind, c.CollectionRef, c.Status, c.MustUnderstand})
 	case ChangeGrant:
-		return json.Marshal(struct {
-			Kind         string `json:"kind"`
-			ConnectionID string `json:"connection_id"`
-			GrantRef     string `json:"grant_ref"`
-			Status       string `json:"status"`
-		}{c.Kind, c.ConnectionID, c.GrantRef, c.Status})
+		return json.Marshal(grantEntry{c.Kind, c.ConnectionID, c.GrantRef, c.Status, c.MustUnderstand})
 	case ChangeSync:
-		return json.Marshal(struct {
-			Kind     string `json:"kind"`
-			Interval *int   `json:"interval"`
-		}{c.Kind, c.Interval})
+		return json.Marshal(syncEntry{c.Kind, c.Interval, c.MustUnderstand})
 	case ChangeWatch:
-		return json.Marshal(struct {
-			Kind       string `json:"kind"`
-			WorkItemID string `json:"work_item_id"`
-			URL        string `json:"url"`
-		}{c.Kind, c.WorkItemID, c.URL})
+		return json.Marshal(watchEntry{c.Kind, c.WorkItemID, c.URL, c.MustUnderstand})
 	case ChangeRequest:
 		data := c.Data
 		if data == nil {
 			data = json.RawMessage("{}")
 		}
-		return json.Marshal(struct {
-			Kind            string          `json:"kind"`
-			ChangeRequestID string          `json:"change_request_id"`
-			ChangeKind      string          `json:"change_kind"`
-			Target          *Target         `json:"target"`
-			Ref             string          `json:"ref,omitempty"`
-			Title           string          `json:"title"`
-			Text            string          `json:"text"`
-			Previous        *ChangePrevious `json:"previous,omitempty"`
-			Data            json.RawMessage `json:"data"`
-		}{c.Kind, c.ChangeRequestID, c.ChangeKind, c.Target, c.Ref, c.Title, c.Text, c.Previous, data})
+		return json.Marshal(changeRequestEntry{c.Kind, c.ChangeRequestID, c.ChangeKind, c.Target, c.Ref, c.Title, c.Text, c.Previous, data, c.MustUnderstand})
 	}
 	return nil, fmt.Errorf("the change feed defines no kind %q", c.Kind)
 }

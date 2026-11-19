@@ -319,13 +319,25 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 		}
 		doc := read()
 		objectAt(doc, where)["undefined"] = "x"
-		if got, want := refusal(doc), location+" additionalProperties undefined"; got != want {
+		want := location + " additionalProperties undefined"
+		if sharedObject(location) {
+			want = "accepted"
+		}
+		if got := refusal(doc); got != want {
 			t.Errorf("%s with undefined in %s: %s, want %s", fixture, location, got, want)
 		}
 	}
 	if len(objects) < 2 || members == 0 {
 		t.Errorf("%s has %d objects and %d members", fixture, len(objects), members)
 	}
+}
+
+// sharedObject reports whether the object at the location is one of the objects that the
+// explore inputs share with the integration contract, person and target, whose members a
+// reader of the integration contract ignores when it does not define them.
+func sharedObject(location string) bool {
+	return location == "/target" || location == "/target/address" || location == "/ticket/filed_by" ||
+		(strings.HasPrefix(location, "/comments/") && strings.HasSuffix(location, "/by"))
 }
 
 // definedAt are the members, sorted, that schema defines for the object at the

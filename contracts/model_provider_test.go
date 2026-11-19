@@ -227,7 +227,7 @@ func TestAnAPIHoldsItsRules(t *testing.T) {
 		{`"https://acme.example/a b"`, "/roles/model_provider/apis/0/endpoint pattern"},
 		{`"api.acme.example"`, "/roles/model_provider/apis/0/endpoint pattern"},
 		{`{"setting": ""}`, "/roles/model_provider/apis/0/endpoint/setting minLength"},
-		{`{"setting": "url", "path": "/v1"}`, "/roles/model_provider/apis/0/endpoint additionalProperties"},
+		{`{"setting": "url", "path": "/v1"}`, ""},
 		{`{}`, "/roles/model_provider/apis/0/endpoint required setting"},
 		{`443`, "/roles/model_provider/apis/0/endpoint type"},
 	} {
@@ -464,7 +464,7 @@ func TestOAuthRefreshHoldsItsRules(t *testing.T) {
 		{"a scope of 256 characters", url + ", " + id + `, "scope": "` + strings.Repeat("a", 256) + `"`, ""},
 		{"no url", id, at + " required url"},
 		{"no client_id", url, at + " required client_id"},
-		{"an undefined member", url + ", " + id + `, "client_secret": "acme"`, at + " additionalProperties"},
+		{"an undefined member, which a reader ignores", url + ", " + id + `, "client_secret": "acme"`, ""},
 		{"a url over http", `"url": "http://auth.acme.example/oauth/token", ` + id, at + "/url pattern"},
 		{"a url with a query", `"url": "https://auth.acme.example/oauth/token?grant=1", ` + id, at + "/url pattern"},
 		{"an empty client_id", url + `, "client_id": ""`, at + "/client_id minLength; " + at + "/client_id pattern"},
@@ -534,8 +534,8 @@ func TestOAuthDeviceHoldsItsRules(t *testing.T) {
 		{"a verification_url over http", device("", "verification_url", "http://auth.acme.example/device"), at + "/verification_url pattern"},
 		{"a redirect_uri over http", device("", "redirect_uri", "http://auth.acme.example/device/callback"), at + "/redirect_uri pattern"},
 		{"a poll_url with a query", device("", "poll_url", "https://auth.acme.example/device/token?x=1"), at + "/poll_url pattern"},
-		{"a client_id", device("", "", "") + `, "client_id": "acme-cli"`, at + " additionalProperties"},
-		{"an undefined member", device("", "", "") + `, "interval": 5`, at + " additionalProperties"},
+		{"a client_id, which a reader ignores", device("", "", "") + `, "client_id": "acme-cli"`, ""},
+		{"an undefined member, which a reader ignores", device("", "", "") + `, "interval": 5`, ""},
 	} {
 		if got := refusal(t, schema, tc.name, inAPI(refresh+`, "oauth_device": {`+tc.device+`}`)); got != tc.want {
 			t.Errorf("%s: refused for %q, want %q", tc.name, got, tc.want)

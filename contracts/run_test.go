@@ -101,7 +101,7 @@ func TestRunFixturesValidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, d := range dirs {
-		if d.IsDir() && d.Name() != "invalid" && !slices.Contains(runSchemas, d.Name()) {
+		if d.IsDir() && d.Name() != "invalid" && d.Name() != "closed" && !slices.Contains(runSchemas, d.Name()) {
 			t.Errorf("fixtures/%s is the fixture folder of no schema", d.Name())
 		}
 	}
@@ -117,7 +117,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-without-domain.json":                                      {"documents", "/ required domain"},
 		"documents-without-inputs.json":                                      {"documents", "/ required inputs"},
 		"documents-inputs-no-version.json":                                   {"documents", "/inputs required version"},
-		"documents-prebuild-inputs-target.json":                              {"documents", "/inputs additionalProperties"},
 		"documents-prebuild-with-subject.json":                               {"documents", "/ "},
 		"documents-prebuild-with-workflow.json":                              {"documents", "/ dependentRequired/workflow; /workflow ; / required harness; / required target_version"},
 		"documents-workflow-without-subject.json":                            {"documents", "/ required subject"},
@@ -131,12 +130,8 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-run-settings-tiers-without-model.json":                    {"documents", "/run_settings dependentRequired/tiers"},
 		"documents-run-settings-model-without-provider-models.json":          {"documents", "/run_settings dependentRequired/model"},
 		"documents-run-settings-provider-models-without-model.json":          {"documents", "/run_settings dependentRequired/provider_models"},
-		"documents-run-settings-unknown-tier.json":                           {"documents", "/run_settings/tiers additionalProperties"},
-		"documents-run-settings-tier-fast.json":                              {"documents", "/run_settings/tiers additionalProperties"},
-		"documents-run-settings-undefined-member.json":                       {"documents", "/run_settings additionalProperties"},
 		"documents-run-settings-tier-without-model.json":                     {"documents", "/run_settings/tiers/thinking required model"},
 		"documents-run-settings-effort-empty.json":                           {"documents", "/run_settings/provider_models/0/effort minItems"},
-		"documents-run-settings-time-limit-minutes.json":                     {"documents", "/run_settings additionalProperties"},
 		"documents-time-limit-minutes-0.json":                                {"documents", "/time_limit_minutes minimum"},
 		"documents-time-limit-minutes-1441.json":                             {"documents", "/time_limit_minutes maximum"},
 		"documents-time-limit-minutes-string.json":                           {"documents", "/time_limit_minutes type"},
@@ -152,7 +147,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"next-session-answer-model-choice-runtime-number.json":               {"next-session-answer", "/model_choice/runtime type; /next const; / "},
 		"next-session-answer-model-choice-runtime-upper-case.json":           {"next-session-answer", "/model_choice/runtime pattern; /next const; / "},
 		"next-session-answer-model-choice-runtime-effort-only.json":          {"next-session-answer", "/model_choice dependentRequired/effort; /next const; / "},
-		"next-session-answer-model-choice-undefined-member.json":             {"next-session-answer", "/model_choice additionalProperties; /next const; / "},
 		"next-session-answer-model-provider-credential-name-upper-case.json": {"next-session-answer", "/model_provider_credential_name pattern; /next const; / "},
 		"next-session-answer-next-unknown.json":                              {"next-session-answer", "/next const; /next const; / "},
 		"next-session-answer-session-0.json":                                 {"next-session-answer", "/session minimum; /next const; / "},
@@ -252,7 +246,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-without-extends-or-modules.json":                  {"documents", "/harness/harness required modules"},
 		"documents-harness-extends-and-workflows.json":                       {"documents", "/harness/harness/workflows "},
 		"documents-harness-workflow-access-admin.json":                       {"documents", "/harness/harness/workflows/hello/access enum"},
-		"documents-harness-workflow-time-limit.json":                         {"documents", "/harness/harness/workflows/hello additionalProperties"},
 		"documents-harness-workflow-tier-unknown.json":                       {"documents", "/harness/harness/workflows/hello/tier enum"},
 		"documents-harness-workflow-plan-without-write.json":                 {"documents", "/harness/harness/workflows/hello/access const"},
 		"documents-harness-workflow-plan-without-access.json":                {"documents", "/harness/harness/workflows/hello required access"},
@@ -263,24 +256,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-module-name-only.json":                            {"documents", "/harness/harness/modules/0 required source"},
 		"documents-harness-extends-path-and-stack.json":                      {"documents", "/harness/harness/extends "},
 		"documents-harness-module-path-and-module.json":                      {"documents", "/harness/harness/modules/0/source "},
-		"documents-harness-module-link.json":                                 {"documents", "/harness/harness/modules/0 additionalProperties"},
-		"documents-harness-machine-setting-runtime.json":                     {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-model.json":                       {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-effort.json":                      {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-tiers.json":                       {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-force.json":                       {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-update.json":                      {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-home.json":                        {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-links.json":                       {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-launch.json":                      {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-member-git.json":                                  {"documents", "/harness additionalProperties"},
-		"documents-harness-member-env.json":                                  {"documents", "/harness additionalProperties"},
-		"documents-harness-member-worktree.json":                             {"documents", "/harness additionalProperties"},
-		"documents-harness-member-exports.json":                              {"documents", "/harness additionalProperties"},
-		"documents-harness-member-target.json":                               {"documents", "/harness additionalProperties"},
-		"documents-harness-section-target.json":                              {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-bind-flat.json":                                   {"documents", "/harness/harness/bind additionalProperties"},
-		"documents-harness-bind-unknown-kind.json":                           {"documents", "/harness/harness/bind additionalProperties"},
 		"documents-harness-bind-list-empty.json":                             {"documents", "/harness/harness/bind/agents/reviewers type; /harness/harness/bind/agents/reviewers minItems"},
 		"documents-harness-bind-list-commands.json":                          {"documents", "/harness/harness/bind/commands/publish type"},
 		"documents-harness-bind-list-skills.json":                            {"documents", "/harness/harness/bind/skills/review type"},
@@ -293,7 +268,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-prebuild-with-target-version.json":                        {"documents", "/target_version "},
 		"documents-workflow-without-harness-or-target-version.json":          {"documents", "/ required harness; / required target_version"},
 		"documents-subject-url-http.json":                                    {"documents", "/subject/url pattern"},
-		"documents-submit-undefined-member.json":                             {"documents", "/submit additionalProperties"},
 		"documents-submit-type-upper-case.json":                              {"documents", "/submit/type pattern"},
 		"documents-submit-type-underscore.json":                              {"documents", "/submit/type pattern"},
 		"documents-submit-type-65-characters.json":                           {"documents", "/submit/type maxLength"},
@@ -432,7 +406,6 @@ func TestASubmitIsRefusedForItsSubmitAlone(t *testing.T) {
 	}
 	submit := valid.(map[string]any)["submit"]
 	for _, fixture := range []string{
-		"documents-submit-undefined-member.json",
 		"documents-submit-type-upper-case.json",
 		"documents-submit-type-underscore.json",
 		"documents-submit-type-65-characters.json",

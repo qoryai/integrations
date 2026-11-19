@@ -42,15 +42,23 @@
 // one that contains another revision than the one it implements and sent, applies no
 // entry of it, and neither sends nor stores the answer's cursor. An answer's signature
 // covers its body and is bound to the request's signature, so the revision the answer
-// was built for is signed. So the answers' schemas stay strict, refusing a member they
-// do not define, and an addition to the contract never breaks an adapter already
-// deployed: each member and entry kind belongs to the revision of the feed that defines
-// it. An adapter skips and acknowledges a change entry whose kind its revision does not
-// define: it reads the kind alone, applies nothing else in the entry, and moves its
-// cursor past it. The description and the run documents, which a writer sends to a
-// reader that defines fewer members, follow the rule of must_understand instead, in
-// description.schema.json and in run/v1. The Forager contract makes additions safe the
-// other way, with lenient answers whose unknown members are ignored.
+// was built for is signed.
+//
+// So an addition to this contract never breaks an adapter already deployed: each member
+// and entry kind belongs to the revision of the feed that defines it, and an adapter
+// ignores a member of the answer or of an entry that its revision does not define, unless
+// must_understand lists it, as changes.schema.json describes. An adapter skips and
+// acknowledges a change entry whose kind its revision does not define, and a change entry
+// whose must_understand lists a pointer that it does not define: it reads the kind and
+// must_understand alone, applies nothing else in the entry, and moves its cursor past it.
+// The exception is a change_request entry, which the adapter reports failed with reason
+// refused (changes-failed.schema.json). The replies that an adapter sends,
+// changes-submitted.schema.json and changes-failed.schema.json, stay closed at their
+// root, since the control plane serves only revisions that it implements. The description
+// and the run documents, which a writer sends to a reader that defines fewer members,
+// follow the same rule of must_understand, in description.schema.json and in run/v1. The
+// Forager contract makes additions safe in the same way, with lenient answers whose
+// unknown members are ignored.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;
@@ -332,7 +340,7 @@ func compile(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
 // A schema it refers to is read as it is.
 func compileClosed(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
 	if !closable[base+"/"+name] {
-		return nil, fmt.Errorf("%s has no closed copy: only description.schema.json, documents.schema.json and next-session-answer.schema.json have one", name)
+		return nil, fmt.Errorf("%s has no closed copy: its objects list only some of their members", name)
 	}
 	return compileWith(base, fsys, name, true)
 }
@@ -349,7 +357,11 @@ func compileWith(base string, fsys fs.FS, name string, closed bool) (*jsonschema
 	}
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
-	c.UseLoader(loader{})
+	if closed {
+		c.UseLoader(closingLoader{})
+	} else {
+		c.UseLoader(loader{})
+	}
 	if err := c.AddResource(base+"/"+file, doc); err != nil {
 		return nil, err
 	}

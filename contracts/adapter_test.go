@@ -97,7 +97,7 @@ func TestAdapterFixturesValidate(t *testing.T) {
 	}
 	seen := 0
 	for _, d := range dirs {
-		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "signed" || d.Name() == "refused-by-control-plane" {
+		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "closed" || d.Name() == "signed" || d.Name() == "refused-by-control-plane" {
 			continue
 		}
 		schema := compile(t, d.Name()+".schema.json")
@@ -133,7 +133,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-work-item-url-http.json":                                       {"changes", "/changes/0/url pattern"},
 		"changes-watch-url-http.json":                                           {"changes", "/changes/0/url pattern"},
 		"changes-watch-without-url.json":                                        {"changes", "/changes/0 required url"},
-		"changes-watch-with-ref.json":                                           {"changes", "/changes/0 additionalProperties"},
 		"changes-watch-work-item-id-wrong-prefix.json":                          {"changes", "/changes/0/work_item_id pattern"},
 		"changes-without-revision.json":                                         {"changes", "/ required revision"},
 		"changes-comment-id-wrong-prefix.json":                                  {"changes", "/changes/0/comment_id pattern"},
@@ -162,16 +161,14 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-change-request-previous-empty.json":                            {"changes", "/changes/0/previous minProperties"},
 		"changes-change-request-previous-title-empty.json":                      {"changes", "/changes/0/previous/title minLength; /changes/0/previous/title pattern; /changes/0/previous/title pattern"},
 		"changes-change-request-previous-title-null.json":                       {"changes", "/changes/0/previous/title type"},
-		"changes-change-request-previous-unknown-member.json":                   {"changes", "/changes/0/previous additionalProperties"},
 		"changes-change-request-target-address-system-upper-case.json":          {"changes", "/changes/0/target/address/system pattern"},
-		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection; /changes/0/target additionalProperties"},
+		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection"},
 		"changes-change-request-target-without-collection.json":                 {"changes", "/changes/0/target required collection"},
 		"changes-change-request-text-20001.json":                                {"changes", "/changes/0/text maxLength"},
 		"changes-change-request-text-marker.json":                               {"changes", "/changes/0/text "},
 		"changes-change-request-title-257-characters.json":                      {"changes", "/changes/0/title maxLength"},
 		"changes-change-request-title-empty.json":                               {"changes", "/changes/0/title minLength; /changes/0/title pattern; /changes/0/title pattern"},
 		"changes-change-request-title-line-feed.json":                           {"changes", "/changes/0/title pattern"},
-		"changes-change-request-with-url.json":                                  {"changes", "/changes/0 additionalProperties"},
 		"changes-change-request-without-change-kind.json":                       {"changes", "/changes/0 required change_kind"},
 		"changes-change-request-without-data.json":                              {"changes", "/changes/0 required data"},
 		"changes-change-request-without-target.json":                            {"changes", "/changes/0 required target"},
@@ -442,7 +439,7 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 		{"no collection", `{"address":` + address + `}`, false},
 		{"an empty object", `{}`, false},
 		{"system and path with no collection", address, false},
-		{"system and path beside the collection", `{"collection":"R_1001","system":"code.example.com","path":"acme/shop"}`, false},
+		{"system and path beside the collection, which a reader ignores", `{"collection":"R_1001","system":"code.example.com","path":"acme/shop"}`, true},
 		{"an empty collection", `{"collection":""}`, false},
 		{"a collection of 201 characters", `{"collection":"` + strings.Repeat("a", 201) + `"}`, false},
 		{"a collection that is a number", `{"collection":1001}`, false},
@@ -457,7 +454,7 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 		{"an address with a path with U+007F", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\u007fshop"}}`, false},
 		{"an address with a system in upper case", `{"collection":"R_1001","address":{"system":"Code.example.com","path":"acme/shop"}}`, false},
 		{"an address with a system and a port", `{"collection":"R_1001","address":{"system":"code.example.com:8443","path":"acme/shop"}}`, false},
-		{"an address with another member", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop","port":1}}`, false},
+		{"an address with another member, which a reader ignores", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop","port":1}}`, true},
 	} {
 		if err := validate(schema, []byte(c.doc)); (err == nil) != c.ok {
 			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
