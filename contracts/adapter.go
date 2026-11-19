@@ -360,8 +360,9 @@ const (
 	ChangeGrant      = "grant"
 	ChangeSync       = "sync"
 	ChangeWatch      = "watch"
-	// ChangeSubmission is the kind of an entry for a submission version that a run stored.
-	ChangeSubmission = "submission"
+	// ChangeRequest is the kind of an entry for a change request that a run stored, for
+	// one target.
+	ChangeRequest = "change_request"
 )
 
 // Change is one entry of the change feed, of the kind set in Kind. A work_item entry has
@@ -372,10 +373,11 @@ const (
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
 // adapter's declared default; a watch entry, which the control plane writes when a run
 // whose target collection is one of the adapter's collections stores a submission
-// version, has WorkItemID and URL; a submission entry, written for each submission
-// version that a run stores, has SubmissionID, Ref (the item's ref, empty when the work
-// item came from no item), PreviousTitle (empty on the first version), Text (nil when
-// no repository has Draft) and Targets. It marshals with the members of its kind
+// version, has WorkItemID and URL; a change_request entry, written for each target of
+// each change request version that a run stores, has ChangeRequestID, ChangeKind, Target,
+// Ref (the item's ref, empty when the work item came from no item), Title, Text, Previous
+// (nil on the first version) and Data, the part that the artifact type of ChangeKind
+// defines, which marshals as {} when nil. It marshals with the members of its kind
 // alone.
 //
 // AuthorName is plain text, and the control plane sends it as it is, with no escaping.
@@ -402,65 +404,35 @@ type Change struct {
 	AuthorName    string `json:"author_name,omitempty"`
 	Body          string `json:"body,omitempty"`
 
-	SubmissionID  string             `json:"submission_id,omitempty"`
-	PreviousTitle string             `json:"previous_title,omitempty"`
-	Text          *SubmissionText    `json:"text,omitempty"`
-	Targets       []SubmissionTarget `json:"targets,omitempty"`
+	ChangeRequestID string          `json:"change_request_id,omitempty"`
+	ChangeKind      string          `json:"change_kind,omitempty"`
+	Target          *Target         `json:"target,omitempty"`
+	Title           string          `json:"title,omitempty"`
+	Text            string          `json:"text,omitempty"`
+	Previous        *ChangePrevious `json:"previous,omitempty"`
+	Data            json.RawMessage `json:"data,omitempty"`
 }
 
-// SubmissionText is the text of a submission entry, changes.schema.json: Title is the
-// title of the draft, and Description the content of the marked block of its
-// description, without the two marker lines, as [MarkedDescription] writes it.
-type SubmissionText struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
+// ChangeAddress is where a change is at its target: URL, the address of the change, and
+// Ref, the reference that the target gives it, such as the number of a pull request,
+// empty when the target gives none.
+type ChangeAddress struct {
+	URL string `json:"url"`
+	Ref string `json:"ref,omitempty"`
 }
 
-// SubmissionTarget is one repository of a submission entry, changes.schema.json:
-// where it is, the Branch that the run pushed, the Base it started at, the head Commit,
-// the Commits from the base to the head, oldest first (the newest 100 of a longer run),
-// EarlierCommits, the number of older commits of the run that Commits does not list, nil
-// when it lists each commit, and Draft, nil when the entry asks for no draft.
-type SubmissionTarget struct {
-	System  string             `json:"system"`
-	Path    string             `json:"path"`
-	Branch  string             `json:"branch"`
-	Base    SubmissionBase     `json:"base"`
-	Commit  string             `json:"commit"`
-	Commits []SubmissionCommit `json:"commits"`
-	// EarlierCommits is a pointer so that an absent member differs from 0, which the
-	// schema refuses. It is 1 to 9223372036854775807, and Commits has exactly 100 entries
-	// when it is set: the schema checks both.
-	EarlierCommits *int64        `json:"earlier_commits,omitempty"`
-	Draft          *DraftRequest `json:"draft,omitempty"`
+// ChangePrevious is the previous version of a change request for a target, as a
+// change_request entry has it: Title, empty when that version had none, and Address, nil
+// when the adapter reported none for it. A Change marshals Previous only when it has a
+// member, since the schema refuses an empty previous.
+type ChangePrevious struct {
+	Title   string         `json:"title,omitempty"`
+	Address *ChangeAddress `json:"address,omitempty"`
 }
 
-// SubmissionBase is where a run started: the Commit, and the Branch that the draft is
-// based on, empty when the run's machine did not read it.
-type SubmissionBase struct {
-	Commit string `json:"commit"`
-	Branch string `json:"branch,omitempty"`
-}
-
-// SubmissionCommit is one commit of a submission entry, with the ledger Step that made
-// it.
-type SubmissionCommit struct {
-	Commit string `json:"commit"`
-	Step   string `json:"step"`
-}
-
-// The actions of a [DraftRequest].
-const (
-	DraftOpen   = "open"
-	DraftUpdate = "update"
-)
-
-// DraftRequest is what a submission entry asks for a repository: Action [DraftOpen], or
-// [DraftUpdate] with the Number of the draft to edit.
-type DraftRequest struct {
-	Action string `json:"action"`
-	Number int64  `json:"number,omitempty"`
-}
+// DraftOpen is the value of QORY_SUBMIT_DRAFT that asks the submit program to open a
+// draft, as the submit program contract describes.
+const DraftOpen = "open"
 
 // MarshalJSON writes the entry with the members of its kind alone, and refuses a kind
 // the feed does not define.
@@ -506,15 +478,22 @@ func (c Change) MarshalJSON() ([]byte, error) {
 			WorkItemID string `json:"work_item_id"`
 			URL        string `json:"url"`
 		}{c.Kind, c.WorkItemID, c.URL})
-	case ChangeSubmission:
+	case ChangeRequest:
+		data := c.Data
+		if data == nil {
+			data = json.RawMessage("{}")
+		}
 		return json.Marshal(struct {
-			Kind          string             `json:"kind"`
-			SubmissionID  string             `json:"submission_id"`
-			Ref           string             `json:"ref,omitempty"`
-			PreviousTitle string             `json:"previous_title,omitempty"`
-			Text          *SubmissionText    `json:"text,omitempty"`
-			Targets       []SubmissionTarget `json:"targets"`
-		}{c.Kind, c.SubmissionID, c.Ref, c.PreviousTitle, c.Text, c.Targets})
+			Kind            string          `json:"kind"`
+			ChangeRequestID string          `json:"change_request_id"`
+			ChangeKind      string          `json:"change_kind"`
+			Target          *Target         `json:"target"`
+			Ref             string          `json:"ref,omitempty"`
+			Title           string          `json:"title"`
+			Text            string          `json:"text"`
+			Previous        *ChangePrevious `json:"previous,omitempty"`
+			Data            json.RawMessage `json:"data"`
+		}{c.Kind, c.ChangeRequestID, c.ChangeKind, c.Target, c.Ref, c.Title, c.Text, c.Previous, data})
 	}
 	return nil, fmt.Errorf("the change feed defines no kind %q", c.Kind)
 }
@@ -522,49 +501,45 @@ func (c Change) MarshalJSON() ([]byte, error) {
 // ChangesFailed is the body of POST /v1/work-items/changes/failed,
 // changes-failed.schema.json: the adapter stopped trying to post the comment of the
 // comment entry with CommentID, for Reason "item_gone", "not_permitted", "too_long" or
-// "unreachable", or to put a repository of the submission entry with SubmissionID on
-// the forge, the repository System and Path, for Reason "not_permitted", "unreachable",
-// "branch_gone", "too_long" or "forge_refused". A report has CommentID, or SubmissionID
-// with System and Path, never both. For a comment, the control plane marks the comment
-// not posted and stores Reason; for a repository, it stores Reason, and Detail when it is
-// set, with the submission version. Detail is for a repository only: one line of 1 to
-// 1000 characters, what to do first, then the forge's status and message.
+// "unreachable", or to apply the change_request entry with ChangeRequestID at its
+// Target, for Reason "not_permitted", "unreachable", "target_gone", "too_long" or
+// "refused". A report has CommentID, or ChangeRequestID with Target, never both. For a
+// comment, the control plane marks the comment not posted and stores Reason; for a
+// change request, it stores Reason, and Detail when it is set, with the change request
+// version. Detail is for a change request only: one line of 1 to 1000 characters, what
+// to do first, then the target's status and message. An adapter reports an entry whose
+// change kind it did not list with Reason "refused" and a Detail.
 type ChangesFailed struct {
-	Version      int    `json:"version"`
-	Time         string `json:"time"`
-	CommentID    string `json:"comment_id,omitempty"`
-	SubmissionID string `json:"submission_id,omitempty"`
-	System       string `json:"system,omitempty"`
-	Path         string `json:"path,omitempty"`
-	Reason       string `json:"reason"`
-	Detail       string `json:"detail,omitempty"`
+	Version         int     `json:"version"`
+	Time            string  `json:"time"`
+	CommentID       string  `json:"comment_id,omitempty"`
+	ChangeRequestID string  `json:"change_request_id,omitempty"`
+	Target          *Target `json:"target,omitempty"`
+	Reason          string  `json:"reason"`
+	Detail          string  `json:"detail,omitempty"`
 }
+
+// The actions of a [ChangesSubmitted] reply.
+const (
+	ChangeCreated = "created"
+	ChangeUpdated = "updated"
+	ChangeKept    = "kept"
+)
 
 // ChangesSubmitted is the body of POST /v1/work-items/changes/submitted,
-// changes-submitted.schema.json: what the adapter put on the forge for the submission
-// entry with SubmissionID.
+// changes-submitted.schema.json: what the adapter did at the target for the
+// change_request entry with ChangeRequestID. Target is the entry's target. Action
+// [ChangeCreated], [ChangeUpdated] or [ChangeKept] and Address are set together, or
+// both left out when the entry asks for no change at the target. Data is the result that
+// the kind defines, which this contract does not describe, and is left out when nil.
 type ChangesSubmitted struct {
-	Version      int               `json:"version"`
-	Time         string            `json:"time"`
-	SubmissionID string            `json:"submission_id"`
-	Targets      []SubmittedTarget `json:"targets"`
-}
-
-// SubmittedTarget is the reply for one target of a submission entry: the address of
-// the Base commit and of each commit, and the Draft, nil exactly when the entry's
-// target had no draft.
-type SubmittedTarget struct {
-	System  string          `json:"system"`
-	Path    string          `json:"path"`
-	Base    CommitAddress   `json:"base"`
-	Commits []CommitAddress `json:"commits"`
-	Draft   *SubmittedDraft `json:"draft,omitempty"`
-}
-
-// CommitAddress is a commit and the forge's address of it.
-type CommitAddress struct {
-	Commit    string `json:"commit"`
-	CommitURL string `json:"commit_url"`
+	Version         int             `json:"version"`
+	Time            string          `json:"time"`
+	ChangeRequestID string          `json:"change_request_id"`
+	Target          Target          `json:"target"`
+	Action          string          `json:"action,omitempty"`
+	Address         *ChangeAddress  `json:"address,omitempty"`
+	Data            json.RawMessage `json:"data,omitempty"`
 }
 
 // The states and actions of a [SubmittedDraft].
@@ -582,7 +557,9 @@ const (
 // [DraftStateDraft], [DraftStateOpen], [DraftStateClosed] or [DraftStateMerged], and
 // Action [DraftOpened], [DraftUpdated] or [DraftKept]. A draft that a person closed or
 // merged is reported with [DraftKept] and its real state, and the adapter does not edit
-// it. Number may differ from the number in the entry: it is a hint.
+// it. Number may differ from the number in the entry: it is a hint. A submit program
+// prints these values (submit_program.go); a reply of the pull-request kind may have
+// them in its Data as example data.
 type SubmittedDraft struct {
 	Number int64  `json:"number"`
 	URL    string `json:"url"`

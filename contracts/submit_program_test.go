@@ -568,98 +568,36 @@ func TestATitleChangesOnlyWhileItIsThePreviousOne(t *testing.T) {
 	}
 }
 
-// TestTheSubmissionExamplesAreOneForEachForgeKind pins that the feed has an entry for a forge
-// whose draft is a pull request and one for a forge whose draft is a merge request, on
-// two hosts, that the first version has no previous_title, and that the entry of the
-// second version has the text.title of the first.
-func TestTheSubmissionExamplesAreOneForEachForgeKind(t *testing.T) {
-	type entry struct {
-		Kind          string  `json:"kind"`
-		SubmissionID  string  `json:"submission_id"`
-		PreviousTitle *string `json:"previous_title"`
-		Text          *struct {
-			Title string `json:"title"`
-		} `json:"text"`
-		Targets []struct {
-			System string `json:"system"`
-			Draft  *struct {
-				Action string `json:"action"`
-				Number int    `json:"number"`
-			} `json:"draft"`
-		} `json:"targets"`
-	}
-	feed := func(name string) []entry {
-		var f struct{ Changes []entry }
-		if err := json.Unmarshal(read(t, "fixtures/adapter/changes/"+name), &f); err != nil {
-			t.Fatal(err)
-		}
-		return f.Changes
-	}
-	github, gitlab := feed("submission-github-like.json")[0], feed("submission-gitlab-like.json")[0]
-	if github.Targets[0].System == gitlab.Targets[0].System {
-		t.Error("the two examples are on one host")
-	}
-	if github.Targets[0].Draft.Action != "open" || gitlab.Targets[0].Draft.Action != "update" {
-		t.Error("the examples do not open and update")
-	}
-	two := feed("submission-two-versions.json")
-	if len(two) != 2 || two[0].PreviousTitle != nil || two[1].PreviousTitle == nil || two[0].Text == nil {
-		t.Fatalf("submission-two-versions.json: the first version has no previous_title and the second has one: %+v", two)
-	}
-	if *two[1].PreviousTitle != two[0].Text.Title {
-		t.Errorf("the second version has the previous title %q, and the first has the title %q", *two[1].PreviousTitle, two[0].Text.Title)
-	}
-	if two[1].Targets[0].Draft.Action != "update" || two[1].Targets[0].Draft.Number != 34 {
-		t.Error("the second version does not update draft 34")
-	}
-	for _, name := range []string{"github-like.json", "gitlab-like.json", "without-draft.json", "github-like-closed.json", "gitlab-like-merged.json"} {
-		if err := validate(compile(t, "changes-submitted.schema.json"), read(t, "fixtures/adapter/changes-submitted/"+name)); err != nil {
-			t.Errorf("%s: %v", name, err)
-		}
-	}
-	for _, reason := range []string{"not_permitted", "unreachable", "branch_gone", "too_long", "forge_refused"} {
-		b := read(t, "fixtures/adapter/changes-failed/submission-"+strings.ReplaceAll(reason, "_", "-")+".json")
-		if err := validate(compile(t, "changes-failed.schema.json"), b); err != nil {
-			t.Errorf("%s: %v", reason, err)
-		}
-	}
-}
-
-// TestTheFeedDescribesTheMarkers pins that the submission entry's description mentions the
-// two marker lines of the submit program contract, so an adapter and a program use the
-// same ones.
+// TestTheFeedDescribesTheMarkers pins that the change_request entry's description mentions
+// the two marker lines of the submit program contract and previous.title, so an adapter
+// and a program use the same marker lines, and that text has the limit of a block.
 func TestTheFeedDescribesTheMarkers(t *testing.T) {
-	d, _ := node(t, "changes.schema.json", "/$defs/submission")["description"].(string)
-	for _, want := range []string{contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd, "previous_title"} {
+	d, _ := node(t, "changes.schema.json", "/$defs/change_request")["description"].(string)
+	for _, want := range []string{contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd, "previous.title"} {
 		if !strings.Contains(d, want) {
-			t.Errorf("the description of the submission entry does not contain %q", want)
+			t.Errorf("the description of the change_request entry does not contain %q", want)
 		}
 	}
-	text := node(t, "changes.schema.json", "/$defs/submission/properties/text/properties/description")
+	text := node(t, "changes.schema.json", "/$defs/change_request/properties/text")
 	if text["maxLength"] != json.Number("20000") {
-		t.Errorf("the description's limit is %v", text["maxLength"])
+		t.Errorf("the text's limit is %v", text["maxLength"])
 	}
 }
 
-// TestTheFeedSaysWhichDraftOfSeveralIsTaken pins the sentence that picks one draft from
-// several on the branch, in the submission entry's description and in the README step that
-// finds the draft, whose white space is collapsed to single spaces.
-func TestTheFeedSaysWhichDraftOfSeveralIsTaken(t *testing.T) {
-	d, _ := node(t, "changes.schema.json", "/$defs/submission")["description"].(string)
+// TestTheReadmeSaysWhichDraftOfSeveralIsTaken pins the sentence that picks one draft from
+// several on the branch, in the README subsection of the pull-request kind, whose white
+// space is collapsed to single spaces.
+func TestTheReadmeSaysWhichDraftOfSeveralIsTaken(t *testing.T) {
 	readme := strings.Join(strings.Fields(string(read(t, "README.md"))), " ")
-	for _, c := range []struct{ where, text, want string }{
-		{"the submission entry", d, "With several drafts on the branch, the adapter takes the entry's draft.number when it is among them, otherwise the not-closed, not-merged draft with the highest number; with none, the closed or merged one with the highest number, reported as kept."},
-		{"the README", readme, "With several drafts on the branch, the adapter takes the entry's `draft.number` when it is among them, otherwise the not-closed, not-merged draft with the highest number; with none, the closed or merged one with the highest number, reported as kept."},
-	} {
-		if !strings.Contains(c.text, c.want) {
-			t.Errorf("%s does not contain %q", c.where, c.want)
-		}
+	const want = "With several drafts on the branch, the adapter takes the entry's `data.draft.number` when it is among them, otherwise the not-closed, not-merged draft with the highest number; with none, the closed or merged one with the highest number, reported as kept."
+	if !strings.Contains(readme, want) {
+		t.Errorf("the README does not contain %q", want)
 	}
 }
 
-// gatingTexts are the places that state that a submission entry reaches only an adapter whose
-// source role has submissions: true, by where they are. A README section has its white
-// space collapsed to single spaces.
+// gatingTexts are the places that state that a change_request entry reaches only an
+// adapter whose source role lists the change's kind in change_kinds, by where they are. A
+// README section has its white space collapsed to single spaces.
 func gatingTexts(t *testing.T) map[string]string {
 	t.Helper()
 	str := func(m map[string]any) string { d, _ := m["description"].(string); return d }
@@ -676,12 +614,12 @@ func gatingTexts(t *testing.T) map[string]string {
 		return strings.Join(strings.Fields(rest), " ")
 	}
 	return map[string]string{
-		"the feed's description":  str(root(t, "changes.schema.json")),
-		"the submission entry":    str(node(t, "changes.schema.json", "/$defs/submission")),
-		"the submissions flag":    str(node(t, "description.schema.json", "/properties/roles/properties/source/properties/submissions")),
-		"the targets flag":        str(node(t, "description.schema.json", "/properties/roles/properties/source/properties/targets")),
-		"the feed section":        section("Change feed and comments"),
-		"the Submissions section": section("Submissions"),
+		"the feed's description":      str(root(t, "changes.schema.json")),
+		"the change_request entry":    str(node(t, "changes.schema.json", "/$defs/change_request")),
+		"the change_kinds list":       str(node(t, "description.schema.json", "/properties/roles/properties/source/properties/change_kinds")),
+		"the targets flag":            str(node(t, "description.schema.json", "/properties/roles/properties/source/properties/targets")),
+		"the feed section":            section("Change feed and comments"),
+		"the Change requests section": section("Change requests"),
 	}
 }
 
@@ -695,11 +633,11 @@ func root(t *testing.T, name string) map[string]any {
 	return doc.(map[string]any)
 }
 
-// missingGating lists the places in texts that do not contain submissions: true.
+// missingGating lists the places in texts that do not contain change_kinds.
 func missingGating(texts map[string]string) []string {
 	var missing []string
 	for place, text := range texts {
-		if !strings.Contains(text, "submissions: true") && !strings.Contains(text, "`submissions: true`") {
+		if !strings.Contains(text, "change_kinds") {
 			missing = append(missing, place)
 		}
 	}
@@ -707,24 +645,24 @@ func missingGating(texts map[string]string) []string {
 	return missing
 }
 
-// TestTheSubmissionsFlagIsInEachPlaceThatGatesTheEntry pins that the feed's description,
-// the submission entry, the flag's text, the text of targets and the integration README
-// each mention that the entry needs submissions: true, and that removing the phrase from a
-// copy of any one place is found.
-func TestTheSubmissionsFlagIsInEachPlaceThatGatesTheEntry(t *testing.T) {
+// TestTheChangeKindsListIsInEachPlaceThatGatesTheEntry pins that the feed's description,
+// the change_request entry, the text of change_kinds, the text of targets and the
+// integration README each mention change_kinds, and that removing the word from a copy of
+// any one place is found.
+func TestTheChangeKindsListIsInEachPlaceThatGatesTheEntry(t *testing.T) {
 	texts := gatingTexts(t)
 	if missing := missingGating(texts); len(missing) != 0 {
-		t.Fatalf("no mention of submissions: true in %v", missing)
+		t.Fatalf("no mention of change_kinds in %v", missing)
 	}
 	for place, text := range texts {
 		copied := map[string]string{}
 		for k, v := range texts {
 			copied[k] = v
 		}
-		copied[place] = strings.ReplaceAll(text, "submissions: true", "")
+		copied[place] = strings.ReplaceAll(text, "change_kinds", "")
 		missing := missingGating(copied)
 		if !slices.Contains(missing, place) {
-			t.Errorf("without the phrase in %s, the check finds %v", place, missing)
+			t.Errorf("without the word in %s, the check finds %v", place, missing)
 		}
 	}
 	if d := texts["the targets flag"]; !strings.Contains(d, "watch") {

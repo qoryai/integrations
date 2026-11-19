@@ -122,222 +122,221 @@ func TestAdapterFixturesValidate(t *testing.T) {
 // other: where, the keyword, and the property a required one misses.
 func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"adapter-sync-without-sends-changes.json":              {"adapter", "/sync required sends_changes"},
-		"adapter-without-description.json":                     {"adapter", "/ required description"},
-		"adapter-description-version-2.json":                   {"adapter", "/description/version const"},
-		"adapter-description-item-noun-upper-case.json":        {"adapter", "/description/roles/source/item_noun/one pattern"},
-		"adapter-description-string.json":                      {"adapter", "/description type"},
-		"adapter-description-without-roles.json":               {"adapter", "/description required roles"},
-		"changes-sync-interval-30.json":                        {"changes", "/changes/0/interval minimum"},
-		"changes-unknown-kind.json":                            {"changes", "/changes/0/kind enum"},
-		"changes-work-item-status-linked.json":                 {"changes", "/changes/0/status enum"},
-		"changes-work-item-url-http.json":                      {"changes", "/changes/0/url pattern"},
-		"changes-watch-url-http.json":                          {"changes", "/changes/0/url pattern"},
-		"changes-watch-without-url.json":                       {"changes", "/changes/0 required url"},
-		"changes-watch-with-ref.json":                          {"changes", "/changes/0 additionalProperties"},
-		"changes-watch-work-item-id-wrong-prefix.json":         {"changes", "/changes/0/work_item_id pattern"},
-		"changes-without-revision.json":                        {"changes", "/ required revision"},
-		"changes-comment-id-wrong-prefix.json":                 {"changes", "/changes/0/comment_id pattern"},
-		"changes-comment-body-empty.json":                      {"changes", "/changes/0/body minLength"},
-		"changes-comment-body-65001.json":                      {"changes", "/changes/0/body maxLength"},
-		"changes-comment-author-name-101.json":                 {"changes", "/changes/0/author_name maxLength"},
-		"changes-comment-author-name-line-feed.json":           {"changes", "/changes/0/author_name pattern"},
-		"changes-comment-author-name-next-line.json":           {"changes", "/changes/0/author_name pattern"},
-		"changes-comment-author-name-bidi-override.json":       {"changes", "/changes/0/author_name pattern"},
-		"changes-comment-author-name-spaces.json":              {"changes", "/changes/0/author_name pattern"},
-		"changes-comment-author-name-unicode-spaces.json":      {"changes", "/changes/0/author_name pattern"},
-		"changes-failed-unknown-reason.json":                   {"changes-failed", "/reason enum"},
-		"changes-failed-without-comment-id.json":               {"changes-failed", "/ required comment_id"},
-		"changes-failed-comment-branch-gone.json":              {"changes-failed", "/reason enum"},
-		"changes-failed-comment-forge-refused.json":            {"changes-failed", "/reason enum"},
-		"changes-failed-comment-with-path.json":                {"changes-failed", "/path "},
-		"changes-failed-submission-and-comment-id.json":        {"changes-failed", "/ "},
-		"changes-failed-submission-id-wrong-prefix.json":       {"changes-failed", "/submission_id pattern"},
-		"changes-failed-submission-item-gone.json":             {"changes-failed", "/reason enum"},
-		"changes-failed-submission-unknown-reason.json":        {"changes-failed", "/reason enum"},
-		"changes-failed-submission-detail-1001.json":           {"changes-failed", "/detail maxLength"},
-		"changes-failed-submission-detail-empty.json":          {"changes-failed", "/detail minLength; /detail pattern"},
-		"changes-failed-submission-detail-line-break.json":     {"changes-failed", "/detail pattern"},
-		"changes-failed-comment-detail.json":                   {"changes-failed", "/detail "},
-		"changes-failed-submission-without-path.json":          {"changes-failed", "/ required path"},
-		"changes-failed-submission-without-system.json":        {"changes-failed", "/ required system"},
-		"changes-submission-branch-with-space.json":            {"changes", "/changes/0/targets/0/branch pattern"},
-		"changes-submission-commit-short.json":                 {"changes", "/changes/0/targets/0/commits/0/commit pattern"},
-		"changes-submission-commits-empty.json":                {"changes", "/changes/0/targets/0/commits minItems"},
-		"changes-submission-commits-101.json":                  {"changes", "/changes/0/targets/0/commits maxItems"},
-		"changes-submission-earlier-commits-0.json":            {"changes", "/changes/0/targets/0/earlier_commits minimum"},
-		"changes-submission-earlier-commits-negative.json":     {"changes", "/changes/0/targets/0/earlier_commits minimum"},
-		"changes-submission-earlier-commits-string.json":       {"changes", "/changes/0/targets/0/earlier_commits type"},
-		"changes-submission-earlier-commits-over-int64.json":   {"changes", "/changes/0/targets/0/earlier_commits maximum"},
-		"changes-submission-earlier-commits-99-commits.json":   {"changes", "/changes/0/targets/0/commits minItems"},
-		"changes-submission-description-20001.json":            {"changes", "/changes/0/text/description maxLength"},
-		"changes-submission-description-marker.json":           {"changes", "/changes/0/text/description "},
-		"changes-submission-draft-action-close.json":           {"changes", "/changes/0/targets/0/draft/action enum"},
-		"changes-submission-draft-without-base-branch.json":    {"changes", "/changes/0/targets/0/base required branch"},
-		"changes-submission-draft-without-text.json":           {"changes", "/changes/0 required text"},
-		"changes-submission-id-wrong-prefix.json":              {"changes", "/changes/0/submission_id pattern"},
-		"changes-submission-open-with-number.json":             {"changes", "/changes/0/targets/0/draft "},
-		"changes-submission-path-dot-dot.json":                 {"changes", "/changes/0/targets/0/path "},
-		"changes-submission-previous-title-empty.json":         {"changes", "/changes/0/previous_title minLength; /changes/0/previous_title pattern; /changes/0/previous_title pattern"},
-		"changes-submission-previous-title-null.json":          {"changes", "/changes/0/previous_title type"},
-		"changes-submission-targets-empty.json":                {"changes", "/changes/0/targets minItems"},
-		"changes-submission-step-129-characters.json":          {"changes", "/changes/0/targets/0/commits/0/step maxLength"},
-		"changes-submission-system-upper-case.json":            {"changes", "/changes/0/targets/0/system pattern"},
-		"changes-submission-title-257-characters.json":         {"changes", "/changes/0/text/title maxLength"},
-		"changes-submission-title-line-feed.json":              {"changes", "/changes/0/text/title pattern"},
-		"changes-submission-update-without-number.json":        {"changes", "/changes/0/targets/0/draft required number"},
-		"changes-submission-with-url.json":                     {"changes", "/changes/0 additionalProperties"},
-		"changes-submission-without-commits.json":              {"changes", "/changes/0/targets/0 required commits"},
-		"changes-submission-without-targets.json":              {"changes", "/changes/0 required targets"},
-		"changes-submission-without-step.json":                 {"changes", "/changes/0/targets/0/commits/0 required step"},
-		"changes-submitted-commit-url-http.json":               {"changes-submitted", "/targets/0/commits/0/commit_url pattern"},
-		"changes-submitted-commit-without-commit-url.json":     {"changes-submitted", "/targets/0/commits/0 required commit_url"},
-		"changes-submitted-commits-empty.json":                 {"changes-submitted", "/targets/0/commits minItems"},
-		"changes-submitted-draft-action-closed.json":           {"changes-submitted", "/targets/0/draft/action enum"},
-		"changes-submitted-draft-closed-updated.json":          {"changes-submitted", "/targets/0/draft/action const"},
-		"changes-submitted-draft-merged-opened.json":           {"changes-submitted", "/targets/0/draft/action const"},
-		"changes-submitted-draft-number-0.json":                {"changes-submitted", "/targets/0/draft/number minimum"},
-		"changes-submitted-draft-number-over-int64.json":       {"changes-submitted", "/targets/0/draft/number maximum"},
-		"changes-submission-draft-number-over-int64.json":      {"changes", "/changes/0/targets/0/draft/number maximum"},
-		"changes-submitted-draft-state-archived.json":          {"changes-submitted", "/targets/0/draft/state enum"},
-		"changes-submitted-draft-without-url.json":             {"changes-submitted", "/targets/0/draft required url"},
-		"changes-submitted-undefined-member.json":              {"changes-submitted", "/ additionalProperties"},
-		"changes-submitted-without-base.json":                  {"changes-submitted", "/targets/0 required base"},
-		"changes-submitted-without-targets.json":               {"changes-submitted", "/ required targets"},
-		"changes-submitted-without-submission-id.json":         {"changes-submitted", "/ required submission_id"},
-		"source-item-comments-comment-id-upper-case.json":      {"source-item-comments", "/comments/0/comment_id pattern"},
-		"source-collections-no-listing.json":                   {"source-collections", "/ required listing"},
-		"source-item-comments-person-kind-app.json":            {"source-item-comments", "/comments/0/author/kind enum"},
-		"source-items-101-items.json":                          {"source-items", "/items maxItems"},
-		"source-items-body-too-long.json":                      {"source-items", "/items/0/body maxLength"},
-		"source-items-empty-label.json":                        {"source-items", "/items/0/labels/1 minLength"},
-		"source-items-state-reason-too-long.json":              {"source-items", "/items/0/state_reason maxLength"},
-		"source-items-time-fraction.json":                      {"source-items", "/time pattern"},
-		"source-items-time-offset.json":                        {"source-items", "/time pattern"},
-		"source-items-undefined-member.json":                   {"source-items", "/ additionalProperties"},
-		"refusal-supported-member.json":                        {"refusal", "/ additionalProperties"},
-		"source-items-url-http.json":                           {"source-items", "/items/0/url pattern"},
-		"source-items-key-too-long.json":                       {"source-items", "/items/0/key maxLength"},
-		"source-items-event-empty.json":                        {"source-items", "/items minItems"},
-		"source-item-comments-empty-without-complete.json":     {"source-item-comments", "/comments minItems"},
-		"source-items-truncated-labels-twice.json":             {"source-items", "/items/0/truncated uniqueItems"},
-		"source-items-truncated-state-reason.json":             {"source-items", "/items/0/truncated/0 enum"},
-		"source-items-truncated-unknown-field.json":            {"source-items", "/items/0/truncated/0 enum"},
-		"sources-disconnect-with-reason.json":                  {"sources-disconnect", "/ additionalProperties"},
-		"sources-disconnect-without-connection-id.json":        {"sources-disconnect", "/ required connection_id"},
-		"connect-return-refused-without-reason.json":           {"connect-return", "/ required reason"},
-		"connect-return-linked-with-reason.json":               {"connect-return", "/reason "},
-		"connect-return-unknown-outcome.json":                  {"connect-return", "/outcome enum"},
-		"connect-return-undefined-member.json":                 {"connect-return", "/ additionalProperties"},
-		"connect-pass-without-connection-id.json":              {"connect-pass", "/ required connection_id"},
-		"connections-disconnect-undefined-member.json":         {"connections-disconnect", "/ additionalProperties"},
-		"connections-disconnect-connection-id-adapter-id.json": {"connections-disconnect", "/connection_id pattern"},
-		"source-collections-part-10001.json":                   {"source-collections", "/listing/part maximum"},
-		"source-collections-environment-ref-empty.json":        {"source-collections", "/collections/0/environment_ref minLength"},
-		"source-collections-environment-ref-201.json":          {"source-collections", "/collections/0/environment_ref maxLength"},
-		"source-collections-environment-ref-nul.json":          {"source-collections", "/collections/0/environment_ref pattern"},
-		"source-collections-items-true.json":                   {"source-collections", "/collections/1/items const"},
-		"source-collections-items-string.json":                 {"source-collections", "/collections/1/items const"},
-		"source-collections-items-null.json":                   {"source-collections", "/collections/1/items const"},
-		"source-items-comment-count-above-maximum.json":        {"source-items", "/items/0/comment_count maximum"},
-		"source-items-title-nul.json":                          {"source-items", "/items/0/title pattern"},
-		"source-items-created-at-leap-second.json":             {"source-items", "/items/0/created_at pattern"},
-		"source-items-created-at-hour-24.json":                 {"source-items", "/items/0/created_at format"},
-		"source-items-created-at-minute-60.json":               {"source-items", "/items/0/created_at format"},
-		"source-items-url-user-information.json":               {"source-items", "/items/0/url pattern"},
-		"source-items-url-host-percent-41.json":                {"source-items", "/items/0/url format"},
-		"source-items-url-host-percent-7f.json":                {"source-items", "/items/0/url format"},
-		"source-items-url-after-bracket-letters.json":          {"source-items", "/items/0/url format"},
-		"source-items-url-after-bracket-dot-digit.json":        {"source-items", "/items/0/url format"},
-		"source-items-url-bad-percent-escape.json":             {"source-items", "/items/0/url format"},
-		"source-items-url-port-0.json":                         {"source-items", "/items/0/url pattern"},
-		"source-items-url-port-65536.json":                     {"source-items", "/items/0/url pattern"},
-		"setup-pass-without-nonce.json":                        {"setup-pass", "/ required nonce"},
-		"setup-pass-undefined-member.json":                     {"setup-pass", "/ additionalProperties"},
-		"setup-pass-version-2.json":                            {"setup-pass", "/version const"},
-		"setup-pass-adapter-id-connection-id.json":             {"setup-pass", "/adapter_id pattern"},
-		"setup-pass-organisation-slug-upper-case.json":         {"setup-pass", "/organisation_slug pattern"},
-		"setup-pass-organisation-slug-underscore.json":         {"setup-pass", "/organisation_slug pattern"},
-		"setup-pass-organisation-slug-leading-hyphen.json":     {"setup-pass", "/organisation_slug pattern"},
-		"setup-pass-organisation-slug-trailing-hyphen.json":    {"setup-pass", "/organisation_slug pattern"},
-		"setup-pass-organisation-slug-41-characters.json":      {"setup-pass", "/organisation_slug maxLength"},
-		"setup-pass-organisation-slug-empty.json":              {"setup-pass", "/organisation_slug pattern"},
-		"adapter-setup-url-fragment.json":                      {"adapter", "/setup_url "},
-		"adapter-setup-url-state.json":                         {"adapter", "/setup_url "},
-		"adapter-setup-url-and-state.json":                     {"adapter", "/setup_url "},
-		"adapter-setup-url-http.json":                          {"adapter", "/setup_url pattern"},
-		"adapter-setup-url-bare-state.json":                    {"adapter", "/setup_url "},
-		"adapter-setup-url-state-first.json":                   {"adapter", "/setup_url "},
-		"adapter-setup-url-state-percent-encoded.json":         {"adapter", "/setup_url "},
-		"adapter-call-url-http.json":                           {"adapter", "/call_url pattern"},
-		"adapter-call-url-query.json":                          {"adapter", "/call_url pattern"},
-		"adapter-call-url-without-final-slash.json":            {"adapter", "/call_url pattern"},
-		"adapter-description-secrets-twice.json":               {"adapter", "/description/roles/source/secrets uniqueItems"},
-		"grant-without-pass-nonce.json":                        {"grant", "/ required pass_nonce"},
-		"grant-without-account.json":                           {"grant", "/ required account"},
-		"grant-end-without-grant-ref.json":                     {"grant-end", "/ required grant_ref"},
-		"grant-end-with-pass-nonce.json":                       {"grant-end", "/ additionalProperties"},
-		"grant-account-without-ref.json":                       {"grant", "/account required ref"},
-		"grant-account-title-line-feed.json":                   {"grant", "/account/title pattern"},
-		"source-collections-without-grant-ref.json":            {"source-collections", "/collections/0 required grant_ref"},
-		"grant-pass-nonce-21-characters.json":                  {"grant", "/pass_nonce pattern"},
-		"grants-without-revision.json":                         {"grants", "/ required revision"},
-		"changes-grant-status-taken-in.json":                   {"changes", "/changes/0/status enum"},
-		"changes-grant-without-connection-id.json":             {"changes", "/changes/0 required connection_id"},
-		"adapter-secrets-value-in-clear.json":                  {"adapter-secrets", "/sealed additionalProperties"},
-		"adapter-secrets-without-server-key.json":              {"adapter-secrets", "/sealed required server_key"},
-		"adapter-secrets-answer-suite-chacha20.json":           {"adapter-secrets-answer", "/sealed/suite const"},
-		"adapter-secrets-answer-enc-31-bytes.json":             {"adapter-secrets-answer", "/sealed/enc pattern"},
-		"adapter-secrets-plaintext-17-secrets.json":            {"adapter-secrets-plaintext", "/secrets maxItems"},
-		"adapter-secrets-plaintext-name-upper-case.json":       {"adapter-secrets-plaintext", "/secrets/0/name pattern"},
-		"adapter-secrets-plaintext-empty-value.json":           {"adapter-secrets-plaintext", "/secrets/0/value minLength"},
-		"resolve-65-addresses.json":                            {"resolve", "/addresses maxItems"},
-		"resolve-without-addresses.json":                       {"resolve", "/addresses minItems"},
-		"resolve-address-space.json":                           {"resolve", "/addresses/0 pattern"},
-		"resolve-address-twice.json":                           {"resolve", "/addresses uniqueItems"},
-		"resolve-answer-covered-true.json":                     {"resolve-answer", "/results/1/covered const"},
-		"resolve-answer-not-covered-with-grant-ref.json":       {"resolve-answer", "/results/1/grant_ref "},
-		"resolve-answer-without-resource-ref.json":             {"resolve-answer", "/results/0 required resource_ref"},
-		"resolve-answer-without-revision.json":                 {"resolve-answer", "/ required revision"},
-		"resolve-answer-public-false.json":                     {"resolve-answer", "/results/0/public const"},
-		"resolve-answer-public-without-resource-ref.json":      {"resolve-answer", "/results/0 required resource_ref"},
-		"resolve-answer-not-covered-public.json":               {"resolve-answer", "/results/0/public "},
-		"resolve-answer-public-without-public-ref.json":        {"resolve-answer", "/results/0 required public_ref"},
-		"resolve-answer-public-ref-without-public.json":        {"resolve-answer", "/results/0/public_ref "},
-		"read-public-with-grant-ref.json":                      {"read-public", "/ additionalProperties"},
-		"read-public-without-path.json":                        {"read-public", "/ required path"},
-		"read-path-leading-slash.json":                         {"read", "/path pattern"},
-		"read-path-dot-dot.json":                               {"read", "/path pattern"},
-		"read-path-empty-part.json":                            {"read", "/path pattern"},
-		"read-at-space.json":                                   {"read", "/at pattern"},
-		"read-without-at.json":                                 {"read", "/ required at"},
-		"read-answer-content-nul.json":                         {"read-answer", "/content pattern"},
-		"read-answer-without-resolved-at.json":                 {"read-answer", "/ required resolved_at"},
-		"read-answer-content-and-not-found.json":               {"read-answer", "/content "},
-		"read-answer-without-content-or-found.json":            {"read-answer", "/ required content"},
-		"run-credential-access-admin.json":                     {"run-credential", "/access enum"},
-		"run-credential-access-write-no-push.json":             {"run-credential", "/access enum"},
-		"run-credential-purpose-other.json":                    {"run-credential", "/purpose enum"},
-		"run-credential-without-resources.json":                {"run-credential", "/resources minItems; /resources minItems"},
-		"run-credential-work-two-resources.json":               {"run-credential", "/resources maxItems"},
-		"run-credential-without-purpose.json":                  {"run-credential", "/ required purpose"},
-		"run-credential-work-with-grant-ref.json":              {"run-credential", "/ "},
-		"run-credential-harness-without-grant-ref.json":        {"run-credential", "/ required grant_ref"},
-		"run-credential-work-without-connection-id.json":       {"run-credential", "/ required connection_id"},
-		"run-credential-harness-with-connection-id.json":       {"run-credential", "/ "},
-		"run-credential-harness-write.json":                    {"run-credential", "/access const"},
-		"run-credential-answer-without-token.json":             {"run-credential-answer", "/credential required token"},
-		"run-credential-answer-without-nested-version.json":    {"run-credential-answer", "/credential required version"},
-		"run-credential-answer-apply-token.json":               {"run-credential-answer", "/credential/apply/0/token "},
-		"run-credential-answer-host-star-dot.json":             {"run-credential-answer", "/credential/apply/0/hosts/0 "},
-		"run-credential-answer-placeholders.json":              {"run-credential-answer", "/credential/placeholders "},
-		"run-credential-answer-token-line-feed.json":           {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-carriage-return.json":     {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-nul.json":                 {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-leading-space.json":       {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-trailing-tab.json":        {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-16385.json":               {"run-credential-answer", "/credential/token maxLength"},
-		"run-credential-answer-expires-at-without-zone.json":   {"run-credential-answer", "/credential/expires_at format"},
+		"adapter-sync-without-sends-changes.json":                               {"adapter", "/sync required sends_changes"},
+		"adapter-without-description.json":                                      {"adapter", "/ required description"},
+		"adapter-description-version-2.json":                                    {"adapter", "/description/version const"},
+		"adapter-description-item-noun-upper-case.json":                         {"adapter", "/description/roles/source/item_noun/one pattern"},
+		"adapter-description-string.json":                                       {"adapter", "/description type"},
+		"adapter-description-without-roles.json":                                {"adapter", "/description required roles"},
+		"changes-sync-interval-30.json":                                         {"changes", "/changes/0/interval minimum"},
+		"changes-unknown-kind.json":                                             {"changes", "/changes/0/kind enum"},
+		"changes-work-item-status-linked.json":                                  {"changes", "/changes/0/status enum"},
+		"changes-work-item-url-http.json":                                       {"changes", "/changes/0/url pattern"},
+		"changes-watch-url-http.json":                                           {"changes", "/changes/0/url pattern"},
+		"changes-watch-without-url.json":                                        {"changes", "/changes/0 required url"},
+		"changes-watch-with-ref.json":                                           {"changes", "/changes/0 additionalProperties"},
+		"changes-watch-work-item-id-wrong-prefix.json":                          {"changes", "/changes/0/work_item_id pattern"},
+		"changes-without-revision.json":                                         {"changes", "/ required revision"},
+		"changes-comment-id-wrong-prefix.json":                                  {"changes", "/changes/0/comment_id pattern"},
+		"changes-comment-body-empty.json":                                       {"changes", "/changes/0/body minLength"},
+		"changes-comment-body-65001.json":                                       {"changes", "/changes/0/body maxLength"},
+		"changes-comment-author-name-101.json":                                  {"changes", "/changes/0/author_name maxLength"},
+		"changes-comment-author-name-line-feed.json":                            {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-next-line.json":                            {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-bidi-override.json":                        {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-spaces.json":                               {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-unicode-spaces.json":                       {"changes", "/changes/0/author_name pattern"},
+		"changes-failed-unknown-reason.json":                                    {"changes-failed", "/reason enum"},
+		"changes-failed-without-comment-id.json":                                {"changes-failed", "/ required comment_id"},
+		"changes-change-request-change-kind-65-characters.json":                 {"changes", "/changes/0/change_kind maxLength"},
+		"changes-change-request-change-kind-double-hyphen.json":                 {"changes", "/changes/0/change_kind pattern"},
+		"changes-change-request-change-kind-not-a-string.json":                  {"changes", "/changes/0/change_kind type"},
+		"changes-change-request-change-kind-trailing-hyphen.json":               {"changes", "/changes/0/change_kind pattern"},
+		"changes-change-request-change-kind-underscore.json":                    {"changes", "/changes/0/change_kind pattern"},
+		"changes-change-request-change-kind-upper-case.json":                    {"changes", "/changes/0/change_kind pattern"},
+		"changes-change-request-data-array.json":                                {"changes", "/changes/0/data type"},
+		"changes-change-request-data-nul-character.json":                        {"changes", "/changes/0/data/note pattern"},
+		"changes-change-request-data-null.json":                                 {"changes", "/changes/0/data type"},
+		"changes-change-request-data-string.json":                               {"changes", "/changes/0/data type"},
+		"changes-change-request-id-wrong-prefix.json":                           {"changes", "/changes/0/change_request_id pattern"},
+		"changes-change-request-previous-address-without-url.json":              {"changes", "/changes/0/previous/address required url"},
+		"changes-change-request-previous-empty.json":                            {"changes", "/changes/0/previous minProperties"},
+		"changes-change-request-previous-title-empty.json":                      {"changes", "/changes/0/previous/title minLength; /changes/0/previous/title pattern; /changes/0/previous/title pattern"},
+		"changes-change-request-previous-title-null.json":                       {"changes", "/changes/0/previous/title type"},
+		"changes-change-request-previous-unknown-member.json":                   {"changes", "/changes/0/previous additionalProperties"},
+		"changes-change-request-target-address-system-upper-case.json":          {"changes", "/changes/0/target/address/system pattern"},
+		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection; /changes/0/target additionalProperties"},
+		"changes-change-request-target-without-collection.json":                 {"changes", "/changes/0/target required collection"},
+		"changes-change-request-text-20001.json":                                {"changes", "/changes/0/text maxLength"},
+		"changes-change-request-text-marker.json":                               {"changes", "/changes/0/text "},
+		"changes-change-request-title-257-characters.json":                      {"changes", "/changes/0/title maxLength"},
+		"changes-change-request-title-empty.json":                               {"changes", "/changes/0/title minLength; /changes/0/title pattern; /changes/0/title pattern"},
+		"changes-change-request-title-line-feed.json":                           {"changes", "/changes/0/title pattern"},
+		"changes-change-request-with-url.json":                                  {"changes", "/changes/0 additionalProperties"},
+		"changes-change-request-without-change-kind.json":                       {"changes", "/changes/0 required change_kind"},
+		"changes-change-request-without-data.json":                              {"changes", "/changes/0 required data"},
+		"changes-change-request-without-target.json":                            {"changes", "/changes/0 required target"},
+		"changes-change-request-without-text.json":                              {"changes", "/changes/0 required text"},
+		"changes-change-request-without-title.json":                             {"changes", "/changes/0 required title"},
+		"changes-failed-change-request-and-comment-id.json":                     {"changes-failed", "/ "},
+		"changes-failed-change-request-branch-gone.json":                        {"changes-failed", "/reason enum"},
+		"changes-failed-change-request-detail-1001.json":                        {"changes-failed", "/detail maxLength"},
+		"changes-failed-change-request-detail-empty.json":                       {"changes-failed", "/detail minLength; /detail pattern"},
+		"changes-failed-change-request-detail-line-break.json":                  {"changes-failed", "/detail pattern"},
+		"changes-failed-change-request-forge-refused.json":                      {"changes-failed", "/reason enum"},
+		"changes-failed-change-request-id-wrong-prefix.json":                    {"changes-failed", "/change_request_id pattern"},
+		"changes-failed-change-request-item-gone.json":                          {"changes-failed", "/reason enum"},
+		"changes-failed-change-request-target-without-collection.json":          {"changes-failed", "/target required collection"},
+		"changes-failed-change-request-unknown-reason.json":                     {"changes-failed", "/reason enum"},
+		"changes-failed-change-request-without-target.json":                     {"changes-failed", "/ required target"},
+		"changes-failed-comment-refused.json":                                   {"changes-failed", "/reason enum"},
+		"changes-failed-comment-target-gone.json":                               {"changes-failed", "/reason enum"},
+		"changes-failed-comment-with-target.json":                               {"changes-failed", "/target "},
+		"changes-submitted-action-closed.json":                                  {"changes-submitted", "/action enum"},
+		"changes-submitted-action-without-address.json":                         {"changes-submitted", "/ dependentRequired/action"},
+		"changes-submitted-address-url-http.json":                               {"changes-submitted", "/address/url pattern"},
+		"changes-submitted-address-without-action.json":                         {"changes-submitted", "/ dependentRequired/address"},
+		"changes-submitted-address-without-url.json":                            {"changes-submitted", "/address required url"},
+		"changes-submitted-data-array.json":                                     {"changes-submitted", "/data type"},
+		"changes-submitted-data-nul-character.json":                             {"changes-submitted", "/data/note pattern"},
+		"changes-submitted-target-without-collection.json":                      {"changes-submitted", "/target required collection"},
+		"changes-submitted-undefined-member.json":                               {"changes-submitted", "/ additionalProperties"},
+		"changes-submitted-without-change-request-id.json":                      {"changes-submitted", "/ required change_request_id"},
+		"changes-submitted-without-target.json":                                 {"changes-submitted", "/ required target"},
+		"changes-failed-comment-detail.json":                                    {"changes-failed", "/detail "},
+		"source-item-comments-comment-id-upper-case.json":                       {"source-item-comments", "/comments/0/comment_id pattern"},
+		"source-collections-no-listing.json":                                    {"source-collections", "/ required listing"},
+		"source-item-comments-person-kind-app.json":                             {"source-item-comments", "/comments/0/author/kind enum"},
+		"source-items-101-items.json":                                           {"source-items", "/items maxItems"},
+		"source-items-body-too-long.json":                                       {"source-items", "/items/0/body maxLength"},
+		"source-items-empty-label.json":                                         {"source-items", "/items/0/labels/1 minLength"},
+		"source-items-state-reason-too-long.json":                               {"source-items", "/items/0/state_reason maxLength"},
+		"source-items-time-fraction.json":                                       {"source-items", "/time pattern"},
+		"source-items-time-offset.json":                                         {"source-items", "/time pattern"},
+		"source-items-undefined-member.json":                                    {"source-items", "/ additionalProperties"},
+		"refusal-supported-member.json":                                         {"refusal", "/ additionalProperties"},
+		"source-items-url-http.json":                                            {"source-items", "/items/0/url pattern"},
+		"source-items-key-too-long.json":                                        {"source-items", "/items/0/key maxLength"},
+		"source-items-event-empty.json":                                         {"source-items", "/items minItems"},
+		"source-item-comments-empty-without-complete.json":                      {"source-item-comments", "/comments minItems"},
+		"source-items-truncated-labels-twice.json":                              {"source-items", "/items/0/truncated uniqueItems"},
+		"source-items-truncated-state-reason.json":                              {"source-items", "/items/0/truncated/0 enum"},
+		"source-items-truncated-unknown-field.json":                             {"source-items", "/items/0/truncated/0 enum"},
+		"sources-disconnect-with-reason.json":                                   {"sources-disconnect", "/ additionalProperties"},
+		"sources-disconnect-without-connection-id.json":                         {"sources-disconnect", "/ required connection_id"},
+		"connect-return-refused-without-reason.json":                            {"connect-return", "/ required reason"},
+		"connect-return-linked-with-reason.json":                                {"connect-return", "/reason "},
+		"connect-return-unknown-outcome.json":                                   {"connect-return", "/outcome enum"},
+		"connect-return-undefined-member.json":                                  {"connect-return", "/ additionalProperties"},
+		"connect-pass-without-connection-id.json":                               {"connect-pass", "/ required connection_id"},
+		"connections-disconnect-undefined-member.json":                          {"connections-disconnect", "/ additionalProperties"},
+		"connections-disconnect-connection-id-adapter-id.json":                  {"connections-disconnect", "/connection_id pattern"},
+		"source-collections-part-10001.json":                                    {"source-collections", "/listing/part maximum"},
+		"source-collections-environment-ref-empty.json":                         {"source-collections", "/collections/0/environment_ref minLength"},
+		"source-collections-environment-ref-201.json":                           {"source-collections", "/collections/0/environment_ref maxLength"},
+		"source-collections-environment-ref-nul.json":                           {"source-collections", "/collections/0/environment_ref pattern"},
+		"source-collections-items-true.json":                                    {"source-collections", "/collections/1/items const"},
+		"source-collections-items-string.json":                                  {"source-collections", "/collections/1/items const"},
+		"source-collections-items-null.json":                                    {"source-collections", "/collections/1/items const"},
+		"source-items-comment-count-above-maximum.json":                         {"source-items", "/items/0/comment_count maximum"},
+		"source-items-title-nul.json":                                           {"source-items", "/items/0/title pattern"},
+		"source-items-created-at-leap-second.json":                              {"source-items", "/items/0/created_at pattern"},
+		"source-items-created-at-hour-24.json":                                  {"source-items", "/items/0/created_at format"},
+		"source-items-created-at-minute-60.json":                                {"source-items", "/items/0/created_at format"},
+		"source-items-url-user-information.json":                                {"source-items", "/items/0/url pattern"},
+		"source-items-url-host-percent-41.json":                                 {"source-items", "/items/0/url format"},
+		"source-items-url-host-percent-7f.json":                                 {"source-items", "/items/0/url format"},
+		"source-items-url-after-bracket-letters.json":                           {"source-items", "/items/0/url format"},
+		"source-items-url-after-bracket-dot-digit.json":                         {"source-items", "/items/0/url format"},
+		"source-items-url-bad-percent-escape.json":                              {"source-items", "/items/0/url format"},
+		"source-items-url-port-0.json":                                          {"source-items", "/items/0/url pattern"},
+		"source-items-url-port-65536.json":                                      {"source-items", "/items/0/url pattern"},
+		"setup-pass-without-nonce.json":                                         {"setup-pass", "/ required nonce"},
+		"setup-pass-undefined-member.json":                                      {"setup-pass", "/ additionalProperties"},
+		"setup-pass-version-2.json":                                             {"setup-pass", "/version const"},
+		"setup-pass-adapter-id-connection-id.json":                              {"setup-pass", "/adapter_id pattern"},
+		"setup-pass-organisation-slug-upper-case.json":                          {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-underscore.json":                          {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-leading-hyphen.json":                      {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-trailing-hyphen.json":                     {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-41-characters.json":                       {"setup-pass", "/organisation_slug maxLength"},
+		"setup-pass-organisation-slug-empty.json":                               {"setup-pass", "/organisation_slug pattern"},
+		"adapter-setup-url-fragment.json":                                       {"adapter", "/setup_url "},
+		"adapter-setup-url-state.json":                                          {"adapter", "/setup_url "},
+		"adapter-setup-url-and-state.json":                                      {"adapter", "/setup_url "},
+		"adapter-setup-url-http.json":                                           {"adapter", "/setup_url pattern"},
+		"adapter-setup-url-bare-state.json":                                     {"adapter", "/setup_url "},
+		"adapter-setup-url-state-first.json":                                    {"adapter", "/setup_url "},
+		"adapter-setup-url-state-percent-encoded.json":                          {"adapter", "/setup_url "},
+		"adapter-call-url-http.json":                                            {"adapter", "/call_url pattern"},
+		"adapter-call-url-query.json":                                           {"adapter", "/call_url pattern"},
+		"adapter-call-url-without-final-slash.json":                             {"adapter", "/call_url pattern"},
+		"adapter-description-secrets-twice.json":                                {"adapter", "/description/roles/source/secrets uniqueItems"},
+		"grant-without-pass-nonce.json":                                         {"grant", "/ required pass_nonce"},
+		"grant-without-account.json":                                            {"grant", "/ required account"},
+		"grant-end-without-grant-ref.json":                                      {"grant-end", "/ required grant_ref"},
+		"grant-end-with-pass-nonce.json":                                        {"grant-end", "/ additionalProperties"},
+		"grant-account-without-ref.json":                                        {"grant", "/account required ref"},
+		"grant-account-title-line-feed.json":                                    {"grant", "/account/title pattern"},
+		"source-collections-without-grant-ref.json":                             {"source-collections", "/collections/0 required grant_ref"},
+		"grant-pass-nonce-21-characters.json":                                   {"grant", "/pass_nonce pattern"},
+		"grants-without-revision.json":                                          {"grants", "/ required revision"},
+		"changes-grant-status-taken-in.json":                                    {"changes", "/changes/0/status enum"},
+		"changes-grant-without-connection-id.json":                              {"changes", "/changes/0 required connection_id"},
+		"adapter-secrets-value-in-clear.json":                                   {"adapter-secrets", "/sealed additionalProperties"},
+		"adapter-secrets-without-server-key.json":                               {"adapter-secrets", "/sealed required server_key"},
+		"adapter-secrets-answer-suite-chacha20.json":                            {"adapter-secrets-answer", "/sealed/suite const"},
+		"adapter-secrets-answer-enc-31-bytes.json":                              {"adapter-secrets-answer", "/sealed/enc pattern"},
+		"adapter-secrets-plaintext-17-secrets.json":                             {"adapter-secrets-plaintext", "/secrets maxItems"},
+		"adapter-secrets-plaintext-name-upper-case.json":                        {"adapter-secrets-plaintext", "/secrets/0/name pattern"},
+		"adapter-secrets-plaintext-empty-value.json":                            {"adapter-secrets-plaintext", "/secrets/0/value minLength"},
+		"resolve-65-addresses.json":                                             {"resolve", "/addresses maxItems"},
+		"resolve-without-addresses.json":                                        {"resolve", "/addresses minItems"},
+		"resolve-address-space.json":                                            {"resolve", "/addresses/0 pattern"},
+		"resolve-address-twice.json":                                            {"resolve", "/addresses uniqueItems"},
+		"resolve-answer-covered-true.json":                                      {"resolve-answer", "/results/1/covered const"},
+		"resolve-answer-not-covered-with-grant-ref.json":                        {"resolve-answer", "/results/1/grant_ref "},
+		"resolve-answer-without-resource-ref.json":                              {"resolve-answer", "/results/0 required resource_ref"},
+		"resolve-answer-without-revision.json":                                  {"resolve-answer", "/ required revision"},
+		"resolve-answer-public-false.json":                                      {"resolve-answer", "/results/0/public const"},
+		"resolve-answer-public-without-resource-ref.json":                       {"resolve-answer", "/results/0 required resource_ref"},
+		"resolve-answer-not-covered-public.json":                                {"resolve-answer", "/results/0/public "},
+		"resolve-answer-public-without-public-ref.json":                         {"resolve-answer", "/results/0 required public_ref"},
+		"resolve-answer-public-ref-without-public.json":                         {"resolve-answer", "/results/0/public_ref "},
+		"read-public-with-grant-ref.json":                                       {"read-public", "/ additionalProperties"},
+		"read-public-without-path.json":                                         {"read-public", "/ required path"},
+		"read-path-leading-slash.json":                                          {"read", "/path pattern"},
+		"read-path-dot-dot.json":                                                {"read", "/path pattern"},
+		"read-path-empty-part.json":                                             {"read", "/path pattern"},
+		"read-at-space.json":                                                    {"read", "/at pattern"},
+		"read-without-at.json":                                                  {"read", "/ required at"},
+		"read-answer-content-nul.json":                                          {"read-answer", "/content pattern"},
+		"read-answer-without-resolved-at.json":                                  {"read-answer", "/ required resolved_at"},
+		"read-answer-content-and-not-found.json":                                {"read-answer", "/content "},
+		"read-answer-without-content-or-found.json":                             {"read-answer", "/ required content"},
+		"run-credential-access-admin.json":                                      {"run-credential", "/access enum"},
+		"run-credential-access-write-no-push.json":                              {"run-credential", "/access enum"},
+		"run-credential-purpose-other.json":                                     {"run-credential", "/purpose enum"},
+		"run-credential-without-resources.json":                                 {"run-credential", "/resources minItems; /resources minItems"},
+		"run-credential-work-two-resources.json":                                {"run-credential", "/resources maxItems"},
+		"run-credential-without-purpose.json":                                   {"run-credential", "/ required purpose"},
+		"run-credential-work-with-grant-ref.json":                               {"run-credential", "/ "},
+		"run-credential-harness-without-grant-ref.json":                         {"run-credential", "/ required grant_ref"},
+		"run-credential-work-without-connection-id.json":                        {"run-credential", "/ required connection_id"},
+		"run-credential-harness-with-connection-id.json":                        {"run-credential", "/ "},
+		"run-credential-harness-write.json":                                     {"run-credential", "/access const"},
+		"run-credential-answer-without-token.json":                              {"run-credential-answer", "/credential required token"},
+		"run-credential-answer-without-nested-version.json":                     {"run-credential-answer", "/credential required version"},
+		"run-credential-answer-apply-token.json":                                {"run-credential-answer", "/credential/apply/0/token "},
+		"run-credential-answer-host-star-dot.json":                              {"run-credential-answer", "/credential/apply/0/hosts/0 "},
+		"run-credential-answer-placeholders.json":                               {"run-credential-answer", "/credential/placeholders "},
+		"run-credential-answer-token-line-feed.json":                            {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-carriage-return.json":                      {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-nul.json":                                  {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-leading-space.json":                        {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-trailing-tab.json":                         {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-16385.json":                                {"run-credential-answer", "/credential/token maxLength"},
+		"run-credential-answer-expires-at-without-zone.json":                    {"run-credential-answer", "/credential/expires_at format"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -489,6 +488,12 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 			func(d map[string]any) map[string]any { return d["collections"].([]any)[0].(map[string]any) }},
 		{"fixtures/adapter/source-items/code-host-event.json", compile(t, "source-items.schema.json"),
 			func(d map[string]any) map[string]any { return d["items"].([]any)[0].(map[string]any) }},
+		{"fixtures/adapter/changes/change-request-pull-request.json", compile(t, "changes.schema.json"),
+			func(d map[string]any) map[string]any { return d["changes"].([]any)[0].(map[string]any) }},
+		{"fixtures/adapter/changes-submitted/pull-request-created.json", compile(t, "changes-submitted.schema.json"),
+			func(d map[string]any) map[string]any { return d }},
+		{"fixtures/adapter/changes-failed/change-request-target-gone.json", compile(t, "changes-failed.schema.json"),
+			func(d map[string]any) map[string]any { return d }},
 	} {
 		var doc map[string]any
 		if err := json.Unmarshal(read(t, f.file), &doc); err != nil {
@@ -553,19 +558,14 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	now := contracts.FormatTime(time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC))
 	interval := 600
-	earlier := int64(9223372036854775807)
 	reason := "Fixed"
 	listing := contracts.Listing{ID: "items-1", Part: 1, StartedAt: now, Complete: true}
 	person := contracts.Person{Name: "Ada Example", Kind: "person"}
 	target := &contracts.Target{Collection: "SHOP", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}
 	noItems := false
-	const submission = "av_7k2m9q4v1x8z3c5d"
-	commitA, commitB := strings.Repeat("a", 40), strings.Repeat("b", 40)
-	newest := make([]contracts.SubmissionCommit, 100)
-	for i := range newest {
-		newest[i] = contracts.SubmissionCommit{Commit: fmt.Sprintf("%040x", i+1), Step: "deliverable:d-1"}
-	}
-	newest[99].Commit = commitB
+	const request = "av_7k2m9q4v1x8z3c5d"
+	commitB := strings.Repeat("b", 40)
+	place := contracts.Target{Collection: "SUPPORT"}
 	values := []struct {
 		schema string
 		v      any
@@ -618,49 +618,31 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: contracts.ChangeSync, Interval: &interval},
 			{Kind: contracts.ChangeComment, CommentID: "sc_7k2m9q4v1x8z3c5d", Ref: "TRK-1", AuthorName: "Dana Example", Body: "Seen too."},
 			{Kind: contracts.ChangeWatch, WorkItemID: "wi_1", URL: "https://control.example.com/work-items/wi_1"},
-			{Kind: contracts.ChangeSubmission, SubmissionID: submission, Targets: []contracts.SubmissionTarget{{
-				System: "code.example.com", Path: "acme/shop", Branch: "qory/wi_1",
-				Base:    contracts.SubmissionBase{Commit: commitA},
-				Commit:  commitB,
-				Commits: []contracts.SubmissionCommit{{Commit: commitB, Step: "deliverable:d-1"}}}}},
-			{Kind: contracts.ChangeSubmission, SubmissionID: submission, Ref: "TRK-1", PreviousTitle: "Show dates",
-				Text: &contracts.SubmissionText{Title: "Show delivery dates", Description: "The page lists dates."},
-				Targets: []contracts.SubmissionTarget{{
-					System: "code.example.com", Path: "acme/shop", Branch: "qory/wi_1",
-					Base:           contracts.SubmissionBase{Commit: commitA, Branch: "main"},
-					Commit:         commitB,
-					Commits:        newest,
-					EarlierCommits: &earlier,
-					Draft:          &contracts.DraftRequest{Action: contracts.DraftUpdate, Number: 34}}}},
+			{Kind: contracts.ChangeRequest, ChangeRequestID: request, ChangeKind: "pull-request", Target: target,
+				Title: "Show delivery dates", Data: json.RawMessage(`{"branch":"qory/wi_1","commit":"` + commitB + `"}`)},
+			{Kind: contracts.ChangeRequest, ChangeRequestID: request, ChangeKind: "pull-request", Target: target, Ref: "TRK-1",
+				Title: "Show delivery dates", Text: "The page lists dates.",
+				Previous: &contracts.ChangePrevious{Title: "Show dates",
+					Address: &contracts.ChangeAddress{URL: "https://code.example.com/acme/shop/pull/34", Ref: "34"}},
+				Data: json.RawMessage(`{"draft":{"action":"update","number":34}}`)},
+			{Kind: contracts.ChangeRequest, ChangeRequestID: request, ChangeKind: "reply", Target: &place,
+				Title: "Thanks for the report", Data: json.RawMessage(`{"bids":[{"bid":1.25}]}`)},
 		}}},
 		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, CommentID: "sc_7k2m9q4v1x8z3c5d", Reason: "too_long"}},
-		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, SubmissionID: submission,
-			System: "code.example.com", Path: "acme/shop", Reason: "branch_gone"}},
-		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, SubmissionID: submission,
-			System: "code.example.com", Path: "acme/shop", Reason: "forge_refused",
-			Detail: "Shorten the title, then run again. The forge returned 422: title is too long."}},
-		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, SubmissionID: submission,
-			Targets: []contracts.SubmittedTarget{{System: "code.example.com", Path: "acme/shop",
-				Base:    contracts.CommitAddress{Commit: commitA, CommitURL: "https://code.example.com/acme/shop/commit/" + commitA},
-				Commits: []contracts.CommitAddress{{Commit: commitB, CommitURL: "https://code.example.com/acme/shop/commit/" + commitB}}}}}},
-		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, SubmissionID: submission,
-			Targets: []contracts.SubmittedTarget{{System: "git.example.net", Path: "acme/shop",
-				Base:    contracts.CommitAddress{Commit: commitA, CommitURL: "https://git.example.net/acme/shop/-/commit/" + commitA},
-				Commits: []contracts.CommitAddress{{Commit: commitB, CommitURL: "https://git.example.net/acme/shop/-/commit/" + commitB}},
-				Draft: &contracts.SubmittedDraft{Number: 7, URL: "https://git.example.net/acme/shop/-/merge_requests/7",
-					Title: "Show delivery dates", State: contracts.DraftStateDraft, Action: contracts.DraftOpened}}}}},
-		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, SubmissionID: submission,
-			Targets: []contracts.SubmittedTarget{{System: "code.example.com", Path: "acme/shop",
-				Base:    contracts.CommitAddress{Commit: commitA, CommitURL: "https://code.example.com/acme/shop/commit/" + commitA},
-				Commits: []contracts.CommitAddress{{Commit: commitB, CommitURL: "https://code.example.com/acme/shop/commit/" + commitB}},
-				Draft: &contracts.SubmittedDraft{Number: 34, URL: "https://code.example.com/acme/shop/pull/34",
-					Title: "Show delivery dates", State: contracts.DraftStateClosed, Action: contracts.DraftKept}}}}},
-		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, SubmissionID: submission,
-			Targets: []contracts.SubmittedTarget{{System: "git.example.net", Path: "acme/shop",
-				Base:    contracts.CommitAddress{Commit: commitA, CommitURL: "https://git.example.net/acme/shop/-/commit/" + commitA},
-				Commits: []contracts.CommitAddress{{Commit: commitB, CommitURL: "https://git.example.net/acme/shop/-/commit/" + commitB}},
-				Draft: &contracts.SubmittedDraft{Number: 7, URL: "https://git.example.net/acme/shop/-/merge_requests/7",
-					Title: "Show delivery dates", State: contracts.DraftStateMerged, Action: contracts.DraftKept}}}}},
+		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: target, Reason: "target_gone"}},
+		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: &place, Reason: "refused",
+			Detail: "Shorten the title, then try again. The target returned 422: title is too long."}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: *target, Data: json.RawMessage(`{"commits":[{"commit":"` + commitB + `"}]}`)}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: *target, Action: contracts.ChangeCreated,
+			Address: &contracts.ChangeAddress{URL: "https://code.example.com/acme/shop/pull/34", Ref: "34"},
+			Data:    json.RawMessage(`{"draft":{"number":34,"state":"draft"}}`)}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: place, Action: contracts.ChangeKept,
+			Address: &contracts.ChangeAddress{URL: "https://support.example.org/cases/CASE-1042"}}},
 		{"connect-pass", contracts.ConnectPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
 			ConnectionID: "ac_0123456789abcdef", Nonce: "AAECAwQFBgcICQoLDA0ODw", ExpiresAt: now}},
 		{"connect-return", contracts.ConnectReturn{Version: contracts.Version, ConnectionID: "ac_0123456789abcdef",
@@ -1572,10 +1554,12 @@ func TestEmptyListsMarshalAsEmptyLists(t *testing.T) {
 // that the control plane checks on a request's raw bytes, and that no schema can express,
 // since a parsed document has 900.0 as the integer 900 and keeps one member of a name.
 // Every number of a request of the schema is an integer, except inside the description
-// member of an adapter start-up, whose numbers follow description.schema.json: for the
-// schema adapter, the integer rule is checked on the body without that member.
+// member of an adapter start-up, and inside the data member of a change_request entry
+// and of a changes-submitted reply, whose numbers follow another schema: for these, the
+// integer rule is checked on the body without that member, and the repeated-member rule
+// on the whole body.
 func strictJSON(schema string, b []byte) error {
-	if schema != "adapter" {
+	if schema != "adapter" && schema != "changes" && schema != "changes-submitted" {
 		return rawjson.Check(b, rawjson.Rules{Integers: true})
 	}
 	if err := rawjson.Check(b, rawjson.Rules{}); err != nil {
@@ -1585,7 +1569,24 @@ func strictJSON(schema string, b []byte) error {
 	if err := json.Unmarshal(b, &body); err != nil {
 		return err
 	}
-	delete(body, "description")
+	switch schema {
+	case "adapter":
+		delete(body, "description")
+	case "changes-submitted":
+		delete(body, "data")
+	case "changes":
+		var entries []map[string]json.RawMessage
+		if err := json.Unmarshal(body["changes"], &entries); err != nil {
+			return err
+		}
+		for _, e := range entries {
+			delete(e, "data")
+		}
+		var err error
+		if body["changes"], err = json.Marshal(entries); err != nil {
+			return err
+		}
+	}
 	rest, err := json.Marshal(body)
 	if err != nil {
 		return err
@@ -1596,52 +1597,47 @@ func strictJSON(schema string, b []byte) error {
 // submittedAddressFault returns the first address of a changes-submitted reply that
 // breaks the address rule of the contract, or nil. The rule is the one of a result line
 // of a submit program, so the check is [contracts.ParseSubmitLines]: the address is
-// recorded as the commit_url of a commit only when it is on the system of its target,
-// with no user information, port, query or fragment, and with a path. The schema checks
-// the form of an address and not that rule, so the control plane refuses such a reply,
-// 400 invalid_request.
+// recorded only when it is on the system of its target, with no user information, port,
+// query or fragment, and with a path. A target without an address has no system, and
+// only the rules that need no system apply. The schema checks the form of an address and
+// not that rule, so the control plane refuses such a reply, 400 invalid_request. Only
+// address.url is checked: the addresses inside data are the part's.
 func submittedAddressFault(b []byte) error {
-	type commit struct {
-		CommitURL string `json:"commit_url"`
-	}
 	var reply struct {
-		Targets []struct {
-			System  string   `json:"system"`
-			Base    commit   `json:"base"`
-			Commits []commit `json:"commits"`
-			Draft   *struct {
-				URL string `json:"url"`
-			} `json:"draft"`
-		} `json:"targets"`
+		Target struct {
+			Address *struct {
+				System string `json:"system"`
+			} `json:"address"`
+		} `json:"target"`
+		Address *struct {
+			URL string `json:"url"`
+		} `json:"address"`
 	}
 	if err := json.Unmarshal(b, &reply); err != nil {
 		return err
 	}
-	for i, tg := range reply.Targets {
-		addresses := map[string]string{fmt.Sprintf("/targets/%d/base/commit_url", i): tg.Base.CommitURL}
-		for j, c := range tg.Commits {
-			addresses[fmt.Sprintf("/targets/%d/commits/%d/commit_url", i, j)] = c.CommitURL
-		}
-		if tg.Draft != nil {
-			addresses[fmt.Sprintf("/targets/%d/draft/url", i)] = tg.Draft.URL
-		}
-		for at, address := range addresses {
-			r := contracts.ParseSubmitLines("commit_url "+commitMade+" "+address+"\n", tg.System, contracts.DraftOpen, given)
-			if len(r.CommitURLs) != 1 {
-				return fmt.Errorf("%s is %q, which breaks the address rule for the system %q: %+v", at, address, tg.System, r.Invalid)
-			}
-		}
+	if reply.Address == nil {
+		return nil
+	}
+	system := ""
+	if reply.Target.Address != nil {
+		system = reply.Target.Address.System
+	}
+	r := contracts.ParseSubmitLines("commit_url "+commitMade+" "+reply.Address.URL+"\n", system, contracts.DraftOpen, given)
+	if len(r.CommitURLs) != 1 {
+		return fmt.Errorf("/address/url is %q, which breaks the address rule for the system %q: %+v", reply.Address.URL, system, r.Invalid)
 	}
 	return nil
 }
 
 // TestAnAddressOfAReplyHasTheRuleOfASubmitProgram pins, at the value on each side, that
-// the control plane applies the address rule of a submit program to the addresses of a
+// the control plane applies the address rule of a submit program to the address of a
 // changes-submitted reply: the schema accepts every address here, and the rule accepts
-// only one on the system, compared in lower case, with a path and no port, query or
-// fragment.
+// only one on the system of the target, compared in lower case, with a path and no
+// port, query or fragment. Where the target has no address, there is no system and
+// another host passes; the addresses inside data are not checked.
 func TestAnAddressOfAReplyHasTheRuleOfASubmitProgram(t *testing.T) {
-	const reply = "fixtures/adapter/changes-submitted/github-like.json"
+	const reply = "fixtures/adapter/changes-submitted/pull-request-created.json"
 	schema := compile(t, "changes-submitted.schema.json")
 	for _, c := range []struct {
 		name, address string
@@ -1669,7 +1665,7 @@ func TestAnAddressOfAReplyHasTheRuleOfASubmitProgram(t *testing.T) {
 		if err := json.Unmarshal(read(t, reply), &doc); err != nil {
 			t.Fatal(err)
 		}
-		doc["targets"].([]any)[0].(map[string]any)["draft"].(map[string]any)["url"] = c.address
+		doc["address"].(map[string]any)["url"] = c.address
 		b, err := json.Marshal(doc)
 		if err != nil {
 			t.Fatal(err)
@@ -1681,27 +1677,54 @@ func TestAnAddressOfAReplyHasTheRuleOfASubmitProgram(t *testing.T) {
 			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
 		}
 	}
+	// Without an address in the target, the host is not compared; the other rules stay.
+	for _, c := range []struct {
+		name, address string
+		ok            bool
+	}{
+		{"another host", "https://support.example.org/cases/CASE-1042", true},
+		{"a port", "https://support.example.org:8443/cases/CASE-1042", false},
+		{"a fragment", "https://support.example.org/cases/CASE-1042#reply-3", false},
+		{"no path", "https://support.example.org", false},
+	} {
+		doc := map[string]any{"version": 1, "time": "2026-11-18T12:00:00Z", "change_request_id": "av_7k2m9q4v1x8z3c5d",
+			"target": map[string]any{"collection": "SUPPORT"}, "action": "created", "address": map[string]any{"url": c.address}}
+		b, _ := json.Marshal(doc)
+		if err := validate(schema, b); err != nil {
+			t.Errorf("a target without an address, %s: the schema refuses the address: %v", c.name, err)
+		}
+		if err := submittedAddressFault(b); (err == nil) != c.ok {
+			t.Errorf("a target without an address, %s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	// The addresses inside data belong to the part: this contract does not check them.
+	var doc map[string]any
+	if err := json.Unmarshal(read(t, reply), &doc); err != nil {
+		t.Fatal(err)
+	}
+	doc["data"].(map[string]any)["base"].(map[string]any)["commit_url"] = "https://code.example.org/acme/shop/commit/abc"
+	b, _ := json.Marshal(doc)
+	if err := submittedAddressFault(b); err != nil {
+		t.Errorf("an address inside data is checked: %v", err)
+	}
 }
 
 // TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rules that an integer has no
-// fraction or exponent, that no object repeats a member, and that an address of a
+// fraction or exponent, that no object repeats a member, and that the address of a
 // changes-submitted reply is on the system of its target. For the feed entry, the
-// changes fixture, the integer rule binds the control plane as its writer: it writes
-// earlier_commits without a decimal point. Each document under
-// fixtures/adapter/refused-by-control-plane is accepted by its schema, since the rule is
-// not expressible in one, and breaks the rule on its raw bytes, so the control plane
-// refuses it, 400 invalid_request; and every accepted request fixture keeps the rule,
-// the integer rule outside an adapter start-up's description member, the address rule in
-// every changes-submitted fixture.
+// integer rule binds the control plane as its writer. Inside the data of a change_request
+// entry and of a reply, the integer rule does not apply, and the repeated-member rule
+// does. Each document under fixtures/adapter/refused-by-control-plane is accepted by its
+// schema, since the rule is not expressible in one, and breaks the rule on its raw bytes,
+// so the control plane refuses it, 400 invalid_request; and every accepted request
+// fixture keeps the rules, the address rule in every changes-submitted fixture.
 func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 	refused := map[string]string{
-		"adapter-integer-with-fraction.json":                "adapter",
-		"adapter-repeated-member.json":                      "adapter",
-		"changes-submitted-draft-number-decimal.json":       "changes-submitted",
-		"changes-submission-earlier-commits-decimal.json":   "changes",
-		"changes-submitted-base-commit-url-other-host.json": "changes-submitted",
-		"changes-submitted-commit-url-other-host.json":      "changes-submitted",
-		"changes-submitted-draft-url-other-host.json":       "changes-submitted",
+		"adapter-integer-with-fraction.json":               "adapter",
+		"adapter-repeated-member.json":                     "adapter",
+		"changes-change-request-data-repeated-member.json": "changes",
+		"changes-submitted-data-repeated-member.json":      "changes-submitted",
+		"changes-submitted-address-other-host.json":        "changes-submitted",
 	}
 	got := files(t, "fixtures/adapter/refused-by-control-plane")
 	if len(got) != len(refused) {
@@ -1725,15 +1748,9 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 			if err := strictJSON(schema, b); err != nil {
 				t.Errorf("%s breaks a raw rule beside the address rule: %v", f, err)
 			}
-		case strings.HasSuffix(name, "-decimal.json"):
-			number := map[string]string{"changes": "40.0", "changes-submitted": "34.0"}[schema]
-			if err := strictJSON(schema, b); err == nil || !strings.Contains(err.Error(), number) {
-				t.Errorf("%s: the raw integer rule refuses it for %v, want the number %s", f, err, number)
-			}
-			if schema == "changes-submitted" {
-				if err := submittedAddressFault(b); err != nil {
-					t.Errorf("%s: %v", f, err)
-				}
+		case strings.HasSuffix(name, "-repeated-member.json") && schema != "adapter":
+			if err := strictJSON(schema, b); err == nil || !strings.Contains(err.Error(), "repeat") {
+				t.Errorf("%s: the raw rules refuse it for %v, want a repeated member", f, err)
 			}
 		case strictJSON(schema, b) == nil:
 			t.Errorf("%s keeps the rule on its raw bytes", f)
@@ -1751,6 +1768,32 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 					t.Errorf("%s: %v", f, err)
 				}
 			}
+		}
+	}
+}
+
+// TestThePartOfAChangeMayHaveFractions pins that a number inside the data of a
+// change_request entry and of a changes-submitted reply may have a fraction, as a bid of
+// 1.25 does, while a fraction anywhere else in the same document is refused: the
+// integer rule of definitions.schema.json does not reach a part, and reaches the rest.
+func TestThePartOfAChangeMayHaveFractions(t *testing.T) {
+	for _, c := range []struct{ schema, file, integer string }{
+		{"changes", "fixtures/adapter/changes/change-request-bid-changes.json", `"revision": 1`},
+		{"changes-submitted", "fixtures/adapter/changes-submitted/bid-changes.json", `"version": 1`},
+	} {
+		b := read(t, c.file)
+		if !bytes.Contains(b, []byte("1.25")) {
+			t.Fatalf("%s has no number with a fraction", c.file)
+		}
+		if err := strictJSON(c.schema, b); err != nil {
+			t.Errorf("%s: a fraction inside data is refused: %v", c.file, err)
+		}
+		if !bytes.Contains(b, []byte(c.integer)) {
+			t.Fatalf("%s has no %s", c.file, c.integer)
+		}
+		fraction := bytes.Replace(b, []byte(c.integer), []byte(c.integer+".5"), 1)
+		if err := strictJSON(c.schema, fraction); err == nil {
+			t.Errorf("%s: a fraction outside data is accepted", c.file)
 		}
 	}
 }
