@@ -39,6 +39,10 @@ copy refuses a member that the schema does not define, so a misspelled member fa
 test. `conformance.Description` does this, and `contracts.CompileClosed` returns the
 closed copy.
 
+The closed copy does not follow a reference to another schema. `adapter.schema.json`
+embeds the description, so a test of an adapter's start-up document does not check the
+members of that description. Check the description with `conformance.Description`.
+
 ## Describe
 
 ```sh
@@ -211,13 +215,14 @@ The feed answer has at least one entry whenever the feed has an entry of a kind 
 revision in the request's `X-Qory-Contract-Version` defines after the cursor. The
 adapter reads the next entries from the feed answer's `cursor`.
 
-The feed changes only with a new revision of this contract. A new entry kind or a new
-member comes with a new revision. The control plane sends an adapter only the kinds and
-members of the revision in its `X-Qory-Contract-Version`. An adapter skips and
-acknowledges an entry of a kind that its revision does not define. It applies nothing of
-the entry and moves its cursor past it. Example: an adapter at an older revision skips
-and acknowledges an entry of a kind that a newer revision defines, and reads the next
-entry.
+Each entry kind and each member of the feed belongs to the revision of this contract
+that defines it. The control plane sends an adapter only the kinds and members of the
+revision in its `X-Qory-Contract-Version`. An adapter skips and acknowledges an entry of
+a kind that its revision does not define. It applies nothing of the entry and moves its
+cursor past it. Example: an adapter at an older revision skips and acknowledges an entry
+of a kind that a higher revision defines, and reads the next entry. The feed has no
+`must_understand`. An entry of a defined kind stays closed, so an adapter refuses an
+unknown member of such an entry.
 
 The control plane writes a `watch` entry, with `work_item_id` and `url`, whenever a run
 stores a change request version, and a `change_request` entry for each target of that

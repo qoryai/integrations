@@ -57,16 +57,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `harness` or `target_version`. `run_settings`, `time_limit_minutes`, `shared_run` and
   `full_suite` apply to every step `workflow`.
   `subject` is `{kind, id, url, title}`, and a document with `work_item` and no
-  `subject` fails the schema. `kind` is a snake_case string of at most 64 characters, with `work_item` as
-  its first value. `id` is 1 to 200 characters on one line, and starts with `wi_` when
-  `kind` is `work_item`. `url` and `title` are optional. `title` narrows from 1 to 1024
-  characters, line breaks allowed, to 1 to 256 characters on one line. The optional
-  `trigger` is a snake_case string of at most 64 characters. Its first value is
-  `take_in`: the control plane took in the subject. In Go, `contracts.WorkItem` is removed.
-  `contracts.Subject` has `Kind`, `ID`, and the optional `URL` and `Title`.
-  `contracts.Documents` has `Subject` and `Trigger` in place of `WorkItem`.
-  `explore/v1/inputs.schema.json` keeps its `work_item`, and `inputs.work_item.id` is
-  `subject.id` when `subject.kind` is `work_item`.
+  `subject` fails the schema. `kind` is a snake_case string of at most 64 characters,
+  with `work_item` as its first value. `id` is 1 to 200 characters on one line, and
+  starts with `wi_` when `kind` is `work_item`. `url` and `title` are optional. `title`
+  narrows from 1 to 1024 characters, line breaks allowed, to 1 to 256 characters on one
+  line. The optional `trigger` is a snake_case string of at most 64 characters. Its
+  first value is `take_in`: the control plane took in the subject. In Go,
+  `contracts.WorkItem` is removed. `contracts.Subject` has `Kind`, `ID`, and the
+  optional `URL` and `Title`. `contracts.Documents` has `Subject` and `Trigger` in place
+  of `WorkItem`. `explore/v1/inputs.schema.json` keeps its `work_item`, and
+  `inputs.work_item.id` is `subject.id` when `subject.kind` is `work_item`.
 - Update a reader of the run documents to this `documents.schema.json` before the
   control plane writes `submit`, `write-no-push` in `access`, or `write-no-push` in the
   `access` of a workflow in `harness`, to the run documents: a reader that checks the
@@ -123,12 +123,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   and `Documents.StackReference` are removed, and `Documents.TargetVersion` and
   `Documents.Harness` are added.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, change
-  the adapter in three ways. Accept change feed entries of the kind `grant`, which the feed
-  has. After the adapter
-  mints a linked connect return, report the grant with `POST /v1/grants`, read
-  `GET /v1/grants` when the adapter starts, follow the `grant` entries, and match the
-  adapter's state to that copy. Accept a connect pass for a live connection, which adds
-  or replaces the grant of one external account.
+  the adapter in three ways. Accept change feed entries of the kind `grant`, which the
+  feed has. After the adapter mints a linked connect return, report the grant with `POST
+  /v1/grants`, read `GET /v1/grants` when the adapter starts, follow the `grant`
+  entries, and match the adapter's state to that copy. Accept a connect pass for a live
+  connection, which adds or replaces the grant of one external account.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, add two
   members, because the schemas require them. In each grant report, `POST /v1/grants`,
   send `account`, `{ref, title}`: `ref` is the external account's id at the source, and
@@ -232,9 +231,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 - `contracts.CompileClosed` and `contracts.CompileRunClosed` compile the closed copy of
   `description.schema.json`, `documents.schema.json` or `next-session-answer.schema.json`,
-  and return an error for any other schema. `contracts.CloseSchema` makes the copy. `contracts.CheckMustUnderstand` returns an
-  error for a document whose `must_understand` lists a member that a Go type does not
-  have. `contracts.Documents` and `contracts.NextSessionAnswer` have `MustUnderstand`.
+  and return an error for any other schema. `contracts.CloseSchema` makes the copy.
+  `contracts.CheckMustUnderstand` returns an error for a document whose `must_understand`
+  lists a member that a Go type does not have, lists a name twice, or is null.
+  `contracts.Documents` and `contracts.NextSessionAnswer` have `MustUnderstand`.
   The rule is in `contracts/run/v1/README.md`, with a note that an unsigned 401 or 415
   is not one of the nine next-session refusal codes.
 - An API of `model_provider` can set `oauth_device`, next to `oauth_refresh`, in
