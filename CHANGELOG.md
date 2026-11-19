@@ -133,6 +133,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `map[string]map[string]BindValue`; after 0.3.0 and before this release it was a
   `map[string]map[string]string`. Set `BindValue.Name` for a role that is not a group,
   and `BindValue.Names` for a group role, which a list of agents fills.
+- Update a reader of the run documents or of the next-session answer to this
+  `documents.schema.json` and `next-session-answer.schema.json` before the control plane
+  sends a `time_limit_minutes` below 15. `time_limit_minutes` is the time limit of a
+  session, from 1 to 1440 minutes. Until this release the limit was 15 to 1440, and a
+  reader built from an older copy of the schemas refuses 1 to 14.
 
 ### Added
 
@@ -342,7 +347,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The run documents of the step `explore` can contain `time_limit_minutes`,
   `shared_run` and `full_suite`, and `contracts.Documents` has them as `TimeLimitMinutes`,
   `SharedRun` and `FullSuite`. The run documents are the documents of session 1.
-  `time_limit_minutes` is the time limit of session 1, in minutes, from 15 to 1440.
+  `time_limit_minutes` is the time limit of session 1, in minutes, from 1 to 1440.
   `shared_run` is `true` when qory sends the next-session request after each session.
   `full_suite` is `true` when session 1 runs the full test suite after the agent ends.
   `shared_run` and `full_suite` left out are the same as `false`. A run of the step
@@ -780,7 +785,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   with `:`, `/`, `?` or `#`, so `https://[::1]ab/x` and `https://[::1].5/x` fail it. The
   description is unchanged.
 - `run_settings` has no `time_limit_minutes`. The time limit of session 1 is
-  `time_limit_minutes` in the run documents, with the same limits, 15 to 1440 minutes.
+  `time_limit_minutes` in the run documents, with the same limits, 1 to 1440 minutes.
   `contracts.RunSettings` has no `TimeLimitMinutes`.
 - The module requires Forager at its main commit b6ac9f0
   (`v0.7.1-0.20261023001330-b6ac9f060456`), in place of v0.7.0.
