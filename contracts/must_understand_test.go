@@ -301,7 +301,9 @@ func TestCheckMustUnderstand(t *testing.T) {
 		{`{"must_understand": ["next", "inputs"]}`, contracts.NextSessionAnswer{}, ""},
 		{`{"must_understand": ["step"]}`, contracts.NextSessionAnswer{}, `"step" in must_understand`},
 		{`{"must_understand": "step"}`, contracts.Documents{}, "must_understand to a list"},
-		{`{"must_understand": null}`, contracts.Documents{}, ""},
+		{`{"must_understand": null}`, contracts.Documents{}, "list of member names"},
+		{`{"must_understand": ["step", "step"]}`, contracts.Documents{}, `list "step" once`},
+		{`{"must_understand": []}`, contracts.Documents{}, ""},
 		{`[]`, contracts.Documents{}, "JSON object"},
 	} {
 		err := contracts.CheckMustUnderstand([]byte(c.doc), c.v)
@@ -375,6 +377,8 @@ func TestAnAdapterSkipsAnEntryOfAnUnknownKind(t *testing.T) {
 		{"an unknown kind with members", `[{"kind": "settings", "interval": 600, "later": {"a": 1}}, ` + sync + `]`, true},
 		{"an unknown kind alone", `[{"kind": "settings"}]`, true},
 		{"a kind in upper case", `[{"kind": "Settings"}]`, false},
+		{"a kind of 64 characters", `[{"kind": "` + strings.Repeat("a", 64) + `"}]`, true},
+		{"a kind of 65 characters", `[{"kind": "` + strings.Repeat("a", 65) + `"}]`, false},
 		{"a kind that is not a string", `[{"kind": 7}]`, false},
 		{"no kind", `[{"interval": 600}]`, false},
 		{"a defined kind with a member it lacks", `[{"kind": "sync", "interval": 600, "later": 1}]`, false},
