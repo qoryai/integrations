@@ -1054,6 +1054,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - A validator that does not read `\p{Cc}` and `\p{Cf}`, such as an ECMA-262 engine
     without the `u` flag, cannot use these patterns as written.
   - `ParseSubmitLines` reads the title patterns from the schemas, so it has the same rule.
+- The adapter sends a grant report again after every answer that is not final, until the
+  `expires_at` of the linked connect return. These are `409 pass_unknown`,
+  `403 connection_unknown`, `409 connection_suspended`, and a `403` or `409` that the
+  adapter cannot read. After `expires_at`, the adapter stops sending the report and drops
+  the grant, unless the control plane's copy has it.
 
 ### Removed
 
