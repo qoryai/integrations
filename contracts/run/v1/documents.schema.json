@@ -356,11 +356,9 @@
           "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
         },
         "id": {
-          "description": "The subject's id, 1 to 200 characters on one line, with no control character or line or paragraph separator. For the kind work_item, the work item's public id in the control plane.",
-          "type": "string",
-          "minLength": 1,
+          "description": "The subject's id, 1 to 200 characters on one line, by the character rule of a prose line (https://qory.dev/contracts/integration/v1/description.schema.json, $defs.line). For the kind work_item, the work item's public id in the control plane.",
           "maxLength": 200,
-          "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f\u2028\u2029]+$"
+          "$ref": "https://qory.dev/contracts/integration/v1/description.schema.json#/$defs/line"
         },
         "url": {
           "description": "The subject's page, by the rule of the url of a work_item entry in https://qory.dev/contracts/integration/v1/changes.schema.json.",

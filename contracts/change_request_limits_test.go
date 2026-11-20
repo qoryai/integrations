@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/santhosh-tekuri/jsonschema/v6"
+
 	"github.com/qoryai/integrations/contracts"
 )
 
@@ -363,6 +365,10 @@ func TestALineAndATitleRefuseEveryCcAndCfCharacterButZWNJAndZWJ(t *testing.T) {
 		{"a tag character", "a\U000E0041b", false},
 		{"a soft hyphen", "a\u00adb", false},
 		{"a zero-width space", "a\u200bb", false},
+		{"a left-to-right mark", "a\u200eb", false},
+		{"a left-to-right isolate", "a\u2066b", false},
+		{"a word joiner", "a\u2060b", false},
+		{"an interlinear annotation anchor", "a\ufff9b", false},
 		{"a byte order mark", "a\ufeffb", false},
 		{"a line separator", "a\u2028b", false},
 		{"a next line", "a\u0085b", false},
@@ -374,6 +380,83 @@ func TestALineAndATitleRefuseEveryCcAndCfCharacterButZWNJAndZWJ(t *testing.T) {
 		title := changeDoc(t, "fixtures/adapter/changes/change-request-pull-request.json", true, set("title", c.text))
 		if err := validate(feed, title); (err == nil) != c.ok {
 			t.Errorf("title, %s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+}
+
+// TestEveryTextThatPeopleSeeHasTheCharacterRuleOfALine pins that the failure detail, the
+// account title, the explore text and member name and the subject id refuse every Cc and
+// Cf character but U+200C and U+200D, as $defs/line does. The explore text also accepts
+// tab, line feed and carriage return.
+func TestEveryTextThatPeopleSeeHasTheCharacterRuleOfALine(t *testing.T) {
+	text := compileExplore(t, "inputs.schema.json#/$defs/text")
+	for _, s := range []struct {
+		name   string
+		schema *jsonschema.Schema
+	}{
+		{"failure detail", compile(t, "changes-failed.schema.json#/properties/detail")},
+		{"account title", compile(t, "grant.schema.json#/properties/account/properties/title")},
+		{"explore text", text},
+		{"member name", compileExplore(t, "inputs.schema.json#/$defs/member/properties/name")},
+		{"subject id", compileRun(t, "documents.schema.json#/$defs/subject/properties/id")},
+	} {
+		for _, c := range []struct{ name, value string }{
+			{"a zero-width joiner in an emoji sequence", "\U0001F468\u200d\U0001F469 family"},
+			{"a zero-width non-joiner between two letters", "a\u200cb"},
+		} {
+			if err := s.schema.Validate(c.value); err != nil {
+				t.Errorf("%s, %s: %v", s.name, c.name, err)
+			}
+		}
+		for _, c := range []struct{ name, value string }{
+			{"a tag character", "a\U000E0041b"},
+			{"a right-to-left override", "a\u202eb"},
+			{"a next line", "a\u0085b"},
+			{"a line separator", "a\u2028b"},
+			{"a soft hyphen", "a\u00adb"},
+			{"a zero-width space", "a\u200bb"},
+			{"a byte order mark", "a\ufeffb"},
+			{"a vertical tab", "a\vb"},
+			{"U+0000", "a\x00b"},
+		} {
+			if err := s.schema.Validate(c.value); err == nil {
+				t.Errorf("%s, %s: accepted", s.name, c.name)
+			}
+		}
+	}
+	for _, c := range []struct {
+		name, value string
+		ok          bool
+	}{
+		{"a tab", "a\tb", true},
+		{"a line feed", "a\nb", true},
+		{"a carriage return", "a\r\nb", true},
+		{"an empty text", "", true},
+		{"a tag character after a line feed", "a\n\U000E0041", false},
+	} {
+		if err := text.Validate(c.value); (err == nil) != c.ok {
+			t.Errorf("explore text, %s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+}
+
+// TestATitleOfOnlySpacesZWNJAndZWJIsRefused pins that a change request title needs a
+// character that is not a space, U+200C or U+200D.
+func TestATitleOfOnlySpacesZWNJAndZWJIsRefused(t *testing.T) {
+	feed := compile(t, "changes.schema.json")
+	for _, c := range []struct {
+		name, title string
+		ok          bool
+	}{
+		{"a zero-width joiner alone", "\u200d", false},
+		{"a zero-width non-joiner and spaces", "\u200c  ", false},
+		{"both and an ideographic space", " \u200c\u200d\u3000", false},
+		{"a letter and a zero-width joiner", "a\u200d", true},
+		{"a zero-width joiner and a digit", "\u200d1", true},
+	} {
+		doc := changeDoc(t, "fixtures/adapter/changes/change-request-pull-request.json", true, set("title", c.title))
+		if err := validate(feed, doc); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
 		}
 	}
 }
