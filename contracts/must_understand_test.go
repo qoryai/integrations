@@ -1284,3 +1284,34 @@ func adapterClosedType(name string) any {
 	}
 	return types[best]
 }
+
+// TestAMarshalledDocumentKeepsItsMustUnderstand pins that each Go type of a document that
+// has a must_understand list writes the list back, also a type that writes its document by
+// a method.
+func TestAMarshalledDocumentKeepsItsMustUnderstand(t *testing.T) {
+	found := false
+	for _, v := range []any{
+		contracts.Adapter{}, contracts.AdapterSecrets{}, contracts.AdapterSecretsAnswer{}, contracts.AdapterSecretsPlaintext{},
+		contracts.ChangesFailed{}, contracts.ChangesSubmitted{}, contracts.ConnectPass{}, contracts.ConnectReturn{},
+		contracts.ConnectionsDisconnect{}, contracts.Grant{}, contracts.GrantEnd{}, contracts.Grants{},
+		contracts.Read{}, contracts.ReadAnswer{}, contracts.ReadAnswer{Found: &found}, contracts.ReadPublic{},
+		contracts.Refusal{}, contracts.Resolve{}, contracts.ResolveAnswer{}, contracts.RunCredential{},
+		contracts.RunCredentialAnswer{}, contracts.SetupPass{}, contracts.SourceCollections{},
+		contracts.SourceItemComments{}, contracts.SourceItems{}, contracts.SourcesDisconnect{},
+	} {
+		ptr := reflect.New(reflect.TypeOf(v))
+		ptr.Elem().Set(reflect.ValueOf(v))
+		ptr.Elem().FieldByName("MustUnderstand").Set(reflect.ValueOf([]string{"/version"}))
+		b, err := json.Marshal(ptr.Interface())
+		if err != nil {
+			t.Fatalf("%T: %v", v, err)
+		}
+		var m map[string]any
+		if err := json.Unmarshal(b, &m); err != nil {
+			t.Fatalf("%T: %v", v, err)
+		}
+		if got, ok := m["must_understand"].([]any); !ok || len(got) != 1 || got[0] != "/version" {
+			t.Errorf("%T writes %s, want must_understand [\"/version\"]", v, b)
+		}
+	}
+}
