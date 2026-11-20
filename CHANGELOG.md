@@ -1019,8 +1019,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   accepts such a reply. The fixture
   `refused-by-control-plane/changes-submitted-address-other-host.json` shows it.
 - A reader that cannot read a refusal, or cannot meet its `must_understand`, acts on the
-  status alone. On 409 it changes nothing and sends the request again. The integration
-  refusal says to send it with backoff, and the provisioner refusal at the next check.
+  status alone. On 403 or 409 it changes nothing and sends the request again. The
+  integration refusal says to send it with backoff, and the provisioner refusal at the
+  next check. In the integration refusal, such a 403 never counts as the connection ended.
 
 ### Removed
 
