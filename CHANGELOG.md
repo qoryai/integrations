@@ -75,9 +75,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
     to 20, each with `system` and `path`.
   - `text.title` is `title`, and `text.description` is `text`. `previous_title` is
     `previous.title`, and `previous.address` is added.
-  - `branch`, `base`, `commits`, `earlier_commits` and `draft` of a target are
-    members of `data`. The artifact type of the entry's `change_kind` defines them, and
-    this contract does not list them.
+  - A pull request has the members `target`, `title`, `text`, `commits`, `head`, `base`,
+    `branch`, `base_branch`, `steps`, `draft` and `earlier_commits` in `data`. The
+    artifact type of the entry's `change_kind` defines them. This contract does not list
+    them.
   - `submissions: true` is `change_kinds`, a list of 1 to 16 kinds.
   - The reply `changes-submitted` has `change_request_id` and `target`. It has `address`
     (`url`, `ref`) and `action` (`created`, `updated` or `kept`) together, or both left
