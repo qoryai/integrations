@@ -105,8 +105,8 @@ type Documents struct {
 	// list: the process of the workspace type registers its schema, and the schema of
 	// the software factory requires full_suite in it. The type_settings of each later
 	// session is the TypeSettings of the [NextSessionAnswer]. It is set only for the
-	// step workflow. A pointer below it in MustUnderstand resolves, because the type
-	// does not define what is there.
+	// step workflow. The schema accepts a pointer below it in MustUnderstand, because
+	// the members below it belong to the workspace type's schema, not to this contract.
 	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
 	// Workflow is set exactly when HarnessHidden is, and for every run of the step
 	// workflow: the workflow of the harness that
@@ -596,9 +596,9 @@ type ModelChoice struct {
 // next-session-request.schema.json: the request that qory sends to the control plane
 // after a session of the run ended, to ask for the next session. It has no verdict: the
 // control plane reads the newest verdict that the run stored after the previous step.
-// When a check that the session's type_settings ask for runs after the session and
-// fails, what qory posts for that check comes before the request, so the newest verdict
-// is read after that post. qory sends it after each session that did not pause, for a
+// When the session's type_settings turn on a check that runs after the session, and it
+// fails, qory stores that check's result before it sends the request. So the control
+// plane reads the newest verdict after that result. qory sends it after each session that did not pause, for a
 // run whose documents have SharedRun. State and Reason follow the rules of the
 // session's dev.qory.session.exited that do not depend on its exit_code: a cancelled
 // session has a reason; the reasons timeout and interrupted are for a cancelled session
