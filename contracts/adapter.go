@@ -544,6 +544,8 @@ func CheckChangeMustUnderstand(entry []byte) error {
 		return err
 	}
 	if p != "" {
+		// The text is the detail of a failure report that a person reads: it starts with
+		// the fix and ends with a period, which Go error strings otherwise do not.
 		return fmt.Errorf("Use an adapter that defines %s. The entry lists it in must_understand, and this adapter does not define it.", quotePointer(p))
 	}
 	return nil

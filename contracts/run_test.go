@@ -1515,3 +1515,26 @@ func TestAWorkflowPlanAndTierFollowQorysHarnessFile(t *testing.T) {
 		}
 	}
 }
+
+// TestAHarnessSelectionWithOnlyAnUndefinedMemberIsWrittenBackEmpty pins that a selection
+// whose only member is undefined reads as empty, and that Go writes it back as {}, which
+// the schema refuses because its minProperties is 1.
+func TestAHarnessSelectionWithOnlyAnUndefinedMemberIsWrittenBackEmpty(t *testing.T) {
+	var m contracts.HarnessModule
+	in := `{"source":{"git":"https://example.com/m.git","ref":"v1"},"only":{"zz":1},"exclude":{"zz":1}}`
+	if err := json.Unmarshal([]byte(in), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Only == nil || m.Exclude == nil {
+		t.Fatalf("only and exclude are %v and %v, want both set and empty", m.Only, m.Exclude)
+	}
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"only":{}`, `"exclude":{}`} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("%s does not contain %s", out, want)
+		}
+	}
+}

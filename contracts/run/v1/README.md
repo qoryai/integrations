@@ -31,6 +31,11 @@ the outcome. It applies at the top level, and in `subject`, `run_settings`, `sub
   with such a list, so the control plane refuses it as it refuses any outcome that the
   schema refuses.
 - A reader refuses a bad value of a member that it defines.
+- `minProperties` counts members, defined or not. A harness selection with only an
+  undefined member reads as empty: `exclude: {"zz": 1}` leaves nothing out, and
+  `only: {"zz": 1}` takes nothing, because `only` leaves out everything it does not list.
+  Go writes such a selection back as `{}`, which the schema refuses, because
+  `minProperties` is 1.
 
 Examples:
 

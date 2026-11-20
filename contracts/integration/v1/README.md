@@ -19,11 +19,15 @@ addition keeps `version` 1; a change that breaks a reader is `version` 2.
 ## Members a reader does not define
 
 A reader ignores a member that the schema of a document does not define, at any depth.
-The rule covers the description, the answer of the change feed and each entry of it, the
-replies `changes-submitted.schema.json` and `changes-failed.schema.json`, the body of
-`adapter.schema.json`, the listing and the person of `source-items.schema.json`, the
-documents of the run, provisioner and machines contracts, and the explore inputs. A writer
-may add a member, and an older reader reads the rest.
+The rule covers these documents:
+
+- the description, the answer of the change feed and each entry of it;
+- the replies `changes-submitted.schema.json` and `changes-failed.schema.json`, and the
+  body of `adapter.schema.json`;
+- the listing and the person of `source-items.schema.json`;
+- the documents of the run, provisioner and machines contracts, and the explore inputs.
+
+A writer may add a member, and an older reader reads the rest.
 
 - `must_understand` lists the members that the reader must understand. Each is a JSON
   Pointer ([RFC 6901](https://www.rfc-editor.org/rfc/rfc6901)) counted from the object
@@ -32,17 +36,18 @@ may add a member, and an older reader reads the rest.
 - A reader refuses a document whose `must_understand` lists a pointer to a member that
   it does not define. The schema accepts a pointer to a member that the schema defines.
 - A reader refuses a pointer that has a line break, a `~` that is not `~0` or `~1`, or an
-  empty name of a map key. Below a place that the schema leaves open, such as `data` of a
-  change or the `settings` of a description, the schema accepts an empty name.
+  empty name of a map key. The schema leaves some places open, such as `data` of a change
+  and the `settings` of a description. Below such a place the schema accepts an empty name.
 - A reader refuses a bad value of a member that it defines.
 - The description's `settings` is the integration's settings schema. The contract
   neither opens nor closes it, and the schema accepts any pointer below it.
-- The objects that the Forager contract defines, such as the `auth` and the `format` of an
-  API, refuse an undefined member until Forager reads by the same rule. The schema
-  accepts a pointer to them and refuses a pointer below them.
-- `minProperties` counts members, defined or not. The `previous` object of a change and
-  the selection `only` of a harness read as empty when they have only an undefined member,
-  such as `{"zz": 1}`.
+- The Forager contract defines the `auth` and the `format` of an API, and they refuse an
+  undefined member. The schema accepts a pointer to them and refuses a pointer below
+  them.
+- `minProperties` counts members, defined or not. An object with only an undefined member,
+  such as `{"zz": 1}`, reads as empty in two places. `previous` of a change then has no
+  title and no address. A harness selection, `exclude` or `only`, then lists no part:
+  `exclude` leaves nothing out, and `only` takes nothing.
 
 Example: a program prints a description with the member `/roles/source/extra`, which an
 older control plane does not define. The older control plane ignores the member and reads
@@ -260,11 +265,11 @@ pointer of an entry is counted from the entry, such as `/target/collection`.
   `contracts.CheckChangeMustUnderstand` returns that text.
 - The artifact type of the `change_kind` defines `data`, so this contract does not. The
   schema accepts any pointer below `data`. The adapter checks it against the artifact
-  type, and reports the entry failed as it does for a pointer that this contract does
-  not define, when the artifact type does not define the pointer.
+  type. When the artifact type does not define the pointer, the adapter reports the entry
+  failed, as it does for a pointer that this contract does not define.
 - The replies `changes-submitted.schema.json` and `changes-failed.schema.json` have a
   `must_understand` at their root. The control plane ignores an undefined member of a
-  reply, unless the list names it. An adapter sends only the members of the revision that
+  reply, unless the list contains it. An adapter sends only the members of the revision that
   the control plane implements.
 - The `target` and the `address` in a reply are shared with the entries. They ignore an
   undefined member.

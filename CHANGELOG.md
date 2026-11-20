@@ -204,7 +204,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - Change each reader of the documents of the integration, run, provisioner, machines and
   explore contracts. A reader ignores a member that its schema does not define, in any
   object. Before, these schemas and the objects inside them refused such a member. The
-  Forager-defined objects of a description stay as the next lines say.
+  `auth` and the `format` of an API are the exception.
   - The optional `must_understand` of a document lists the members that the reader must
     understand. Each is a JSON Pointer (RFC 6901) counted from the document, such as
     `/run_settings/full_suite`. Before, it was a list of top-level member names.
@@ -214,12 +214,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
     pointer below `inputs`, below `harness.harness.extensions` and below the
     description's `settings`.
   - The description's `settings` stays the integration's settings schema. The `auth` and
-    `format` of an API follow the Forager contract and refuse an undefined member until
-    Forager reads by the same rule.
+    `format` of an API are defined by the Forager contract, and they refuse an undefined
+    member.
   - A reader refuses a pointer that has a line break, a `~` that is not `~0` or `~1`, or
-    an empty name of a map key. `minProperties` counts members, defined or not, so
-    `previous` of a change and `only` of a harness selection read as empty when they
-    have only an undefined member.
+    an empty name of a map key. `minProperties` counts members, defined or not. An object
+    with only an undefined member, such as `{"zz": 1}`, reads as empty in two places.
+    `previous` of a change then has no title and no address. A harness selection,
+    `exclude` or `only`, then lists no part: `exclude` leaves nothing out, and `only`
+    takes nothing. Go writes such a selection back as `{}`, which the schema refuses.
   - An answer with `next` `end` and a member of the session shape fails
     `next-session-answer.schema.json`, as before.
   - Each entry of the change feed has an optional `must_understand`. The answer has none.
@@ -246,9 +248,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
     the machines contract and the seven objects of `explore/v1/inputs.schema.json` ignore
     an unknown member. Each root of these, except the explore inputs, has an optional
     `must_understand`. The explore inputs use the list of the run documents.
-  - The machines contract defines no failure for a machines answer, a provisioner answer
-    or a refusal that lists a pointer the reader does not define. The reader refuses the
-    document as it refuses any document that the schema refuses.
+  - The contract defines no failure for a machines answer, a provisioner answer or a
+    refusal that lists a pointer the reader does not define. The reader refuses the
+    document, as it refuses any document that the schema refuses.
   - A writer's test validates against a closed copy of the schema, so a misspelled
     member fails it. The copy covers the schema and each schema of this repository that
     it refers to.
@@ -257,10 +259,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - `fixtures/closed` contains the documents that the schema accepts and the closed copy
     refuses: 103 documents in all contracts, of which 87 moved there from
     `fixtures/invalid`. These fixtures moved there because a retired or secret member
-    was a refusal before: `claim-answer-run-id`, `release-with-retry`, the adapter
-    `submit_module`, the reply `targets`, the outcome `end_code`, `action` and `message`,
-    the request `verdict` and `attempt`, and the machines `*-version.json` answers. A
-    reader ignores each of these members. Five removed fixtures came back:
+    was a refusal until this release: `claim-answer-run-id`, `release-with-retry`, the
+    outcome `end_code`, `action` and `message`, the request `verdict` and `attempt`, and
+    the machines `*-version.json` answers. The tests of the adapter `submit_module` and of
+    the reply `targets` are inline in `run_test.go` and `change_request_limits_test.go`,
+    and they now expect the reader to ignore the member. A reader ignores each of these
+    members. Five removed fixtures came back:
     `documents-undefined-member.json`, `documents-subject-undefined-member.json`,
     `next-session-answer-undefined-member.json`,
     `next-session-answer-model-credential.json` and
@@ -913,9 +917,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   for a name, and `BindValue.Names` for a list, and each is written back in the form it
   was read in. Decoding a `HarnessSection` ignores a bind kind other than `agents`,
   `commands` or `skills`. A module role that no bind fills stays unfilled, and the reader
-  must not compose it. Decoding returns an error for a kind whose value is null, for a
-  role whose value is null, for a list on a `commands` or `skills` role, for an empty list,
-  and for a null item of a list.
+  must not compose that module role. Decoding returns an error for a kind whose value is
+  null, for a role whose value is null, for a list on a `commands` or `skills` role, for
+  an empty list, and for a null item of a list.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that

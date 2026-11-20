@@ -573,7 +573,7 @@
           }
         },
         "bind": {
-          "description": "The entry that fills each role a module references, by kind and then by role: agents, commands or skills, each an object of a role to the name of one entry of that kind, or, for a group role of the kind agents, to a list of agents. A module writes ${qory:agents/developer}, and bind: {agents: {developer: web-developer}} sets which agent that is. A reader ignores a bind kind that it does not define. A module role that no bind fills stays unfilled, and the reader must not compose it.",
+          "description": "The entry that fills each role a module references, by kind and then by role: agents, commands or skills, each an object of a role to the name of one entry of that kind, or, for a group role of the kind agents, to a list of agents. A module writes ${qory:agents/developer}, and bind: {agents: {developer: web-developer}} sets which agent that is. A reader ignores a bind kind that it does not define. A module role that no bind fills stays unfilled, and the reader must not compose that module role.",
           "type": "object",
           "properties": {
             "agents": {
@@ -788,7 +788,7 @@
       }
     },
     "harness_selection": {
-      "description": "Parts of a module, by kind: the names of some entries of each kind listed, true for the instructions, and true or some names for the settings and the variables.",
+      "description": "Parts of a module, by kind: the names of some entries of each kind listed, true for the instructions, and true or some names for the settings and the variables. A selection with only an undefined member, such as {\"zz\": 1}, passes minProperties and lists no part: exclude leaves nothing out, and only takes nothing. Go writes it back as {}, which this schema refuses.",
       "type": "object",
       "minProperties": 1,
       "properties": {
