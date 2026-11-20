@@ -540,8 +540,9 @@ type ModelChoice struct {
 // next-session-request.schema.json: the request that qory sends to the control plane
 // after a session of the run ended, to ask for the next session. It has no verdict: the
 // control plane reads the newest verdict that the run stored after the previous step.
-// What qory posts for a red full suite after the session comes before the request, so
-// the newest verdict is read after that post. qory sends it after each session that
+// When a check that the session's type_settings ask for runs after the session and
+// fails, what qory posts for that check comes before the request, so the newest verdict
+// is read after that post. qory sends it after each session that
 // did not pause, for a run whose documents have SharedRun. State and Reason follow the
 // rules of the session's dev.qory.session.exited that do not depend on its exit_code:
 // a cancelled session has a reason; the reasons timeout and interrupted are for a
