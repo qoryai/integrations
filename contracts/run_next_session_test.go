@@ -50,7 +50,7 @@ func TestAnAnswerIsOneOfTwoShapes(t *testing.T) {
 		"the session members with next end":     both,
 		"the end with next session":             other,
 		"the session members with next as end":  merged,
-		"the end with one session member":       {"next": "end", "full_suite": true},
+		"the end with one session member":       {"next": "end", "type_settings": map[string]any{}},
 		"the session shape with no next member": withoutKey(session, "next"),
 	} {
 		if schema.Validate(doc) == nil {
@@ -81,7 +81,6 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 			}
 		},
 		"next-session-answer-session-without-time-limit-minutes.json":        func(m map[string]any) { m["time_limit_minutes"] = json.Number("60") },
-		"next-session-answer-session-without-full-suite.json":                func(m map[string]any) { m["full_suite"] = false },
 		"next-session-answer-session-without-workflow.json":                  func(m map[string]any) { m["workflow"] = "review-changes" },
 		"next-session-answer-session-without-inputs.json":                    func(m map[string]any) { m["inputs"] = session["inputs"] },
 		"next-session-answer-session-0.json":                                 func(m map[string]any) { m["session"] = json.Number("2") },
@@ -151,8 +150,8 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 // TestTheNextSessionTypesMarshalToTheirSchemas pins that [contracts.NextSessionRequest],
 // [contracts.NextSessionAnswer] and [contracts.ModelChoice] marshal to documents that
 // their schemas accept, that an answer with next end is written as {"next":"end"}
-// alone, that an answer for a session with full_suite false writes it, and that each
-// valid fixture reads into its Go type and is written back as the same JSON value.
+// alone, that an answer for a session writes type_settings only when it is set, and that
+// each valid fixture reads into its Go type and is written back as the same JSON value.
 func TestTheNextSessionTypesMarshalToTheirSchemas(t *testing.T) {
 	reason := "timeout"
 	inputs := json.RawMessage(`{"version":1}`)
@@ -170,15 +169,19 @@ func TestTheNextSessionTypesMarshalToTheirSchemas(t *testing.T) {
 			`{"next":"end"}`},
 		{"next-session-answer", contracts.NextSessionAnswer{Next: contracts.NextSessionKindSession, Session: 2,
 			Workflow: "build", TimeLimitMinutes: 15, Inputs: inputs},
-			`{"next":"session","session":2,"workflow":"build","time_limit_minutes":15,"full_suite":false,"inputs":{"version":1}}`},
+			`{"next":"session","session":2,"workflow":"build","time_limit_minutes":15,"inputs":{"version":1}}`},
+		{"next-session-answer", contracts.NextSessionAnswer{Next: contracts.NextSessionKindSession, Session: 2,
+			Workflow: "build", TimeLimitMinutes: 15, TypeSettings: json.RawMessage(`{}`), Inputs: inputs},
+			`{"next":"session","session":2,"workflow":"build","time_limit_minutes":15,"type_settings":{},"inputs":{"version":1}}`},
 		{"next-session-answer", contracts.NextSessionAnswer{Next: contracts.NextSessionKindSession, Session: 3,
-			Workflow: "review", ModelProviderCredentialName: "example-provider-2", TimeLimitMinutes: 1440, FullSuite: true, Inputs: inputs,
+			Workflow: "review", ModelProviderCredentialName: "example-provider-2", TimeLimitMinutes: 1440, Inputs: inputs,
+			TypeSettings: json.RawMessage(`{"full_suite":true,"threshold":1.50}`),
 			ModelChoice: &contracts.ModelChoice{Model: "example-large", Effort: "high",
 				ProviderModels: []contracts.ProviderModel{{ID: "example-large", Effort: []string{"low", "high"}}},
 				Tiers:          &contracts.Tiers{Thinking: &contracts.Tier{Model: "example-large"}}}},
 			`{"next":"session","session":3,"workflow":"review","model_choice":{"model":"example-large","effort":"high",` +
 				`"provider_models":[{"id":"example-large","effort":["low","high"]}],"tiers":{"thinking":"example-large"}},` +
-				`"model_provider_credential_name":"example-provider-2","time_limit_minutes":1440,"full_suite":true,"inputs":{"version":1}}`},
+				`"model_provider_credential_name":"example-provider-2","time_limit_minutes":1440,"type_settings":{"full_suite":true,"threshold":1.50},"inputs":{"version":1}}`},
 		{"documents/model_choice", contracts.ModelChoice{}, `{}`},
 		{"documents/model_choice", contracts.ModelChoice{Runtime: "codex"}, `{"runtime":"codex"}`},
 		{"documents/model_choice", contracts.ModelChoice{Runtime: "codex", Model: "example-large",
@@ -283,10 +286,11 @@ func TestTheNextSessionStateAndReasonRules(t *testing.T) {
 }
 
 // TestTheDocumentsMembersOfTheSessions pins that the run documents of the step workflow
-// contain time_limit_minutes, shared_run and full_suite and read them into
-// [contracts.Documents], that false for shared_run and full_suite is accepted and
-// reads as the member left out, and that time_limit_minutes accepts 1, 14, 15 and 1440
-// and refuses 0, 1.5 and 1441, in the run documents and in the next-session answer.
+// contain time_limit_minutes, shared_run and type_settings and read them into
+// [contracts.Documents], that false for shared_run is accepted and reads as the member
+// left out, that type_settings takes any object, {} included, and refuses a value that is
+// not an object, and that time_limit_minutes accepts 1, 14, 15 and 1440 and refuses 0,
+// 1.5 and 1441, in the run documents and in the next-session answer.
 func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	var d contracts.Documents
@@ -297,8 +301,8 @@ func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 	if err := json.Unmarshal(b, &d); err != nil {
 		t.Fatal(err)
 	}
-	if d.TimeLimitMinutes != 15 || !d.SharedRun || !d.FullSuite {
-		t.Errorf("explore-shared-run.json reads as time_limit_minutes %d, shared_run %v, full_suite %v", d.TimeLimitMinutes, d.SharedRun, d.FullSuite)
+	if d.TimeLimitMinutes != 15 || !d.SharedRun || !strings.Contains(string(d.TypeSettings), `"full_suite": true`) {
+		t.Errorf("explore-shared-run.json reads as time_limit_minutes %d, shared_run %v, type_settings %s", d.TimeLimitMinutes, d.SharedRun, d.TypeSettings)
 	}
 	answer := compileRun(t, runSchema("next-session-answer"))
 	for _, limit := range []json.Number{"1", "14", "15", "1440", "0", "1441", "1.5"} {
@@ -315,15 +319,60 @@ func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 		}
 	}
 	doc := fixture(t, "documents/explore-shared-run.json")
-	doc["shared_run"], doc["full_suite"] = false, false
+	doc["shared_run"] = false
 	if err := schema.Validate(doc); err != nil {
-		t.Errorf("shared_run and full_suite false are refused: %v", err)
+		t.Errorf("shared_run false is refused: %v", err)
+	}
+	for name, settings := range map[string]any{"{}": map[string]any{}, "a member of any name": map[string]any{"extra": []any{1, "x"}}} {
+		doc := fixture(t, "documents/explore-shared-run.json")
+		doc["type_settings"] = settings
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("the documents with type_settings %s are refused: %v", name, err)
+		}
+	}
+	for name, settings := range map[string]any{"a string": "true", "null": nil, "an array": []any{}, "a number": json.Number("1")} {
+		doc := fixture(t, "documents/explore-shared-run.json")
+		doc["type_settings"] = settings
+		if schema.Validate(doc) == nil {
+			t.Errorf("the documents with type_settings as %s are accepted", name)
+		}
+	}
+	doc = fixture(t, "documents/explore-shared-run.json")
+	delete(doc, "type_settings")
+	if err := schema.Validate(doc); err != nil {
+		t.Errorf("the documents without type_settings are refused: %v", err)
+	}
+	doc["full_suite"] = true
+	if err := schema.Validate(doc); err != nil {
+		t.Errorf("the documents with full_suite outside type_settings are refused, and a reader ignores it: %v", err)
+	}
+	closed, err := contracts.CompileRunClosed("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := closed.Validate(doc); runRefusal(err) != "/ additionalProperties" {
+		t.Errorf("the closed copy refuses the documents with full_suite outside type_settings for %q, want %q", runRefusal(err), "/ additionalProperties")
+	}
+	doc["must_understand"] = []any{"/full_suite"}
+	if err := schema.Validate(doc); err == nil {
+		t.Error("the documents that list /full_suite in must_understand are accepted")
+	}
+	if err := contracts.CheckMustUnderstand([]byte(`{"must_understand":["/full_suite"]}`), contracts.Documents{}); err == nil {
+		t.Error("CheckMustUnderstand accepts /full_suite for the documents")
+	}
+	doc = fixture(t, "documents/explore-shared-run.json")
+	doc["must_understand"] = []any{"/type_settings", "/type_settings/full_suite", "/type_settings/a/0/b"}
+	if err := schema.Validate(doc); err != nil {
+		t.Errorf("the documents that list pointers below type_settings in must_understand are refused: %v", err)
+	}
+	if err := contracts.CheckMustUnderstand([]byte(`{"must_understand":["/type_settings/a/0/b"]}`), contracts.Documents{}); err != nil {
+		t.Errorf("CheckMustUnderstand refuses a pointer below type_settings: %v", err)
 	}
 	out, err := json.Marshal(contracts.Documents{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, m := range []string{"time_limit_minutes", "shared_run", "full_suite"} {
+	for _, m := range []string{"time_limit_minutes", "shared_run", "type_settings"} {
 		if strings.Contains(string(out), m) {
 			t.Errorf("an empty Documents is written with %s: %s", m, out)
 		}
@@ -333,10 +382,130 @@ func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 			continue
 		}
 		prebuild := fixture(t, strings.TrimPrefix(name, "fixtures/"))
-		for _, m := range []string{"time_limit_minutes", "shared_run", "full_suite"} {
+		for _, m := range []string{"time_limit_minutes", "shared_run", "type_settings"} {
 			if _, ok := prebuild[m]; ok {
 				t.Errorf("%s has %s", name, m)
 			}
+		}
+	}
+}
+
+// TestTypeSettingsAreOptionalInAnAnswerAndFullSuiteOutsideIsUndefined pins that the
+// next-session answer for a session accepts type_settings as {}, as an object with
+// full_suite, and as an object with any other member, and accepts no type_settings; that
+// it refuses type_settings that is not an object, and type_settings in the end shape;
+// and that full_suite outside type_settings is an undefined member: the schema accepts
+// it, the closed copy refuses it, and a must_understand that lists it is refused.
+func TestTypeSettingsAreOptionalInAnAnswerAndFullSuiteOutsideIsUndefined(t *testing.T) {
+	schema := compileRun(t, runSchema("next-session-answer"))
+	closed, err := contracts.CompileRunClosed("next-session-answer.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, doc := range map[string]map[string]any{
+		"no type_settings":              fixture(t, "next-session-answer/session-without-type-settings.json"),
+		"type_settings {}":              fixture(t, "next-session-answer/session-type-settings-empty.json"),
+		"type_settings with full_suite": fixture(t, "next-session-answer/session.json"),
+	} {
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("the answer with %s is refused: %v", name, err)
+		}
+		if err := closed.Validate(doc); err != nil {
+			t.Errorf("the closed copy refuses the answer with %s: %v", name, err)
+		}
+	}
+	session := fixture(t, "next-session-answer/session.json")
+	session["type_settings"] = map[string]any{"threshold": json.Number("2"), "full_suite": false}
+	if err := schema.Validate(session); err != nil {
+		t.Errorf("the answer with type_settings of two members is refused: %v", err)
+	}
+	for name, v := range map[string]any{"a string": "true", "null": nil, "an array": []any{}, "a boolean": true} {
+		doc := fixture(t, "next-session-answer/session.json")
+		doc["type_settings"] = v
+		if schema.Validate(doc) == nil {
+			t.Errorf("the answer with type_settings as %s is accepted", name)
+		}
+	}
+	if schema.Validate(map[string]any{"next": "end", "type_settings": map[string]any{}}) == nil {
+		t.Error("the end with type_settings is accepted")
+	}
+	for name, doc := range map[string]map[string]any{
+		"the session with full_suite beside type_settings": func() map[string]any {
+			d := fixture(t, "next-session-answer/session.json")
+			d["full_suite"] = true
+			return d
+		}(),
+		"the session with full_suite and no type_settings": func() map[string]any {
+			d := fixture(t, "next-session-answer/session-without-type-settings.json")
+			d["full_suite"] = true
+			return d
+		}(),
+		"the end with full_suite": {"next": "end", "full_suite": true},
+	} {
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("%s is refused, and a reader ignores full_suite: %v", name, err)
+		}
+		if closed.Validate(doc) == nil {
+			t.Errorf("the closed copy accepts %s", name)
+		}
+		doc["must_understand"] = []any{"/full_suite"}
+		if schema.Validate(doc) == nil {
+			t.Errorf("%s, with /full_suite in must_understand, is accepted", name)
+		}
+	}
+	if err := contracts.CheckMustUnderstand([]byte(`{"must_understand":["/full_suite"]}`), contracts.NextSessionAnswer{}); err == nil {
+		t.Error("CheckMustUnderstand accepts /full_suite for the answer")
+	}
+	for _, p := range []string{"/type_settings", "/type_settings/full_suite", "/type_settings/a/0/b"} {
+		doc := fixture(t, "next-session-answer/session.json")
+		doc["must_understand"] = []any{p}
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("the answer that lists %s in must_understand is refused: %v", p, err)
+		}
+		if err := contracts.CheckMustUnderstand([]byte(`{"must_understand":["`+p+`"]}`), contracts.NextSessionAnswer{}); err != nil {
+			t.Errorf("CheckMustUnderstand refuses %s for the answer: %v", p, err)
+		}
+	}
+	raw, err := contracts.RunDocument("next-session-answer.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shape := raw.(map[string]any)["oneOf"].([]any)[0].(map[string]any)
+	if slices.Contains(shape["required"].([]any), any("full_suite")) || slices.Contains(shape["required"].([]any), any("type_settings")) {
+		t.Errorf("the session shape requires %v", shape["required"])
+	}
+	if _, ok := shape["properties"].(map[string]any)["full_suite"]; ok {
+		t.Error("the session shape defines full_suite")
+	}
+	ref := shape["properties"].(map[string]any)["type_settings"].(map[string]any)["$ref"]
+	if want := "https://qory.dev/contracts/run/v1/documents.schema.json#/$defs/type_settings"; ref != want {
+		t.Errorf("type_settings of the answer refers to %v, want %s", ref, want)
+	}
+}
+
+// TestTypeSettingsKeepTheirBytes pins that TypeSettings of [contracts.Documents] and of
+// [contracts.NextSessionAnswer] is read and written with the bytes of the JSON member:
+// no member is dropped, reordered or rewritten, such as 1.50 as 1.5.
+func TestTypeSettingsKeepTheirBytes(t *testing.T) {
+	const settings = `{"z":[1,{"a":null}],"threshold":1.50,"full_suite":true}`
+	for name, v := range map[string]any{"documents": &contracts.Documents{}, "answer": &contracts.NextSessionAnswer{}} {
+		in := `{"next":"session","type_settings":` + settings + `}`
+		if err := json.Unmarshal([]byte(in), v); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if a, ok := v.(*contracts.NextSessionAnswer); ok {
+			a.Session, a.Workflow, a.TimeLimitMinutes, a.Inputs = 2, "build", 15, json.RawMessage(`{"version":1}`)
+		}
+		out, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		var members map[string]json.RawMessage
+		if err := json.Unmarshal(out, &members); err != nil {
+			t.Fatal(err)
+		}
+		if got := string(members["type_settings"]); got != settings {
+			t.Errorf("the %s write type_settings as %s, want %s", name, got, settings)
 		}
 	}
 }

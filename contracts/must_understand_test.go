@@ -54,7 +54,7 @@ func understoodSchemas() []understood {
 			closed:    func() (*jsonschema.Schema, error) { return contracts.CompileRunClosed("documents.schema.json") },
 			read:      contracts.RunDocument,
 			list:      runList("fixtures/documents"),
-			freePlac:  regexp.MustCompile(`^/(inputs|harness/harness/extensions|harness/harness/workflows|harness/harness/bind/(agents|commands|skills))$|^/inputs/|^/harness/harness/extensions/`),
+			freePlac:  regexp.MustCompile(`^/(inputs|type_settings|harness/harness/extensions|harness/harness/workflows|harness/harness/bind/(agents|commands|skills))$|^/(inputs|type_settings)/|^/harness/harness/extensions/`),
 			valid:     "fixtures/documents/explore.json",
 			known:     "/domain",
 			openPlace: "/inputs",
@@ -68,7 +68,7 @@ func understoodSchemas() []understood {
 			},
 			read:      contracts.RunDocument,
 			list:      runList("fixtures/next-session-answer"),
-			freePlac:  regexp.MustCompile(`^/inputs$|^/inputs/`),
+			freePlac:  regexp.MustCompile(`^/(inputs|type_settings)$|^/(inputs|type_settings)/`),
 			valid:     "fixtures/next-session-answer/session.json",
 			known:     "/next",
 			openPlace: "/inputs",
@@ -633,8 +633,8 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		open []string
 		goes any
 	}{
-		{"documents.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs", "/harness/harness/extensions"}, contracts.Documents{}},
-		{"next-session-answer.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs"}, contracts.NextSessionAnswer{}},
+		{"documents.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs", "/type_settings", "/harness/harness/extensions"}, contracts.Documents{}},
+		{"next-session-answer.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs", "/type_settings"}, contracts.NextSessionAnswer{}},
 		{"description.schema.json", contracts.Base, contracts.Document, []string{"/settings"}, nil},
 		{"next-session-request.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.NextSessionRequest{}},
 		{"outcome.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.RunOutcome{}},

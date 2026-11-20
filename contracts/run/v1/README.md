@@ -12,6 +12,13 @@ against.
 | `next-session-refusal.schema.json` | the control plane's coded refusal of the request |
 | `outcome.schema.json` | how the run ended |
 
+## Settings of the workspace type
+
+`type_settings` in the run documents and in the next-session answer contains the settings
+that belong to the type of the workspace. This contract lists none of its members. The
+process of the workspace type registers the schema of `type_settings`, and the schema of
+the software factory requires `full_suite` in it.
+
 ## Members a reader does not define
 
 A reader ignores a member that the schema of a document does not define, at any depth.
@@ -21,12 +28,13 @@ It applies at the top level, and in `subject`, `run_settings`, `submit`,
 
 - `must_understand` lists the members that the reader must understand. Each is a JSON
   Pointer ([RFC 6901](https://www.rfc-editor.org/rfc/rfc6901)) counted from the document,
-  such as `/run_settings/full_suite` or `/subject/kind`. Write a pointer once.
+  such as `/run_settings/runtime` or `/subject/kind`. Write a pointer once.
 - A reader refuses a document whose `must_understand` lists a pointer to a member that
   it does not define. The schema accepts a pointer to a member that the schema defines.
-- Another schema defines the members below `inputs` and below
+- Another schema defines the members below `inputs`, below `type_settings` and below
   `harness.harness.extensions`. The schema accepts any pointer there. No Go reader
-  refuses a pointer such as `/inputs/zz`, because the inputs are a free map of the run.
+  refuses a pointer such as `/inputs/zz` or `/type_settings/zz`, because both are free
+  maps of the run.
 - The control plane refuses a request whose `must_understand` lists a pointer that it does
   not define, with 400 `invalid_request`. A batch's `dev.qory.run.exited` can have an
   outcome whose `must_understand` lists a pointer that the outcome schema does not

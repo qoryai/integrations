@@ -40,13 +40,13 @@ const MaxInputs = 768 << 10
 // Workflow, and runs the workflow named in Workflow. A run of the step prebuild has
 // Access, Target, ImageDestination and exactly one of EnvironmentDestination and
 // EnvironmentImage, and no TargetVersion, Subject, RunSettings, TimeLimitMinutes,
-// SharedRun, FullSuite, Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun
-// and FullSuite are set only for the step workflow. The documents are the documents of
-// session 1: its Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With
-// SharedRun, each later session comes from the answer to the next-session request, as
-// [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
-// it, whose shape belongs to the step's schema. A reader ignores a member of the documents
-// that Documents does not have, unless MustUnderstand lists it.
+// SharedRun, TypeSettings, Workflow, HarnessHidden or Harness. TimeLimitMinutes,
+// SharedRun and TypeSettings are set only for the step workflow. The documents are the
+// documents of session 1: its Workflow, RunSettings, TimeLimitMinutes, TypeSettings and
+// Inputs. With SharedRun, each later session comes from the answer to the next-session
+// request, as [NextSessionAnswer] describes. Inputs is the step's input as the control
+// plane wrote it, whose shape belongs to the step's schema. A reader ignores a member of
+// the documents that Documents does not have, unless MustUnderstand lists it.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -100,10 +100,14 @@ type Documents struct {
 	// same: qory sends no request, and the run has session 1 only. It is set only for
 	// the step workflow.
 	SharedRun bool `json:"shared_run,omitempty"`
-	// FullSuite is true when session 1 runs the full test suite after the agent ends.
-	// False and absent in the JSON are the same. The flag of each later session is the
-	// FullSuite of the [NextSessionAnswer]. It is set only for the step workflow.
-	FullSuite bool `json:"full_suite,omitempty"`
+	// TypeSettings is the type_settings object of session 1, the settings that belong to
+	// the type of the workspace. It is a JSON object whose members this contract does not
+	// list: the process of the workspace type registers its schema, and the schema of
+	// the software factory requires full_suite in it. The type_settings of each later
+	// session is the TypeSettings of the [NextSessionAnswer]. It is set only for the
+	// step workflow. The schema accepts a pointer below it in MustUnderstand, because
+	// the members below it belong to the workspace type's schema, not to this contract.
+	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
 	// Workflow is set exactly when HarnessHidden is, and for every run of the step
 	// workflow: the workflow of the harness that
 	// the run starts, such as hello. qory starts the first of these that the harness
@@ -170,7 +174,7 @@ type Documents struct {
 	// process.yaml has a different submit, see submit in documents.schema.json.
 	Submit *Submit `json:"submit,omitempty"`
 	// MustUnderstand lists members of the documents that the reader must understand, as
-	// JSON Pointers counted from the documents, such as "/run_settings/full_suite". A
+	// JSON Pointers counted from the documents, such as "/run_settings/runtime". A
 	// reader ignores a member that this type does not have, unless MustUnderstand lists
 	// it. A reader refuses documents whose MustUnderstand lists a pointer to a member that
 	// this type does not have: [CheckMustUnderstand] returns an error for them.
@@ -592,14 +596,15 @@ type ModelChoice struct {
 // next-session-request.schema.json: the request that qory sends to the control plane
 // after a session of the run ended, to ask for the next session. It has no verdict: the
 // control plane reads the newest verdict that the run stored after the previous step.
-// What qory posts for a red full suite after the session comes before the request, so
-// the newest verdict is read after that post. qory sends it after each session that
-// did not pause, for a run whose documents have SharedRun. State and Reason follow the
-// rules of the session's dev.qory.session.exited that do not depend on its exit_code:
-// a cancelled session has a reason; the reasons timeout and interrupted are for a
-// cancelled session only; and the reason gateway_lost is for a failed session only.
-// qory sends the request through Forager's link, and the gateway forwards it to the
-// control plane. A container cannot send it.
+// When the session's type_settings turn on a check that runs after the session, and it
+// fails, qory stores that check's result before it sends the request. So the control
+// plane reads the newest verdict after that result. qory sends it after each session that did not pause, for a
+// run whose documents have SharedRun. State and Reason follow the rules of the
+// session's dev.qory.session.exited that do not depend on its exit_code: a cancelled
+// session has a reason; the reasons timeout and interrupted are for a cancelled session
+// only; and the reason gateway_lost is for a failed session only. qory sends the request
+// through Forager's link, and the gateway forwards it to the control plane. A container
+// cannot send it.
 type NextSessionRequest struct {
 	// Session is Forager's number of the session that ended, from 1, as in its
 	// dev.qory.session.exited.
@@ -618,8 +623,8 @@ type NextSessionRequest struct {
 // NextSessionAnswer is the answer to the next-session request, run/v1
 // next-session-answer.schema.json. It is the next session of the run, with Next
 // [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and no
-// member of the session shape. The session shape has Session, Workflow, TimeLimitMinutes,
-// FullSuite and Inputs, and optionally ModelChoice and ModelProviderCredentialName.
+// member of the session shape. The session shape has Session, Workflow, TimeLimitMinutes
+// and Inputs, and optionally TypeSettings, ModelChoice and ModelProviderCredentialName.
 // MarshalJSON writes the members of the shape that Next selects, and no member of the
 // other shape. Reading takes the members of either shape and leaves the others at their
 // zero values.
@@ -648,8 +653,9 @@ type NextSessionAnswer struct {
 	ModelProviderCredentialName string `json:"model_provider_credential_name,omitempty"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 1 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
-	// FullSuite is true when the session runs the full test suite after the agent ends.
-	FullSuite bool `json:"full_suite,omitempty"`
+	// TypeSettings is the type_settings object of the session, as
+	// [Documents.TypeSettings]. It is written only when it is set.
+	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
 	// Inputs is the input of the session, as [Documents.Inputs].
 	Inputs json.RawMessage `json:"inputs,omitempty"`
 	// MustUnderstand lists members of the answer that the reader must understand, as
@@ -666,8 +672,8 @@ const (
 
 // MarshalJSON writes a. For Next "end" it writes {"next":"end"}, and MustUnderstand when
 // it is not empty, and nothing else. For Next "session" it writes the members of the
-// session shape, and MustUnderstand when it is not empty, and writes full_suite when it
-// is false. It returns an error for any other Next, the empty Next included,
+// session shape, and MustUnderstand when it is not empty, and writes type_settings when
+// it is set. It returns an error for any other Next, the empty Next included,
 // and for a session answer whose Inputs is empty, which would be written as null.
 func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 	switch a.Next {
@@ -690,11 +696,11 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		ModelChoice                 *ModelChoice    `json:"model_choice,omitempty"`
 		ModelProviderCredentialName string          `json:"model_provider_credential_name,omitempty"`
 		TimeLimitMinutes            int             `json:"time_limit_minutes"`
-		FullSuite                   bool            `json:"full_suite"`
+		TypeSettings                json.RawMessage `json:"type_settings,omitempty"`
 		Inputs                      json.RawMessage `json:"inputs"`
 		MustUnderstand              []string        `json:"must_understand,omitempty"`
 	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelProviderCredentialName,
-		a.TimeLimitMinutes, a.FullSuite, a.Inputs, a.MustUnderstand})
+		a.TimeLimitMinutes, a.TypeSettings, a.Inputs, a.MustUnderstand})
 }
 
 // RunOutcome is a run's end, run/v1 outcome.schema.json, titled Run end: how the run
