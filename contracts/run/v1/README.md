@@ -23,7 +23,7 @@ the software factory requires `full_suite` in it.
 
 A reader ignores a member that the schema of a document does not define, at any depth.
 The rule covers the run documents, the next-session answer and the next-session request.
-It applies at the top level, and in `subject`, `run_settings`, `submit`,
+It applies at the top level, and in `subject`, `run_settings`, each entry of `deliver`,
 `harness`, `model_choice` and each other object inside them.
 
 - `must_understand` lists the members that the reader must understand. Each is a JSON

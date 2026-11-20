@@ -9,6 +9,19 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Upgrading
 
+- Change each reader and writer of the run documents from `submit` to `deliver`. No
+  release had `submit`. `deliver` is a list of `{type, send}` entries, both members
+  required, in place of the one object `{type, send}`. It has at most 16 entries, and at
+  least 1 when it is present. `type` has the grammar of `submit.type`, and `send` has
+  the values of `submit.send`. A run without `deliver` delivers nothing. `deliver` is
+  present only on a run with `workflow` and with `access` `write`, and never on a run of
+  the step `prebuild`. No two entries have the same `type`. The schema cannot check that,
+  so a reader calls `Documents.Check` after it decodes the documents. A reader ignores
+  a `submit` member, because the schema does not define it. The closed copy that
+  `CompileRunClosed` builds for a writer's test refuses it, and a reader refuses a
+  `must_understand` that lists `/submit`. In Go, `Submit` and `Documents.Submit` are
+  `Deliver` and `Documents.Deliver`, a `[]Deliver` with `Type` and `Send`, and
+  `MaxDeliver` is 16. The submit program contract and its Go names stay.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
@@ -77,7 +90,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   of `WorkItem`. `explore/v1/inputs.schema.json` keeps its `work_item`, and
   `inputs.work_item.id` is `subject.id` when `subject.kind` is `work_item`.
 - Update a reader of the run documents to this `documents.schema.json` before the
-  control plane writes `submit`, `write-no-push` in `access`, or `write-no-push` in the
+  control plane writes `deliver`, `write-no-push` in `access`, or `write-no-push` in the
   `access` of a workflow in `harness`, to the run documents: a reader that checks the
   run documents against an earlier copy refuses each of them.
 - Rename three members, which this module had after 0.3.0 and before this release, and
@@ -373,8 +386,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   string at most 20000 characters. A member name has 1 to 128 characters. No string or
   name has U+0000. The adapter changes the title at the target only while it equals
   `previous.title`. It updates what is at `previous.address` when there is one. It applies the entries with one
-  `target.collection` in cursor order. `change_kind` has the pattern of `submit.type` of
-  the run documents: lower-case letters and digits in groups joined by single hyphens, 1
+  `target.collection` in cursor order. `change_kind` has the pattern of the `type` of an
+  entry of `deliver` of the run documents: lower-case letters and digits in groups joined by single hyphens, 1
   to 64 characters. In Go, `ChangeRequest`, `ChangeAddress` and `ChangePrevious` are
   added.
 - The `source` role may contain `change_kinds`: the kinds of change request that the
@@ -574,24 +587,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   largest size, in decimal bytes, that the target image of the build may have. It is an
   integer of at least 1 and at most 9223372036854775807. A run of any other step has no
   `largest_prebuilt_image_bytes`. When it is absent, the image has no size limit.
-- The run documents can contain `submit`: the settings of the submission of the run,
-  with `type` and `send`, both required, and no other member. `type` is the name of the
-  artifact type of the submission: lower-case letters and digits in groups joined by
-  single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`: the control
+- The run documents can contain `deliver`: the artifacts that the run delivers, a list of
+  1 to 16 entries with `type` and `send`, both required, and no other member. `type` is the
+  name of the artifact type: lower-case letters and digits in groups joined by single
+  hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`: the control
   plane writes the change_request entry at the end of the run or after the gate of the stage
-  passes. The control plane writes `submit` whenever the process version of the
-  workspace has one. `submit` is present only on a run with `workflow` and with `access`
-  `write`, and never on a run of the step `prebuild`. `submit` sets the `type` and the
-  `send` of the submission that the run stores. On a run with a run code, qory takes
-  these two settings only from `submit`, never from `process.yaml`. If `process.yaml`
-  has a different `submit`, qory prints one line with both values and uses `submit` of
+  passes. The control plane writes `deliver` whenever the process version of the
+  workspace has a type to deliver. `deliver` is present only on a run with `workflow` and
+  with `access` `write`, and never on a run of the step `prebuild`. `deliver` sets the
+  `type` and the `send` of each artifact that the run stores. On a run with a run code,
+  qory takes these settings only from `deliver`, never from `process.yaml`. If `process.yaml`
+  has different settings, qory prints one line with both values and uses `deliver` of
   the run documents. On that run, the adapter of the forge opens the draft from the
   change_request entry, and no submit program runs. A run that a person starts with no run
-  code has no run documents, so it has no `submit`; it runs the submit program of the
-  composed harness. In Go, `Submit` and `Documents.Submit` are added.
+  code has no run documents, so it has no `deliver`; it runs the submit program of the
+  composed harness. In Go, `Deliver` and `Documents.Deliver` are added.
 - `access` in the run documents, and `access` of a workflow in `harness`, can be
   `write-no-push`: the run gets a read credential and a copy of the target that the
-  agent may change, and the run sends nothing back to the target and has no `submit`.
+  agent may change, and the run sends nothing back to the target and has no `deliver`.
   A call with the path `run-credential` whose purpose is `work` has the access `read`
   for such a run.
 - A description can declare the role `model_provider`. The role lists the provider's APIs

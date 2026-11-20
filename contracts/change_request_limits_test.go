@@ -231,19 +231,19 @@ func TestAChangeRequestOfEachKindIsAccepted(t *testing.T) {
 	}
 }
 
-// TestAChangeKindHasThePatternOfASubmitType pins that change_kind has the pattern and
-// the length of submit.type of the run documents, so the type that a run stores a
-// change request under is always a kind that an adapter can list.
-func TestAChangeKindHasThePatternOfASubmitType(t *testing.T) {
+// TestAChangeKindHasThePatternOfADeliverType pins that change_kind has the pattern and
+// the length of the type of an entry of deliver of the run documents, so the type that a
+// run stores a change request under is always a kind that an adapter can list.
+func TestAChangeKindHasThePatternOfADeliverType(t *testing.T) {
 	doc, err := contracts.RunDocument("documents.schema.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	submitType := doc.(map[string]any)["$defs"].(map[string]any)["submit"].(map[string]any)["properties"].(map[string]any)["type"].(map[string]any)
+	deliverType := doc.(map[string]any)["$defs"].(map[string]any)["deliver_entry"].(map[string]any)["properties"].(map[string]any)["type"].(map[string]any)
 	kind := node(t, "definitions.schema.json", "/$defs/change_kind")
 	for _, keyword := range []string{"pattern", "maxLength"} {
-		if kind[keyword] == nil || fmt.Sprint(kind[keyword]) != fmt.Sprint(submitType[keyword]) {
-			t.Errorf("change_kind has the %s %v, and submit.type has %v", keyword, kind[keyword], submitType[keyword])
+		if kind[keyword] == nil || fmt.Sprint(kind[keyword]) != fmt.Sprint(deliverType[keyword]) {
+			t.Errorf("change_kind has the %s %v, and the type of a deliver entry has %v", keyword, kind[keyword], deliverType[keyword])
 		}
 	}
 }

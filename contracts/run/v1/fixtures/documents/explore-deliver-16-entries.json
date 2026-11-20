@@ -1,7 +1,7 @@
 {
   "step": "workflow",
   "domain": "software",
-  "access": "read",
+  "access": "write",
   "target": {
     "collection": "R_1001",
     "address": {
@@ -21,10 +21,72 @@
   },
   "workflow": "build",
   "harness_hidden": false,
-  "submit": {
-    "type": "code-change",
-    "send": "after_gate"
-  },
+  "deliver": [
+    {
+      "type": "artifact-1",
+      "send": "end_of_run"
+    },
+    {
+      "type": "artifact-2",
+      "send": "after_gate"
+    },
+    {
+      "type": "artifact-3",
+      "send": "end_of_run"
+    },
+    {
+      "type": "artifact-4",
+      "send": "after_gate"
+    },
+    {
+      "type": "artifact-5",
+      "send": "end_of_run"
+    },
+    {
+      "type": "artifact-6",
+      "send": "after_gate"
+    },
+    {
+      "type": "artifact-7",
+      "send": "end_of_run"
+    },
+    {
+      "type": "artifact-8",
+      "send": "after_gate"
+    },
+    {
+      "type": "artifact-9",
+      "send": "end_of_run"
+    },
+    {
+      "type": "artifact-10",
+      "send": "after_gate"
+    },
+    {
+      "type": "artifact-11",
+      "send": "end_of_run"
+    },
+    {
+      "type": "artifact-12",
+      "send": "after_gate"
+    },
+    {
+      "type": "artifact-13",
+      "send": "end_of_run"
+    },
+    {
+      "type": "artifact-14",
+      "send": "after_gate"
+    },
+    {
+      "type": "artifact-15",
+      "send": "end_of_run"
+    },
+    {
+      "type": "artifact-16",
+      "send": "after_gate"
+    }
+  ],
   "inputs": {
     "version": 1,
     "work_item": {

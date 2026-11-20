@@ -21,10 +21,13 @@
   },
   "workflow": "build",
   "harness_hidden": false,
-  "submit": {
-    "type": "code-change",
-    "send": "on_merge"
-  },
+  "deliver": [
+    {
+      "type": "code-change",
+      "send": "after_gate",
+      "gate": "review"
+    }
+  ],
   "inputs": {
     "version": 1,
     "work_item": {

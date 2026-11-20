@@ -1,7 +1,7 @@
 {
   "step": "workflow",
   "domain": "software",
-  "access": "write-no-push",
+  "access": "write",
   "target": {
     "collection": "R_1001",
     "address": {
@@ -19,12 +19,12 @@
   "run_settings": {
     "runtime": "claude"
   },
-  "workflow": "build",
-  "harness_hidden": false,
-  "submit": {
-    "type": "code-change",
-    "send": "after_gate"
-  },
+  "deliver": [
+    {
+      "type": "code-change",
+      "send": "after_gate"
+    }
+  ],
   "inputs": {
     "version": 1,
     "work_item": {

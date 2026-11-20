@@ -298,8 +298,8 @@ contract lists no kind of change.
 
 A `change_kind` is the name of an artifact type in the process of the workspace's type,
 such as `reply`, `bid-changes` or `pull-request`. It has lower-case letters and digits in
-groups joined by single hyphens, 1 to 64 characters, as `submit.type` of the run
-documents has. That artifact type defines the members of the part, `data`. The control
+groups joined by single hyphens, 1 to 64 characters, as the `type` of an entry of
+`deliver` of the run documents has. That artifact type defines the members of the part, `data`. The control
 plane validates the `data` of an entry against it.
 
 The adapter of a place applies the kinds that it lists in `change_kinds` of its `source`
