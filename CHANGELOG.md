@@ -1018,6 +1018,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   Where the target has no `address`, only the form of `$defs/url` applies. The schema
   accepts such a reply. The fixture
   `refused-by-control-plane/changes-submitted-address-other-host.json` shows it.
+- A reader that cannot read a refusal, or cannot meet its `must_understand`, acts on the
+  status alone. On 409 it changes nothing and sends the request again. The integration
+  refusal says to send it with backoff, and the provisioner refusal at the next check.
 
 ### Removed
 
