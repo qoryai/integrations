@@ -344,8 +344,9 @@
       "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/target"
     },
     "further_targets": {
-      "description": "The other places where the run's change would go, beside target: a list of at most 20 targets, each as https://qory.dev/contracts/integration/v1/definitions.schema.json, $defs.target, describes it. A run that has several places lists the main one in target and each other one here. further_targets is present only when target is present, and never for the step prebuild. No two entries have the same collection, and no entry has the collection of target. This schema cannot check that: a reader refuses run documents that break it. An entry has no version: target_version is the version of target only.",
+      "description": "The other places where the run's change would go, beside target: a list of 1 to 20 targets, each as https://qory.dev/contracts/integration/v1/definitions.schema.json, $defs.target, describes it. A run that has several places lists the main one in target and each other one here. A run with no further place leaves further_targets out, and an empty list is refused. further_targets is present only when target is present, and never for the step prebuild. No two entries have the same collection, and no entry has the collection of target. This schema cannot check that: a reader refuses run documents that break it. An entry has no version: target_version is the version of target only.",
       "type": "array",
+      "minItems": 1,
       "maxItems": 20,
       "items": {
         "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/target"

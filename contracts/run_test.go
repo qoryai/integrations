@@ -258,6 +258,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-bind-role-dot.json":                               {"documents", "/ pattern"},
 		"documents-target-version-without-target.json":                       {"documents", "/ dependentRequired/target_version"},
 		"documents-further-targets-21-entries.json":                          {"documents", "/further_targets maxItems"},
+		"documents-further-targets-empty.json":                               {"documents", "/further_targets minItems"},
 		"documents-further-targets-without-collection.json":                  {"documents", "/further_targets/0 required collection"},
 		"documents-further-targets-without-target.json":                      {"documents", "/ dependentRequired/further_targets"},
 		"documents-prebuild-with-further-targets.json":                       {"documents", "/further_targets "},
@@ -593,8 +594,8 @@ func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 }
 
 // TestFurtherTargetsAreRefusedForOneRuleAlone pins that run documents are refused for
-// further_targets with 21 entries, with an entry that has no collection, with no target,
-// and on the step prebuild, and for that alone: the same documents with 20 entries, with
+// further_targets with 21 entries, with no entry, with an entry that has no collection,
+// with no target, and on the step prebuild, and for that alone: the same documents with 20 entries, with
 // an entry that has a collection, with a target and access, or without further_targets,
 // are accepted.
 func TestFurtherTargetsAreRefusedForOneRuleAlone(t *testing.T) {
@@ -610,6 +611,9 @@ func TestFurtherTargetsAreRefusedForOneRuleAlone(t *testing.T) {
 	}{
 		{"documents-further-targets-21-entries.json", func(doc map[string]any) {
 			doc["further_targets"] = doc["further_targets"].([]any)[:20]
+		}},
+		{"documents-further-targets-empty.json", func(doc map[string]any) {
+			doc["further_targets"] = []any{one}
 		}},
 		{"documents-further-targets-without-collection.json", func(doc map[string]any) {
 			doc["further_targets"] = []any{one}
@@ -641,8 +645,8 @@ func TestFurtherTargetsAreRefusedForOneRuleAlone(t *testing.T) {
 }
 
 // TestFurtherTargetsHaveAtMostTwentyEntries pins MaxFurtherTargets and maxItems of
-// further_targets: a list of 1 or 20 targets is accepted, and a list of 21 is refused
-// for maxItems.
+// further_targets: a list of 1 or 20 targets is accepted, a list of 21 is refused for
+// maxItems, and an empty list is refused for minItems.
 func TestFurtherTargetsHaveAtMostTwentyEntries(t *testing.T) {
 	if contracts.MaxFurtherTargets != 20 {
 		t.Errorf("MaxFurtherTargets is %d, want 20", contracts.MaxFurtherTargets)
@@ -651,8 +655,8 @@ func TestFurtherTargetsHaveAtMostTwentyEntries(t *testing.T) {
 	for _, c := range []struct {
 		n    int
 		want string
-	}{{1, ""}, {20, ""}, {21, "/ maxItems"}} {
-		var list []any
+	}{{0, "/ minItems"}, {1, ""}, {20, ""}, {21, "/ maxItems"}} {
+		list := []any{}
 		for i := 1; i <= c.n; i++ {
 			list = append(list, map[string]any{"collection": fmt.Sprintf("R_%d", i)})
 		}

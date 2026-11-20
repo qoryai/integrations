@@ -63,7 +63,7 @@ type Documents struct {
 	Access string  `json:"access,omitempty,case:strict"`
 	Target *Target `json:"target,omitempty,case:strict"`
 	// FurtherTargets is set only when Target is, and never for the step prebuild: the
-	// other places where the run's change would go, at most [MaxFurtherTargets] of them. A
+	// other places where the run's change would go, 1 to [MaxFurtherTargets] of them. A
 	// run that has several places lists the main one in Target and each other one here.
 	// No two entries have the same Collection, and none has the Collection of Target. The
 	// schema cannot check that: [Documents.Check] does. An entry has no version:
