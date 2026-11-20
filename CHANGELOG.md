@@ -14,7 +14,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   schema, because `full_suite` is no member of either. In Go, `Documents.FullSuite` and
   `NextSessionAnswer.FullSuite` are `Documents.TypeSettings` and
   `NextSessionAnswer.TypeSettings`, a `json.RawMessage`. `NextSessionAnswer` writes
-  `type_settings` when it is set, and an answer for a session no longer requires it.
+  `type_settings` when it is set. An answer for a session no longer requires
+  `full_suite`, and `type_settings` is optional in it: a session in a workspace that is
+  not a software factory has no `full_suite`.
 - Change each reader and writer of the `submission` entry of the change feed to the
   `change_request` entry. No release had the members that change here.
   - The `submission` entry kind is gone. So are `submissions: true` in the `source` role
