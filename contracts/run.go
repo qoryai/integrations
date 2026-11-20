@@ -62,6 +62,13 @@ type Documents struct {
 	// the run's access to it.
 	Access string  `json:"access,omitempty,case:strict"`
 	Target *Target `json:"target,omitempty,case:strict"`
+	// FurtherTargets is set only when Target is, and never for the step prebuild: the
+	// other places where the run's change would go, at most [MaxFurtherTargets] of them. A
+	// run that has several places lists the main one in Target and each other one here.
+	// No two entries have the same Collection, and none has the Collection of Target. The
+	// schema cannot check that: [Documents.Check] does. An entry has no version:
+	// TargetVersion is the version of Target only.
+	FurtherTargets []Target `json:"further_targets,omitempty,case:strict"`
 	// TargetVersion is set only with Target, and never for the step prebuild: the
 	// version of the target at which the control plane checked for a harness file, the
 	// resolved_at of the read at the path of the harness file, whether the read returned
@@ -456,6 +463,10 @@ type HarnessSource struct {
 // documents.schema.json.
 const MaxDeliver = 16
 
+// MaxFurtherTargets is the most entries that the further_targets of the run documents has,
+// documents.schema.json.
+const MaxFurtherTargets = 20
+
 // Deliver is one artifact that a run delivers, an entry of the deliver of the run
 // documents, documents.schema.json: Type and Send, both required.
 type Deliver struct {
@@ -471,16 +482,30 @@ type Deliver struct {
 }
 
 // Check reports the first rule of documents.schema.json that the documents break and
-// that the schema does not express: no two entries of Deliver have the same Type. A
-// reader of run documents calls it after it decodes them and after it validates them
-// against the schema.
+// that the schema does not express: no two entries of Deliver have the same Type, no two
+// entries of FurtherTargets have the same Collection, and none has the Collection of
+// Target. A reader of run documents calls it after it decodes them and after it
+// validates them against the schema.
 func (d Documents) Check() error {
-	seen := make(map[string]bool, len(d.Deliver))
+	types := make(map[string]bool, len(d.Deliver))
 	for _, e := range d.Deliver {
-		if seen[e.Type] {
+		if types[e.Type] {
 			return fmt.Errorf("deliver lists the type %q twice", e.Type)
 		}
-		seen[e.Type] = true
+		types[e.Type] = true
+	}
+	collections := make(map[string]bool, len(d.FurtherTargets)+1)
+	if d.Target != nil {
+		collections[d.Target.Collection] = true
+	}
+	for i, e := range d.FurtherTargets {
+		if collections[e.Collection] {
+			if d.Target != nil && e.Collection == d.Target.Collection {
+				return fmt.Errorf("further_targets has the collection %q of target at index %d", e.Collection, i)
+			}
+			return fmt.Errorf("further_targets lists the collection %q twice", e.Collection)
+		}
+		collections[e.Collection] = true
 	}
 	return nil
 }

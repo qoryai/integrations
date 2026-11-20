@@ -257,6 +257,10 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-bind-name-slash.json":                             {"documents", "/harness/harness/bind/agents/writer pattern; /harness/harness/bind/agents/writer type"},
 		"documents-harness-bind-role-dot.json":                               {"documents", "/ pattern"},
 		"documents-target-version-without-target.json":                       {"documents", "/ dependentRequired/target_version"},
+		"documents-further-targets-21-entries.json":                          {"documents", "/further_targets maxItems"},
+		"documents-further-targets-without-collection.json":                  {"documents", "/further_targets/0 required collection"},
+		"documents-further-targets-without-target.json":                      {"documents", "/ dependentRequired/further_targets"},
+		"documents-prebuild-with-further-targets.json":                       {"documents", "/further_targets "},
 		"documents-target-version-space.json":                                {"documents", "/target_version pattern"},
 		"documents-prebuild-with-harness.json":                               {"documents", "/harness "},
 		"documents-prebuild-with-target-version.json":                        {"documents", "/target_version "},
@@ -320,7 +324,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 
 // TestAPrebuildIsRefusedForEachRunMemberAlone pins that the invalid run documents of
 // the step prebuild that have workflow, harness_hidden, harness, deliver,
-// time_limit_minutes, shared_run or type_settings are refused for that member alone: the
+// further_targets, time_limit_minutes, shared_run or type_settings are refused for that member alone: the
 // same documents without it are accepted.
 func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
@@ -545,7 +549,9 @@ func TestADeliverHasAtMostSixteenEntries(t *testing.T) {
 func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	want := map[string]string{
-		"documents-deliver-type-twice.json": `deliver lists the type "code-change" twice`,
+		"documents-deliver-type-twice.json":                   `deliver lists the type "code-change" twice`,
+		"documents-further-targets-collection-twice.json":     `further_targets lists the collection "R_1002" twice`,
+		"documents-further-targets-collection-of-target.json": `further_targets has the collection "R_1001" of target at index 1`,
 	}
 	got := runFiles(t, "fixtures/check")
 	if len(got) != len(want) {
@@ -582,6 +588,108 @@ func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 		}
 		if err := d.Check(); err != nil {
 			t.Errorf("%s: Check returns %v", f, err)
+		}
+	}
+}
+
+// TestFurtherTargetsAreRefusedForOneRuleAlone pins that run documents are refused for
+// further_targets with 21 entries, with an entry that has no collection, with no target,
+// and on the step prebuild, and for that alone: the same documents with 20 entries, with
+// an entry that has a collection, with a target and access, or without further_targets,
+// are accepted.
+func TestFurtherTargetsAreRefusedForOneRuleAlone(t *testing.T) {
+	schema := compileRun(t, runSchema("documents"))
+	valid, err := contracts.RunDocument("fixtures/documents/explore-further-targets.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	one := valid.(map[string]any)["further_targets"].([]any)[0]
+	for _, c := range []struct {
+		fixture string
+		fix     func(map[string]any)
+	}{
+		{"documents-further-targets-21-entries.json", func(doc map[string]any) {
+			doc["further_targets"] = doc["further_targets"].([]any)[:20]
+		}},
+		{"documents-further-targets-without-collection.json", func(doc map[string]any) {
+			doc["further_targets"] = []any{one}
+		}},
+		{"documents-further-targets-without-target.json", func(doc map[string]any) {
+			delete(doc, "further_targets")
+		}},
+		{"documents-prebuild-with-further-targets.json", func(doc map[string]any) {
+			delete(doc, "further_targets")
+		}},
+	} {
+		v, err := contracts.RunDocument(path.Join("fixtures/invalid", c.fixture))
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc := v.(map[string]any)
+		if doc["further_targets"] == nil {
+			t.Errorf("%s does not have further_targets", c.fixture)
+			continue
+		}
+		if schema.Validate(doc) == nil {
+			t.Errorf("%s is accepted", c.fixture)
+		}
+		c.fix(doc)
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("%s, corrected, is refused: %v", c.fixture, err)
+		}
+	}
+}
+
+// TestFurtherTargetsHaveAtMostTwentyEntries pins MaxFurtherTargets and maxItems of
+// further_targets: a list of 1 or 20 targets is accepted, and a list of 21 is refused
+// for maxItems.
+func TestFurtherTargetsHaveAtMostTwentyEntries(t *testing.T) {
+	if contracts.MaxFurtherTargets != 20 {
+		t.Errorf("MaxFurtherTargets is %d, want 20", contracts.MaxFurtherTargets)
+	}
+	schema := compileRun(t, runSchema("documents/further_targets"))
+	for _, c := range []struct {
+		n    int
+		want string
+	}{{1, ""}, {20, ""}, {21, "/ maxItems"}} {
+		var list []any
+		for i := 1; i <= c.n; i++ {
+			list = append(list, map[string]any{"collection": fmt.Sprintf("R_%d", i)})
+		}
+		got := ""
+		if v, ok := schema.Validate(list).(*jsonschema.ValidationError); ok {
+			got = strings.Join(leaves(v), "; ")
+		}
+		if got != c.want {
+			t.Errorf("further_targets of %d entries is refused for %q, want %q", c.n, got, c.want)
+		}
+	}
+}
+
+// TestCheckReportsARepeatedCollection pins the collection rules of Documents.Check:
+// a collection twice among the further targets, and the collection of the target among
+// them, are reported, and different collections are not.
+func TestCheckReportsARepeatedCollection(t *testing.T) {
+	main := &contracts.Target{Collection: "R_1"}
+	for _, c := range []struct {
+		name    string
+		target  *contracts.Target
+		further []contracts.Target
+		want    string
+	}{
+		{"different collections", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_3"}}, ""},
+		{"no target", nil, []contracts.Target{{Collection: "R_2"}, {Collection: "R_3"}}, ""},
+		{"none", main, nil, ""},
+		{"twice", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_2"}}, `further_targets lists the collection "R_2" twice`},
+		{"the collection of the target", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_1"}}, `further_targets has the collection "R_1" of target at index 1`},
+		{"the same path under another collection", main, []contracts.Target{{Collection: "R_2", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}}, ""},
+	} {
+		got := ""
+		if err := (contracts.Documents{Target: c.target, FurtherTargets: c.further}).Check(); err != nil {
+			got = err.Error()
+		}
+		if got != c.want {
+			t.Errorf("%s: Check returns %q, want %q", c.name, got, c.want)
 		}
 	}
 }
@@ -971,6 +1079,12 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 		{"documents", contracts.Documents{Step: "workflow", Domain: "marketing",
 			Inputs: json.RawMessage(`{"version":1}`), Subject: &item, RunSettings: settings,
 			Workflow: "hello", HarnessHidden: &hidden, Harness: full}},
+		{"documents/further_targets", []contracts.Target{*ads, {Collection: "R_1002", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/api"}}}},
+		{"documents", contracts.Documents{Step: "workflow", Domain: "software",
+			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target,
+			FurtherTargets: []contracts.Target{{Collection: "R_1002", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/api"}}, *ads},
+			TargetVersion:  "0123456789abcdef0123456789abcdef01234567", Subject: &item, RunSettings: settings, Workflow: "build",
+			HarnessHidden: &shown, Deliver: []contracts.Deliver{step}}},
 		{"documents/deliver_entry", step},
 		{"documents/deliver_entry", contracts.Deliver{Type: "customer-facts", Send: "after_gate"}},
 		{"documents/deliver", []contracts.Deliver{step, {Type: "customer-facts", Send: "after_gate"}}},
@@ -1211,7 +1325,7 @@ func TestProviderModelsHaveAtMost256Entries(t *testing.T) {
 // at least one fixture has deliver with harness and one without, and that the fixtures
 // with deliver have each value of send.
 func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
-	n, harnesses, binds := 0, 0, 0
+	n, harnesses, binds, furthers := 0, 0, 0, 0
 	delivers := map[bool]int{}
 	sends := map[string]int{}
 	for _, f := range runFiles(t, "fixtures/documents") {
@@ -1243,6 +1357,9 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 				binds++
 			}
 		}
+		if len(d.FurtherTargets) > 0 {
+			furthers++
+		}
 		if d.Deliver != nil {
 			delivers[d.Harness != nil]++
 			for _, e := range d.Deliver {
@@ -1250,11 +1367,12 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 			}
 		}
 		for name, v := range map[string]any{
-			"target":       &contracts.Target{},
-			"subject":      &contracts.Subject{},
-			"run_settings": &contracts.RunSettings{},
-			"harness":      &contracts.HarnessDocument{},
-			"deliver":      &[]contracts.Deliver{},
+			"target":          &contracts.Target{},
+			"further_targets": &[]contracts.Target{},
+			"subject":         &contracts.Subject{},
+			"run_settings":    &contracts.RunSettings{},
+			"harness":         &contracts.HarnessDocument{},
+			"deliver":         &[]contracts.Deliver{},
 		} {
 			raw, ok := members[name]
 			if !ok {
@@ -1285,6 +1403,9 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 	}
 	if binds == 0 {
 		t.Error("fixtures/documents has no harness with bind")
+	}
+	if furthers == 0 {
+		t.Error("fixtures/documents has no document with further_targets")
 	}
 	if delivers[true] == 0 || delivers[false] == 0 {
 		t.Errorf("fixtures/documents has %d documents with deliver and harness, and %d with deliver and no harness; want 1 or more of each",

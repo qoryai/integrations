@@ -22,6 +22,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `must_understand` that lists `/submit`. In Go, `Submit` and `Documents.Submit` are
   `Deliver` and `Documents.Deliver`, a `[]Deliver` with `Type` and `Send`, and
   `MaxDeliver` is 16. The submit program contract and its Go names stay.
+- Read `further_targets` from the run documents when a run has more than one place for its
+  change. `further_targets` is a list of `{collection, address}` targets, in the form of
+  `target`, with at most 20 entries. A run with several places lists the main one in `target`
+  and each other one in `further_targets`. It is present only when `target` is, and never
+  on a run of the step `prebuild`. No two entries have the same `collection`, and
+  no entry has the `collection` of `target`. The schema cannot check that, so a reader
+  calls `Documents.Check` after it decodes the documents. An entry has no version:
+  `target_version` applies to `target` only. In Go, `Documents.FurtherTargets` is a
+  `[]Target`, and `MaxFurtherTargets` is 20.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
