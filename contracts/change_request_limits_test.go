@@ -346,6 +346,38 @@ func TestAFailureDetailHasTheRuleOfALine(t *testing.T) {
 	}
 }
 
+// TestALineAndATitleRefuseEveryCcAndCfCharacterButZWNJAndZWJ pins the character rule of
+// $defs/line (a guide line) and $defs/draft_title (a change request title): U+200C and
+// U+200D pass, and every Cc character and every Cf character besides them is refused,
+// also one outside the Basic Multilingual Plane.
+func TestALineAndATitleRefuseEveryCcAndCfCharacterButZWNJAndZWJ(t *testing.T) {
+	guide := compile(t, "description.schema.json#/properties/roles/properties/source/properties/guide")
+	feed := compile(t, "changes.schema.json")
+	for _, c := range []struct {
+		name, text string
+		ok         bool
+	}{
+		{"a zero-width joiner in an emoji sequence", "\U0001F468\u200d\U0001F469\u200d\U0001F467 family", true},
+		{"a zero-width non-joiner between two letters", "a\u200cb", true},
+		{"a right-to-left override", "a\u202eb", false},
+		{"a tag character", "a\U000E0041b", false},
+		{"a soft hyphen", "a\u00adb", false},
+		{"a zero-width space", "a\u200bb", false},
+		{"a byte order mark", "a\ufeffb", false},
+		{"a line separator", "a\u2028b", false},
+		{"a next line", "a\u0085b", false},
+	} {
+		line, _ := json.Marshal(map[string]any{"connect": map[string]any{"steps": []string{c.text}}})
+		if err := validate(guide, line); (err == nil) != c.ok {
+			t.Errorf("guide line, %s: %v, want accepted %v", c.name, err, c.ok)
+		}
+		title := changeDoc(t, "fixtures/adapter/changes/change-request-pull-request.json", true, set("title", c.text))
+		if err := validate(feed, title); (err == nil) != c.ok {
+			t.Errorf("title, %s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+}
+
 // TestAPreviousOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty pins the ruling for
 // `previous: {"zz": 1}` of a change request. The schema accepts it, Go reads an empty
 // ChangePrevious, and the closed copy refuses it at previous.

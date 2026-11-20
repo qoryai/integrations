@@ -1032,6 +1032,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `jsonv2` experiment is on, `encoding/json` and `encoding/json/v2` both honour it.
   A program built with `GOEXPERIMENT=nojsonv2` reads these members regardless of case.
   `CheckMustUnderstand`, `Tier` and `HarnessSection` read the same way.
+- A line (`$defs/line` of `description.schema.json`) and a draft title (`$defs/draft_title`
+  of `definitions.schema.json`) refuse every control character (category Cc), U+2028,
+  U+2029 and every format character (category Cf) except U+200C and U+200D. Before this
+  release, they refused a fixed list of characters. The list missed format characters such
+  as the tag characters U+E0001 and U+E0020 to U+E007F. Emoji sequences
+  and some scripts need U+200C and U+200D, so both stay allowed. The pattern follows the
+  Unicode version of the Go toolchain in `go.mod`. A later Unicode version can add
+  characters to Cf, and a validator on another Unicode version can accept them. `author_name`
+  of a comment and `ParseSubmitLines` have the same rule, since they use the same patterns.
 
 ### Removed
 

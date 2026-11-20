@@ -356,8 +356,8 @@ func TestAnEmptySystemSkipsOnlyTheHostCheck(t *testing.T) {
 
 // TestATitleHasTheRuleOfTheSchema pins that a result line's title has the rule of
 // definitions.schema.json, $defs.draft_title, the same as the title of the adapter's
-// reply: 1 to 256 characters of UTF-8, with no control, bidirectional or invisible
-// character, and not only spaces.
+// reply: 1 to 256 characters of UTF-8, with no control or format character other than
+// U+200C and U+200D, and not only spaces.
 func TestATitleHasTheRuleOfTheSchema(t *testing.T) {
 	for _, c := range []struct {
 		name, title string
@@ -373,6 +373,8 @@ func TestATitleHasTheRuleOfTheSchema(t *testing.T) {
 		{"paragraph separator", "Show\u2029dates", false},
 		{"bidirectional override", "Show\u202edates", false},
 		{"zero-width space", "Show\u200bdates", false},
+		{"tag character", "Show\U000E0041dates", false},
+		{"zero-width joiner in an emoji sequence", "\U0001F468\u200d\U0001F469 family", true},
 		{"byte order mark", "Show\ufeffdates", false},
 		{"no-break space only", "\u00a0\u00a0", false},
 		{"spaces only", "   ", false},
