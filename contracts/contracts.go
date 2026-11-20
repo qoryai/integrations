@@ -33,20 +33,39 @@
 // X-Qory-Contract-Version is the revision of the contract the adapter implements,
 // [Revision] here, and the control plane refuses one that is missing, sent twice, not a
 // decimal integer, or a revision it does not serve, 400 unsupported_contract_version.
-// The control plane's answer contains only the members, and the change feed only the
-// entry kinds, that the named revision defines: an entry of a kind newer than that
-// revision is skipped for that adapter, not sent, and the feed's cursor still moves
-// past it, so a replay from the start stays in step. The header alone never selects
-// what an adapter accepts: every answer whose content the revision bounds contains that
-// revision in its signed body, as [Changes] does in Revision, and the adapter refuses
-// one that contains another revision than the one it implements and sent, applies no
-// entry of it, and neither sends nor stores the answer's cursor. An answer's signature
-// covers its body and is bound to the request's signature, so the revision the answer
-// was built for is signed. So the answers' schemas stay strict, refusing a member they
-// do not define and an entry of a kind they do not know, and an addition to the
-// contract never breaks an adapter already deployed. The Forager contract makes
-// additions safe the other way, with lenient answers whose unknown members are ignored;
-// both conventions are safe, and they apply to different contracts.
+// The control plane's answer contains only the members that the named revision defines.
+// The change feed contains only the entry kinds that the named revision defines. An entry
+// of a kind that a higher revision defines is skipped for that adapter and not sent. The
+// feed's cursor still moves past it, so a replay from the start stays in step.
+//
+// The header alone does not select what an adapter accepts. Every answer whose content
+// the revision bounds contains that revision in its signed body, as [Changes] does in
+// Revision. The adapter refuses an answer that contains another revision than the one it
+// implements and sent. It applies no entry of that answer, and neither sends nor stores
+// its cursor. An answer's signature covers its body and is bound to the request's
+// signature, so the revision that the answer was built for is signed.
+//
+// Each member and each entry kind belongs to the revision of the feed that defines it. An
+// adapter ignores a member of the answer or of an entry that its revision does not define.
+// The must_understand of an entry overrides that for the members it lists, as
+// changes.schema.json describes. An adapter skips and acknowledges a change entry whose
+// kind its revision does not define. It does the same for an entry whose must_understand
+// lists a pointer that it does not define. It reads the kind and must_understand alone,
+// applies nothing else in the entry, and moves its cursor past it. The exception is a
+// change_request entry, which the adapter reports failed with reason refused
+// (changes-failed.schema.json).
+//
+// The control plane reads the bodies of adapter.schema.json, changes-submitted.schema.json
+// and changes-failed.schema.json by the same rule. It ignores an undefined member of the
+// body, unless the must_understand of the body lists it. It refuses a body whose
+// must_understand lists a pointer that it does not define. An adapter sends only the
+// members of the revision that the control plane implements.
+//
+// The description, the run documents and the documents of the provisioner and machines
+// contracts follow the same rule of must_understand. A writer sends them to a reader that
+// may define fewer members. Each schema describes the rule for its document. The Forager
+// contract makes additions safe in the same way, with lenient answers whose unknown
+// members are ignored.
 //
 // The control plane refuses a time or a timestamp more than 300 seconds from its clock,
 // either way, and a request whose signature it has already seen, with an unsigned 401;
@@ -165,8 +184,9 @@
 // answer to GET /v1/runs, one page of the runs of the instance, the last one created
 // first, and its refusal, runs-refusal.schema.json, [RunListRefusal]. GET /v1/runs and
 // GET /v1/runs/<run id>/diagnostics both take a request signed with a diagnostics key.
-// Version 1 changes only by adding members and row states, so the schemas of the
-// diagnostics contract accept a member they do not define, unlike the other contracts.
+// Version 1 changes only by adding members and row states. Every contract ignores a member
+// that its schema does not define, and the schemas of the diagnostics contract have always
+// done so.
 //
 // Each schema's $id is [Base] followed by the file's path under integration/v1,
 // [ProvisionerBase] followed by its path under provisioner/v1, [RunBase] followed by
@@ -321,14 +341,35 @@ func CompileDiagnostics(name string) (*jsonschema.Schema, error) {
 // compile compiles the schema at name in fsys, whose $id is base followed by name. A
 // fragment after # in name selects a part of that schema, such as a definition.
 func compile(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
+	return compileWith(base, fsys, name, false)
+}
+
+// compileClosed is [compile] of the closed copy of the schema, as [CloseSchema] makes it.
+// A schema it refers to is read as it is.
+func compileClosed(base string, fsys fs.FS, name string) (*jsonschema.Schema, error) {
+	if !closable[base+"/"+name] {
+		return nil, fmt.Errorf("%s has no closed copy: its objects list only some of their members", name)
+	}
+	return compileWith(base, fsys, name, true)
+}
+
+// compileWith compiles the schema at name in fsys, or its closed copy.
+func compileWith(base string, fsys fs.FS, name string, closed bool) (*jsonschema.Schema, error) {
 	file, _, _ := strings.Cut(name, "#")
 	doc, err := document(fsys, file)
 	if err != nil {
 		return nil, err
 	}
+	if closed {
+		doc, _ = CloseSchema(doc)
+	}
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
-	c.UseLoader(loader{})
+	if closed {
+		c.UseLoader(closingLoader{})
+	} else {
+		c.UseLoader(loader{})
+	}
 	if err := c.AddResource(base+"/"+file, doc); err != nil {
 		return nil, err
 	}

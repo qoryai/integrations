@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 )
 
@@ -44,7 +45,8 @@ const MaxInputs = 768 << 10
 // session 1: its Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With
 // SharedRun, each later session comes from the answer to the next-session request, as
 // [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
-// it, whose shape belongs to the step's schema.
+// it, whose shape belongs to the step's schema. A reader ignores a member of the documents
+// that Documents does not have, unless MustUnderstand lists it.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -167,14 +169,20 @@ type Documents struct {
 	// submission only from Submit, never from process.yaml. For what qory does when
 	// process.yaml has a different submit, see submit in documents.schema.json.
 	Submit *Submit `json:"submit,omitempty"`
+	// MustUnderstand lists members of the documents that the reader must understand, as
+	// JSON Pointers counted from the documents, such as "/run_settings/full_suite". A
+	// reader ignores a member that this type does not have, unless MustUnderstand lists
+	// it. A reader refuses documents whose MustUnderstand lists a pointer to a member that
+	// this type does not have: [CheckMustUnderstand] returns an error for them.
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
-// HarnessDocument is the run's harness, documents.schema.json: the harness document
+// HarnessDocument is the run's harness, documents.schema.json. It is the harness document
 // of the workspace in the form of qory.yaml,
-// https://qory.dev/contracts/harness/v1/config.schema.json, with exactly one member,
+// https://qory.dev/contracts/harness/v1/config.schema.json. It has the member harness,
 // the harness section, which extends a stack or defines one. Every source is a remote
-// source. A source of the form {path}, a module given by name alone, link, the machine
-// harness settings and every other member of qory.yaml are refused.
+// source. A source of the form {path} and a module given by name alone are refused. A
+// reader ignores link, the machine harness settings and every other member of qory.yaml.
 type HarnessDocument struct {
 	Harness HarnessSection `json:"harness"`
 }
@@ -217,11 +225,26 @@ type HarnessSection struct {
 	Workflows map[string]HarnessWorkflow `json:"workflows,omitempty"`
 }
 
-// UnmarshalJSON reads a harness section, and returns an error for a kind of Bind that
-// is not agents, commands or skills, for a kind whose value is null, for a role whose
-// value is null, for a list on a role of the kind commands or skills, for an empty
-// list, and for a null item of a list: each fails documents.schema.json.
+// definesPointer reports whether a pointer below a HarnessSection leads to one of its
+// members. Below bind, the schema defines the kinds agents, commands and skills alone.
+func (HarnessSection) definesPointer(segments []string) bool {
+	if segments[0] == "bind" && len(segments) > 1 && !slices.Contains([]string{"agents", "commands", "skills"}, segments[1]) {
+		return false
+	}
+	return resolvesBelow(reflect.TypeFor[HarnessSection](), segments)
+}
+
+// UnmarshalJSON reads a harness section. It ignores a member of Bind that is not a kind,
+// agents, commands or skills, as documents.schema.json does. An example is a role in the
+// flat form agents/writer. It returns an error in these cases, and each fails
+// documents.schema.json:
+//   - a kind whose value is null
+//   - a role whose value is null
+//   - a list on a role of the kind commands or skills
+//   - an empty list
+//   - a null item of a list
 func (s *HarnessSection) UnmarshalJSON(b []byte) error {
+	b = withoutUndefinedBindKinds(b)
 	// A section that does not read as raw roles fails the decode below, which returns
 	// that error.
 	var raw struct {
@@ -241,6 +264,31 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// withoutUndefinedBindKinds returns the section b without the members of its bind that
+// are not a kind of bind. It returns b when b has no bind, or when it does not read as a
+// section with an object bind. The decode of b returns the error for that.
+func withoutUndefinedBindKinds(b []byte) []byte {
+	var section map[string]json.RawMessage
+	if json.Unmarshal(b, &section) != nil {
+		return b
+	}
+	var bind map[string]json.RawMessage
+	if json.Unmarshal(section["bind"], &bind) != nil || bind == nil {
+		return b
+	}
+	for k := range bind {
+		if k != "agents" && k != "commands" && k != "skills" {
+			delete(bind, k)
+		}
+	}
+	section["bind"], _ = json.Marshal(bind)
+	out, err := json.Marshal(section)
+	if err != nil {
+		return b
+	}
+	return out
+}
+
 // checkBind returns the error of [HarnessSection.UnmarshalJSON] for the first kind, in
 // order, and then the first role of it, in order, that fails documents.schema.json for
 // one of the reasons that method lists, and nil for none. It returns nil at the first
@@ -248,10 +296,7 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 // that is not a string: the decode then returns the error for that value.
 func checkBind(bind map[string]map[string]json.RawMessage) error {
 	for _, k := range slices.Sorted(maps.Keys(bind)) {
-		switch {
-		case k != "agents" && k != "commands" && k != "skills":
-			return fmt.Errorf("use agents, commands or skills as a bind kind, not %q", k)
-		case bind[k] == nil:
+		if bind[k] == nil {
 			return fmt.Errorf("set the bind kind %q to an object of roles to names, not null", k)
 		}
 		for _, role := range slices.Sorted(maps.Keys(bind[k])) {
@@ -306,6 +351,11 @@ func (v BindValue) MarshalJSON() ([]byte, error) {
 		return json.Marshal(v.Names)
 	}
 	return json.Marshal(v.Name)
+}
+
+// definesPointer reports whether a pointer below a BindValue leads to an item of a list.
+func (BindValue) definesPointer(segments []string) bool {
+	return len(segments) == 1 && isIndex(segments[0])
 }
 
 // UnmarshalJSON reads a name, or a list of names. An empty list reads as Names set to
@@ -441,6 +491,11 @@ func (p HarnessPart) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.Names)
 }
 
+// definesPointer reports whether a pointer below a HarnessPart leads to an item of a list.
+func (HarnessPart) definesPointer(segments []string) bool {
+	return len(segments) == 1 && isIndex(segments[0])
+}
+
 // UnmarshalJSON reads true, or an array of names.
 func (p *HarnessPart) UnmarshalJSON(b []byte) error {
 	b = bytes.TrimSpace(b)
@@ -555,12 +610,15 @@ type NextSessionRequest struct {
 	// Reason is the reason of the session's dev.qory.session.exited, and nil, written
 	// as null, when that event has none.
 	Reason *string `json:"reason"`
+	// MustUnderstand lists the members of the request that the control plane must
+	// understand, as JSON Pointers counted from the request: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // NextSessionAnswer is the answer to the next-session request, run/v1
-// next-session-answer.schema.json: the next session of the run, with Next
-// [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and
-// no other member. The session shape has Session, Workflow, TimeLimitMinutes,
+// next-session-answer.schema.json. It is the next session of the run, with Next
+// [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and no
+// member of the session shape. The session shape has Session, Workflow, TimeLimitMinutes,
 // FullSuite and Inputs, and optionally ModelChoice and ModelProviderCredentialName.
 // MarshalJSON writes the members of the shape that Next selects, and no member of the
 // other shape. Reading takes the members of either shape and leaves the others at their
@@ -594,6 +652,10 @@ type NextSessionAnswer struct {
 	FullSuite bool `json:"full_suite,omitempty"`
 	// Inputs is the input of the session, as [Documents.Inputs].
 	Inputs json.RawMessage `json:"inputs,omitempty"`
+	// MustUnderstand lists members of the answer that the reader must understand, as
+	// [Documents.MustUnderstand] does for the documents. An answer of either shape may
+	// have it.
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // The values of [NextSessionAnswer.Next].
@@ -602,16 +664,18 @@ const (
 	NextSessionKindEnd     = "end"
 )
 
-// MarshalJSON writes a. For Next "end" it writes {"next":"end"} and nothing else. For
-// Next "session" it writes the members of the session shape, and writes full_suite
-// when it is false. It returns an error for any other Next, the empty Next included,
+// MarshalJSON writes a. For Next "end" it writes {"next":"end"}, and MustUnderstand when
+// it is not empty, and nothing else. For Next "session" it writes the members of the
+// session shape, and MustUnderstand when it is not empty, and writes full_suite when it
+// is false. It returns an error for any other Next, the empty Next included,
 // and for a session answer whose Inputs is empty, which would be written as null.
 func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 	switch a.Next {
 	case NextSessionKindEnd:
 		return json.Marshal(struct {
-			Next string `json:"next"`
-		}{a.Next})
+			Next           string   `json:"next"`
+			MustUnderstand []string `json:"must_understand,omitempty"`
+		}{a.Next, a.MustUnderstand})
 	case NextSessionKindSession:
 		if len(a.Inputs) == 0 {
 			return nil, errors.New("set Inputs of a session answer to the input of the session, an object with a version")
@@ -628,8 +692,9 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		TimeLimitMinutes            int             `json:"time_limit_minutes"`
 		FullSuite                   bool            `json:"full_suite"`
 		Inputs                      json.RawMessage `json:"inputs"`
+		MustUnderstand              []string        `json:"must_understand,omitempty"`
 	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelProviderCredentialName,
-		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
+		a.TimeLimitMinutes, a.FullSuite, a.Inputs, a.MustUnderstand})
 }
 
 // RunOutcome is a run's end, run/v1 outcome.schema.json, titled Run end: how the run
@@ -644,6 +709,9 @@ type RunOutcome struct {
 	// ExitCode is the run's exit code, from -1, and nil for none. A nil ExitCode is left
 	// out, and a pointer to 0 is written as 0.
 	ExitCode *int `json:"exit_code,omitempty"`
+	// MustUnderstand lists the members of the outcome that the control plane must
+	// understand, as JSON Pointers counted from the outcome: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // EndCode is a code that qory sets in [RunOutcome.Reason] to say why a run failed: a code
@@ -735,6 +803,12 @@ type Tier struct {
 	Effort string
 	// object is true when the Tier was read from the object form.
 	object bool
+}
+
+// definesPointer reports whether a pointer below a Tier leads to model or to effort, the
+// members of the object form.
+func (Tier) definesPointer(segments []string) bool {
+	return len(segments) == 1 && (segments[0] == "model" || segments[0] == "effort")
 }
 
 // tierObject is the object form of a [Tier].

@@ -10,6 +10,7 @@ and release workflows.
 | Path | What it is |
 |---|---|
 | [`contracts/integration/v1/`](contracts/integration/v1/README.md) | The integration contract: the `describe` command, how settings and secrets are passed, exit status |
+| [`contracts/run/v1/`](contracts/run/v1/README.md) | The run contract: the run documents, the next-session exchange, the run's end; the rule for a member a reader does not define |
 | `contracts/` | Go package: embeds the contract and compiles its schema |
 | `conformance/` | Go package: checks a program's output against the contracts, for use in tests |
 | [`.github/workflows/go.yml`](.github/workflows/go.yml) | Reusable CI: gofmt, vet, test, build, doc comments |

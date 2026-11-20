@@ -52,6 +52,9 @@ type Claim struct {
 	PoolID      string        `json:"pool_id,omitempty"`
 	WaitSeconds int           `json:"wait_seconds"`
 	Offers      []MachineSpec `json:"offers,omitempty"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json: a
@@ -117,6 +120,9 @@ type ClaimAnswer struct {
 	// has run longer than MaxLifetimeMinutes plus 15 minutes, counted from the
 	// vendor's launch time.
 	MaxLifetimeMinutes int `json:"max_lifetime_minutes"`
+	// MustUnderstand lists the members of the answer that the starter must understand, as
+	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
@@ -156,6 +162,9 @@ type Dispatched struct {
 	Time        string    `json:"time"`
 	External    *External `json:"external,omitempty"`
 	MachineType string    `json:"machine_type,omitempty"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // External is a job at the vendor that runs it.
@@ -186,6 +195,9 @@ type Release struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
 	Reason  string `json:"reason"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // MachineLog is the body of POST /v1/dispatches/<dispatch_id>/machine-log,
@@ -204,6 +216,9 @@ type MachineLog struct {
 	Time      string `json:"time"`
 	Log       string `json:"log"`
 	Truncated bool   `json:"truncated,omitempty"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }
 
 // The states of a [MachineEnd], machine-end.schema.json. MachineEndDeleting: the
@@ -294,4 +309,7 @@ type MachineEnd struct {
 	Version int    `json:"version"`
 	Time    string `json:"time"`
 	State   string `json:"state"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty"`
 }

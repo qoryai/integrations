@@ -154,21 +154,22 @@ func TestAnEndCodeIsOnlyWithStateFailed(t *testing.T) {
 	}
 }
 
-// TestTheOutcomeHasNoAdviceMember pins that the outcome has the members state, reason and
-// exit_code and no other, in the schema and in [contracts.RunOutcome], and that the
-// schema refuses any other member, advice and action texts and end_code among them.
+// TestTheOutcomeHasNoAdviceMember pins that the outcome has the members state, reason,
+// exit_code and must_understand and no other, in the schema and in [contracts.RunOutcome],
+// and that the schema ignores any other member, advice and action texts and end_code among
+// them, and the closed copy refuses it.
 func TestTheOutcomeHasNoAdviceMember(t *testing.T) {
 	doc, err := contracts.RunDocument("outcome.schema.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	schemaDoc := doc.(map[string]any)
-	want := []string{"exit_code", "reason", "state"}
+	want := []string{"exit_code", "must_understand", "reason", "state"}
 	if got := slices.Sorted(maps.Keys(schemaDoc["properties"].(map[string]any))); !slices.Equal(got, want) {
 		t.Errorf("the schema has the members %v, want %v", got, want)
 	}
-	if schemaDoc["additionalProperties"] != false {
-		t.Error("the schema accepts a member it does not define")
+	if _, ok := schemaDoc["additionalProperties"]; ok {
+		t.Error("the schema sets additionalProperties, and a reader ignores a member that it does not define")
 	}
 	if !slices.Equal(schemaDoc["required"].([]any), []any{"state"}) {
 		t.Errorf("the schema requires %v, want state alone", schemaDoc["required"])
@@ -183,10 +184,17 @@ func TestTheOutcomeHasNoAdviceMember(t *testing.T) {
 		t.Errorf("RunOutcome has the members %v, want %v", tags, want)
 	}
 	schema := compileRun(t, runSchema("outcome"))
+	closed, err := contracts.CompileRunClosed("outcome.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, member := range []string{"message", "action", "advice", "text", "hint", "support", "end_code"} {
 		doc := map[string]any{"state": "failed", "reason": "push_refused", member: "text"}
-		if schema.Validate(doc) == nil {
-			t.Errorf("an outcome with the member %s is accepted", member)
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("an outcome with the member %s is refused: %v", member, err)
+		}
+		if closed.Validate(doc) == nil {
+			t.Errorf("the closed copy accepts an outcome with the member %s", member)
 		}
 	}
 }
@@ -348,9 +356,6 @@ func TestAnInvalidOutcomeFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"outcome-prebuild-failed-cancelled.json":           failed,
 		"outcome-reason-empty.json":                        func(m map[string]any) { delete(m, "reason") },
 		"outcome-reason-upper-case.json":                   func(m map[string]any) { m["reason"] = "push_exploded" },
-		"outcome-end-code-member.json":                     func(m map[string]any) { delete(m, "end_code") },
-		"outcome-message.json":                             func(m map[string]any) { delete(m, "message") },
-		"outcome-action.json":                              func(m map[string]any) { delete(m, "action") },
 		"outcome-without-state.json":                       failed,
 		"outcome-state-unknown.json":                       failed,
 		"outcome-exit-code-below-minus-1.json":             func(m map[string]any) { m["exit_code"] = json.Number("-1") },

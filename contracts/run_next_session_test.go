@@ -89,32 +89,22 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-answer-time-limit-minutes-string.json":                 func(m map[string]any) { m["time_limit_minutes"] = json.Number("30") },
 		"next-session-answer-time-limit-minutes-1441.json":                   func(m map[string]any) { m["time_limit_minutes"] = json.Number("1440") },
 		"next-session-answer-model-provider-credential-name-upper-case.json": func(m map[string]any) { m["model_provider_credential_name"] = "example-provider-1" },
-		"next-session-answer-model-credential.json": func(m map[string]any) {
-			delete(m, "model_credential")
-			m["model_provider_credential_name"] = "example-provider-1"
-		},
-		"next-session-answer-inputs-without-version.json":          func(m map[string]any) { m["inputs"] = session["inputs"] },
-		"next-session-answer-undefined-member.json":                func(m map[string]any) { delete(m, "verdict") },
-		"next-session-answer-next-unknown.json":                    func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-without-next.json":                    func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-model-choice-runtime-number.json":     func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
-		"next-session-answer-model-choice-runtime-upper-case.json": func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-inputs-without-version.json":                    func(m map[string]any) { m["inputs"] = session["inputs"] },
+		"next-session-answer-next-unknown.json":                              func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-without-next.json":                              func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-model-choice-runtime-number.json":               func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-model-choice-runtime-upper-case.json":           func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
 		"next-session-answer-model-choice-runtime-effort-only.json": func(m map[string]any) {
 			m["model_choice"].(map[string]any)["model"] = "example-large"
 			m["model_choice"].(map[string]any)["provider_models"] = session["model_choice"].(map[string]any)["provider_models"]
 		},
-		"next-session-answer-model-choice-effort-without-model.json": func(m map[string]any) { m["model_choice"] = session["model_choice"] },
-		"next-session-answer-model-choice-undefined-member.json": func(m map[string]any) {
-			delete(m["model_choice"].(map[string]any), "time_limit_minutes")
-		},
-		"next-session-request-verdict.json":                             func(m map[string]any) { delete(m, "verdict") },
+		"next-session-answer-model-choice-effort-without-model.json":    func(m map[string]any) { m["model_choice"] = session["model_choice"] },
 		"next-session-request-session-0.json":                           func(m map[string]any) { m["session"] = json.Number("1") },
 		"next-session-request-session-string.json":                      func(m map[string]any) { m["session"] = json.Number("1") },
 		"next-session-request-state-paused.json":                        func(m map[string]any) { m["state"] = "failed" },
 		"next-session-request-state-unknown.json":                       func(m map[string]any) { m["state"] = "succeeded" },
 		"next-session-request-without-reason.json":                      func(m map[string]any) { m["reason"] = nil },
 		"next-session-request-reason-upper-case.json":                   func(m map[string]any) { m["reason"] = nil },
-		"next-session-request-undefined-member.json":                    func(m map[string]any) { delete(m, "attempt") },
 		"next-session-request-cancelled-without-reason.json":            func(m map[string]any) { m["reason"] = "stopped" },
 		"next-session-request-reason-timeout-state-failed.json":         func(m map[string]any) { m["state"] = "cancelled" },
 		"next-session-request-reason-interrupted-state-succeeded.json":  func(m map[string]any) { m["state"] = "cancelled" },
@@ -382,8 +372,8 @@ func TestTheModelChoiceIsTheModelMembersOfRunSettings(t *testing.T) {
 	if _, ok := choice["required"]; ok {
 		t.Error("model_choice requires a member")
 	}
-	if choice["additionalProperties"] != false {
-		t.Error("model_choice accepts members it does not define")
+	if _, ok := choice["additionalProperties"]; ok {
+		t.Error("model_choice sets additionalProperties: a reader ignores a member it does not define")
 	}
 	if _, ok := settings["properties"].(map[string]any)["time_limit_minutes"]; ok {
 		t.Error("run_settings has time_limit_minutes")

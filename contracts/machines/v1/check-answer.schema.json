@@ -2,9 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/machines/v1/check-answer.schema.json",
   "title": "Check answer",
-  "description": "The answer of the command check, on standard output, once the adapter has shown that its rights at the vendor and its settings work: offers, the machines the adapter can make with its settings. The adapter made no machine for it. A provisioner that uses the adapter claims only after a successful check, and sends the offers of the adapter's last successful check as the offers of each of its claims, https://qory.dev/contracts/provisioner/v1/claim.schema.json. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "description": "The answer of the command check, on standard output, once the adapter has shown that its rights at the vendor and its settings work: offers, the machines the adapter can make with its settings. The adapter made no machine for it. A provisioner that uses the adapter claims only after a successful check, and sends the offers of the adapter's last successful check as the offers of each of its claims, https://qory.dev/contracts/provisioner/v1/claim.schema.json. The answer is at most 1 MiB. It has no version. The provisioner ignores a member that this schema does not define, unless the must_understand of the answer lists it. A writer marks a member that the provisioner must read, such as /offers, by listing its pointer in must_understand. The provisioner refuses an answer that lists a pointer it does not define, as a failure of kind defect.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "offers"
   ],
@@ -16,6 +15,18 @@
       "maxItems": 64,
       "items": {
         "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/machine_spec"
+      }
+    },
+    "must_understand": {
+      "description": "The members of the document that the reader must understand, each as a JSON Pointer (RFC 6901) counted from the document, such as /offers. List each once, at most 32. A pointer has no line feed, and writes ~ only as ~0 or ~1. Each pointer is to a member that this schema defines. The provisioner ignores a member that this schema does not define, unless must_understand lists it. It refuses an answer whose must_understand lists a pointer that it does not define, as a failure of kind defect.",
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 256,
+        "not": {"pattern": "\\n"},
+        "pattern": "^(?:/offers|/offers/(?:0|[1-9][0-9]*)|/offers/(?:0|[1-9][0-9]*)/arch|/offers/(?:0|[1-9][0-9]*)/disk_gib|/offers/(?:0|[1-9][0-9]*)/memory_mib|/offers/(?:0|[1-9][0-9]*)/vcpus|/offers/(?:0|[1-9][0-9]*)/virtualization)$"
       }
     }
   }

@@ -293,7 +293,7 @@ func TestASettingEntryIsTheSettingAlone(t *testing.T) {
 		{"a setting", `[{"setting": "url"}]`, ""},
 		{"an empty setting", `[{"setting": ""}]`, "/egress_hosts/0/setting minLength"},
 		{"no setting", `[{}]`, "/egress_hosts/0 required setting"},
-		{"a member besides setting", `[{"setting": "url", "port": 443}]`, "/egress_hosts/0 additionalProperties"},
+		{"a member besides setting", `[{"setting": "url", "port": 443}]`, ""},
 		{"the same setting twice", `[{"setting": "url"}, {"setting": "url"}]`, "/egress_hosts uniqueItems"},
 	} {
 		doc, err := jsonschema.UnmarshalJSON(strings.NewReader(withEgress(gateway(`{"type": "object", "properties": {"url": {"type": "string"}}}`, `[]`), tc.egress)))

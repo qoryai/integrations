@@ -50,7 +50,7 @@ func TestAWorkflowRunHasASubjectAndATrigger(t *testing.T) {
 	old = fixture(t, "documents/explore.json")
 	old["work_item"] = old["subject"]
 	delete(old, "subject")
-	if err := schema.Validate(old); runRefusal(err) != "/ additionalProperties; / required subject" {
+	if err := schema.Validate(old); runRefusal(err) != "/ required subject" {
 		t.Errorf("run documents with work_item and no subject are refused for %q", runRefusal(err))
 	}
 	for member, value := range map[string]any{

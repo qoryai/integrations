@@ -44,8 +44,8 @@ func runFiles(t *testing.T, dir string) []string {
 // runSchemas are the schemas of the run contract: the files of run/v1.
 var runSchemas = []string{"documents", "next-session-answer", "next-session-refusal", "next-session-request", "outcome"}
 
-// TestRunSchemaIsTheContract pins that run/v1 contains exactly documents.schema.json,
-// next-session-answer.schema.json, next-session-refusal.schema.json,
+// TestRunSchemaIsTheContract pins that run/v1 contains exactly README.md,
+// documents.schema.json, next-session-answer.schema.json, next-session-refusal.schema.json,
 // next-session-request.schema.json and outcome.schema.json, each with the $id
 // RunBase/<file name>, and that each compiles.
 func TestRunSchemaIsTheContract(t *testing.T) {
@@ -59,7 +59,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 			got = append(got, e.Name())
 		}
 	}
-	want := "documents.schema.json,next-session-answer.schema.json,next-session-refusal.schema.json,next-session-request.schema.json,outcome.schema.json"
+	want := "README.md,documents.schema.json,next-session-answer.schema.json,next-session-refusal.schema.json,next-session-request.schema.json,outcome.schema.json"
 	if strings.Join(got, ",") != want {
 		t.Errorf("run/v1 contains %v, want %s", got, want)
 	}
@@ -101,7 +101,7 @@ func TestRunFixturesValidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, d := range dirs {
-		if d.IsDir() && d.Name() != "invalid" && !slices.Contains(runSchemas, d.Name()) {
+		if d.IsDir() && d.Name() != "invalid" && d.Name() != "closed" && !slices.Contains(runSchemas, d.Name()) {
 			t.Errorf("fixtures/%s is the fixture folder of no schema", d.Name())
 		}
 	}
@@ -116,9 +116,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-without-step.json":                                        {"documents", "/ required step"},
 		"documents-without-domain.json":                                      {"documents", "/ required domain"},
 		"documents-without-inputs.json":                                      {"documents", "/ required inputs"},
-		"documents-undefined-member.json":                                    {"documents", "/ additionalProperties"},
 		"documents-inputs-no-version.json":                                   {"documents", "/inputs required version"},
-		"documents-prebuild-inputs-target.json":                              {"documents", "/inputs additionalProperties"},
 		"documents-prebuild-with-subject.json":                               {"documents", "/ "},
 		"documents-prebuild-with-workflow.json":                              {"documents", "/ dependentRequired/workflow; /workflow ; / required harness; / required target_version"},
 		"documents-workflow-without-subject.json":                            {"documents", "/ required subject"},
@@ -132,12 +130,8 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-run-settings-tiers-without-model.json":                    {"documents", "/run_settings dependentRequired/tiers"},
 		"documents-run-settings-model-without-provider-models.json":          {"documents", "/run_settings dependentRequired/model"},
 		"documents-run-settings-provider-models-without-model.json":          {"documents", "/run_settings dependentRequired/provider_models"},
-		"documents-run-settings-unknown-tier.json":                           {"documents", "/run_settings/tiers additionalProperties"},
-		"documents-run-settings-tier-fast.json":                              {"documents", "/run_settings/tiers additionalProperties"},
-		"documents-run-settings-undefined-member.json":                       {"documents", "/run_settings additionalProperties"},
 		"documents-run-settings-tier-without-model.json":                     {"documents", "/run_settings/tiers/thinking required model"},
 		"documents-run-settings-effort-empty.json":                           {"documents", "/run_settings/provider_models/0/effort minItems"},
-		"documents-run-settings-time-limit-minutes.json":                     {"documents", "/run_settings additionalProperties"},
 		"documents-time-limit-minutes-0.json":                                {"documents", "/time_limit_minutes minimum"},
 		"documents-time-limit-minutes-1441.json":                             {"documents", "/time_limit_minutes maximum"},
 		"documents-time-limit-minutes-string.json":                           {"documents", "/time_limit_minutes type"},
@@ -146,34 +140,29 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-prebuild-with-time-limit-minutes.json":                    {"documents", "/step const"},
 		"documents-prebuild-with-shared-run.json":                            {"documents", "/step const"},
 		"documents-prebuild-with-full-suite.json":                            {"documents", "/step const"},
-		"next-session-answer-both-shapes.json":                               {"next-session-answer", "/next const; / additionalProperties"},
-		"next-session-answer-end-with-workflow.json":                         {"next-session-answer", "/ required session,time_limit_minutes,full_suite,inputs; /next const; / additionalProperties"},
-		"next-session-answer-inputs-without-version.json":                    {"next-session-answer", "/inputs required version; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-effort-without-model.json":         {"next-session-answer", "/model_choice dependentRequired/provider_models; /model_choice dependentRequired/effort; /model_choice dependentRequired/tiers; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-runtime-number.json":               {"next-session-answer", "/model_choice/runtime type; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-runtime-upper-case.json":           {"next-session-answer", "/model_choice/runtime pattern; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-runtime-effort-only.json":          {"next-session-answer", "/model_choice dependentRequired/effort; /next const; / additionalProperties"},
-		"next-session-answer-model-choice-undefined-member.json":             {"next-session-answer", "/model_choice additionalProperties; /next const; / additionalProperties"},
-		"next-session-answer-model-provider-credential-name-upper-case.json": {"next-session-answer", "/model_provider_credential_name pattern; /next const; / additionalProperties"},
-		"next-session-answer-model-credential.json":                          {"next-session-answer", "/ additionalProperties; / additionalProperties; /next const"},
-		"next-session-answer-next-unknown.json":                              {"next-session-answer", "/next const; /next const; / additionalProperties"},
-		"next-session-answer-session-0.json":                                 {"next-session-answer", "/session minimum; /next const; / additionalProperties"},
-		"next-session-answer-session-without-full-suite.json":                {"next-session-answer", "/ required full_suite; /next const; / additionalProperties"},
-		"next-session-answer-session-without-inputs.json":                    {"next-session-answer", "/ required inputs; /next const; / additionalProperties"},
-		"next-session-answer-session-without-time-limit-minutes.json":        {"next-session-answer", "/ required time_limit_minutes; /next const; / additionalProperties"},
-		"next-session-answer-session-without-workflow.json":                  {"next-session-answer", "/ required workflow; /next const; / additionalProperties"},
-		"next-session-answer-time-limit-minutes-0.json":                      {"next-session-answer", "/time_limit_minutes minimum; /next const; / additionalProperties"},
-		"next-session-answer-time-limit-minutes-string.json":                 {"next-session-answer", "/time_limit_minutes type; /next const; / additionalProperties"},
-		"next-session-answer-time-limit-minutes-1441.json":                   {"next-session-answer", "/time_limit_minutes maximum; /next const; / additionalProperties"},
-		"next-session-answer-undefined-member.json":                          {"next-session-answer", "/ additionalProperties; /next const; / additionalProperties"},
-		"next-session-answer-without-next.json":                              {"next-session-answer", "/ required next; / required next; / additionalProperties"},
+		"next-session-answer-both-shapes.json":                               {"next-session-answer", "/next const; / "},
+		"next-session-answer-end-with-workflow.json":                         {"next-session-answer", "/ required session,time_limit_minutes,full_suite,inputs; /next const; / "},
+		"next-session-answer-inputs-without-version.json":                    {"next-session-answer", "/inputs required version; /next const; / "},
+		"next-session-answer-model-choice-effort-without-model.json":         {"next-session-answer", "/model_choice dependentRequired/provider_models; /model_choice dependentRequired/effort; /model_choice dependentRequired/tiers; /next const; / "},
+		"next-session-answer-model-choice-runtime-number.json":               {"next-session-answer", "/model_choice/runtime type; /next const; / "},
+		"next-session-answer-model-choice-runtime-upper-case.json":           {"next-session-answer", "/model_choice/runtime pattern; /next const; / "},
+		"next-session-answer-model-choice-runtime-effort-only.json":          {"next-session-answer", "/model_choice dependentRequired/effort; /next const; / "},
+		"next-session-answer-model-provider-credential-name-upper-case.json": {"next-session-answer", "/model_provider_credential_name pattern; /next const; / "},
+		"next-session-answer-next-unknown.json":                              {"next-session-answer", "/next const; /next const; / "},
+		"next-session-answer-session-0.json":                                 {"next-session-answer", "/session minimum; /next const; / "},
+		"next-session-answer-session-without-full-suite.json":                {"next-session-answer", "/ required full_suite; /next const; / "},
+		"next-session-answer-session-without-inputs.json":                    {"next-session-answer", "/ required inputs; /next const; / "},
+		"next-session-answer-session-without-time-limit-minutes.json":        {"next-session-answer", "/ required time_limit_minutes; /next const; / "},
+		"next-session-answer-session-without-workflow.json":                  {"next-session-answer", "/ required workflow; /next const; / "},
+		"next-session-answer-time-limit-minutes-0.json":                      {"next-session-answer", "/time_limit_minutes minimum; /next const; / "},
+		"next-session-answer-time-limit-minutes-string.json":                 {"next-session-answer", "/time_limit_minutes type; /next const; / "},
+		"next-session-answer-time-limit-minutes-1441.json":                   {"next-session-answer", "/time_limit_minutes maximum; /next const; / "},
+		"next-session-answer-without-next.json":                              {"next-session-answer", "/ required next; / required next; / "},
 		"next-session-request-reason-upper-case.json":                        {"next-session-request", "/reason type; /reason pattern"},
 		"next-session-request-session-0.json":                                {"next-session-request", "/session minimum"},
 		"next-session-request-session-string.json":                           {"next-session-request", "/session type"},
 		"next-session-request-state-paused.json":                             {"next-session-request", "/state enum"},
 		"next-session-request-state-unknown.json":                            {"next-session-request", "/state enum"},
-		"next-session-request-undefined-member.json":                         {"next-session-request", "/ additionalProperties"},
-		"next-session-request-verdict.json":                                  {"next-session-request", "/ additionalProperties"},
 		"next-session-request-without-reason.json":                           {"next-session-request", "/ required reason"},
 		"next-session-request-cancelled-without-reason.json":                 {"next-session-request", "/reason type"},
 		"next-session-request-reason-timeout-state-failed.json":              {"next-session-request", "/state const"},
@@ -212,9 +201,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"outcome-end-code-cancelled.json":                                    {"outcome", "/state const"},
 		"outcome-reason-empty.json":                                          {"outcome", "/reason pattern"},
 		"outcome-reason-upper-case.json":                                     {"outcome", "/reason pattern"},
-		"outcome-end-code-member.json":                                       {"outcome", "/ additionalProperties"},
-		"outcome-message.json":                                               {"outcome", "/ additionalProperties"},
-		"outcome-action.json":                                                {"outcome", "/ additionalProperties"},
 		"outcome-without-state.json":                                         {"outcome", "/ required state"},
 		"outcome-state-unknown.json":                                         {"outcome", "/state enum"},
 		"outcome-exit-code-below-minus-1.json":                               {"outcome", "/exit_code minimum"},
@@ -255,7 +241,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-without-extends-or-modules.json":                  {"documents", "/harness/harness required modules"},
 		"documents-harness-extends-and-workflows.json":                       {"documents", "/harness/harness/workflows "},
 		"documents-harness-workflow-access-admin.json":                       {"documents", "/harness/harness/workflows/hello/access enum"},
-		"documents-harness-workflow-time-limit.json":                         {"documents", "/harness/harness/workflows/hello additionalProperties"},
 		"documents-harness-workflow-tier-unknown.json":                       {"documents", "/harness/harness/workflows/hello/tier enum"},
 		"documents-harness-workflow-plan-without-write.json":                 {"documents", "/harness/harness/workflows/hello/access const"},
 		"documents-harness-workflow-plan-without-access.json":                {"documents", "/harness/harness/workflows/hello required access"},
@@ -266,24 +251,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-module-name-only.json":                            {"documents", "/harness/harness/modules/0 required source"},
 		"documents-harness-extends-path-and-stack.json":                      {"documents", "/harness/harness/extends "},
 		"documents-harness-module-path-and-module.json":                      {"documents", "/harness/harness/modules/0/source "},
-		"documents-harness-module-link.json":                                 {"documents", "/harness/harness/modules/0 additionalProperties"},
-		"documents-harness-machine-setting-runtime.json":                     {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-model.json":                       {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-effort.json":                      {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-tiers.json":                       {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-force.json":                       {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-update.json":                      {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-home.json":                        {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-links.json":                       {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-machine-setting-launch.json":                      {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-member-git.json":                                  {"documents", "/harness additionalProperties"},
-		"documents-harness-member-env.json":                                  {"documents", "/harness additionalProperties"},
-		"documents-harness-member-worktree.json":                             {"documents", "/harness additionalProperties"},
-		"documents-harness-member-exports.json":                              {"documents", "/harness additionalProperties"},
-		"documents-harness-member-target.json":                               {"documents", "/harness additionalProperties"},
-		"documents-harness-section-target.json":                              {"documents", "/harness/harness additionalProperties"},
-		"documents-harness-bind-flat.json":                                   {"documents", "/harness/harness/bind additionalProperties"},
-		"documents-harness-bind-unknown-kind.json":                           {"documents", "/harness/harness/bind additionalProperties"},
 		"documents-harness-bind-list-empty.json":                             {"documents", "/harness/harness/bind/agents/reviewers type; /harness/harness/bind/agents/reviewers minItems"},
 		"documents-harness-bind-list-commands.json":                          {"documents", "/harness/harness/bind/commands/publish type"},
 		"documents-harness-bind-list-skills.json":                            {"documents", "/harness/harness/bind/skills/review type"},
@@ -296,7 +263,6 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-prebuild-with-target-version.json":                        {"documents", "/target_version "},
 		"documents-workflow-without-harness-or-target-version.json":          {"documents", "/ required harness; / required target_version"},
 		"documents-subject-url-http.json":                                    {"documents", "/subject/url pattern"},
-		"documents-submit-undefined-member.json":                             {"documents", "/submit additionalProperties"},
 		"documents-submit-type-upper-case.json":                              {"documents", "/submit/type pattern"},
 		"documents-submit-type-underscore.json":                              {"documents", "/submit/type pattern"},
 		"documents-submit-type-65-characters.json":                           {"documents", "/submit/type maxLength"},
@@ -318,11 +284,10 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-subject-id-line-feed.json":                                {"documents", "/subject/id pattern"},
 		"documents-subject-id-201-characters.json":                           {"documents", "/subject/id maxLength"},
 		"documents-subject-title-line-feed.json":                             {"documents", "/subject/title pattern"},
-		"documents-subject-undefined-member.json":                            {"documents", "/subject additionalProperties"},
 		"documents-trigger-hyphen.json":                                      {"documents", "/trigger pattern"},
 		"documents-trigger-upper-case.json":                                  {"documents", "/trigger pattern"},
 		"documents-trigger-65-characters.json":                               {"documents", "/trigger maxLength"},
-		"documents-work-item-member.json":                                    {"documents", "/ additionalProperties; / required subject"},
+		"documents-work-item-member.json":                                    {"documents", "/ required subject"},
 	}
 	got := runFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -426,7 +391,7 @@ func TestAHarnessIsRefusedForItsHarnessAlone(t *testing.T) {
 // TestASubmitIsRefusedForItsSubmitAlone pins that each invalid fixture refused at
 // /submit is refused for its submit and for nothing else: the same documents with the
 // submit of documents/explore-submit-with-harness.json are accepted. The refused values are a
-// member other than type and send, a type in upper case, with an underscore or of 65
+// type in upper case, with an underscore or of 65
 // characters, a send other than end_of_run and after_gate, and no type or no send.
 func TestASubmitIsRefusedForItsSubmitAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
@@ -436,7 +401,6 @@ func TestASubmitIsRefusedForItsSubmitAlone(t *testing.T) {
 	}
 	submit := valid.(map[string]any)["submit"]
 	for _, fixture := range []string{
-		"documents-submit-undefined-member.json",
 		"documents-submit-type-upper-case.json",
 		"documents-submit-type-underscore.json",
 		"documents-submit-type-65-characters.json",
@@ -1205,24 +1169,20 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 	}
 }
 
-// TestABindTheSchemaRefusesFailsToRead pins that a bind in the flat form, <kind>/<role>
-// to a name, a bind with a kind other than agents, commands and skills, a bind with a
-// kind whose value is null, a role whose value is null, a list on a commands or skills
-// role, an empty list, a null item of a list, and a role set to neither a name nor a
-// list fail to read into a HarnessSection with an
-// error, and that a bind with each kind, with a list on an agents role, or with empty
-// objects, reads.
+// TestABindTheSchemaRefusesFailsToRead pins that a bind with a kind whose value is null, a
+// role whose value is null, a list on a commands or skills role, an empty list, a null
+// item of a list, and a role set to neither a name nor a list fail to read into a
+// HarnessSection with an error, and that a bind with each kind, with a list on an agents
+// role, with empty objects, with a flat role <kind>/<role> or with a kind other than
+// agents, commands and skills, which the reader ignores, reads without those members.
 func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 	for _, c := range []struct{ in, err string }{
-		{`{"bind":{"agents/writer":"copywriter"}}`, "bind"},
-		{`{"bind":{"hooks":{"x":"y"}}}`, `use agents, commands or skills as a bind kind, not "hooks"`},
 		{`{"bind":{"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
 		{`{"bind":{"skills":{"review":"brand-review"},"agents":null}}`, `set the bind kind "agents" to an object of roles to names, not null`},
 		{`{"bind":{"commands":{"publish":["post","schedule"]}}}`, `set the bind role "commands.publish" to one name, not a list: only an agents role can be a group`},
 		{`{"bind":{"skills":{"review":["brand-review"]}}}`, `set the bind role "skills.review" to one name, not a list: only an agents role can be a group`},
 		{`{"bind":{"agents":{"reviewers":[]}}}`, `write one name or more in the list of the bind role "agents.reviewers": the list is empty`},
 		{`{"bind":{"agents":{"writer":null}}}`, `set the bind role "agents.writer" to one name or a list of names, not null`},
-		{`{"bind":{"hooks":{"x":null}}}`, `use agents, commands or skills as a bind kind, not "hooks"`},
 		{`{"bind":{"agents":{"reviewers":["copy-reviewer",null]}}}`, `set item 2 of the list of the bind role "agents.reviewers" to a name, not null`},
 		{`{"bind":{"agents":{"reviewers":{"one":"copy-reviewer"}}}}`, "set a bind role to one name or a list of names"},
 		{`{"bind":{"agents":{"reviewers":["copy-reviewer",3]}}}`, "set a bind role to one name or a list of names"},
@@ -1243,10 +1203,18 @@ func TestABindTheSchemaRefusesFailsToRead(t *testing.T) {
 		`{"bind":{"agents":{}}}`,
 		`{"bind":{}}`,
 		`{}`,
+		`{"bind":{"agents/writer":"copywriter"}}`,
+		`{"bind":{"hooks":{"x":"y"},"agents":{"writer":"copywriter"}}}`,
+		`{"bind":{"hooks":{"x":null}}}`,
 	} {
 		var s contracts.HarnessSection
 		if err := json.Unmarshal([]byte(in), &s); err != nil {
 			t.Errorf("%s: %v", in, err)
+		}
+		for kind := range s.Bind {
+			if kind != "agents" && kind != "commands" && kind != "skills" {
+				t.Errorf("%s reads with the bind kind %q", in, kind)
+			}
 		}
 	}
 }
@@ -1453,9 +1421,10 @@ func TestRunSettingsReadFromTheFixture(t *testing.T) {
 	}
 }
 
-// TestASubmitModuleIsNoMemberOfAnyDocument pins that the run documents and the adapter's
-// start-up refuse a submit_module member: the submit program of a run with no run code is
-// found in the composed harness, so neither document has a module for it.
+// TestASubmitModuleIsNoMemberOfAnyDocument pins that the run documents define no
+// submit_module member, so a reader ignores it and the closed copy of the schema refuses
+// it, and that the adapter's start-up defines none either: the submit program of a run with
+// no run code is found in the composed harness, so neither document has a module for it.
 func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 	module := map[string]any{"source": map[string]any{
 		"git": "https://code.example.com/example-org/forge-module",
@@ -1469,12 +1438,19 @@ func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 		t.Fatalf("explore-submit-with-harness.json is refused: %v", err)
 	}
 	valid.(map[string]any)["submit_module"] = module
-	v, ok := schema.Validate(valid).(*jsonschema.ValidationError)
+	if err := schema.Validate(valid); err != nil {
+		t.Errorf("run documents with a submit_module are refused: %v", err)
+	}
+	closed, err := contracts.CompileRunClosed("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := closed.Validate(valid).(*jsonschema.ValidationError)
 	if !ok {
-		t.Fatal("run documents with a submit_module are accepted")
+		t.Fatal("the closed copy accepts run documents with a submit_module")
 	}
 	if r := strings.Join(leaves(v), "; "); r != "/ additionalProperties" {
-		t.Errorf("run documents with a submit_module are refused for %q, want %q", r, "/ additionalProperties")
+		t.Errorf("the closed copy refuses run documents with a submit_module for %q, want %q", r, "/ additionalProperties")
 	}
 	adapter, err := contracts.Document("fixtures/adapter/adapter/code-host.json")
 	if err != nil {
@@ -1488,12 +1464,19 @@ func TestASubmitModuleIsNoMemberOfAnyDocument(t *testing.T) {
 		t.Fatalf("code-host.json is refused: %v", err)
 	}
 	adapter.(map[string]any)["submit_module"] = module
-	v, ok = start.Validate(adapter).(*jsonschema.ValidationError)
+	if err := start.Validate(adapter); err != nil {
+		t.Errorf("an adapter start-up with a submit_module is refused: %v", err)
+	}
+	startClosed, err := contracts.CompileClosed("adapter.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = startClosed.Validate(adapter).(*jsonschema.ValidationError)
 	if !ok {
-		t.Fatal("an adapter start-up with a submit_module is accepted")
+		t.Fatal("the closed copy accepts an adapter start-up with a submit_module")
 	}
 	if r := strings.Join(leaves(v), "; "); r != "/ additionalProperties" {
-		t.Errorf("an adapter start-up with a submit_module is refused for %q, want %q", r, "/ additionalProperties")
+		t.Errorf("the closed copy refuses an adapter start-up with a submit_module for %q, want %q", r, "/ additionalProperties")
 	}
 }
 
@@ -1529,6 +1512,64 @@ func TestAWorkflowPlanAndTierFollowQorysHarnessFile(t *testing.T) {
 	} {
 		if workflow.Validate(doc) == nil {
 			t.Errorf("%s is accepted", name)
+		}
+	}
+}
+
+// TestAHarnessSelectionWithOnlyAnUndefinedMemberIsWrittenBackEmpty pins that a selection
+// whose only member is undefined reads as empty, and that Go writes it back as {}, which
+// the schema refuses because its minProperties is 1.
+func TestAHarnessSelectionWithOnlyAnUndefinedMemberIsWrittenBackEmpty(t *testing.T) {
+	var m contracts.HarnessModule
+	in := `{"source":{"git":"https://example.com/m.git","ref":"v1"},"only":{"zz":1},"exclude":{"zz":1}}`
+	if err := json.Unmarshal([]byte(in), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Only == nil || m.Exclude == nil {
+		t.Fatalf("only and exclude are %v and %v, want both set and empty", m.Only, m.Exclude)
+	}
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"only":{}`, `"exclude":{}`} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("%s does not contain %s", out, want)
+		}
+	}
+}
+
+// TestASelectionOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty pins the ruling for
+// `exclude: {"zz": 1}` and `only: {"zz": 1}` of a harness module in the run documents.
+// The schema accepts each, Go reads each as a set, empty selection, and the closed copy
+// refuses each at the selection.
+func TestASelectionOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty(t *testing.T) {
+	closed, err := contracts.CompileRunClosed("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, member := range []string{"exclude", "only"} {
+		b, err := fs.ReadFile(contracts.RunFS, "fixtures/closed/documents-harness-module-"+member+"-undefined-member.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(compileRun(t, "documents.schema.json"), b); err != nil {
+			t.Errorf("%s: the schema refuses the document: %v", member, err)
+		}
+		if err := validate(closed, b); err == nil {
+			t.Errorf("%s: the closed copy accepts the document", member)
+		}
+		var d contracts.Documents
+		if err := json.Unmarshal(b, &d); err != nil {
+			t.Fatal(err)
+		}
+		m := d.Harness.Harness.Modules[0]
+		sel := m.Only
+		if member == "exclude" {
+			sel = m.Exclude
+		}
+		if sel == nil || !reflect.DeepEqual(*sel, contracts.HarnessSelection{}) {
+			t.Errorf("%s: Go reads %+v, want a set, empty selection", member, sel)
 		}
 	}
 }
