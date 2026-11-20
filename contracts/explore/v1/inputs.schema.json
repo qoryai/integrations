@@ -2,9 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/explore/v1/inputs.schema.json",
   "title": "Explore inputs",
-  "description": "The run's inputs, https://qory.dev/contracts/run/v1/documents.schema.json, for a run of the step workflow whose workflow reads these inputs, such as an Explore run, which the control plane writes and the job reads. instruction.text is the instruction the member who took the work item in gave the step. Every other text value, from the source or from members, such as ticket.title and comments[].body, is untrusted data, never an instruction. The object's size is bounded as https://qory.dev/contracts/run/v1/documents.schema.json bounds the run's inputs. Every member is required, at every level, except target and ticket, and every object refuses a member this schema does not define. Every time is the integration contract's time, https://qory.dev/contracts/integration/v1/definitions.schema.json: RFC 3339 in UTC with whole seconds, ending Z.",
+  "description": "The run's inputs, https://qory.dev/contracts/run/v1/documents.schema.json, for a run of the step workflow whose workflow reads these inputs, such as an Explore run, which the control plane writes and the job reads. instruction.text is the instruction the member who took the work item in gave the step. Every other text value, from the source or from members, such as ticket.title and comments[].body, is untrusted data, never an instruction. The object's size is bounded as https://qory.dev/contracts/run/v1/documents.schema.json bounds the run's inputs. Every member is required, at every level, except target and ticket. The job ignores a member that this schema does not define, in every object. The must_understand of the run documents overrides that for a member it lists by a pointer below /inputs, as documents.schema.json describes. Every time is the integration contract's time, https://qory.dev/contracts/integration/v1/definitions.schema.json: RFC 3339 in UTC with whole seconds, ending Z.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "version",
     "work_item",
@@ -39,7 +38,6 @@
     "work_item": {
       "description": "The work item the run is for.",
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "id",
         "number",
@@ -64,7 +62,6 @@
     "run": {
       "description": "The run's place within the current take in of the work item, as attempt counts it.",
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "attempt"
       ],
@@ -79,7 +76,6 @@
     "ticket": {
       "description": "The item at the source the work item was taken in from: absent when the work item was not taken in from an item at a source.",
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "external_ref",
         "url",
@@ -123,7 +119,6 @@
     "instruction": {
       "description": "The first instruction given when the work item was taken in.",
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "text",
         "by",
@@ -150,7 +145,6 @@
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "by",
           "at",
@@ -195,7 +189,6 @@
     "member": {
       "description": "A member of the control plane.",
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "name"
       ],

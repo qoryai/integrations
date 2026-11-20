@@ -154,7 +154,7 @@ func TestTheChangeRequestLimitsAreExact(t *testing.T) {
 		{"reply with a string of 20001 characters in data", true, data(map[string]any{"a": strings.Repeat("a", 20001)}), false},
 		{"reply with U+0000 in data", true, data(map[string]any{"a": "x\x00y"}), false},
 		{"reply without a change request id", true, func(d map[string]any) { delete(d, "change_request_id") }, false},
-		{"reply with the old members", true, set("targets", []any{}), false},
+		{"reply with a member that the schema does not define", true, set("targets", []any{}), true},
 	} {
 		fixture, schema := entry, feed
 		if c.reply {
@@ -343,5 +343,26 @@ func TestAFailureDetailHasTheRuleOfALine(t *testing.T) {
 		"reason": "too_long", "detail": "Shorten the comment."})
 	if err := validate(schema, comment); err == nil {
 		t.Error("a report about a comment with a detail is accepted")
+	}
+}
+
+// TestAPreviousOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty pins the ruling for
+// `previous: {"zz": 1}` of a change request. The schema accepts it, Go reads an empty
+// ChangePrevious, and the closed copy refuses it at previous.
+func TestAPreviousOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty(t *testing.T) {
+	b := read(t, "fixtures/adapter/closed/changes-change-request-previous-undefined-member-only.json")
+	if err := validate(compile(t, "changes.schema.json"), b); err != nil {
+		t.Errorf("the schema refuses the document: %v", err)
+	}
+	if err := validate(compileClosed(t, "changes.schema.json"), b); err == nil {
+		t.Error("the closed copy accepts the document")
+	}
+	var c contracts.Changes
+	if err := json.Unmarshal(b, &c); err != nil {
+		t.Fatal(err)
+	}
+	p := c.Changes[0].Previous
+	if p == nil || *p != (contracts.ChangePrevious{}) {
+		t.Errorf("Go reads previous as %+v, want an empty ChangePrevious", p)
 	}
 }

@@ -81,7 +81,6 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 			}
 		},
 		"next-session-answer-session-without-time-limit-minutes.json":        func(m map[string]any) { m["time_limit_minutes"] = json.Number("60") },
-		"next-session-answer-full-suite-top-level.json":                      func(m map[string]any) { delete(m, "full_suite") },
 		"next-session-answer-session-without-workflow.json":                  func(m map[string]any) { m["workflow"] = "review-changes" },
 		"next-session-answer-session-without-inputs.json":                    func(m map[string]any) { m["inputs"] = session["inputs"] },
 		"next-session-answer-session-0.json":                                 func(m map[string]any) { m["session"] = json.Number("2") },
@@ -89,32 +88,22 @@ func TestAnInvalidNextSessionFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"next-session-answer-time-limit-minutes-string.json":                 func(m map[string]any) { m["time_limit_minutes"] = json.Number("30") },
 		"next-session-answer-time-limit-minutes-1441.json":                   func(m map[string]any) { m["time_limit_minutes"] = json.Number("1440") },
 		"next-session-answer-model-provider-credential-name-upper-case.json": func(m map[string]any) { m["model_provider_credential_name"] = "example-provider-1" },
-		"next-session-answer-model-credential.json": func(m map[string]any) {
-			delete(m, "model_credential")
-			m["model_provider_credential_name"] = "example-provider-1"
-		},
-		"next-session-answer-inputs-without-version.json":          func(m map[string]any) { m["inputs"] = session["inputs"] },
-		"next-session-answer-undefined-member.json":                func(m map[string]any) { delete(m, "verdict") },
-		"next-session-answer-next-unknown.json":                    func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-without-next.json":                    func(m map[string]any) { m["next"] = "session" },
-		"next-session-answer-model-choice-runtime-number.json":     func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
-		"next-session-answer-model-choice-runtime-upper-case.json": func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-inputs-without-version.json":                    func(m map[string]any) { m["inputs"] = session["inputs"] },
+		"next-session-answer-next-unknown.json":                              func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-without-next.json":                              func(m map[string]any) { m["next"] = "session" },
+		"next-session-answer-model-choice-runtime-number.json":               func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
+		"next-session-answer-model-choice-runtime-upper-case.json":           func(m map[string]any) { m["model_choice"].(map[string]any)["runtime"] = "claude" },
 		"next-session-answer-model-choice-runtime-effort-only.json": func(m map[string]any) {
 			m["model_choice"].(map[string]any)["model"] = "example-large"
 			m["model_choice"].(map[string]any)["provider_models"] = session["model_choice"].(map[string]any)["provider_models"]
 		},
-		"next-session-answer-model-choice-effort-without-model.json": func(m map[string]any) { m["model_choice"] = session["model_choice"] },
-		"next-session-answer-model-choice-undefined-member.json": func(m map[string]any) {
-			delete(m["model_choice"].(map[string]any), "time_limit_minutes")
-		},
-		"next-session-request-verdict.json":                             func(m map[string]any) { delete(m, "verdict") },
+		"next-session-answer-model-choice-effort-without-model.json":    func(m map[string]any) { m["model_choice"] = session["model_choice"] },
 		"next-session-request-session-0.json":                           func(m map[string]any) { m["session"] = json.Number("1") },
 		"next-session-request-session-string.json":                      func(m map[string]any) { m["session"] = json.Number("1") },
 		"next-session-request-state-paused.json":                        func(m map[string]any) { m["state"] = "failed" },
 		"next-session-request-state-unknown.json":                       func(m map[string]any) { m["state"] = "succeeded" },
 		"next-session-request-without-reason.json":                      func(m map[string]any) { m["reason"] = nil },
 		"next-session-request-reason-upper-case.json":                   func(m map[string]any) { m["reason"] = nil },
-		"next-session-request-undefined-member.json":                    func(m map[string]any) { delete(m, "attempt") },
 		"next-session-request-cancelled-without-reason.json":            func(m map[string]any) { m["reason"] = "stopped" },
 		"next-session-request-reason-timeout-state-failed.json":         func(m map[string]any) { m["state"] = "cancelled" },
 		"next-session-request-reason-interrupted-state-succeeded.json":  func(m map[string]any) { m["state"] = "cancelled" },
@@ -354,8 +343,30 @@ func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 		t.Errorf("the documents without type_settings are refused: %v", err)
 	}
 	doc["full_suite"] = true
-	if err := schema.Validate(doc); runRefusal(err) != "/ additionalProperties" {
-		t.Errorf("the documents with full_suite outside type_settings are refused for %q, want %q", runRefusal(err), "/ additionalProperties")
+	if err := schema.Validate(doc); err != nil {
+		t.Errorf("the documents with full_suite outside type_settings are refused, and a reader ignores it: %v", err)
+	}
+	closed, err := contracts.CompileRunClosed("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := closed.Validate(doc); runRefusal(err) != "/ additionalProperties" {
+		t.Errorf("the closed copy refuses the documents with full_suite outside type_settings for %q, want %q", runRefusal(err), "/ additionalProperties")
+	}
+	doc["must_understand"] = []any{"/full_suite"}
+	if err := schema.Validate(doc); err == nil {
+		t.Error("the documents that list /full_suite in must_understand are accepted")
+	}
+	if err := contracts.CheckMustUnderstand([]byte(`{"must_understand":["/full_suite"]}`), contracts.Documents{}); err == nil {
+		t.Error("CheckMustUnderstand accepts /full_suite for the documents")
+	}
+	doc = fixture(t, "documents/explore-shared-run.json")
+	doc["must_understand"] = []any{"/type_settings", "/type_settings/full_suite", "/type_settings/a/0/b"}
+	if err := schema.Validate(doc); err != nil {
+		t.Errorf("the documents that list pointers below type_settings in must_understand are refused: %v", err)
+	}
+	if err := contracts.CheckMustUnderstand([]byte(`{"must_understand":["/type_settings/a/0/b"]}`), contracts.Documents{}); err != nil {
+		t.Errorf("CheckMustUnderstand refuses a pointer below type_settings: %v", err)
 	}
 	out, err := json.Marshal(contracts.Documents{})
 	if err != nil {
@@ -379,13 +390,18 @@ func TestTheDocumentsMembersOfTheSessions(t *testing.T) {
 	}
 }
 
-// TestTypeSettingsAreOptionalInAnAnswerAndRefuseFullSuiteOutside pins that the
+// TestTypeSettingsAreOptionalInAnAnswerAndFullSuiteOutsideIsUndefined pins that the
 // next-session answer for a session accepts type_settings as {}, as an object with
-// full_suite, and as an object with any other member, and accepts no type_settings;
-// that it refuses type_settings that is not an object; and that it refuses full_suite
-// outside type_settings, for the session shape and for the end shape.
-func TestTypeSettingsAreOptionalInAnAnswerAndRefuseFullSuiteOutside(t *testing.T) {
+// full_suite, and as an object with any other member, and accepts no type_settings; that
+// it refuses type_settings that is not an object, and type_settings in the end shape;
+// and that full_suite outside type_settings is an undefined member: the schema accepts
+// it, the closed copy refuses it, and a must_understand that lists it is refused.
+func TestTypeSettingsAreOptionalInAnAnswerAndFullSuiteOutsideIsUndefined(t *testing.T) {
 	schema := compileRun(t, runSchema("next-session-answer"))
+	closed, err := contracts.CompileRunClosed("next-session-answer.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
 	for name, doc := range map[string]map[string]any{
 		"no type_settings":              fixture(t, "next-session-answer/session-without-type-settings.json"),
 		"type_settings {}":              fixture(t, "next-session-answer/session-type-settings-empty.json"),
@@ -393,6 +409,9 @@ func TestTypeSettingsAreOptionalInAnAnswerAndRefuseFullSuiteOutside(t *testing.T
 	} {
 		if err := schema.Validate(doc); err != nil {
 			t.Errorf("the answer with %s is refused: %v", name, err)
+		}
+		if err := closed.Validate(doc); err != nil {
+			t.Errorf("the closed copy refuses the answer with %s: %v", name, err)
 		}
 	}
 	session := fixture(t, "next-session-answer/session.json")
@@ -407,6 +426,9 @@ func TestTypeSettingsAreOptionalInAnAnswerAndRefuseFullSuiteOutside(t *testing.T
 			t.Errorf("the answer with type_settings as %s is accepted", name)
 		}
 	}
+	if schema.Validate(map[string]any{"next": "end", "type_settings": map[string]any{}}) == nil {
+		t.Error("the end with type_settings is accepted")
+	}
 	for name, doc := range map[string]map[string]any{
 		"the session with full_suite beside type_settings": func() map[string]any {
 			d := fixture(t, "next-session-answer/session.json")
@@ -420,8 +442,28 @@ func TestTypeSettingsAreOptionalInAnAnswerAndRefuseFullSuiteOutside(t *testing.T
 		}(),
 		"the end with full_suite": {"next": "end", "full_suite": true},
 	} {
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("%s is refused, and a reader ignores full_suite: %v", name, err)
+		}
+		if closed.Validate(doc) == nil {
+			t.Errorf("the closed copy accepts %s", name)
+		}
+		doc["must_understand"] = []any{"/full_suite"}
 		if schema.Validate(doc) == nil {
-			t.Errorf("%s is accepted", name)
+			t.Errorf("%s, with /full_suite in must_understand, is accepted", name)
+		}
+	}
+	if err := contracts.CheckMustUnderstand([]byte(`{"must_understand":["/full_suite"]}`), contracts.NextSessionAnswer{}); err == nil {
+		t.Error("CheckMustUnderstand accepts /full_suite for the answer")
+	}
+	for _, p := range []string{"/type_settings", "/type_settings/full_suite", "/type_settings/a/0/b"} {
+		doc := fixture(t, "next-session-answer/session.json")
+		doc["must_understand"] = []any{p}
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("the answer that lists %s in must_understand is refused: %v", p, err)
+		}
+		if err := contracts.CheckMustUnderstand([]byte(`{"must_understand":["`+p+`"]}`), contracts.NextSessionAnswer{}); err != nil {
+			t.Errorf("CheckMustUnderstand refuses %s for the answer: %v", p, err)
 		}
 	}
 	raw, err := contracts.RunDocument("next-session-answer.schema.json")
@@ -499,8 +541,8 @@ func TestTheModelChoiceIsTheModelMembersOfRunSettings(t *testing.T) {
 	if _, ok := choice["required"]; ok {
 		t.Error("model_choice requires a member")
 	}
-	if choice["additionalProperties"] != false {
-		t.Error("model_choice accepts members it does not define")
+	if _, ok := choice["additionalProperties"]; ok {
+		t.Error("model_choice sets additionalProperties: a reader ignores a member it does not define")
 	}
 	if _, ok := settings["properties"].(map[string]any)["time_limit_minutes"]; ok {
 		t.Error("run_settings has time_limit_minutes")

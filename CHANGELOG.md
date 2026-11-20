@@ -10,8 +10,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 ### Upgrading
 
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
-  next-session call. A document or an answer with `full_suite` at the top level fails its
-  schema, because `full_suite` is no member of either. In Go, `Documents.FullSuite` and
+  next-session call. `full_suite` at the top level is no member of either, so a reader
+  ignores it and the closed copy refuses it. In Go, `Documents.FullSuite` and
   `NextSessionAnswer.FullSuite` are `Documents.TypeSettings` and
   `NextSessionAnswer.TypeSettings`, a `json.RawMessage`. `NextSessionAnswer` writes
   `type_settings` when it is set. An answer for a session no longer requires
@@ -64,17 +64,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `workflow` requires `workflow`. `workflow` still requires `harness_hidden`, and
   `harness` or `target_version`. `run_settings`, `time_limit_minutes`, `shared_run` and
   `type_settings` apply to every step `workflow`.
-  `subject` is `{kind, id, url, title}`, and a document with `work_item` fails the
-  schema. `kind` is a snake_case string of at most 64 characters, with `work_item` as
-  its first value. `id` is 1 to 200 characters on one line, and starts with `wi_` when
-  `kind` is `work_item`. `url` and `title` are optional. `title` narrows from 1 to 1024
-  characters, line breaks allowed, to 1 to 256 characters on one line. The optional
-  `trigger` is a snake_case string of at most 64 characters. Its first value is
-  `take_in`: the control plane took in the subject. In Go, `contracts.WorkItem` is removed.
-  `contracts.Subject` has `Kind`, `ID`, and the optional `URL` and `Title`.
-  `contracts.Documents` has `Subject` and `Trigger` in place of `WorkItem`.
-  `explore/v1/inputs.schema.json` keeps its `work_item`, and `inputs.work_item.id` is
-  `subject.id` when `subject.kind` is `work_item`.
+  `subject` is `{kind, id, url, title}`, and a document with `work_item` and no
+  `subject` fails the schema. `kind` is a snake_case string of at most 64 characters,
+  with `work_item` as its first value. `id` is 1 to 200 characters on one line, and
+  starts with `wi_` when `kind` is `work_item`. `url` and `title` are optional. `title`
+  narrows from 1 to 1024 characters, line breaks allowed, to 1 to 256 characters on one
+  line. The optional `trigger` is a snake_case string of at most 64 characters. Its
+  first value is `take_in`: the control plane took in the subject. In Go,
+  `contracts.WorkItem` is removed. `contracts.Subject` has `Kind`, `ID`, and the
+  optional `URL` and `Title`. `contracts.Documents` has `Subject` and `Trigger` in place
+  of `WorkItem`. `explore/v1/inputs.schema.json` keeps its `work_item`, and
+  `inputs.work_item.id` is `subject.id` when `subject.kind` is `work_item`.
 - Update a reader of the run documents to this `documents.schema.json` before the
   control plane writes `submit`, `write-no-push` in `access`, or `write-no-push` in the
   `access` of a workflow in `harness`, to the run documents: a reader that checks the
@@ -131,12 +131,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   and `Documents.StackReference` are removed, and `Documents.TargetVersion` and
   `Documents.Harness` are added.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, change
-  the adapter in three ways. Accept change feed entries of the kind `grant`, because
-  `changes.schema.json` refuses an entry of a kind it does not list. After the adapter
-  mints a linked connect return, report the grant with `POST /v1/grants`, read
-  `GET /v1/grants` when the adapter starts, follow the `grant` entries, and match the
-  adapter's state to that copy. Accept a connect pass for a live connection, which adds
-  or replaces the grant of one external account.
+  the adapter in three ways. Accept change feed entries of the kind `grant`, which the
+  feed has. After the adapter mints a linked connect return, report the grant with `POST
+  /v1/grants`, read `GET /v1/grants` when the adapter starts, follow the `grant`
+  entries, and match the adapter's state to that copy. Accept a connect pass for a live
+  connection, which adds or replaces the grant of one external account.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, add two
   members, because the schemas require them. In each grant report, `POST /v1/grants`,
   send `account`, `{ref, title}`: `ref` is the external account's id at the source, and
@@ -210,9 +209,129 @@ change what an existing reader or program relies on, and notes it under Upgradin
   sends a `time_limit_minutes` below 15. `time_limit_minutes` is the time limit of a
   session, from 1 to 1440 minutes. Until this release the limit was 15 to 1440, and a
   reader built from an older copy of the schemas refuses 1 to 14.
+- Change each reader of the documents of the integration, run, provisioner, machines and
+  explore contracts. A reader ignores a member that its schema does not define, in any
+  object. Before, these schemas and the objects inside them refused such a member. The
+  objects that the Forager contract defines are the exception. They are the `auth` and the
+  `format` of an API, and the `credential` of a run credential answer with its `apply`
+  items.
+  - The optional `must_understand` of a document lists the members that the reader must
+    understand. Each is a JSON Pointer (RFC 6901) counted from the document, such as
+    `/run_settings/runtime`. Before, it was a list of top-level member names.
+  - A reader refuses a document whose `must_understand` lists a pointer to a member that
+    it does not define. A reader still refuses a bad value of a member that it defines.
+  - The schema accepts a pointer to a member that the schema defines. It accepts any
+    pointer below `inputs`, below `type_settings`, below `harness.harness.extensions` and
+    below the description's `settings`.
+  - The description's `settings` stays the integration's settings schema. The `auth` and
+    `format` of an API are defined by the Forager contract, and they refuse an undefined
+    member.
+  - A reader refuses a pointer that has a line break, a `~` that is not `~0` or `~1`, or
+    an empty name of a map key. `minProperties` counts members, defined or not. An object
+    with only an undefined member, such as `{"zz": 1}`, reads as empty in two places.
+    `previous` of a change then has no title and no address. A harness selection,
+    `exclude` or `only`, then lists no part: `exclude` leaves nothing out, and `only`
+    takes nothing. Go writes such a selection back as `{}`, which the schema refuses.
+  - An answer with `next` `end` and a member of the session shape fails
+    `next-session-answer.schema.json`, as before.
+  - Each entry of the change feed has an optional `must_understand`. The answer has none.
+    An adapter ignores an unknown member of the answer and of an entry of a defined kind.
+    The detail of a refused entry has at most 1000 characters, and a pointer of more than
+    300 bytes is cut.
+  - An adapter skips and acknowledges an entry in two cases. The `kind` of the entry is
+    one that its revision does not define, or its `must_understand` lists a pointer that
+    the adapter does not define.
+  - A `change_request` entry is the exception for a `must_understand` that the adapter
+    cannot meet. The adapter reports it failed with `reason` `refused`
+    (`changes-failed.schema.json`), and the `detail` starts with the fix.
+  - The artifact type of the `change_kind` defines the members below the `data` of a
+    `change_request` entry. The adapter checks those pointers.
+  - `changes.schema.json` accepts any snake_case `kind` and checks the members of the
+    seven kinds it defines.
+  - The shared schemas `target`, `change_address`, `person` and `listing` in
+    `definitions.schema.json` ignore an unknown member too, in every schema that refers
+    to them, among them the explore inputs, `source-collections.schema.json` and
+    `source-items.schema.json`.
+  - Every other schema of the integration contract ignores an unknown member too:
+    `adapter-secrets`, `adapter-secrets-answer`, `adapter-secrets-plaintext`,
+    `connect-pass`, `connect-return`, `connections-disconnect`, `grant`, `grant-end`,
+    `grants`, `read`, `read-answer`, `read-public`, `refusal`, `resolve`,
+    `resolve-answer`, `run-credential`, `run-credential-answer`, `setup-pass`,
+    `source-collections`, `source-item-comments`, `source-items` and
+    `sources-disconnect`. Each has an optional `must_understand` at its root.
+    A writer sends no key or secret in a member that the contract does not define. The schema refuses three members by name: `values` in the `sealed` of
+    `adapter-secrets` and `adapter-secrets-answer`, `token` in an `apply` item, and
+    `placeholders` in a credential. In this release `adapter-secrets` accepts and ignores
+    a root member `values`, `secrets` or `plaintext`, which it refused before. It still
+    refuses `values` inside `sealed`.
+  - The replies `changes-submitted.schema.json` and `changes-failed.schema.json`, the
+    body of `adapter.schema.json` and its `sync`, the request of the run contract, the
+    seven schemas of the provisioner contract, the eleven schemas of the machines contract
+    and the seven objects of `explore/v1/inputs.schema.json` ignore an unknown member. Each root of these, except the explore inputs, has an optional
+    `must_understand`. The explore inputs use the list of the run documents.
+  - The outcome of the run contract has the members `state`, `reason` and `exit_code` of
+    Forager's `dev.qory.run.exited`. These members follow Forager's schema, which is closed
+    and has no `must_understand`. The outcome schema accepts a member that it does not
+    define, and the control plane reads `state`, `reason` and `exit_code` from the event.
+  - A writer marks a member that the reader must read by listing its pointer in
+    `must_understand`. The reader refuses a document that lists a pointer it does not
+    define. A machines answer that lists such a pointer is a failure of kind `defect`. The
+    control plane refuses a release with such a pointer, 400 `invalid_request`, as it
+    refuses any body that breaks its schema. A batch's `dev.qory.run.exited` can have an
+    outcome whose `must_understand` lists a pointer that the outcome schema does not
+    define. The control plane answers that batch with `400 invalid_request`, as Forager
+    defines for a body its contract refuses. This contract defines no body for that
+    refusal. The contract describes no further handling for the provisioner claim answer
+    and the provisioner refusal.
+  - A writer's test validates against a closed copy of the schema, so a misspelled
+    member fails it. The copy covers the schema and each schema of this repository that
+    it refers to.
+  - `conformance.Description` and `integration-conformance` validate a description
+    against the closed copy.
+  - `fixtures/closed` contains the documents that the schema accepts and the closed copy
+    refuses: 139 documents in all contracts, of which 95 moved there from
+    `fixtures/invalid`. These fixtures moved there because a retired or secret member
+    was a refusal until this release: `claim-answer-run-id`, `release-with-retry`,
+    `grant-end-with-pass-nonce`, `read-public-with-grant-ref`, `refusal-supported-member`,
+    `sources-disconnect-with-reason`, the outcome `end_code`, `action` and `message`, the
+    request `verdict` and `attempt`, and the machines `*-version.json` answers. The tests
+    of the adapter `submit_module` and of the reply `targets` are inline in `run_test.go`
+    and `change_request_limits_test.go`.
+    They expect the reader to ignore the member. A reader ignores each of these members.
+    Five removed fixtures came back:
+    `documents-undefined-member.json`, `documents-subject-undefined-member.json`,
+    `next-session-answer-undefined-member.json`,
+    `next-session-answer-model-credential.json` and
+    `description-source-undefined-member.json`.
+  - `changes-unknown-kind.json` moved to `fixtures/adapter/changes/unknown-kind.json`.
 
 ### Added
 
+- `contracts.CompileClosed`, `contracts.CompileRunClosed`,
+  `contracts.CompileProvisionerClosed`, `contracts.CompileMachinesClosed` and
+  `contracts.CompileExploreClosed` compile the closed copy of a schema, and return an
+  error for a schema without one. Fifty schemas have a closed copy:
+  - 27 of the integration contract, all but `definitions.schema.json`;
+  - four of the run contract: `documents`, `next-session-answer`, `next-session-request`
+    and `outcome`;
+  - the seven of the provisioner contract and the eleven of the machines contract;
+  - `inputs` of the explore contract.
+
+  `contracts.CloseSchema` makes the copy of one file.
+- `contracts.CheckMustUnderstand` returns an error for a document whose `must_understand`
+  lists a pointer that a Go type does not define. It also returns an error for a repeated
+  pointer, for null, for a string that is no JSON Pointer, for a pointer with a line
+  break, with a `~` that is not `~0` or `~1` or with an empty map key, for more than
+  `contracts.MustUnderstandPointers` (32) pointers, and for a pointer of more than
+  `contracts.MustUnderstandPointerLength` (256) characters.
+  `contracts.CheckChangeMustUnderstand` does the same for a feed entry, by its `kind`.
+- `contracts.Documents`, `contracts.NextSessionAnswer`, `contracts.NextSessionRequest`,
+  `contracts.RunOutcome`, `contracts.Adapter`, `contracts.ChangesSubmitted`,
+  `contracts.ChangesFailed`, `contracts.Change`, the provisioner types `Claim`,
+  `ClaimAnswer`, `Dispatched`, `Release`, `MachineLog` and `MachineEnd`, and the eleven
+  `contracts.Machines*` types have `MustUnderstand`. `contracts.Changes` has none. The
+  rule is in `contracts/run/v1/README.md` and `contracts/integration/v1/README.md`, with a
+  note that an unsigned 401 or 415 is not one of the nine next-session refusal codes.
 - An API of `model_provider` can set `oauth_device`, next to `oauth_refresh`, in
   `description.schema.json`: the four URLs with which the control plane signs a person
   in with the OAuth device code flow. `usercode_url` is where the control plane sends
@@ -832,10 +951,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   a role that is not a group in the module manifests. In Go,
   `HarnessSection.Bind` is a `map[string]map[string]BindValue`: `BindValue.Name` is set
   for a name, and `BindValue.Names` for a list, and each is written back in the form it
-  was read in. Decoding a `HarnessSection` returns an error for a bind kind other than
-  `agents`, `commands` or `skills`, for one whose value is null, for a role whose value
-  is null, for a list on a `commands` or `skills` role, for an empty list, and for a null
-  item of a list.
+  was read in. Decoding a `HarnessSection` ignores a bind kind other than `agents`,
+  `commands` or `skills`. A module role that no bind fills stays unfilled, and the reader
+  must not compose that module role. Decoding returns an error for a kind whose value is
+  null, for a role whose value is null, for a list on a `commands` or `skills` role, for
+  an empty list, and for a null item of a list.
 - Package `contracts` embeds every contract, with `ProvisionerFS`, `RunFS`, `ExploreFS`
   and `MachinesFS` beside `FS`, and compiles their schemas with `CompileProvisioner`,
   `CompileRun`, `CompileExplore` and `CompileMachines` beside `Compile`. A schema that

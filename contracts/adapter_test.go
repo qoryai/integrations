@@ -66,6 +66,16 @@ func compile(t *testing.T, name string) *jsonschema.Schema {
 	return s
 }
 
+// compileClosed compiles the closed copy of a schema of the contract, or fails the test.
+func compileClosed(t *testing.T, name string) *jsonschema.Schema {
+	t.Helper()
+	s, err := contracts.CompileClosed(name)
+	if err != nil {
+		t.Fatalf("%s: %v", name, err)
+	}
+	return s
+}
+
 // read reads a file of the contract, or fails the test.
 func read(t *testing.T, name string) []byte {
 	t.Helper()
@@ -97,7 +107,7 @@ func TestAdapterFixturesValidate(t *testing.T) {
 	}
 	seen := 0
 	for _, d := range dirs {
-		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "signed" || d.Name() == "refused-by-control-plane" {
+		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "closed" || d.Name() == "signed" || d.Name() == "refused-by-control-plane" {
 			continue
 		}
 		schema := compile(t, d.Name()+".schema.json")
@@ -129,12 +139,10 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"adapter-description-string.json":                                       {"adapter", "/description type"},
 		"adapter-description-without-roles.json":                                {"adapter", "/description required roles"},
 		"changes-sync-interval-30.json":                                         {"changes", "/changes/0/interval minimum"},
-		"changes-unknown-kind.json":                                             {"changes", "/changes/0/kind enum"},
 		"changes-work-item-status-linked.json":                                  {"changes", "/changes/0/status enum"},
 		"changes-work-item-url-http.json":                                       {"changes", "/changes/0/url pattern"},
 		"changes-watch-url-http.json":                                           {"changes", "/changes/0/url pattern"},
 		"changes-watch-without-url.json":                                        {"changes", "/changes/0 required url"},
-		"changes-watch-with-ref.json":                                           {"changes", "/changes/0 additionalProperties"},
 		"changes-watch-work-item-id-wrong-prefix.json":                          {"changes", "/changes/0/work_item_id pattern"},
 		"changes-without-revision.json":                                         {"changes", "/ required revision"},
 		"changes-comment-id-wrong-prefix.json":                                  {"changes", "/changes/0/comment_id pattern"},
@@ -163,16 +171,14 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-change-request-previous-empty.json":                            {"changes", "/changes/0/previous minProperties"},
 		"changes-change-request-previous-title-empty.json":                      {"changes", "/changes/0/previous/title minLength; /changes/0/previous/title pattern; /changes/0/previous/title pattern"},
 		"changes-change-request-previous-title-null.json":                       {"changes", "/changes/0/previous/title type"},
-		"changes-change-request-previous-unknown-member.json":                   {"changes", "/changes/0/previous additionalProperties"},
 		"changes-change-request-target-address-system-upper-case.json":          {"changes", "/changes/0/target/address/system pattern"},
-		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection; /changes/0/target additionalProperties"},
+		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection"},
 		"changes-change-request-target-without-collection.json":                 {"changes", "/changes/0/target required collection"},
 		"changes-change-request-text-20001.json":                                {"changes", "/changes/0/text maxLength"},
 		"changes-change-request-text-marker.json":                               {"changes", "/changes/0/text "},
 		"changes-change-request-title-257-characters.json":                      {"changes", "/changes/0/title maxLength"},
 		"changes-change-request-title-empty.json":                               {"changes", "/changes/0/title minLength; /changes/0/title pattern; /changes/0/title pattern"},
 		"changes-change-request-title-line-feed.json":                           {"changes", "/changes/0/title pattern"},
-		"changes-change-request-with-url.json":                                  {"changes", "/changes/0 additionalProperties"},
 		"changes-change-request-without-change-kind.json":                       {"changes", "/changes/0 required change_kind"},
 		"changes-change-request-without-data.json":                              {"changes", "/changes/0 required data"},
 		"changes-change-request-without-target.json":                            {"changes", "/changes/0 required target"},
@@ -200,7 +206,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-submitted-data-array.json":                                     {"changes-submitted", "/data type"},
 		"changes-submitted-data-nul-character.json":                             {"changes-submitted", "/data/note pattern"},
 		"changes-submitted-target-without-collection.json":                      {"changes-submitted", "/target required collection"},
-		"changes-submitted-undefined-member.json":                               {"changes-submitted", "/ additionalProperties"},
 		"changes-submitted-without-change-request-id.json":                      {"changes-submitted", "/ required change_request_id"},
 		"changes-submitted-without-target.json":                                 {"changes-submitted", "/ required target"},
 		"changes-failed-comment-detail.json":                                    {"changes-failed", "/detail "},
@@ -213,8 +218,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-state-reason-too-long.json":                               {"source-items", "/items/0/state_reason maxLength"},
 		"source-items-time-fraction.json":                                       {"source-items", "/time pattern"},
 		"source-items-time-offset.json":                                         {"source-items", "/time pattern"},
-		"source-items-undefined-member.json":                                    {"source-items", "/ additionalProperties"},
-		"refusal-supported-member.json":                                         {"refusal", "/ additionalProperties"},
 		"source-items-url-http.json":                                            {"source-items", "/items/0/url pattern"},
 		"source-items-key-too-long.json":                                        {"source-items", "/items/0/key maxLength"},
 		"source-items-event-empty.json":                                         {"source-items", "/items minItems"},
@@ -222,14 +225,11 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-truncated-labels-twice.json":                              {"source-items", "/items/0/truncated uniqueItems"},
 		"source-items-truncated-state-reason.json":                              {"source-items", "/items/0/truncated/0 enum"},
 		"source-items-truncated-unknown-field.json":                             {"source-items", "/items/0/truncated/0 enum"},
-		"sources-disconnect-with-reason.json":                                   {"sources-disconnect", "/ additionalProperties"},
 		"sources-disconnect-without-connection-id.json":                         {"sources-disconnect", "/ required connection_id"},
 		"connect-return-refused-without-reason.json":                            {"connect-return", "/ required reason"},
 		"connect-return-linked-with-reason.json":                                {"connect-return", "/reason "},
 		"connect-return-unknown-outcome.json":                                   {"connect-return", "/outcome enum"},
-		"connect-return-undefined-member.json":                                  {"connect-return", "/ additionalProperties"},
 		"connect-pass-without-connection-id.json":                               {"connect-pass", "/ required connection_id"},
-		"connections-disconnect-undefined-member.json":                          {"connections-disconnect", "/ additionalProperties"},
 		"connections-disconnect-connection-id-adapter-id.json":                  {"connections-disconnect", "/connection_id pattern"},
 		"source-collections-part-10001.json":                                    {"source-collections", "/listing/part maximum"},
 		"source-collections-environment-ref-empty.json":                         {"source-collections", "/collections/0/environment_ref minLength"},
@@ -252,7 +252,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-url-port-0.json":                                          {"source-items", "/items/0/url pattern"},
 		"source-items-url-port-65536.json":                                      {"source-items", "/items/0/url pattern"},
 		"setup-pass-without-nonce.json":                                         {"setup-pass", "/ required nonce"},
-		"setup-pass-undefined-member.json":                                      {"setup-pass", "/ additionalProperties"},
 		"setup-pass-version-2.json":                                             {"setup-pass", "/version const"},
 		"setup-pass-adapter-id-connection-id.json":                              {"setup-pass", "/adapter_id pattern"},
 		"setup-pass-organisation-slug-upper-case.json":                          {"setup-pass", "/organisation_slug pattern"},
@@ -275,7 +274,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"grant-without-pass-nonce.json":                                         {"grant", "/ required pass_nonce"},
 		"grant-without-account.json":                                            {"grant", "/ required account"},
 		"grant-end-without-grant-ref.json":                                      {"grant-end", "/ required grant_ref"},
-		"grant-end-with-pass-nonce.json":                                        {"grant-end", "/ additionalProperties"},
 		"grant-account-without-ref.json":                                        {"grant", "/account required ref"},
 		"grant-account-title-line-feed.json":                                    {"grant", "/account/title pattern"},
 		"source-collections-without-grant-ref.json":                             {"source-collections", "/collections/0 required grant_ref"},
@@ -283,7 +281,8 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"grants-without-revision.json":                                          {"grants", "/ required revision"},
 		"changes-grant-status-taken-in.json":                                    {"changes", "/changes/0/status enum"},
 		"changes-grant-without-connection-id.json":                              {"changes", "/changes/0 required connection_id"},
-		"adapter-secrets-value-in-clear.json":                                   {"adapter-secrets", "/sealed additionalProperties"},
+		"adapter-secrets-value-in-clear.json":                                   {"adapter-secrets", "/sealed/values "},
+		"adapter-secrets-answer-value-in-clear.json":                            {"adapter-secrets-answer", "/sealed/values "},
 		"adapter-secrets-without-server-key.json":                               {"adapter-secrets", "/sealed required server_key"},
 		"adapter-secrets-answer-suite-chacha20.json":                            {"adapter-secrets-answer", "/sealed/suite const"},
 		"adapter-secrets-answer-enc-31-bytes.json":                              {"adapter-secrets-answer", "/sealed/enc pattern"},
@@ -303,7 +302,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"resolve-answer-not-covered-public.json":                                {"resolve-answer", "/results/0/public "},
 		"resolve-answer-public-without-public-ref.json":                         {"resolve-answer", "/results/0 required public_ref"},
 		"resolve-answer-public-ref-without-public.json":                         {"resolve-answer", "/results/0/public_ref "},
-		"read-public-with-grant-ref.json":                                       {"read-public", "/ additionalProperties"},
 		"read-public-without-path.json":                                         {"read-public", "/ required path"},
 		"read-path-leading-slash.json":                                          {"read", "/path pattern"},
 		"read-path-dot-dot.json":                                                {"read", "/path pattern"},
@@ -443,7 +441,7 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 		{"no collection", `{"address":` + address + `}`, false},
 		{"an empty object", `{}`, false},
 		{"system and path with no collection", address, false},
-		{"system and path beside the collection", `{"collection":"R_1001","system":"code.example.com","path":"acme/shop"}`, false},
+		{"system and path beside the collection, which a reader ignores", `{"collection":"R_1001","system":"code.example.com","path":"acme/shop"}`, true},
 		{"an empty collection", `{"collection":""}`, false},
 		{"a collection of 201 characters", `{"collection":"` + strings.Repeat("a", 201) + `"}`, false},
 		{"a collection that is a number", `{"collection":1001}`, false},
@@ -458,7 +456,7 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 		{"an address with a path with U+007F", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\u007fshop"}}`, false},
 		{"an address with a system in upper case", `{"collection":"R_1001","address":{"system":"Code.example.com","path":"acme/shop"}}`, false},
 		{"an address with a system and a port", `{"collection":"R_1001","address":{"system":"code.example.com:8443","path":"acme/shop"}}`, false},
-		{"an address with another member", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop","port":1}}`, false},
+		{"an address with another member, which a reader ignores", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop","port":1}}`, true},
 	} {
 		if err := validate(schema, []byte(c.doc)); (err == nil) != c.ok {
 			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
@@ -940,8 +938,8 @@ func TestSetupPassRoundTrips(t *testing.T) {
 }
 
 // TestASetupPassAcceptsTheOrganisationSlugAlone pins that setup-pass.schema.json accepts
-// a payload with organisation_slug, and still refuses one with organisation_slug and a
-// member the schema does not define, as it refuses one without organisation_slug.
+// a payload with organisation_slug, and accepts one with organisation_slug and a member
+// the schema does not define, which the closed copy refuses.
 func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
 	schema := compile(t, "setup-pass.schema.json")
 	b := read(t, "fixtures/adapter/setup-pass/with-organisation-slug.json")
@@ -952,10 +950,13 @@ func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
 	if bytes.Equal(extra, b) {
 		t.Fatal("with-organisation-slug.json contains no organisation_slug member")
 	}
-	err := validate(schema, extra)
+	if err := validate(schema, extra); err != nil {
+		t.Errorf("a setup pass payload with organisation_slug and organisation_name is refused: %v", err)
+	}
+	err := validate(compileClosed(t, "setup-pass.schema.json"), extra)
 	v, ok := err.(*jsonschema.ValidationError)
 	if !ok || strings.Join(leaves(v), "; ") != "/ additionalProperties" || !strings.Contains(err.Error(), "'organisation_name'") {
-		t.Errorf("a setup pass payload with organisation_slug and organisation_name is not refused for organisation_name alone: %v", err)
+		t.Errorf("the closed copy refuses a setup pass payload with organisation_slug and organisation_name for %v, want organisation_name alone", err)
 	}
 }
 

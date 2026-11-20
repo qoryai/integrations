@@ -96,7 +96,7 @@ func TestMachinesFixturesValidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, d := range dirs {
-		if d.IsDir() && d.Name() != "invalid" && !seen[d.Name()] {
+		if d.IsDir() && d.Name() != "invalid" && d.Name() != "closed" && !seen[d.Name()] {
 			t.Errorf("fixtures/%s is the fixture folder of no schema", d.Name())
 		}
 	}
@@ -109,9 +109,6 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
 		"check-version-2.json":                          {"check", "/version const"},
 		"check-without-version.json":                    {"check", "/ required version"},
-		"check-undefined-member.json":                   {"check", "/ additionalProperties"},
-		"check-answer-version.json":                     {"check-answer", "/ additionalProperties"},
-		"check-answer-undefined-member.json":            {"check-answer", "/ additionalProperties"},
 		"check-answer-without-offers.json":              {"check-answer", "/ required offers"},
 		"check-answer-offers-empty.json":                {"check-answer", "/offers minItems"},
 		"check-answer-offers-65.json":                   {"check-answer", "/offers maxItems"},
@@ -121,7 +118,6 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 		"make-dispatch-id-upper-case.json":              {"make", "/dispatch_id pattern"},
 		"make-pool-dispatch.json":                       {"make", "/pool pattern"},
 		"make-without-machine-spec.json":                {"make", "/ required machine_spec"},
-		"make-with-size.json":                           {"make", "/ additionalProperties"},
 		"make-machine-spec-memory-mib-511.json":         {"make", "/machine_spec/memory_mib minimum"},
 		"make-machine-spec-without-virtualization.json": {"make", "/machine_spec required virtualization"},
 		"make-start-data-url-safe.json":                 {"make", "/start_data pattern"},
@@ -129,26 +125,18 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 		"make-start-data-space.json":                    {"make", "/start_data pattern"},
 		"make-without-start-data.json":                  {"make", "/ required start_data"},
 		"make-without-dispatch-id.json":                 {"make", "/ required dispatch_id"},
-		"make-key.json":                                 {"make", "/ additionalProperties"},
-		"list-answer-machine-key.json":                  {"list-answer", "/machines/0 additionalProperties"},
-		"make-undefined-member.json":                    {"make", "/ additionalProperties"},
 		"make-answer-id-dash.json":                      {"make-answer", "/id "},
 		"make-answer-id-empty.json":                     {"make-answer", "/id pattern"},
 		"make-answer-id-129.json":                       {"make-answer", "/id pattern"},
 		"make-answer-id-space.json":                     {"make-answer", "/id pattern"},
 		"make-answer-id-non-ascii.json":                 {"make-answer", "/id pattern"},
-		"make-answer-version.json":                      {"make-answer", "/ additionalProperties"},
-		"make-answer-undefined-member.json":             {"make-answer", "/ additionalProperties"},
 		"make-answer-machine-type-empty.json":           {"make-answer", "/machine_type pattern"},
 		"make-answer-machine-type-65.json":              {"make-answer", "/machine_type pattern"},
 		"make-answer-machine-type-space.json":           {"make-answer", "/machine_type pattern"},
 		"list-version-2.json":                           {"list", "/version const"},
 		"list-pool-no-prefix.json":                      {"list", "/pool pattern"},
 		"list-without-pool.json":                        {"list", "/ required pool"},
-		"list-undefined-member.json":                    {"list", "/ additionalProperties"},
 		"list-answer-without-machines.json":             {"list-answer", "/ required machines"},
-		"list-answer-version.json":                      {"list-answer", "/ additionalProperties"},
-		"list-answer-undefined-member.json":             {"list-answer", "/ additionalProperties"},
 		"list-answer-id-dash.json":                      {"list-answer", "/machines/0/id "},
 		"list-answer-dispatch-id-no-prefix.json":        {"list-answer", "/machines/0/dispatch_id pattern"},
 		"list-answer-state-gone.json":                   {"list-answer", "/machines/0/state enum"},
@@ -156,32 +144,22 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 		"list-answer-started-fraction.json":             {"list-answer", "/machines/0/started pattern"},
 		"list-answer-machine-without-started.json":      {"list-answer", "/machines/0 required started"},
 		"list-answer-machine-without-dispatch-id.json":  {"list-answer", "/machines/0 required dispatch_id"},
-		"list-answer-machine-undefined-member.json":     {"list-answer", "/machines/0 additionalProperties"},
 		"log-version-2.json":                            {"log", "/version const"},
 		"log-id-dash.json":                              {"log", "/id "},
 		"log-id-space.json":                             {"log", "/id pattern"},
 		"log-without-id.json":                           {"log", "/ required id"},
-		"log-undefined-member.json":                     {"log", "/ additionalProperties"},
 		"log-answer-nul.json":                           {"log-answer", "/log pattern"},
-		"log-answer-version.json":                       {"log-answer", "/ additionalProperties"},
-		"log-answer-undefined-member.json":              {"log-answer", "/ additionalProperties"},
 		"delete-version-2.json":                         {"delete", "/version const"},
 		"delete-id-dash.json":                           {"delete", "/id "},
 		"delete-id-129.json":                            {"delete", "/id pattern"},
 		"delete-without-id.json":                        {"delete", "/ required id"},
-		"delete-undefined-member.json":                  {"delete", "/ additionalProperties"},
 		"delete-answer-state-running.json":              {"delete-answer", "/state enum"},
-		"delete-answer-version.json":                    {"delete-answer", "/ additionalProperties"},
-		"delete-answer-undefined-member.json":           {"delete-answer", "/ additionalProperties"},
 		"error-kind-fatal.json":                         {"error", "/error/kind enum"},
 		"error-without-kind.json":                       {"error", "/error required kind"},
 		"error-without-message.json":                    {"error", "/error required message"},
 		"error-message-empty.json":                      {"error", "/error/message minLength"},
 		"error-message-201.json":                        {"error", "/error/message maxLength"},
 		"error-message-nul.json":                        {"error", "/error/message pattern"},
-		"error-version.json":                            {"error", "/ additionalProperties"},
-		"error-undefined-member.json":                   {"error", "/ additionalProperties"},
-		"error-failure-undefined-member.json":           {"error", "/error additionalProperties"},
 	}
 	got := treeFiles(t, contracts.MachinesFS, "fixtures/invalid")
 	if len(got) != len(want) {

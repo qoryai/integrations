@@ -2,9 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/machines/v1/error.schema.json",
   "title": "Error",
-  "description": "What a machine adapter writes on standard output before it exits with status 1: when check, make, list, log or delete fails, and on a usage error. A usage error, such as an unknown command or no --settings, is a failure of kind defect. The adapter exits with status 0 on success and 1 on failure, and with no other status. The answer is at most 1 MiB. It has no version. A member this schema does not define is refused.",
+  "description": "What a machine adapter writes on standard output before it exits with status 1: when check, make, list, log or delete fails, and on a usage error. A usage error, such as an unknown command or no --settings, is a failure of kind defect. The adapter exits with status 0 on success and 1 on failure, and with no other status. The answer is at most 1 MiB. It has no version. The provisioner ignores a member that this schema does not define, unless the must_understand of the error lists it.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "error"
   ],
@@ -12,7 +11,6 @@
     "error": {
       "description": "The failure.",
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "kind",
         "message"
@@ -35,6 +33,18 @@
           "maxLength": 200,
           "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/text"
         }
+      }
+    },
+    "must_understand": {
+      "description": "The members of the document that the reader must understand, each as a JSON Pointer (RFC 6901) counted from the document, such as /error/kind. List each once, at most 32. A pointer has no line feed, and writes ~ only as ~0 or ~1. Each pointer is to a member that this schema defines. The provisioner ignores a member that this schema does not define, unless must_understand lists it. It refuses an error whose must_understand lists a pointer that it does not define.",
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 256,
+        "not": {"pattern": "\\n"},
+        "pattern": "^(?:/error|/error/kind|/error/message)$"
       }
     }
   }
