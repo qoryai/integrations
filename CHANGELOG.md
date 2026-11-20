@@ -204,8 +204,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - Change each reader of the documents of the integration, run, provisioner, machines and
   explore contracts. A reader ignores a member that its schema does not define, in any
   object. Before, these schemas and the objects inside them refused such a member. The
-  objects that the Forager contract defines are the exception: the `auth` and the `format`
-  of an API, and the `credential` of a run credential answer with its `apply` items.
+  objects that the Forager contract defines are the exception. They are the `auth` and the
+  `format` of an API, and the `credential` of a run credential answer with its `apply`
+  items.
   - The optional `must_understand` of a document lists the members that the reader must
     understand. Each is a JSON Pointer (RFC 6901) counted from the document, such as
     `/run_settings/full_suite`. Before, it was a list of top-level member names.
@@ -261,7 +262,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
     an unknown member. Each root of these, except the explore inputs, has an optional
     `must_understand`. The explore inputs use the list of the run documents.
   - A writer marks a member that the reader must read by listing its pointer in
-    `must_understand`, and the reader refuses a document that lists a pointer it does not
+    `must_understand`. The reader refuses a document that lists a pointer it does not
     define. A machines answer that lists such a pointer is a failure of kind `defect`. The
     control plane refuses a release or an outcome with such a pointer, 400
     `invalid_request`. For the outcome, the message starts with the fix and names the
@@ -278,10 +279,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
     was a refusal until this release: `claim-answer-run-id`, `release-with-retry`,
     `grant-end-with-pass-nonce`, `read-public-with-grant-ref`, `refusal-supported-member`,
     `sources-disconnect-with-reason`, the outcome `end_code`, `action` and `message`, the
-    request `verdict` and `attempt`, and the machines `*-version.json` answers. The tests of the adapter `submit_module` and of
-    the reply `targets` are inline in `run_test.go` and `change_request_limits_test.go`,
-    and they now expect the reader to ignore the member. A reader ignores each of these
-    members. Five removed fixtures came back:
+    request `verdict` and `attempt`, and the machines `*-version.json` answers. The tests
+    of the adapter `submit_module` and of the reply `targets` are inline in `run_test.go`
+    and `change_request_limits_test.go`.
+    They expect the reader to ignore the member. A reader ignores each of these members.
+    Five removed fixtures came back:
     `documents-undefined-member.json`, `documents-subject-undefined-member.json`,
     `next-session-answer-undefined-member.json`,
     `next-session-answer-model-credential.json` and
