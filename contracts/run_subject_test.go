@@ -57,7 +57,7 @@ func TestAWorkflowRunHasASubjectAndATrigger(t *testing.T) {
 		"run_settings":       map[string]any{"runtime": "claude"},
 		"time_limit_minutes": 15,
 		"shared_run":         true,
-		"full_suite":         true,
+		"type_settings":      map[string]any{"full_suite": true},
 	} {
 		for _, c := range []struct {
 			fixture string

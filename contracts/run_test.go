@@ -142,12 +142,13 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-time-limit-minutes-1441.json":                             {"documents", "/time_limit_minutes maximum"},
 		"documents-time-limit-minutes-string.json":                           {"documents", "/time_limit_minutes type"},
 		"documents-shared-run-string.json":                                   {"documents", "/shared_run type"},
-		"documents-full-suite-string.json":                                   {"documents", "/full_suite type"},
+		"documents-type-settings-string.json":                                {"documents", "/type_settings type"},
+		"documents-full-suite-top-level.json":                                {"documents", "/ additionalProperties"},
 		"documents-prebuild-with-time-limit-minutes.json":                    {"documents", "/step const"},
 		"documents-prebuild-with-shared-run.json":                            {"documents", "/step const"},
-		"documents-prebuild-with-full-suite.json":                            {"documents", "/step const"},
+		"documents-prebuild-with-type-settings.json":                         {"documents", "/step const"},
 		"next-session-answer-both-shapes.json":                               {"next-session-answer", "/next const; / additionalProperties"},
-		"next-session-answer-end-with-workflow.json":                         {"next-session-answer", "/ required session,time_limit_minutes,full_suite,inputs; /next const; / additionalProperties"},
+		"next-session-answer-end-with-workflow.json":                         {"next-session-answer", "/ required session,time_limit_minutes,inputs; /next const; / additionalProperties"},
 		"next-session-answer-inputs-without-version.json":                    {"next-session-answer", "/inputs required version; /next const; / additionalProperties"},
 		"next-session-answer-model-choice-effort-without-model.json":         {"next-session-answer", "/model_choice dependentRequired/provider_models; /model_choice dependentRequired/effort; /model_choice dependentRequired/tiers; /next const; / additionalProperties"},
 		"next-session-answer-model-choice-runtime-number.json":               {"next-session-answer", "/model_choice/runtime type; /next const; / additionalProperties"},
@@ -158,7 +159,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"next-session-answer-model-credential.json":                          {"next-session-answer", "/ additionalProperties; / additionalProperties; /next const"},
 		"next-session-answer-next-unknown.json":                              {"next-session-answer", "/next const; /next const; / additionalProperties"},
 		"next-session-answer-session-0.json":                                 {"next-session-answer", "/session minimum; /next const; / additionalProperties"},
-		"next-session-answer-session-without-full-suite.json":                {"next-session-answer", "/ required full_suite; /next const; / additionalProperties"},
+		"next-session-answer-full-suite-top-level.json":                      {"next-session-answer", "/ additionalProperties; /next const; / additionalProperties"},
 		"next-session-answer-session-without-inputs.json":                    {"next-session-answer", "/ required inputs; /next const; / additionalProperties"},
 		"next-session-answer-session-without-time-limit-minutes.json":        {"next-session-answer", "/ required time_limit_minutes; /next const; / additionalProperties"},
 		"next-session-answer-session-without-workflow.json":                  {"next-session-answer", "/ required workflow; /next const; / additionalProperties"},
@@ -354,7 +355,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 
 // TestAPrebuildIsRefusedForEachRunMemberAlone pins that the invalid run documents of
 // the step prebuild that have workflow, harness_hidden, harness, submit,
-// time_limit_minutes, shared_run or full_suite are refused for that member alone: the
+// time_limit_minutes, shared_run or type_settings are refused for that member alone: the
 // same documents without it are accepted.
 func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
@@ -365,7 +366,7 @@ func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
 		{"documents-prebuild-with-submit.json", "submit"},
 		{"documents-prebuild-with-time-limit-minutes.json", "time_limit_minutes"},
 		{"documents-prebuild-with-shared-run.json", "shared_run"},
-		{"documents-prebuild-with-full-suite.json", "full_suite"},
+		{"documents-prebuild-with-type-settings.json", "type_settings"},
 	} {
 		doc, err := contracts.RunDocument(path.Join("fixtures/invalid", c.fixture))
 		if err != nil {
@@ -867,7 +868,8 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 		{"documents", contracts.Documents{Step: "workflow", Domain: "marketing",
 			Inputs: json.RawMessage(`{"version":1}`), Subject: &item, RunSettings: settings,
 			Workflow: "hello", HarnessHidden: &hidden, Harness: harness,
-			TimeLimitMinutes: 1440, SharedRun: true, FullSuite: true}},
+			TimeLimitMinutes: 1440, SharedRun: true,
+			TypeSettings: json.RawMessage(`{"full_suite":true}`)}},
 		{"documents/harness", harness},
 		{"documents/harness", full},
 		{"documents/harness", bare},

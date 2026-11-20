@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/run/v1/next-session-answer.schema.json",
   "title": "Next-session answer",
-  "description": "The answer to the next-session request, next-session-request.schema.json: either the next session of the run, with next session, or the end of the run, with next end. The next session has session, workflow, time_limit_minutes, full_suite and inputs, and optionally model_choice and model_provider_credential_name; the end has next only. An answer with the members of both shapes is refused. It answers a request that qory sends through Forager's link, which the gateway forwards to the control plane.",
+  "description": "The answer to the next-session request, next-session-request.schema.json: either the next session of the run, with next session, or the end of the run, with next end. The next session has session, workflow, time_limit_minutes and inputs, and optionally type_settings, model_choice and model_provider_credential_name; the end has next only. An answer with the members of both shapes is refused. It answers a request that qory sends through Forager's link, which the gateway forwards to the control plane.",
   "type": "object",
   "oneOf": [
     {
@@ -14,7 +14,6 @@
         "session",
         "workflow",
         "time_limit_minutes",
-        "full_suite",
         "inputs"
       ],
       "properties": {
@@ -43,9 +42,9 @@
           "description": "The time limit of the session, in minutes, from 1 to 1440.",
           "$ref": "https://qory.dev/contracts/run/v1/documents.schema.json#/$defs/time_limit_minutes"
         },
-        "full_suite": {
-          "description": "Whether the session runs the full test suite after the agent ends.",
-          "type": "boolean"
+        "type_settings": {
+          "description": "The type settings of the session, as type_settings of the run documents. Absent when the session has none.",
+          "$ref": "https://qory.dev/contracts/run/v1/documents.schema.json#/$defs/type_settings"
         },
         "inputs": {
           "description": "The input of the session, as inputs of the run documents. qory writes it to the inputs file of the session.",

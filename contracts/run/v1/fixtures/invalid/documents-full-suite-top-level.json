@@ -21,8 +21,9 @@
   },
   "workflow": "hello",
   "harness_hidden": true,
-  "time_limit_minutes": 90,
-  "full_suite": "true",
+  "time_limit_minutes": 15,
+  "shared_run": true,
+  "full_suite": true,
   "inputs": {
     "version": 1,
     "work_item": {

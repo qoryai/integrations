@@ -9,6 +9,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Upgrading
 
+- Read `full_suite` from `type_settings`, in the run documents and in the answer to the
+  next-session call. A document or an answer with `full_suite` at the top level fails its
+  schema, because `full_suite` is no member of either. In Go, `Documents.FullSuite` and
+  `NextSessionAnswer.FullSuite` are `Documents.TypeSettings` and
+  `NextSessionAnswer.TypeSettings`, a `json.RawMessage`. `NextSessionAnswer` writes
+  `type_settings` when it is set, and an answer for a session no longer requires it.
 - Change each reader and writer of the `submission` entry of the change feed to the
   `change_request` entry. No release had the members that change here.
   - The `submission` entry kind is gone. So are `submissions: true` in the `source` role
@@ -55,7 +61,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `documents.schema.json`. A step `workflow` runs the workflow named in `workflow`. A step
   `workflow` requires `workflow`. `workflow` still requires `harness_hidden`, and
   `harness` or `target_version`. `run_settings`, `time_limit_minutes`, `shared_run` and
-  `full_suite` apply to every step `workflow`.
+  `type_settings` apply to every step `workflow`.
   `subject` is `{kind, id, url, title}`, and a document with `work_item` fails the
   schema. `kind` is a snake_case string of at most 64 characters, with `work_item` as
   its first value. `id` is 1 to 200 characters on one line, and starts with `wi_` when
@@ -379,8 +385,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   control plane reads the newest verdict that the run stored after the previous step. The
   answer, `next-session-answer.schema.json`, is one of two shapes, and an answer with the
   members of both fails. `{"next": "session", ...}` has `session`, the control plane's
-  number of the session in the run; `workflow`; `time_limit_minutes`; `full_suite`;
-  `inputs`; and optionally `model_choice` and `model_provider_credential_name`.
+  number of the session in the run; `workflow`; `time_limit_minutes`; `inputs`; and
+  optionally `type_settings`, `model_choice` and `model_provider_credential_name`.
   `{"next": "end"}` has no other member. qory sends the request through Forager's link,
   and the gateway forwards it to the control plane; a container cannot send it. In Go,
   `NextSessionRequest`, `NextSessionAnswer`, `NextSessionKindSession` and
@@ -429,13 +435,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `reason`, the reasons `timeout` and `interrupted` are for a `cancelled` session only,
   and the reason `gateway_lost` is for a `failed` session only.
 - The run documents of the step `explore` can contain `time_limit_minutes`,
-  `shared_run` and `full_suite`, and `contracts.Documents` has them as `TimeLimitMinutes`,
-  `SharedRun` and `FullSuite`. The run documents are the documents of session 1.
+  `shared_run` and `type_settings`, and `contracts.Documents` has them as
+  `TimeLimitMinutes`, `SharedRun` and `TypeSettings`. The run documents are the documents
+  of session 1.
   `time_limit_minutes` is the time limit of session 1, in minutes, from 1 to 1440.
   `shared_run` is `true` when qory sends the next-session request after each session.
-  `full_suite` is `true` when session 1 runs the full test suite after the agent ends.
-  `shared_run` and `full_suite` left out are the same as `false`. A run of the step
-  `prebuild` has none of the three.
+  `type_settings` is an object whose members this contract does not list. `shared_run`
+  left out is the same as `false`. A run of the step `prebuild` has none of the three.
 - The run documents of every run of the step `explore` contain `run_settings`, and
   `contracts.Documents.RunSettings` is set for each of them. A run of the step
   `prebuild` has no `run_settings`. The runtime of session 1 is `run_settings.runtime`,
@@ -783,7 +789,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The run documents, `contracts/run/v1/documents.schema.json`: the object that a machine
   receives, signed, when it redeems its run code. `step`, `domain` and `inputs` are
   present for every run, and `access`, `target`, `target_version`, `work_item`,
-  `run_settings`, `time_limit_minutes`, `shared_run`, `full_suite`, `workflow`,
+  `run_settings`, `time_limit_minutes`, `shared_run`, `type_settings`, `workflow`,
   `harness_hidden`, `harness`, `image_destination`, `environment_destination` and
   `environment_image` by step. `target_version` is the exact
   version at which the control plane checked for the harness file of the target.
@@ -846,6 +852,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Changed
 
+- `full_suite` moves into `type_settings`, a new member of the run documents and of the
+  next-session answer for a session. `type_settings` is an object whose members this
+  contract does not list. The process of the workspace type registers its schema, and
+  the schema of the software factory requires `full_suite` in it. The run documents have
+  it only for the step `workflow`. The answer for a session had `full_suite` as a required
+  member and has `type_settings` as an optional one.
 - A target has the ref of one of the adapter's collections, `collection`. It may have an
   `address` with `system` and `path`. Before, `system` and `path` were required. The place
   of a run in another system, such as an advertising profile, has a `collection` and no

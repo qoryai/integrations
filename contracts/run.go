@@ -39,12 +39,12 @@ const MaxInputs = 768 << 10
 // Workflow, and runs the workflow named in Workflow. A run of the step prebuild has
 // Access, Target, ImageDestination and exactly one of EnvironmentDestination and
 // EnvironmentImage, and no TargetVersion, Subject, RunSettings, TimeLimitMinutes,
-// SharedRun, FullSuite, Workflow, HarnessHidden or Harness. TimeLimitMinutes, SharedRun
-// and FullSuite are set only for the step workflow. The documents are the documents of
-// session 1: its Workflow, RunSettings, TimeLimitMinutes, FullSuite and Inputs. With
-// SharedRun, each later session comes from the answer to the next-session request, as
-// [NextSessionAnswer] describes. Inputs is the step's input as the control plane wrote
-// it, whose shape belongs to the step's schema.
+// SharedRun, TypeSettings, Workflow, HarnessHidden or Harness. TimeLimitMinutes,
+// SharedRun and TypeSettings are set only for the step workflow. The documents are the
+// documents of session 1: its Workflow, RunSettings, TimeLimitMinutes, TypeSettings and
+// Inputs. With SharedRun, each later session comes from the answer to the next-session
+// request, as [NextSessionAnswer] describes. Inputs is the step's input as the control
+// plane wrote it, whose shape belongs to the step's schema.
 type Documents struct {
 	Step   string          `json:"step"`
 	Domain string          `json:"domain"`
@@ -98,10 +98,13 @@ type Documents struct {
 	// same: qory sends no request, and the run has session 1 only. It is set only for
 	// the step workflow.
 	SharedRun bool `json:"shared_run,omitempty"`
-	// FullSuite is true when session 1 runs the full test suite after the agent ends.
-	// False and absent in the JSON are the same. The flag of each later session is the
-	// FullSuite of the [NextSessionAnswer]. It is set only for the step workflow.
-	FullSuite bool `json:"full_suite,omitempty"`
+	// TypeSettings is the type_settings object of session 1, the settings that belong to
+	// the type of the workspace. It is a JSON object whose members this contract does not
+	// list: the process of the workspace type registers its schema, and the schema of
+	// the software factory requires full_suite in it. The type_settings of each later
+	// session is the TypeSettings of the [NextSessionAnswer]. It is set only for the
+	// step workflow.
+	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
 	// Workflow is set exactly when HarnessHidden is, and for every run of the step
 	// workflow: the workflow of the harness that
 	// the run starts, such as hello. qory starts the first of these that the harness
@@ -560,8 +563,8 @@ type NextSessionRequest struct {
 // NextSessionAnswer is the answer to the next-session request, run/v1
 // next-session-answer.schema.json: the next session of the run, with Next
 // [NextSessionKindSession], or the end of the run, with Next [NextSessionKindEnd] and
-// no other member. The session shape has Session, Workflow, TimeLimitMinutes,
-// FullSuite and Inputs, and optionally ModelChoice and ModelProviderCredentialName.
+// no other member. The session shape has Session, Workflow, TimeLimitMinutes and
+// Inputs, and optionally TypeSettings, ModelChoice and ModelProviderCredentialName.
 // MarshalJSON writes the members of the shape that Next selects, and no member of the
 // other shape. Reading takes the members of either shape and leaves the others at their
 // zero values.
@@ -590,8 +593,9 @@ type NextSessionAnswer struct {
 	ModelProviderCredentialName string `json:"model_provider_credential_name,omitempty"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 1 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
-	// FullSuite is true when the session runs the full test suite after the agent ends.
-	FullSuite bool `json:"full_suite,omitempty"`
+	// TypeSettings is the type_settings object of the session, as [Documents.TypeSettings].
+	// It is written only when it is set.
+	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
 	// Inputs is the input of the session, as [Documents.Inputs].
 	Inputs json.RawMessage `json:"inputs,omitempty"`
 }
@@ -603,8 +607,8 @@ const (
 )
 
 // MarshalJSON writes a. For Next "end" it writes {"next":"end"} and nothing else. For
-// Next "session" it writes the members of the session shape, and writes full_suite
-// when it is false. It returns an error for any other Next, the empty Next included,
+// Next "session" it writes the members of the session shape, and writes type_settings
+// when it is set. It returns an error for any other Next, the empty Next included,
 // and for a session answer whose Inputs is empty, which would be written as null.
 func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 	switch a.Next {
@@ -626,10 +630,10 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		ModelChoice                 *ModelChoice    `json:"model_choice,omitempty"`
 		ModelProviderCredentialName string          `json:"model_provider_credential_name,omitempty"`
 		TimeLimitMinutes            int             `json:"time_limit_minutes"`
-		FullSuite                   bool            `json:"full_suite"`
+		TypeSettings                json.RawMessage `json:"type_settings,omitempty"`
 		Inputs                      json.RawMessage `json:"inputs"`
 	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelProviderCredentialName,
-		a.TimeLimitMinutes, a.FullSuite, a.Inputs})
+		a.TimeLimitMinutes, a.TypeSettings, a.Inputs})
 }
 
 // RunOutcome is a run's end, run/v1 outcome.schema.json, titled Run end: how the run
