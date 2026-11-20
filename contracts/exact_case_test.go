@@ -7,6 +7,9 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"reflect"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -49,12 +52,62 @@ func TestEveryMemberTagIsExactCase(t *testing.T) {
 					continue
 				}
 				tag := field.Tag.Value
-				if !strings.Contains(tag, `json:"-"`) && !strings.Contains(tag, ",case:strict") {
-					t.Errorf("%s: the tag %s lacks case:strict", fset.Position(field.Pos()), tag)
+				if !strictJSONTag(tag) && !strings.Contains(tag, `json:"-"`) {
+					t.Errorf("%s: the tag %s lacks case:strict in its json key", fset.Position(field.Pos()), tag)
 				}
 			}
 			return true
 		})
+	}
+}
+
+// strictJSONTag reports whether the struct tag literal tag, with its back quotes, has the
+// option case:strict in its json key.
+func strictJSONTag(tag string) bool {
+	raw, err := strconv.Unquote(tag)
+	if err != nil {
+		return false
+	}
+	v, _ := reflect.StructTag(raw).Lookup("json")
+	return slices.Contains(strings.Split(v, ",")[1:], "case:strict")
+}
+
+func TestStrictJSONTag(t *testing.T) {
+	for tag, want := range map[string]bool{
+		"`json:\"a,omitempty,case:strict\"`":  true,
+		"`json:\"a,case:strict\" yaml:\"a\"`": true,
+		"`yaml:\"a,case:strict\"`":            false,
+		"`json:\"a\" yaml:\"a,case:strict\"`": false,
+		"`json:\"a,case:strictly\"`":          false,
+	} {
+		if got := strictJSONTag(tag); got != want {
+			t.Errorf("strictJSONTag(%s) = %v, want %v", tag, got, want)
+		}
+	}
+}
+
+// TestCaseStrictIsHonoured probes the option on the toolchain that builds the tests, with
+// a struct of its own. A build with GOEXPERIMENT=nojsonv2 has a decoder of encoding/json
+// that ignores the option, and fails here.
+func TestCaseStrictIsHonoured(t *testing.T) {
+	type probe struct {
+		State string `json:"state,case:strict"`
+	}
+	for name, decode := range decoders {
+		for in, want := range map[string]string{
+			`{"STATE":"x"}`:             "",
+			`{"state":"x"}`:             "x",
+			`{"STATE":"a","state":"b"}`: "b",
+			`{"state":"b","STATE":"a"}`: "b",
+		} {
+			var p probe
+			if err := decode([]byte(in), &p); err != nil {
+				t.Fatal(err)
+			}
+			if p.State != want {
+				t.Errorf("case:strict is not honoured by this build; the readers of contracts match member names regardless of case (%s read %s as %q, want %q)", name, in, p.State, want)
+			}
+		}
 	}
 }
 

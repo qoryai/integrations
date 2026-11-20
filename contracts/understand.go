@@ -33,9 +33,9 @@ const (
 // definesPointer for the members it defines. Below a json.RawMessage or an interface, any
 // pointer resolves, since the type does not define what is there.
 //
-// A reader that decodes b into v ignores a member that v does not have, and a member
-// whose name differs in letter case, such as MUST_UNDERSTAND, is another member. It calls
-// CheckMustUnderstand first, and refuses the document when it returns an error.
+// A reader that decodes b into v ignores a member that v does not have, even one that
+// differs only in letter case, such as MUST_UNDERSTAND. It calls CheckMustUnderstand
+// first, and refuses the document when it returns an error.
 //
 // CheckMustUnderstand returns an error in these cases, which follow the limits of the
 // schemas:

@@ -1028,8 +1028,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   release, a member such as `MUST_UNDERSTAND` or `STATE` set the field of `must_understand`
   or `state`, because `encoding/json` ignores letter case. The schemas treat such a member
   as undefined, so the reader and the schema disagreed. Each `json` tag in the `contracts`
-  package has the option `case:strict`, which `encoding/json` and `encoding/json/v2` both
-  honour. `CheckMustUnderstand`, `Tier` and `HarnessSection` read the same way.
+  package has the option `case:strict`. In the default build of Go 1.27, where the
+  `jsonv2` experiment is on, `encoding/json` and `encoding/json/v2` both honour it.
+  A program built with `GOEXPERIMENT=nojsonv2` reads these members regardless of case.
+  `CheckMustUnderstand`, `Tier` and `HarnessSection` read the same way.
 
 ### Removed
 
