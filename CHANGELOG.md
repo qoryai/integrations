@@ -260,9 +260,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
     the machines contract and the seven objects of `explore/v1/inputs.schema.json` ignore
     an unknown member. Each root of these, except the explore inputs, has an optional
     `must_understand`. The explore inputs use the list of the run documents.
-  - The contract defines no failure for a machines answer, a provisioner answer or a
-    refusal that lists a pointer the reader does not define. The reader refuses the
-    document, as it refuses any document that the schema refuses.
+  - A writer marks a member that the reader must read by listing its pointer in
+    `must_understand`, and the reader refuses a document that lists a pointer it does not
+    define. A machines answer that lists such a pointer is a failure of kind `defect`. The
+    control plane refuses a release or an outcome with such a pointer, 400
+    `invalid_request`. For the outcome, the message starts with the fix and names the
+    pointer. The contract describes no further handling for the provisioner claim answer
+    and the provisioner refusal.
   - A writer's test validates against a closed copy of the schema, so a misspelled
     member fails it. The copy covers the schema and each schema of this repository that
     it refers to.
