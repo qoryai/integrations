@@ -481,10 +481,11 @@ type Deliver struct {
 	Send string `json:"send,case:strict"`
 }
 
-// Check reports the first rule of documents.schema.json that the documents break and
-// that the schema does not express: no two entries of Deliver have the same Type, no two
-// entries of FurtherTargets have the same Collection, and none has the Collection of
-// Target. Each message starts with the fix. A reader of run documents calls it after it decodes them and after it
+// Check reports the first rule of documents.schema.json that the documents
+// break and that the schema does not express: no two entries of Deliver have
+// the same Type, no two entries of FurtherTargets have the same Collection,
+// and none has the Collection of Target. Each message starts with the fix. A
+// reader of run documents calls it after it decodes them and after it
 // validates them against the schema.
 func (d Documents) Check() error {
 	types := make(map[string]bool, len(d.Deliver))
