@@ -454,10 +454,6 @@ type ChangePrevious struct {
 	Address *ChangeAddress `json:"address,omitempty,case:strict"`
 }
 
-// DraftOpen is the value of QORY_SUBMIT_DRAFT that asks the submit program to open a
-// draft, as the submit program contract describes.
-const DraftOpen = "open"
-
 // The members of each kind of entry, as the schema defines them. MarshalJSON writes them,
 // and [CheckChangeMustUnderstand] resolves a pointer through them.
 type (
@@ -642,31 +638,6 @@ type ChangesSubmitted struct {
 	// MustUnderstand lists the members of the body that the control plane must
 	// understand, as JSON Pointers counted from the body: see [CheckMustUnderstand].
 	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
-}
-
-// The states and actions of a [SubmittedDraft].
-const (
-	DraftStateDraft  = "draft"
-	DraftStateOpen   = "open"
-	DraftStateClosed = "closed"
-	DraftStateMerged = "merged"
-	DraftOpened      = "opened"
-	DraftUpdated     = "updated"
-	DraftKept        = "kept"
-)
-
-// SubmittedDraft is the draft after the adapter's call: Number, URL, Title, State
-// [DraftStateDraft], [DraftStateOpen], [DraftStateClosed] or [DraftStateMerged], and
-// Action [DraftOpened], [DraftUpdated] or [DraftKept]. A draft that a person closed or
-// merged is reported with [DraftKept] and its real state, and the adapter does not edit
-// it. A submit program prints these values (submit_program.go); a reply of the
-// pull-request kind may have them in its Data as example data.
-type SubmittedDraft struct {
-	Number int64  `json:"number,case:strict"`
-	URL    string `json:"url,case:strict"`
-	Title  string `json:"title,case:strict"`
-	State  string `json:"state,case:strict"`
-	Action string `json:"action,case:strict"`
 }
 
 // ConnectPass is the payload of a connect pass, connect-pass.schema.json.

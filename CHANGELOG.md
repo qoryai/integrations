@@ -14,6 +14,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   A `reply` whose `text` has such a line passes `changes.schema.json`. A kind that needs
   marker lines defines the rule: the artifact type of the kind and the adapter that
   applies it. The submit program contract keeps its marker lines.
+- Take the draft names of the Go package from the submit program, not from the change
+  request reply. `DraftOpen`, `DraftStateDraft`, `DraftStateOpen`, `DraftStateClosed`,
+  `DraftStateMerged`, `DraftOpened`, `DraftUpdated`, `DraftKept` and `SubmittedDraft`
+  are in `submit_program.go`, with the same values. The submit program uses all of them,
+  and `SubmitResult.Draft` is a `*SubmittedDraft`. No Go name of the change request
+  reply is a draft name.
 - Take the rules of the `pull-request` kind from the artifact type of the kind and from
   the adapter that applies it, not from the README of the integration contract. The
   README had a section on the kind: the members of `data`, how an adapter finds a draft
@@ -456,11 +462,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   an access token, a secret or a header in it. A failure of a comment has no `detail`.
   An adapter that gets a `change_kind` that it did not list sends `refused` with a
   `detail`.
-- In Go, `ChangesSubmitted` and `SubmittedDraft` are added. `ChangesFailed` has
-  `ChangeRequestID`, `Target` and `Detail`. The actions of a reply are `ChangeCreated`,
-  `ChangeUpdated` and `ChangeKept`. A draft has the states `DraftStateDraft`,
-  `DraftStateOpen`, `DraftStateClosed` and `DraftStateMerged`, and the actions
-  `DraftOpened`, `DraftUpdated` and `DraftKept`.
+- In Go, `ChangesSubmitted` is added. `ChangesFailed` has `ChangeRequestID`, `Target` and
+  `Detail`. The actions of a reply are `ChangeCreated`, `ChangeUpdated` and `ChangeKept`.
+  The reply has no draft type: its `data` is the part of the kind.
 - The README of the integration contract says that the artifact type of a kind defines the
   kind, and that the adapter that applies it defines its rules. The `pull-request` kind
   is an example. The README keeps the section on the submit program.
