@@ -461,6 +461,35 @@ func TestATitleOfOnlySpacesZWNJAndZWJIsRefused(t *testing.T) {
 	}
 }
 
+// TestACommentAuthorNeedsACharacterThatIsNotASpaceZWNJOrZWJ pins that author_name of a
+// comment entry has the same rule as a change request title.
+func TestACommentAuthorNeedsACharacterThatIsNotASpaceZWNJOrZWJ(t *testing.T) {
+	feed := compile(t, "changes.schema.json")
+	for _, c := range []struct {
+		name, author string
+		ok           bool
+	}{
+		{"a zero-width joiner alone", "\u200d", false},
+		{"a zero-width non-joiner and spaces", "\u200c  ", false},
+		{"a letter and a zero-width joiner", "A\u200d", true},
+		{"a tag character", "A\U000E0041", false},
+	} {
+		var doc map[string]any
+		if err := json.Unmarshal(read(t, "fixtures/adapter/changes/comment.json"), &doc); err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range doc["changes"].([]any) {
+			if m := e.(map[string]any); m["kind"] == "comment" {
+				m["author_name"] = c.author
+			}
+		}
+		b, _ := json.Marshal(doc)
+		if err := validate(feed, b); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+}
+
 // TestAPreviousOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty pins the ruling for
 // `previous: {"zz": 1}` of a change request. The schema accepts it, Go reads an empty
 // ChangePrevious, and the closed copy refuses it at previous.

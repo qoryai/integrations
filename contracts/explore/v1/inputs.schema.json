@@ -182,7 +182,7 @@
   },
   "$defs": {
     "text": {
-      "description": "Text that may span lines, by the character rule of a prose line (https://qory.dev/contracts/integration/v1/description.schema.json, $defs.line), except that tab, line feed and carriage return are allowed: no other control character (category Cc), no U+2028 or U+2029, and no format character (category Cf) other than U+200C and U+200D.",
+      "description": "Text that may span lines. It has the character rule of a prose line (https://qory.dev/contracts/integration/v1/description.schema.json, $defs.line), except that tab, line feed and carriage return are allowed: no other control character (category Cc), no U+2028 or U+2029, and no format character (category Cf) other than U+200C and U+200D.",
       "type": "string",
       "pattern": "^(?:[^\\p{Cc}\\p{Cf}\u2028\u2029]|[\u0009\u000a\u000d\u200c\u200d])*$"
     },

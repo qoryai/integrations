@@ -342,7 +342,7 @@ func submitDraftValue(key, value, system string) error {
 			return fmt.Errorf("the title has %d characters, over the limit of %d", n, submitMaxTitle)
 		}
 		if !submitRules().line.MatchString(value) || !submitRules().title.MatchString(value) {
-			return errors.New("the title has a control or format character, or only spaces")
+			return errors.New("the title has a control or format character, or only spaces, U+200C and U+200D")
 		}
 	case SubmitKeyDraftState:
 		if !slices.Contains([]string{DraftStateDraft, DraftStateOpen, DraftStateClosed, DraftStateMerged}, value) {

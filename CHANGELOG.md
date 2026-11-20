@@ -1045,8 +1045,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - These members have a copy of the pattern, because their length limit is above 300
     or they allow tab, line feed and carriage return: the failure `detail`, the account
     `title` of a grant, and the explore inputs `text`. `text` allows those three controls.
-  - A change request title also needs a character that is not a space, U+200C or U+200D.
-    Before this release, a title of U+200D alone was valid. A guide line of U+200D alone
+  - A change request title and the `author_name` of a comment also need a character that is
+    not a space, U+200C or U+200D. Before this release, a value of U+200D alone was valid. A guide line of U+200D alone
     stays valid.
   - The rule follows the Unicode version of the Go toolchain that builds the program
     (Unicode 17.0.0 with Go 1.27.4). A later Unicode version can add characters to Cf.

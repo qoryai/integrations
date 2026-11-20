@@ -27,7 +27,7 @@
       "$ref": "definitions.schema.json#/$defs/target"
     },
     "detail": {
-      "description": "The cause of the failure of a change request, one line of 1 to 1000 characters: first what to do about it, then the target's status and message, such as \"Shorten the title, then try again. The target returned 422: title is too long.\" Optional with every reason of a change request. The adapter never puts an access token, a secret or a header in it. It has the character rule of a prose line (description.schema.json, $defs.line): no control character, so no line break, no U+2028 or U+2029, and no format character (category Cf) other than U+200C and U+200D. A report about a comment has no detail: the control plane returns 400 invalid_request for it.",
+      "description": "The cause of the failure of a change request: one line of 1 to 1000 characters. Write first what to do about it, then the target's status and message, such as \"Shorten the title, then try again. The target returned 422: title is too long.\" Optional with every reason of a change request. The adapter never puts an access token, a secret or a header in it. It has the character rule of a prose line (description.schema.json, $defs.line): no control character, so no line break, no U+2028 or U+2029, and no format character (category Cf) other than U+200C and U+200D. A report about a comment has no detail: the control plane returns 400 invalid_request for it.",
       "type": "string",
       "minLength": 1,
       "maxLength": 1000,
