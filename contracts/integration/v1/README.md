@@ -43,12 +43,12 @@ A writer may add a member, and an older reader reads the rest.
 - The Forager contract defines the `auth` and the `format` of an API. It also defines the
   `credential` of `run-credential-answer.schema.json` and its `apply` items. These objects
   refuse an undefined member. The schema accepts a pointer to `auth` and `format` and
-  refuses a pointer below them. For `credential`, it accepts only a pointer to `token`
-  and to `apply` with its `hosts`.
+  refuses a pointer below them. For `credential`, it accepts a pointer to `/credential`
+  itself, to `token`, and to `apply` with its `hosts`.
 - The documents that carry a secret ignore an undefined member like any other. They are
   `adapter-secrets`, `adapter-secrets-answer`, `adapter-secrets-plaintext`,
-  `run-credential` and `run-credential-answer`. They still contain no key or secret that
-  the contract does not define. The schema refuses three members by name: `values` in
+  `run-credential` and `run-credential-answer`. A writer sends no key or secret in a member
+  that the contract does not define. The schema refuses three members by name: `values` in
   `sealed`, `token` in an `apply` item, and `placeholders` in a `credential`.
 - `minProperties` counts members, defined or not. An object with only an undefined member,
   such as `{"zz": 1}`, reads as empty in two places. `previous` of a change then has no
@@ -270,12 +270,12 @@ pointer of an entry is counted from the entry, such as `/target/collection`.
   `contracts.CheckChangeMustUnderstand` returns that text.
 - The artifact type of the `change_kind` defines `data`, so this contract does not. The
   schema accepts any pointer below `data`. The adapter checks it against the artifact
-  type. When the artifact type does not define the pointer, the adapter reports the entry
-  failed, as it does for a pointer that this contract does not define.
+  type. If the artifact type does not define the pointer, the adapter reports the entry
+  failed. That is the report for a pointer that this contract does not define.
 - The replies `changes-submitted.schema.json` and `changes-failed.schema.json` have a
   `must_understand` at their root. The control plane ignores an undefined member of a
-  reply, unless the list contains it. An adapter sends only the members of the revision that
-  the control plane implements.
+  reply, unless the list contains it. An adapter sends only the members of the revision
+  that the control plane implements.
 - The `target` and the `address` in a reply are shared with the entries. They ignore an
   undefined member.
 

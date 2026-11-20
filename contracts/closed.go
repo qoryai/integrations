@@ -13,12 +13,10 @@ import (
 // to. A writer's test validates against the closed copy, so a misspelled member fails the
 // test. See [CloseSchema].
 //
-// These schemas have a closed copy: description.schema.json, adapter.schema.json,
-// changes.schema.json, changes-submitted.schema.json, changes-failed.schema.json and
-// source-items.schema.json. The copy of source-items.schema.json closes the listing and the
-// person that the definitions share. CompileClosed returns an error for any other name,
-// because the copy of a schema that lists only some members of an object refuses members
-// that it defines.
+// Each schema of the integration contract except definitions.schema.json has a closed
+// copy. The copy of source-items.schema.json closes the listing and the person that the
+// definitions share. CompileClosed returns an error for any other name, because the copy
+// of a schema that lists only some members of an object refuses members that it defines.
 func CompileClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(Base, FS, name)
 }

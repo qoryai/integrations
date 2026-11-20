@@ -251,10 +251,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
     `resolve-answer`, `run-credential`, `run-credential-answer`, `setup-pass`,
     `source-collections`, `source-item-comments`, `source-items` and
     `sources-disconnect`. Each has an optional `must_understand` at its root.
-    The secret-bearing documents still contain no key or secret that the contract does not
-    define. The schema refuses three members by name: `values` in the `sealed` of
+    A writer sends no key or secret in a member that the contract does not define. The schema refuses three members by name: `values` in the `sealed` of
     `adapter-secrets` and `adapter-secrets-answer`, `token` in an `apply` item, and
-    `placeholders` in a credential.
+    `placeholders` in a credential. In this release `adapter-secrets` accepts and ignores
+    a root member `values`, `secrets` or `plaintext`, which it refused before. It still
+    refuses `values` inside `sealed`.
   - The replies `changes-submitted.schema.json` and `changes-failed.schema.json`, the
     body of `adapter.schema.json` and its `sync`, the request and the outcome of the
     run contract, the seven schemas of the provisioner contract, the eleven schemas of
@@ -264,9 +265,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - A writer marks a member that the reader must read by listing its pointer in
     `must_understand`. The reader refuses a document that lists a pointer it does not
     define. A machines answer that lists such a pointer is a failure of kind `defect`. The
-    control plane refuses a release or an outcome with such a pointer, 400
-    `invalid_request`. For the outcome, the message starts with the fix and names the
-    pointer. The contract describes no further handling for the provisioner claim answer
+    control plane refuses a release with such a pointer, 400 `invalid_request`, as it
+    refuses any body that breaks its schema. It refuses a batch whose
+    `dev.qory.run.exited` has such an outcome with `400 invalid_request`, as Forager
+    defines for a body its contract refuses. This contract defines no body for that
+    refusal. The contract describes no further handling for the provisioner claim answer
     and the provisioner refusal.
   - A writer's test validates against a closed copy of the schema, so a misspelled
     member fails it. The copy covers the schema and each schema of this repository that
@@ -295,11 +298,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `contracts.CompileClosed`, `contracts.CompileRunClosed`,
   `contracts.CompileProvisionerClosed`, `contracts.CompileMachinesClosed` and
   `contracts.CompileExploreClosed` compile the closed copy of a schema, and return an
-  error for a schema without one. Fifty schemas have a closed copy: 27 of the
-  integration contract, all but `definitions.schema.json`, four of the run contract (`documents`,
-  `next-session-answer`, `next-session-request` and `outcome`), the seven of the
-  provisioner contract, the eleven of the machines contract and `inputs` of the explore
-  contract. `contracts.CloseSchema` makes the copy of one file.
+  error for a schema without one. Fifty schemas have a closed copy:
+  - 27 of the integration contract, all but `definitions.schema.json`;
+  - four of the run contract: `documents`, `next-session-answer`, `next-session-request`
+    and `outcome`;
+  - the seven of the provisioner contract and the eleven of the machines contract;
+  - `inputs` of the explore contract.
+
+  `contracts.CloseSchema` makes the copy of one file.
 - `contracts.CheckMustUnderstand` returns an error for a document whose `must_understand`
   lists a pointer that a Go type does not define. It also returns an error for a repeated
   pointer, for null, for a string that is no JSON Pointer, for a pointer with a line

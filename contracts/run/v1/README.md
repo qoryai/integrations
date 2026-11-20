@@ -27,9 +27,10 @@ the outcome. It applies at the top level, and in `subject`, `run_settings`, `sub
 - Another schema defines the members below `inputs` and below
   `harness.harness.extensions`. The schema accepts any pointer there. No Go reader
   refuses a pointer such as `/inputs/zz`, because the inputs are a free map of the run.
-- The control plane refuses a request or an outcome whose `must_understand` lists a
-  pointer that it does not define, with 400 `invalid_request`. For an outcome, the message
-  of the refusal starts with the fix and names the pointer.
+- The control plane refuses a request whose `must_understand` lists a pointer that it does
+  not define, with 400 `invalid_request`. It refuses a batch whose `dev.qory.run.exited`
+  has such an outcome with `400 invalid_request`, as Forager defines for a body its
+  contract refuses. This contract defines no body for that refusal.
 - A reader refuses a bad value of a member that it defines.
 - `minProperties` counts members, defined or not. A harness selection with only an
   undefined member reads as empty. `exclude: {"zz": 1}` leaves nothing out. `only: {"zz": 1}`
