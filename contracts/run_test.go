@@ -1538,3 +1538,38 @@ func TestAHarnessSelectionWithOnlyAnUndefinedMemberIsWrittenBackEmpty(t *testing
 		}
 	}
 }
+
+// TestASelectionOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty pins the ruling for
+// `exclude: {"zz": 1}` and `only: {"zz": 1}` of a harness module in the run documents.
+// The schema accepts each, Go reads each as a set, empty selection, and the closed copy
+// refuses each at the selection.
+func TestASelectionOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty(t *testing.T) {
+	closed, err := contracts.CompileRunClosed("documents.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, member := range []string{"exclude", "only"} {
+		b, err := fs.ReadFile(contracts.RunFS, "fixtures/closed/documents-harness-module-"+member+"-undefined-member.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(compileRun(t, "documents.schema.json"), b); err != nil {
+			t.Errorf("%s: the schema refuses the document: %v", member, err)
+		}
+		if err := validate(closed, b); err == nil {
+			t.Errorf("%s: the closed copy accepts the document", member)
+		}
+		var d contracts.Documents
+		if err := json.Unmarshal(b, &d); err != nil {
+			t.Fatal(err)
+		}
+		m := d.Harness.Harness.Modules[0]
+		sel := m.Only
+		if member == "exclude" {
+			sel = m.Exclude
+		}
+		if sel == nil || !reflect.DeepEqual(*sel, contracts.HarnessSelection{}) {
+			t.Errorf("%s: Go reads %+v, want a set, empty selection", member, sel)
+		}
+	}
+}

@@ -15,8 +15,8 @@ against.
 ## Members a reader does not define
 
 A reader ignores a member that the schema of a document does not define, at any depth.
-The rule covers the run documents, the next-session answer, the next-session request and
-the outcome. It applies at the top level, and in `subject`, `run_settings`, `submit`,
+The rule covers the run documents, the next-session answer and the next-session request.
+It applies at the top level, and in `subject`, `run_settings`, `submit`,
 `harness`, `model_choice` and each other object inside them.
 
 - `must_understand` lists the members that the reader must understand. Each is a JSON
@@ -29,8 +29,12 @@ the outcome. It applies at the top level, and in `subject`, `run_settings`, `sub
   refuses a pointer such as `/inputs/zz`, because the inputs are a free map of the run.
 - The control plane refuses a request whose `must_understand` lists a pointer that it does
   not define, with 400 `invalid_request`. It refuses a batch whose `dev.qory.run.exited`
-  has such an outcome with `400 invalid_request`, as Forager defines for a body its
-  contract refuses. This contract defines no body for that refusal.
+  has an outcome whose `must_understand` lists a pointer that the outcome schema does not
+  define with `400 invalid_request`, as Forager defines for a body its contract refuses. This contract defines no body for that refusal.
+- The outcome has the members `state`, `reason` and `exit_code` of Forager's
+  `dev.qory.run.exited`. These members follow Forager's schema, which is closed and has no
+  `must_understand`. The outcome schema accepts a member that it does not define. The
+  control plane reads `state`, `reason` and `exit_code` from the event.
 - A reader refuses a bad value of a member that it defines.
 - `minProperties` counts members, defined or not. A harness selection with only an
   undefined member reads as empty. `exclude: {"zz": 1}` leaves nothing out. `only: {"zz": 1}`

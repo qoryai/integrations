@@ -257,19 +257,22 @@ change what an existing reader or program relies on, and notes it under Upgradin
     a root member `values`, `secrets` or `plaintext`, which it refused before. It still
     refuses `values` inside `sealed`.
   - The replies `changes-submitted.schema.json` and `changes-failed.schema.json`, the
-    body of `adapter.schema.json` and its `sync`, the request and the outcome of the
-    run contract, the seven schemas of the provisioner contract, the eleven schemas of
-    the machines contract and the seven objects of `explore/v1/inputs.schema.json` ignore
-    an unknown member. Each root of these, except the explore inputs, has an optional
+    body of `adapter.schema.json` and its `sync`, the request of the run contract, the
+    seven schemas of the provisioner contract, the eleven schemas of the machines contract
+    and the seven objects of `explore/v1/inputs.schema.json` ignore an unknown member. Each root of these, except the explore inputs, has an optional
     `must_understand`. The explore inputs use the list of the run documents.
+  - The outcome of the run contract has the members `state`, `reason` and `exit_code` of
+    Forager's `dev.qory.run.exited`. These members follow Forager's schema, which is closed
+    and has no `must_understand`. The outcome schema accepts a member that it does not
+    define, and the control plane reads `state`, `reason` and `exit_code` from the event.
   - A writer marks a member that the reader must read by listing its pointer in
     `must_understand`. The reader refuses a document that lists a pointer it does not
     define. A machines answer that lists such a pointer is a failure of kind `defect`. The
     control plane refuses a release with such a pointer, 400 `invalid_request`, as it
     refuses any body that breaks its schema. It refuses a batch whose
-    `dev.qory.run.exited` has such an outcome with `400 invalid_request`, as Forager
-    defines for a body its contract refuses. This contract defines no body for that
-    refusal. The contract describes no further handling for the provisioner claim answer
+    `dev.qory.run.exited` has an outcome whose `must_understand` lists a pointer that the
+    outcome schema does not define with `400 invalid_request`, as Forager defines for a
+    body its contract refuses. This contract defines no body for that refusal. The contract describes no further handling for the provisioner claim answer
     and the provisioner refusal.
   - A writer's test validates against a closed copy of the schema, so a misspelled
     member fails it. The copy covers the schema and each schema of this repository that
@@ -277,7 +280,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - `conformance.Description` and `integration-conformance` validate a description
     against the closed copy.
   - `fixtures/closed` contains the documents that the schema accepts and the closed copy
-    refuses: 135 documents in all contracts, of which 95 moved there from
+    refuses: 139 documents in all contracts, of which 95 moved there from
     `fixtures/invalid`. These fixtures moved there because a retired or secret member
     was a refusal until this release: `claim-answer-run-id`, `release-with-retry`,
     `grant-end-with-pass-nonce`, `read-public-with-grant-ref`, `refusal-supported-member`,

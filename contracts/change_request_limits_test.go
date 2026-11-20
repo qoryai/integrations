@@ -345,3 +345,24 @@ func TestAFailureDetailHasTheRuleOfALine(t *testing.T) {
 		t.Error("a report about a comment with a detail is accepted")
 	}
 }
+
+// TestAPreviousOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty pins the ruling for
+// `previous: {"zz": 1}` of a change request. The schema accepts it, Go reads an empty
+// ChangePrevious, and the closed copy refuses it at previous.
+func TestAPreviousOfOnlyAnUndefinedMemberIsAcceptedAndReadAsEmpty(t *testing.T) {
+	b := read(t, "fixtures/adapter/closed/changes-change-request-previous-undefined-member-only.json")
+	if err := validate(compile(t, "changes.schema.json"), b); err != nil {
+		t.Errorf("the schema refuses the document: %v", err)
+	}
+	if err := validate(compileClosed(t, "changes.schema.json"), b); err == nil {
+		t.Error("the closed copy accepts the document")
+	}
+	var c contracts.Changes
+	if err := json.Unmarshal(b, &c); err != nil {
+		t.Fatal(err)
+	}
+	p := c.Changes[0].Previous
+	if p == nil || *p != (contracts.ChangePrevious{}) {
+		t.Errorf("Go reads previous as %+v, want an empty ChangePrevious", p)
+	}
+}
