@@ -11,7 +11,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
-  ignores it and the closed copy refuses it. In Go, `Documents.FullSuite` and
+  ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
+  refuses it. In Go, `Documents.FullSuite` and
   `NextSessionAnswer.FullSuite` are `Documents.TypeSettings` and
   `NextSessionAnswer.TypeSettings`, a `json.RawMessage`. `NextSessionAnswer` writes
   `type_settings` when it is set. An answer for a session no longer requires

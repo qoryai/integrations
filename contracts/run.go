@@ -653,8 +653,8 @@ type NextSessionAnswer struct {
 	ModelProviderCredentialName string `json:"model_provider_credential_name,omitempty"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 1 to 1440.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
-	// TypeSettings is the type_settings object of the session, as [Documents.TypeSettings].
-	// It is written only when it is set.
+	// TypeSettings is the type_settings object of the session, as
+	// [Documents.TypeSettings]. It is written only when it is set.
 	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
 	// Inputs is the input of the session, as [Documents.Inputs].
 	Inputs json.RawMessage `json:"inputs,omitempty"`
