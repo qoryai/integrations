@@ -102,10 +102,11 @@ type Documents struct {
 	SharedRun bool `json:"shared_run,omitempty"`
 	// TypeSettings is the type_settings object of session 1, the settings that belong to
 	// the type of the workspace. It is a JSON object whose members this contract does not
-	// list: the process of the workspace type registers its schema. The type_settings of
-	// each later session is the TypeSettings of the [NextSessionAnswer]. It is set only
-	// for the step workflow. A pointer below it in MustUnderstand resolves, because the
-	// type does not define what is there.
+	// list: the process of the workspace type registers its schema, and the schema of
+	// the software factory requires full_suite in it. The type_settings of each later
+	// session is the TypeSettings of the [NextSessionAnswer]. It is set only for the
+	// step workflow. A pointer below it in MustUnderstand resolves, because the type
+	// does not define what is there.
 	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
 	// Workflow is set exactly when HarnessHidden is, and for every run of the step
 	// workflow: the workflow of the harness that

@@ -12,6 +12,13 @@ against.
 | `next-session-refusal.schema.json` | the control plane's coded refusal of the request |
 | `outcome.schema.json` | how the run ended |
 
+## Settings of the workspace type
+
+`type_settings` in the run documents and in the next-session answer contains the settings
+that belong to the type of the workspace. This contract lists none of its members. The
+process of the workspace type registers the schema of `type_settings`, and the schema of
+the software factory requires `full_suite` in it.
+
 ## Members a reader does not define
 
 A reader ignores a member that the schema of a document does not define, at any depth.

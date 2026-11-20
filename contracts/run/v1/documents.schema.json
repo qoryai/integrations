@@ -523,7 +523,7 @@
       "type": "boolean"
     },
     "type_settings": {
-      "description": "The settings that belong to the type of the workspace, as one object whose members this contract does not list. The process of the workspace type registers the schema of type_settings. In the run documents, it is the type_settings of session 1, and the type_settings of each later session is the type_settings of the answer to the next-session call. The run documents have it only for the step workflow. Its schema is not this contract's, so any member is accepted, and a pointer below type_settings in must_understand is accepted.",
+      "description": "The settings that belong to the type of the workspace, as one object whose members this contract does not list. The process of the workspace type registers the schema of type_settings, and the schema of the software factory requires full_suite in it: true runs the full test suite after the agent ends, and false runs none. In the run documents, it is the type_settings of session 1, and the type_settings of each later session is the type_settings of the answer to the next-session call. The run documents have it only for the step workflow. Its schema is not this contract's, so any member is accepted, and a pointer below type_settings in must_understand is accepted.",
       "type": "object"
     },
     "workflow": {
