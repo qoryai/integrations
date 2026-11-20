@@ -114,7 +114,7 @@ func (w *pointerWalker) walk(base string, node any, path string) {
 	}
 	if props, ok := m["properties"].(map[string]any); ok {
 		for name, sub := range props {
-			if name == "must_understand" {
+			if name == "must_understand" || sub == false {
 				continue
 			}
 			child := path + "/" + strings.ReplaceAll(strings.ReplaceAll(name, "~", "~0"), "/", "~1")

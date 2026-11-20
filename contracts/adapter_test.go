@@ -66,6 +66,16 @@ func compile(t *testing.T, name string) *jsonschema.Schema {
 	return s
 }
 
+// compileClosed compiles the closed copy of a schema of the contract, or fails the test.
+func compileClosed(t *testing.T, name string) *jsonschema.Schema {
+	t.Helper()
+	s, err := contracts.CompileClosed(name)
+	if err != nil {
+		t.Fatalf("%s: %v", name, err)
+	}
+	return s
+}
+
 // read reads a file of the contract, or fails the test.
 func read(t *testing.T, name string) []byte {
 	t.Helper()
@@ -208,8 +218,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-state-reason-too-long.json":                               {"source-items", "/items/0/state_reason maxLength"},
 		"source-items-time-fraction.json":                                       {"source-items", "/time pattern"},
 		"source-items-time-offset.json":                                         {"source-items", "/time pattern"},
-		"source-items-undefined-member.json":                                    {"source-items", "/ additionalProperties"},
-		"refusal-supported-member.json":                                         {"refusal", "/ additionalProperties"},
 		"source-items-url-http.json":                                            {"source-items", "/items/0/url pattern"},
 		"source-items-key-too-long.json":                                        {"source-items", "/items/0/key maxLength"},
 		"source-items-event-empty.json":                                         {"source-items", "/items minItems"},
@@ -217,14 +225,11 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-truncated-labels-twice.json":                              {"source-items", "/items/0/truncated uniqueItems"},
 		"source-items-truncated-state-reason.json":                              {"source-items", "/items/0/truncated/0 enum"},
 		"source-items-truncated-unknown-field.json":                             {"source-items", "/items/0/truncated/0 enum"},
-		"sources-disconnect-with-reason.json":                                   {"sources-disconnect", "/ additionalProperties"},
 		"sources-disconnect-without-connection-id.json":                         {"sources-disconnect", "/ required connection_id"},
 		"connect-return-refused-without-reason.json":                            {"connect-return", "/ required reason"},
 		"connect-return-linked-with-reason.json":                                {"connect-return", "/reason "},
 		"connect-return-unknown-outcome.json":                                   {"connect-return", "/outcome enum"},
-		"connect-return-undefined-member.json":                                  {"connect-return", "/ additionalProperties"},
 		"connect-pass-without-connection-id.json":                               {"connect-pass", "/ required connection_id"},
-		"connections-disconnect-undefined-member.json":                          {"connections-disconnect", "/ additionalProperties"},
 		"connections-disconnect-connection-id-adapter-id.json":                  {"connections-disconnect", "/connection_id pattern"},
 		"source-collections-part-10001.json":                                    {"source-collections", "/listing/part maximum"},
 		"source-collections-environment-ref-empty.json":                         {"source-collections", "/collections/0/environment_ref minLength"},
@@ -247,7 +252,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"source-items-url-port-0.json":                                          {"source-items", "/items/0/url pattern"},
 		"source-items-url-port-65536.json":                                      {"source-items", "/items/0/url pattern"},
 		"setup-pass-without-nonce.json":                                         {"setup-pass", "/ required nonce"},
-		"setup-pass-undefined-member.json":                                      {"setup-pass", "/ additionalProperties"},
 		"setup-pass-version-2.json":                                             {"setup-pass", "/version const"},
 		"setup-pass-adapter-id-connection-id.json":                              {"setup-pass", "/adapter_id pattern"},
 		"setup-pass-organisation-slug-upper-case.json":                          {"setup-pass", "/organisation_slug pattern"},
@@ -270,7 +274,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"grant-without-pass-nonce.json":                                         {"grant", "/ required pass_nonce"},
 		"grant-without-account.json":                                            {"grant", "/ required account"},
 		"grant-end-without-grant-ref.json":                                      {"grant-end", "/ required grant_ref"},
-		"grant-end-with-pass-nonce.json":                                        {"grant-end", "/ additionalProperties"},
 		"grant-account-without-ref.json":                                        {"grant", "/account required ref"},
 		"grant-account-title-line-feed.json":                                    {"grant", "/account/title pattern"},
 		"source-collections-without-grant-ref.json":                             {"source-collections", "/collections/0 required grant_ref"},
@@ -278,7 +281,8 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"grants-without-revision.json":                                          {"grants", "/ required revision"},
 		"changes-grant-status-taken-in.json":                                    {"changes", "/changes/0/status enum"},
 		"changes-grant-without-connection-id.json":                              {"changes", "/changes/0 required connection_id"},
-		"adapter-secrets-value-in-clear.json":                                   {"adapter-secrets", "/sealed additionalProperties"},
+		"adapter-secrets-value-in-clear.json":                                   {"adapter-secrets", "/sealed/values "},
+		"adapter-secrets-answer-value-in-clear.json":                            {"adapter-secrets-answer", "/sealed/values "},
 		"adapter-secrets-without-server-key.json":                               {"adapter-secrets", "/sealed required server_key"},
 		"adapter-secrets-answer-suite-chacha20.json":                            {"adapter-secrets-answer", "/sealed/suite const"},
 		"adapter-secrets-answer-enc-31-bytes.json":                              {"adapter-secrets-answer", "/sealed/enc pattern"},
@@ -298,7 +302,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"resolve-answer-not-covered-public.json":                                {"resolve-answer", "/results/0/public "},
 		"resolve-answer-public-without-public-ref.json":                         {"resolve-answer", "/results/0 required public_ref"},
 		"resolve-answer-public-ref-without-public.json":                         {"resolve-answer", "/results/0/public_ref "},
-		"read-public-with-grant-ref.json":                                       {"read-public", "/ additionalProperties"},
 		"read-public-without-path.json":                                         {"read-public", "/ required path"},
 		"read-path-leading-slash.json":                                          {"read", "/path pattern"},
 		"read-path-dot-dot.json":                                                {"read", "/path pattern"},
@@ -935,8 +938,8 @@ func TestSetupPassRoundTrips(t *testing.T) {
 }
 
 // TestASetupPassAcceptsTheOrganisationSlugAlone pins that setup-pass.schema.json accepts
-// a payload with organisation_slug, and still refuses one with organisation_slug and a
-// member the schema does not define, as it refuses one without organisation_slug.
+// a payload with organisation_slug, and accepts one with organisation_slug and a member
+// the schema does not define, which the closed copy refuses.
 func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
 	schema := compile(t, "setup-pass.schema.json")
 	b := read(t, "fixtures/adapter/setup-pass/with-organisation-slug.json")
@@ -947,10 +950,13 @@ func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
 	if bytes.Equal(extra, b) {
 		t.Fatal("with-organisation-slug.json contains no organisation_slug member")
 	}
-	err := validate(schema, extra)
+	if err := validate(schema, extra); err != nil {
+		t.Errorf("a setup pass payload with organisation_slug and organisation_name is refused: %v", err)
+	}
+	err := validate(compileClosed(t, "setup-pass.schema.json"), extra)
 	v, ok := err.(*jsonschema.ValidationError)
 	if !ok || strings.Join(leaves(v), "; ") != "/ additionalProperties" || !strings.Contains(err.Error(), "'organisation_name'") {
-		t.Errorf("a setup pass payload with organisation_slug and organisation_name is not refused for organisation_name alone: %v", err)
+		t.Errorf("the closed copy refuses a setup pass payload with organisation_slug and organisation_name for %v, want organisation_name alone", err)
 	}
 }
 

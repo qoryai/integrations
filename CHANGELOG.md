@@ -204,7 +204,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - Change each reader of the documents of the integration, run, provisioner, machines and
   explore contracts. A reader ignores a member that its schema does not define, in any
   object. Before, these schemas and the objects inside them refused such a member. The
-  `auth` and the `format` of an API are the exception.
+  objects that the Forager contract defines are the exception: the `auth` and the `format`
+  of an API, and the `credential` of a run credential answer with its `apply` items.
   - The optional `must_understand` of a document lists the members that the reader must
     understand. Each is a JSON Pointer (RFC 6901) counted from the document, such as
     `/run_settings/full_suite`. Before, it was a list of top-level member names.
@@ -242,6 +243,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
     `definitions.schema.json` ignore an unknown member too, in every schema that refers
     to them, among them the explore inputs, `source-collections.schema.json` and
     `source-items.schema.json`.
+  - Every other schema of the integration contract ignores an unknown member too:
+    `adapter-secrets`, `adapter-secrets-answer`, `adapter-secrets-plaintext`,
+    `connect-pass`, `connect-return`, `connections-disconnect`, `grant`, `grant-end`,
+    `grants`, `read`, `read-answer`, `read-public`, `refusal`, `resolve`,
+    `resolve-answer`, `run-credential`, `run-credential-answer`, `setup-pass`,
+    `source-collections`, `source-item-comments`, `source-items` and
+    `sources-disconnect`. Each has an optional `must_understand` at its root.
+    The secret-bearing documents still contain no key or secret that the contract does not
+    define. The schema refuses three members by name: `values` in the `sealed` of
+    `adapter-secrets` and `adapter-secrets-answer`, `token` in an `apply` item, and
+    `placeholders` in a credential.
   - The replies `changes-submitted.schema.json` and `changes-failed.schema.json`, the
     body of `adapter.schema.json` and its `sync`, the request and the outcome of the
     run contract, the seven schemas of the provisioner contract, the eleven schemas of
@@ -257,11 +269,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - `conformance.Description` and `integration-conformance` validate a description
     against the closed copy.
   - `fixtures/closed` contains the documents that the schema accepts and the closed copy
-    refuses: 103 documents in all contracts, of which 87 moved there from
+    refuses: 135 documents in all contracts, of which 95 moved there from
     `fixtures/invalid`. These fixtures moved there because a retired or secret member
-    was a refusal until this release: `claim-answer-run-id`, `release-with-retry`, the
-    outcome `end_code`, `action` and `message`, the request `verdict` and `attempt`, and
-    the machines `*-version.json` answers. The tests of the adapter `submit_module` and of
+    was a refusal until this release: `claim-answer-run-id`, `release-with-retry`,
+    `grant-end-with-pass-nonce`, `read-public-with-grant-ref`, `refusal-supported-member`,
+    `sources-disconnect-with-reason`, the outcome `end_code`, `action` and `message`, the
+    request `verdict` and `attempt`, and the machines `*-version.json` answers. The tests of the adapter `submit_module` and of
     the reply `targets` are inline in `run_test.go` and `change_request_limits_test.go`,
     and they now expect the reader to ignore the member. A reader ignores each of these
     members. Five removed fixtures came back:
@@ -276,9 +289,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `contracts.CompileClosed`, `contracts.CompileRunClosed`,
   `contracts.CompileProvisionerClosed`, `contracts.CompileMachinesClosed` and
   `contracts.CompileExploreClosed` compile the closed copy of a schema, and return an
-  error for a schema without one. Twenty-nine schemas have a closed copy: six of the
-  integration contract (`description`, `adapter`, `changes`, `changes-submitted`,
-  `changes-failed` and `source-items`), four of the run contract (`documents`,
+  error for a schema without one. Fifty schemas have a closed copy: 27 of the
+  integration contract, all but `definitions.schema.json`, four of the run contract (`documents`,
   `next-session-answer`, `next-session-request` and `outcome`), the seven of the
   provisioner contract, the eleven of the machines contract and `inputs` of the explore
   contract. `contracts.CloseSchema` makes the copy of one file.

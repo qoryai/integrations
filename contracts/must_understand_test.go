@@ -152,6 +152,28 @@ func understoodSchemas() []understood {
 		},
 	}
 	return append(list,
+		integrationUnderstood("adapter-secrets.schema.json", "adapter-secrets/upload.json", "/time", version2, nil),
+		integrationUnderstood("adapter-secrets-answer.schema.json", "adapter-secrets-answer/delivery.json", "/revision", version2, nil),
+		integrationUnderstood("adapter-secrets-plaintext.schema.json", "adapter-secrets-plaintext/two-secrets.json", "/secrets", version2, nil),
+		integrationUnderstood("connect-pass.schema.json", "connect-pass/payload.json", "/nonce", version2, nil),
+		integrationUnderstood("connect-return.schema.json", "connect-return/linked.json", "/outcome", version2, nil),
+		integrationUnderstood("connections-disconnect.schema.json", "connections-disconnect/acme-tracker.json", "/time", version2, nil),
+		integrationUnderstood("grant.schema.json", "grant/linked.json", "/account", version2, nil),
+		integrationUnderstood("grant-end.schema.json", "grant-end/ended.json", "/grant_ref", version2, nil),
+		integrationUnderstood("grants.schema.json", "grants/two-grants.json", "/grants", version2, nil),
+		integrationUnderstood("read.schema.json", "read/at-a-name.json", "/path", version2, nil),
+		integrationUnderstood("read-answer.schema.json", "read-answer/at-a-fixed-version.json", "/resolved_at", version2, nil),
+		integrationUnderstood("read-public.schema.json", "read-public/at-a-name.json", "/path", version2, nil),
+		integrationUnderstood("refusal.schema.json", "refusal/bad-request.json", "/error", func(m map[string]any) { m["error"] = json.Number("7") }, nil),
+		integrationUnderstood("resolve.schema.json", "resolve/two-addresses.json", "/addresses", version2, nil),
+		integrationUnderstood("resolve-answer.schema.json", "resolve-answer/one-covered.json", "/results", version2, nil),
+		integrationUnderstood("run-credential.schema.json", "run-credential/read-harness.json", "/purpose", version2, nil),
+		integrationUnderstood("run-credential-answer.schema.json", "run-credential-answer/read.json", "/credential", version2, regexp.MustCompile(`^/credential$|^/credential/apply/\d+$`)),
+		integrationUnderstood("setup-pass.schema.json", "setup-pass/payload.json", "/nonce", version2, nil),
+		integrationUnderstood("source-collections.schema.json", "source-collections/acme-tracker-part-1.json", "/collections", version2, nil),
+		integrationUnderstood("source-item-comments.schema.json", "source-item-comments/acme-tracker-complete.json", "/comments", version2, nil),
+		integrationUnderstood("source-items.schema.json", "source-items/acme-tracker-listing-1-part-1.json", "/items", version2, nil),
+		integrationUnderstood("sources-disconnect.schema.json", "sources-disconnect/code-host.json", "/collection_ref", version2, nil),
 		provisionerUnderstood("claim.schema.json", "claim/with-offers.json", "/wait_seconds", func(m map[string]any) { m["wait_seconds"] = json.Number("26") }),
 		provisionerUnderstood("claim-answer.schema.json", "claim-answer/machine.json", "/run_code", func(m map[string]any) { m["revision"] = json.Number("2") }),
 		provisionerUnderstood("dispatched.schema.json", "dispatched/with-external.json", "/time", version2),
@@ -172,6 +194,24 @@ func understoodSchemas() []understood {
 		exploreUnderstood(),
 		machinesUnderstood("make-answer.schema.json", "make-answer/make-answer.json", "/id", func(m map[string]any) { m["id"] = "" }),
 	)
+}
+
+// integrationUnderstood is the understood entry of a schema of the integration contract
+// whose fixtures are in fixtures/adapter/<dir>. free matches the object places that the
+// schema leaves to another contract, or nil.
+func integrationUnderstood(name, valid, known string, invalid func(m map[string]any), free *regexp.Regexp) understood {
+	base := strings.TrimSuffix(name, ".schema.json")
+	return understood{
+		name:     name,
+		open:     func() (*jsonschema.Schema, error) { return contracts.Compile(name) },
+		closed:   func() (*jsonschema.Schema, error) { return contracts.CompileClosed(name) },
+		read:     contracts.Document,
+		list:     func(t *testing.T) []string { return files(t, "fixtures/adapter/"+base) },
+		freePlac: free,
+		valid:    "fixtures/adapter/" + valid,
+		known:    known,
+		invalid:  invalid,
+	}
 }
 
 // provisionerUnderstood is the understood entry of a root schema of the provisioner
@@ -289,12 +329,33 @@ var closedSites = map[string][]string{
 		"/properties/roles/properties/source/properties/item_noun",
 		"/properties/roles/properties/source/properties/setup",
 	},
-	"integration/adapter.schema.json":           {"", "/properties/sync"},
-	"integration/changes.schema.json":           {"", "/$defs/change_request", "/$defs/change_request/properties/previous", "/$defs/collection", "/$defs/comment", "/$defs/grant", "/$defs/sync", "/$defs/watch", "/$defs/work_item"},
-	"integration/changes-submitted.schema.json": {""},
-	"integration/changes-failed.schema.json":    {""},
-	"integration/source-items.schema.json":      {},
-	"integration/definitions.schema.json":       {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
+	"integration/adapter.schema.json":                   {"", "/properties/sync"},
+	"integration/changes.schema.json":                   {"", "/$defs/change_request", "/$defs/change_request/properties/previous", "/$defs/collection", "/$defs/comment", "/$defs/grant", "/$defs/sync", "/$defs/watch", "/$defs/work_item"},
+	"integration/changes-submitted.schema.json":         {""},
+	"integration/changes-failed.schema.json":            {""},
+	"integration/source-items.schema.json":              {"", "/$defs/item"},
+	"integration/adapter-secrets.schema.json":           {"", "/properties/sealed"},
+	"integration/adapter-secrets-answer.schema.json":    {"", "/properties/sealed"},
+	"integration/adapter-secrets-plaintext.schema.json": {"", "/properties/secrets/items"},
+	"integration/connect-pass.schema.json":              {""},
+	"integration/connect-return.schema.json":            {""},
+	"integration/connections-disconnect.schema.json":    {""},
+	"integration/grant.schema.json":                     {"", "/properties/account"},
+	"integration/grant-end.schema.json":                 {""},
+	"integration/grants.schema.json":                    {"", "/properties/grants/items"},
+	"integration/read.schema.json":                      {""},
+	"integration/read-answer.schema.json":               {""},
+	"integration/read-public.schema.json":               {""},
+	"integration/refusal.schema.json":                   {""},
+	"integration/resolve.schema.json":                   {""},
+	"integration/resolve-answer.schema.json":            {"", "/$defs/result"},
+	"integration/run-credential.schema.json":            {""},
+	"integration/run-credential-answer.schema.json":     {""},
+	"integration/setup-pass.schema.json":                {""},
+	"integration/source-collections.schema.json":        {"", "/properties/collections/items"},
+	"integration/source-item-comments.schema.json":      {"", "/$defs/comment", "/properties/complete"},
+	"integration/sources-disconnect.schema.json":        {""},
+	"integration/definitions.schema.json":               {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
 	"run/documents.schema.json": {
 		"", "/$defs/harness", "/$defs/harness_base", "/$defs/harness_module", "/$defs/harness_section",
 		"/$defs/harness_section/properties/bind", "/$defs/harness_selection", "/$defs/harness_source",
@@ -313,7 +374,6 @@ var closedSites = map[string][]string{
 	"provisioner/refusal.schema.json":      {""},
 	"provisioner/release.schema.json":      {""},
 	"provisioner/definitions.schema.json":  {"/$defs/machine_spec"},
-	"integration/refusal.schema.json":      {},
 	"machines/check.schema.json":           {""},
 	"machines/check-answer.schema.json":    {""},
 	"machines/delete.schema.json":          {""},
@@ -410,7 +470,7 @@ func reachableFiles(t *testing.T, url string, seen map[string]bool) {
 // closed copies of the schemas reach no other file of those contracts.
 func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 	reached := map[string]bool{}
-	for _, name := range []string{"description", "adapter", "changes", "changes-submitted", "changes-failed", "source-items"} {
+	for _, name := range []string{"description", "adapter", "changes", "changes-submitted", "changes-failed", "source-items", "adapter-secrets", "adapter-secrets-answer", "adapter-secrets-plaintext", "connect-pass", "connect-return", "connections-disconnect", "grant", "grant-end", "grants", "read", "read-answer", "read-public", "refusal", "resolve", "resolve-answer", "run-credential", "run-credential-answer", "setup-pass", "source-collections", "source-item-comments", "sources-disconnect"} {
 		reachableFiles(t, contracts.Base+"/"+name+".schema.json", reached)
 	}
 	for _, name := range []string{"claim", "claim-answer", "dispatched", "machine-end", "machine-log", "refusal", "release"} {
@@ -599,6 +659,28 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		{"changes-submitted.schema.json", contracts.Base, contracts.Document, []string{"/data"}, contracts.ChangesSubmitted{}},
 		{"changes-failed.schema.json", contracts.Base, contracts.Document, nil, contracts.ChangesFailed{}},
 		{"adapter.schema.json", contracts.Base, contracts.Document, []string{"/description"}, contracts.Adapter{}},
+		{"adapter-secrets.schema.json", contracts.Base, contracts.Document, nil, contracts.AdapterSecrets{}},
+		{"adapter-secrets-answer.schema.json", contracts.Base, contracts.Document, nil, contracts.AdapterSecretsAnswer{}},
+		{"adapter-secrets-plaintext.schema.json", contracts.Base, contracts.Document, nil, contracts.AdapterSecretsPlaintext{}},
+		{"connect-pass.schema.json", contracts.Base, contracts.Document, nil, contracts.ConnectPass{}},
+		{"connect-return.schema.json", contracts.Base, contracts.Document, nil, contracts.ConnectReturn{}},
+		{"connections-disconnect.schema.json", contracts.Base, contracts.Document, nil, contracts.ConnectionsDisconnect{}},
+		{"grant.schema.json", contracts.Base, contracts.Document, nil, contracts.Grant{}},
+		{"grant-end.schema.json", contracts.Base, contracts.Document, nil, contracts.GrantEnd{}},
+		{"grants.schema.json", contracts.Base, contracts.Document, nil, contracts.Grants{}},
+		{"read.schema.json", contracts.Base, contracts.Document, nil, contracts.Read{}},
+		{"read-answer.schema.json", contracts.Base, contracts.Document, nil, contracts.ReadAnswer{}},
+		{"read-public.schema.json", contracts.Base, contracts.Document, nil, contracts.ReadPublic{}},
+		{"refusal.schema.json", contracts.Base, contracts.Document, nil, contracts.Refusal{}},
+		{"resolve.schema.json", contracts.Base, contracts.Document, nil, contracts.Resolve{}},
+		{"resolve-answer.schema.json", contracts.Base, contracts.Document, nil, contracts.ResolveAnswer{}},
+		{"run-credential.schema.json", contracts.Base, contracts.Document, nil, contracts.RunCredential{}},
+		{"run-credential-answer.schema.json", contracts.Base, contracts.Document, nil, contracts.RunCredentialAnswer{}},
+		{"setup-pass.schema.json", contracts.Base, contracts.Document, nil, contracts.SetupPass{}},
+		{"source-collections.schema.json", contracts.Base, contracts.Document, nil, contracts.SourceCollections{}},
+		{"source-item-comments.schema.json", contracts.Base, contracts.Document, nil, contracts.SourceItemComments{}},
+		{"source-items.schema.json", contracts.Base, contracts.Document, nil, contracts.SourceItems{}},
+		{"sources-disconnect.schema.json", contracts.Base, contracts.Document, nil, contracts.SourcesDisconnect{}},
 	} {
 		raw, err := c.read(c.name)
 		if err != nil {
@@ -936,7 +1018,7 @@ func TestOnlyTheClosableSchemasHaveAClosedCopy(t *testing.T) {
 		"changes-submitted.schema.json", "changes-failed.schema.json", "source-items.schema.json", "definitions.schema.json",
 		"read.schema.json", "source-collections.schema.json", "description.schema.json#/$defs/api"} {
 		_, err := contracts.CompileClosed(name)
-		want := !strings.HasPrefix(name, "definitions") && !strings.HasPrefix(name, "read") && !strings.HasPrefix(name, "source-collections") && !strings.Contains(name, "#")
+		want := !strings.HasPrefix(name, "definitions") && !strings.Contains(name, "#")
 		if (err == nil) != want {
 			t.Errorf("CompileClosed(%q): %v", name, err)
 		}
@@ -1049,17 +1131,7 @@ func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var v any = &contracts.Changes{}
-		switch name := path.Base(f); {
-		case strings.HasPrefix(name, "changes-submitted-"):
-			v = &contracts.ChangesSubmitted{}
-		case strings.HasPrefix(name, "changes-failed-"):
-			v = &contracts.ChangesFailed{}
-		case strings.HasPrefix(name, "adapter-"):
-			v = &contracts.Adapter{}
-		case strings.HasPrefix(name, "source-items-"):
-			v = &contracts.SourceItems{}
-		}
+		v := adapterClosedType(path.Base(f))
 		if err := json.Unmarshal(b, v); err != nil {
 			t.Errorf("%s: %v", f, err)
 		}
@@ -1181,4 +1253,34 @@ func TestTheDetailOfAnUnmetPointerStaysWithinItsLimit(t *testing.T) {
 			t.Errorf("%s: changes-failed.schema.json refuses the report: %v", c.name, err)
 		}
 	}
+}
+
+// adapterClosedType is a value of the Go type that reads the document of the closed
+// fixture with the file name name, chosen by the longest schema name that starts the name.
+func adapterClosedType(name string) any {
+	types := map[string]any{
+		"adapter": &contracts.Adapter{}, "adapter-secrets": &contracts.AdapterSecrets{},
+		"adapter-secrets-answer":    &contracts.AdapterSecretsAnswer{},
+		"adapter-secrets-plaintext": &contracts.AdapterSecretsPlaintext{},
+		"changes":                   &contracts.Changes{}, "changes-failed": &contracts.ChangesFailed{},
+		"changes-submitted": &contracts.ChangesSubmitted{}, "connect-pass": &contracts.ConnectPass{},
+		"connect-return": &contracts.ConnectReturn{}, "connections-disconnect": &contracts.ConnectionsDisconnect{},
+		"grant": &contracts.Grant{}, "grant-end": &contracts.GrantEnd{}, "grants": &contracts.Grants{},
+		"read": &contracts.Read{}, "read-answer": &contracts.ReadAnswer{}, "read-public": &contracts.ReadPublic{},
+		"refusal": &contracts.Refusal{}, "resolve": &contracts.Resolve{}, "resolve-answer": &contracts.ResolveAnswer{},
+		"run-credential": &contracts.RunCredential{}, "run-credential-answer": &contracts.RunCredentialAnswer{},
+		"setup-pass": &contracts.SetupPass{}, "source-collections": &contracts.SourceCollections{},
+		"source-item-comments": &contracts.SourceItemComments{}, "source-items": &contracts.SourceItems{},
+		"sources-disconnect": &contracts.SourcesDisconnect{},
+	}
+	best := ""
+	for k := range types {
+		if strings.HasPrefix(name, k+"-") && len(k) > len(best) {
+			best = k
+		}
+	}
+	if best == "" {
+		return &contracts.Changes{}
+	}
+	return types[best]
 }

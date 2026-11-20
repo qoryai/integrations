@@ -25,7 +25,8 @@ the outcome. It applies at the top level, and in `subject`, `run_settings`, `sub
 - A reader refuses a document whose `must_understand` lists a pointer to a member that
   it does not define. The schema accepts a pointer to a member that the schema defines.
 - Another schema defines the members below `inputs` and below
-  `harness.harness.extensions`. The schema accepts any pointer there.
+  `harness.harness.extensions`. The schema accepts any pointer there. No Go reader
+  refuses a pointer such as `/inputs/zz`, because the inputs are a free map of the run.
 - The control plane refuses a request whose `must_understand` lists a pointer that it does
   not define, with 400 `invalid_request`. The contract defines no answer for an outcome
   with such a list, so the control plane refuses it as it refuses any outcome that the

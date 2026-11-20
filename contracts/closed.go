@@ -104,7 +104,13 @@ func closeNode(n any, ptr string, instance bool, sites *[]string) any {
 			list := v.([]any)
 			sub := make([]any, len(list))
 			for i, s := range list {
-				sub[i] = closeNode(s, ptr+"/"+k+"/"+strconv.Itoa(i), k != "allOf", sites)
+				if k == "allOf" {
+					// A branch lists only some members of its object: another branch,
+					// possibly in another contract, defines the others.
+					sub[i] = s
+					continue
+				}
+				sub[i] = closeNode(s, ptr+"/"+k+"/"+strconv.Itoa(i), true, sites)
 			}
 			out[k] = sub
 		default:
@@ -133,16 +139,37 @@ func isObjectForm(v any) bool {
 
 // closable are the schemas that have a closed copy, by $id.
 var closable = map[string]bool{
-	Base + "/description.schema.json":             true,
-	Base + "/adapter.schema.json":                 true,
-	Base + "/changes.schema.json":                 true,
-	Base + "/changes-submitted.schema.json":       true,
-	Base + "/changes-failed.schema.json":          true,
-	Base + "/source-items.schema.json":            true,
-	RunBase + "/documents.schema.json":            true,
-	RunBase + "/next-session-answer.schema.json":  true,
-	RunBase + "/next-session-request.schema.json": true,
-	RunBase + "/outcome.schema.json":              true,
+	Base + "/adapter-secrets.schema.json":           true,
+	Base + "/adapter-secrets-answer.schema.json":    true,
+	Base + "/adapter-secrets-plaintext.schema.json": true,
+	Base + "/connect-pass.schema.json":              true,
+	Base + "/connect-return.schema.json":            true,
+	Base + "/connections-disconnect.schema.json":    true,
+	Base + "/grant.schema.json":                     true,
+	Base + "/grant-end.schema.json":                 true,
+	Base + "/grants.schema.json":                    true,
+	Base + "/read.schema.json":                      true,
+	Base + "/read-answer.schema.json":               true,
+	Base + "/read-public.schema.json":               true,
+	Base + "/refusal.schema.json":                   true,
+	Base + "/resolve.schema.json":                   true,
+	Base + "/resolve-answer.schema.json":            true,
+	Base + "/run-credential.schema.json":            true,
+	Base + "/run-credential-answer.schema.json":     true,
+	Base + "/setup-pass.schema.json":                true,
+	Base + "/source-collections.schema.json":        true,
+	Base + "/source-item-comments.schema.json":      true,
+	Base + "/source-items.schema.json":              true,
+	Base + "/sources-disconnect.schema.json":        true,
+	Base + "/description.schema.json":               true,
+	Base + "/adapter.schema.json":                   true,
+	Base + "/changes.schema.json":                   true,
+	Base + "/changes-submitted.schema.json":         true,
+	Base + "/changes-failed.schema.json":            true,
+	RunBase + "/documents.schema.json":              true,
+	RunBase + "/next-session-answer.schema.json":    true,
+	RunBase + "/next-session-request.schema.json":   true,
+	RunBase + "/outcome.schema.json":                true,
 
 	ProvisionerBase + "/claim.schema.json":        true,
 	ProvisionerBase + "/claim-answer.schema.json": true,

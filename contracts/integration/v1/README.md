@@ -21,10 +21,9 @@ addition keeps `version` 1; a change that breaks a reader is `version` 2.
 A reader ignores a member that the schema of a document does not define, at any depth.
 The rule covers these documents:
 
-- the description, the answer of the change feed and each entry of it;
-- the replies `changes-submitted.schema.json` and `changes-failed.schema.json`, and the
-  body of `adapter.schema.json`;
-- the listing and the person of `source-items.schema.json`;
+- every document of this contract: the description, the start-up body, the requests, the
+  answers, the calls, the passes, the refusal and the sealed plaintext of the adapter
+  secrets, and the answer of the change feed with each entry of it;
 - the documents of the run, provisioner and machines contracts, and the explore inputs.
 
 A writer may add a member, and an older reader reads the rest.
@@ -41,9 +40,16 @@ A writer may add a member, and an older reader reads the rest.
 - A reader refuses a bad value of a member that it defines.
 - The description's `settings` is the integration's settings schema. The contract
   neither opens nor closes it, and the schema accepts any pointer below it.
-- The Forager contract defines the `auth` and the `format` of an API, and they refuse an
-  undefined member. The schema accepts a pointer to them and refuses a pointer below
-  them.
+- The Forager contract defines the `auth` and the `format` of an API. It also defines the
+  `credential` of `run-credential-answer.schema.json` and its `apply` items. These objects
+  refuse an undefined member. The schema accepts a pointer to `auth` and `format` and
+  refuses a pointer below them. For `credential`, it accepts only a pointer to `token`
+  and to `apply` with its `hosts`.
+- The documents that carry a secret ignore an undefined member like any other. They are
+  `adapter-secrets`, `adapter-secrets-answer`, `adapter-secrets-plaintext`,
+  `run-credential` and `run-credential-answer`. They still contain no key or secret that
+  the contract does not define. The schema refuses three members by name: `values` in
+  `sealed`, `token` in an `apply` item, and `placeholders` in a `credential`.
 - `minProperties` counts members, defined or not. An object with only an undefined member,
   such as `{"zz": 1}`, reads as empty in two places. `previous` of a change then has no
   title and no address. A harness selection, `exclude` or `only`, then lists no part:
@@ -63,9 +69,8 @@ and is closed in the copy.
 `conformance.Description` validates against the closed copy. These functions return the
 closed copy of a schema:
 
-- `contracts.CompileClosed`, for `description.schema.json`, `adapter.schema.json`,
-  `changes.schema.json`, `changes-submitted.schema.json`, `changes-failed.schema.json` or
-  `source-items.schema.json`. `adapter.schema.json` embeds the description, so its closed
+- `contracts.CompileClosed`, for each schema of this contract except
+  `definitions.schema.json`. `adapter.schema.json` embeds the description, so its closed
   copy checks that description too.
 - `contracts.CompileRunClosed`, `contracts.CompileProvisionerClosed`,
   `contracts.CompileMachinesClosed` and `contracts.CompileExploreClosed`, for the schemas
