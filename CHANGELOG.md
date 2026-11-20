@@ -269,10 +269,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
     `must_understand`. The reader refuses a document that lists a pointer it does not
     define. A machines answer that lists such a pointer is a failure of kind `defect`. The
     control plane refuses a release with such a pointer, 400 `invalid_request`, as it
-    refuses any body that breaks its schema. It refuses a batch whose
-    `dev.qory.run.exited` has an outcome whose `must_understand` lists a pointer that the
-    outcome schema does not define with `400 invalid_request`, as Forager defines for a
-    body its contract refuses. This contract defines no body for that refusal. The contract describes no further handling for the provisioner claim answer
+    refuses any body that breaks its schema. A batch's `dev.qory.run.exited` can have an
+    outcome whose `must_understand` lists a pointer that the outcome schema does not
+    define. The control plane answers that batch with `400 invalid_request`, as Forager
+    defines for a body its contract refuses. This contract defines no body for that
+    refusal. The contract describes no further handling for the provisioner claim answer
     and the provisioner refusal.
   - A writer's test validates against a closed copy of the schema, so a misspelled
     member fails it. The copy covers the schema and each schema of this repository that

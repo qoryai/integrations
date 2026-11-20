@@ -28,9 +28,11 @@ It applies at the top level, and in `subject`, `run_settings`, `submit`,
   `harness.harness.extensions`. The schema accepts any pointer there. No Go reader
   refuses a pointer such as `/inputs/zz`, because the inputs are a free map of the run.
 - The control plane refuses a request whose `must_understand` lists a pointer that it does
-  not define, with 400 `invalid_request`. It refuses a batch whose `dev.qory.run.exited`
-  has an outcome whose `must_understand` lists a pointer that the outcome schema does not
-  define with `400 invalid_request`, as Forager defines for a body its contract refuses. This contract defines no body for that refusal.
+  not define, with 400 `invalid_request`. A batch's `dev.qory.run.exited` can have an
+  outcome whose `must_understand` lists a pointer that the outcome schema does not
+  define. The control plane answers that batch with `400 invalid_request`, as Forager
+  defines for a body its contract refuses. This contract defines no body for that
+  refusal.
 - The outcome has the members `state`, `reason` and `exit_code` of Forager's
   `dev.qory.run.exited`. These members follow Forager's schema, which is closed and has no
   `must_understand`. The outcome schema accepts a member that it does not define. The
