@@ -43,10 +43,10 @@ const (
 // adapter can make with its settings. When the adapter's settings contain more than 64
 // machines, or none, check fails with kind [FailureDefect].
 type MachinesCheck struct {
-	Version int `json:"version"`
+	Version int `json:"version,case:strict"`
 	// MustUnderstand lists the members of the request that the adapter must understand, as
 	// JSON Pointers counted from the request: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesCheckAnswer is the answer of check, check-answer.schema.json. Offers are the
@@ -57,10 +57,10 @@ type MachinesCheck struct {
 // the offers of the adapter's last successful check as the Offers of each of its claims,
 // [Claim].
 type MachinesCheckAnswer struct {
-	Offers []MachineSpec `json:"offers"`
+	Offers []MachineSpec `json:"offers,case:strict"`
 	// MustUnderstand lists the members of the answer that the provisioner must understand, as
 	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesMake is the request of `<adapter> make --settings FILE`, make.schema.json: the
@@ -81,14 +81,14 @@ type MachinesCheckAnswer struct {
 // contains a run code, so it travels only on standard input, never in an argument, and
 // the adapter never writes it to a log.
 type MachinesMake struct {
-	Version     int         `json:"version"`
-	DispatchID  string      `json:"dispatch_id"`
-	Pool        string      `json:"pool"`
-	MachineSpec MachineSpec `json:"machine_spec"`
-	StartData   string      `json:"start_data"`
+	Version     int         `json:"version,case:strict"`
+	DispatchID  string      `json:"dispatch_id,case:strict"`
+	Pool        string      `json:"pool,case:strict"`
+	MachineSpec MachineSpec `json:"machine_spec,case:strict"`
+	StartData   string      `json:"start_data,case:strict"`
 	// MustUnderstand lists the members of the request that the adapter must understand, as
 	// JSON Pointers counted from the request: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesMakeAnswer is the answer of make, make-answer.schema.json: the vendor's id of
@@ -96,30 +96,30 @@ type MachinesMake struct {
 // first make with that DispatchID. MachineType is the vendor's type of the machine, such
 // as example-type, and is empty when the vendor does not return the type.
 type MachinesMakeAnswer struct {
-	ID          string `json:"id"`
-	MachineType string `json:"machine_type,omitempty"`
+	ID          string `json:"id,case:strict"`
+	MachineType string `json:"machine_type,omitempty,case:strict"`
 	// MustUnderstand lists the members of the answer that the provisioner must understand, as
 	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesList is the request of `<adapter> list --settings FILE`, list.schema.json:
 // the adapter lists the machines it made for the node pool in Pool.
 type MachinesList struct {
-	Version int    `json:"version"`
-	Pool    string `json:"pool"`
+	Version int    `json:"version,case:strict"`
+	Pool    string `json:"pool,case:strict"`
 	// MustUnderstand lists the members of the request that the adapter must understand, as
 	// JSON Pointers counted from the request: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesListAnswer is the answer of list, list-answer.schema.json. A nil Machines is
 // written as the empty list.
 type MachinesListAnswer struct {
-	Machines []Machine `json:"machines"`
+	Machines []Machine `json:"machines,case:strict"`
 	// MustUnderstand lists the members of the answer that the provisioner must understand, as
 	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MarshalJSON writes a, with a nil Machines as the empty list, which the schema
@@ -137,20 +137,20 @@ func (a MachinesListAnswer) MarshalJSON() ([]byte, error) {
 // [MachineStopped] and [MachineDeleting], and when the vendor started it, RFC 3339 in
 // UTC with whole seconds.
 type Machine struct {
-	ID         string `json:"id"`
-	DispatchID string `json:"dispatch_id"`
-	State      string `json:"state"`
-	Started    string `json:"started"`
+	ID         string `json:"id,case:strict"`
+	DispatchID string `json:"dispatch_id,case:strict"`
+	State      string `json:"state,case:strict"`
+	Started    string `json:"started,case:strict"`
 }
 
 // MachinesLog is the request of `<adapter> log --settings FILE`, log.schema.json: the
 // adapter reads the console text of the machine in ID.
 type MachinesLog struct {
-	Version int    `json:"version"`
-	ID      string `json:"id"`
+	Version int    `json:"version,case:strict"`
+	ID      string `json:"id,case:strict"`
 	// MustUnderstand lists the members of the request that the adapter must understand, as
 	// JSON Pointers counted from the request: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesLogAnswer is the answer of log, log-answer.schema.json. Log is the machine's
@@ -158,10 +158,10 @@ type MachinesLog struct {
 // Log is at most 768 KiB as UTF-8 and the answer, as written, is at most
 // [MaxMachinesAnswer] bytes.
 type MachinesLogAnswer struct {
-	Log string `json:"log"`
+	Log string `json:"log,case:strict"`
 	// MustUnderstand lists the members of the answer that the provisioner must understand, as
 	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesDelete is the request of `<adapter> delete --settings FILE`,
@@ -169,20 +169,20 @@ type MachinesLogAnswer struct {
 // The answer to a delete of an ID that matches no machine at the vendor has the
 // state [MachineGone].
 type MachinesDelete struct {
-	Version int    `json:"version"`
-	ID      string `json:"id"`
+	Version int    `json:"version,case:strict"`
+	ID      string `json:"id,case:strict"`
 	// MustUnderstand lists the members of the request that the adapter must understand, as
 	// JSON Pointers counted from the request: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesDeleteAnswer is the answer of delete, delete-answer.schema.json. State is
 // [MachineDeleting] or [MachineGone].
 type MachinesDeleteAnswer struct {
-	State string `json:"state"`
+	State string `json:"state,case:strict"`
 	// MustUnderstand lists the members of the answer that the provisioner must understand, as
 	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesError is what an adapter writes on standard output, error.schema.json, before
@@ -190,16 +190,16 @@ type MachinesDeleteAnswer struct {
 // error. The adapter exits with status 0 on success and 1 on failure, and with no
 // other status.
 type MachinesError struct {
-	Error MachinesFailure `json:"error"`
+	Error MachinesFailure `json:"error,case:strict"`
 	// MustUnderstand lists the members of the error that the provisioner must understand, as
 	// JSON Pointers counted from the error: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachinesFailure is a [MachinesError]'s failure: its Kind, one of [FailureLimit],
 // [FailureRetry], [FailureDefect] and [FailureOther], and a Message of display text, 1
 // to 200 characters.
 type MachinesFailure struct {
-	Kind    string `json:"kind"`
-	Message string `json:"message"`
+	Kind    string `json:"kind,case:strict"`
+	Message string `json:"message,case:strict"`
 }

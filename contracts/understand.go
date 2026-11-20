@@ -33,7 +33,8 @@ const (
 // definesPointer for the members it defines. Below a json.RawMessage or an interface, any
 // pointer resolves, since the type does not define what is there.
 //
-// A reader that decodes b into v ignores a member that v does not have. It calls
+// A reader that decodes b into v ignores a member that v does not have, and a member
+// whose name differs in letter case, such as MUST_UNDERSTAND, is another member. It calls
 // CheckMustUnderstand first, and refuses the document when it returns an error.
 //
 // CheckMustUnderstand returns an error in these cases, which follow the limits of the
@@ -59,7 +60,7 @@ func CheckMustUnderstand(b []byte, v any) error {
 // not define, or "" when there is none.
 func unmetPointer(b []byte, v any) (string, error) {
 	var doc struct {
-		MustUnderstand json.RawMessage `json:"must_understand"`
+		MustUnderstand json.RawMessage `json:"must_understand,case:strict"`
 	}
 	if err := json.Unmarshal(b, &doc); err != nil {
 		return "", fmt.Errorf("read the document as a JSON object: %w", err)
