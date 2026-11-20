@@ -381,8 +381,8 @@
           "$ref": "https://qory.dev/contracts/integration/v1/changes.schema.json#/$defs/work_item/properties/url"
         },
         "title": {
-          "description": "The subject's title, 1 to 256 characters on one line, by the rule of draft_title in https://qory.dev/contracts/integration/v1/definitions.schema.json.",
-          "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/draft_title"
+          "description": "The subject's title, 1 to 256 characters on one line, by the rule of change_title in https://qory.dev/contracts/integration/v1/definitions.schema.json.",
+          "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/change_title"
         }
       },
       "if": {

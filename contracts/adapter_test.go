@@ -175,7 +175,6 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection"},
 		"changes-change-request-target-without-collection.json":                 {"changes", "/changes/0/target required collection"},
 		"changes-change-request-text-20001.json":                                {"changes", "/changes/0/text maxLength"},
-		"changes-change-request-text-marker.json":                               {"changes", "/changes/0/text "},
 		"changes-change-request-title-257-characters.json":                      {"changes", "/changes/0/title maxLength"},
 		"changes-change-request-title-empty.json":                               {"changes", "/changes/0/title minLength; /changes/0/title pattern; /changes/0/title pattern"},
 		"changes-change-request-title-line-feed.json":                           {"changes", "/changes/0/title pattern"},

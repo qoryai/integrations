@@ -9,6 +9,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Upgrading
 
+- Read the `text` of a `change_request` entry as Markdown with no rule on its lines. The
+  entry refused a line that starts with `<!-- qory:start -->` or `<!-- qory:end -->`.
+  A `reply` whose `text` has such a line passes `changes.schema.json`. A kind that needs
+  marker lines defines the rule: the artifact type of the kind and the adapter that
+  applies it. The submit program contract keeps its marker lines.
+- Rename `$defs/draft_title` in `definitions.schema.json` to `$defs/change_title`. It is
+  the title of a change request of any kind, with the rule that `draft_title` had: 1 to
+  256 characters on one line, the character rule of a prose line, and at least one
+  character that is not a space. A schema with a `$ref` to `draft_title` no longer
+  compiles, so change each such `$ref`. No release had `draft_title`. The key
+  `draft_title` of the submit program result stays, and has the rule of `change_title`.
 - Change each reader and writer of the run documents from `submit` to `deliver`. No
   release had `submit`. `deliver` is a list of `{type, send}` entries, both members
   required, in place of the one object `{type, send}`. It has at most 16 entries, and at
@@ -382,8 +393,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - `ref`: the ref of the item that the work item was taken from. It is absent when the
     work item came from no item.
   - `title`: 1 to 256 characters on one line.
-  - `text`: at most 20000 characters, possibly empty, with no `<!-- qory:start -->` line
-    and no `<!-- qory:end -->` line.
+  - `text`: at most 20000 characters, possibly empty, in Markdown. The envelope has no
+    rule on its lines.
   - `previous`: absent on the first version. Otherwise it has the `title` and the
     `address` of the previous version.
   - `data`: the part.

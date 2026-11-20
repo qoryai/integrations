@@ -320,8 +320,9 @@ steps:
    - `ref`: the ref of the source item that the work item was taken in from. The member
      is absent when the work item has no item at this source.
    - `title`: what the run wrote as the title, 1 to 256 characters on one line.
-   - `text`: what the run wrote as the text, at most 20000 characters, possibly empty.
-     It has no `<!-- qory:start -->` line and no `<!-- qory:end -->` line.
+   - `text`: what the run wrote as the text, at most 20000 characters, possibly empty, in
+     Markdown. The envelope has no rule on its lines. A rule on them belongs to the kind
+     that needs it, which the artifact type of the kind and the adapter define.
    - `previous`: absent on the first version. Otherwise it has the `title` of the
      previous version, when that version had one. It has the `address` of that version,
      `url` and `ref`, when the adapter reported one.

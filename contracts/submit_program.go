@@ -154,7 +154,7 @@ var submitRules = sync.OnceValue(func() struct{ url, line, title *regexp.Regexp 
 	return struct{ url, line, title *regexp.Regexp }{
 		url:   pattern("definitions.schema.json", "url", FS),
 		line:  pattern("description.schema.json", "line", FS),
-		title: pattern("definitions.schema.json", "draft_title", FS),
+		title: pattern("definitions.schema.json", "change_title", FS),
 	}
 })
 
