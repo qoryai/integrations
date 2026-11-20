@@ -39,8 +39,8 @@ const (
 // after that first step, then After. The adapter's steps describe only the adapter's
 // system.
 type Guide struct {
-	Setup   *GuidePart `json:"setup,omitempty"`
-	Connect *GuidePart `json:"connect,omitempty"`
+	Setup   *GuidePart `json:"setup,omitempty,case:strict"`
+	Connect *GuidePart `json:"connect,omitempty,case:strict"`
 }
 
 // GuidePart is the help for one step of a [Guide]: Before, a line shown above the
@@ -48,9 +48,9 @@ type Guide struct {
 // lines in the order a person takes them. Each value is a prose line of
 // description.schema.json, $defs.line: 1 to 300 characters on one line.
 type GuidePart struct {
-	Before string   `json:"before,omitempty"`
-	Steps  []string `json:"steps"`
-	After  string   `json:"after,omitempty"`
+	Before string   `json:"before,omitempty,case:strict"`
+	Steps  []string `json:"steps,case:strict"`
+	After  string   `json:"after,omitempty,case:strict"`
 }
 
 // CheckDescription reports the first rule of description.schema.json that a

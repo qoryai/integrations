@@ -56,8 +56,8 @@ const RunListInvalidRequest = "invalid_request"
 // null, when no run matches the request after the last row. A nil Runs is written as the
 // empty list.
 type RunList struct {
-	Runs []RunListRow `json:"runs"`
-	Next *string      `json:"next"`
+	Runs []RunListRow `json:"runs,case:strict"`
+	Next *string      `json:"next,case:strict"`
 }
 
 // MarshalJSON writes l, with a nil Runs as the empty list, which the schema accepts, in
@@ -88,30 +88,30 @@ func (l RunList) MarshalJSON() ([]byte, error) {
 // exited. It is nil when the run has not started, and when the run ended without an
 // exit.
 type RunListRow struct {
-	ID              string              `json:"id"`
-	Number          int64               `json:"number"`
-	Organisation    RunListOrganisation `json:"organisation"`
-	Workspace       RunListWorkspace    `json:"workspace"`
-	Workflow        string              `json:"workflow,omitempty"`
-	WorkItemNumber  int64               `json:"work_item_number,omitempty"`
-	WorkItemTitle   string              `json:"work_item_title,omitempty"`
-	State           string              `json:"state"`
-	Reason          string              `json:"reason,omitempty"`
-	CreatedAt       string              `json:"created_at"`
-	StartedAt       string              `json:"started_at,omitempty"`
-	DurationSeconds *int64              `json:"duration_seconds,omitempty"`
+	ID              string              `json:"id,case:strict"`
+	Number          int64               `json:"number,case:strict"`
+	Organisation    RunListOrganisation `json:"organisation,case:strict"`
+	Workspace       RunListWorkspace    `json:"workspace,case:strict"`
+	Workflow        string              `json:"workflow,omitempty,case:strict"`
+	WorkItemNumber  int64               `json:"work_item_number,omitempty,case:strict"`
+	WorkItemTitle   string              `json:"work_item_title,omitempty,case:strict"`
+	State           string              `json:"state,case:strict"`
+	Reason          string              `json:"reason,omitempty,case:strict"`
+	CreatedAt       string              `json:"created_at,case:strict"`
+	StartedAt       string              `json:"started_at,omitempty,case:strict"`
+	DurationSeconds *int64              `json:"duration_seconds,omitempty,case:strict"`
 }
 
 // RunListOrganisation is the organisation of a [RunListRow], by its slug.
 type RunListOrganisation struct {
-	Slug string `json:"slug"`
+	Slug string `json:"slug,case:strict"`
 }
 
 // RunListWorkspace is the workspace of a [RunListRow]: its public id, ws_, and its slug,
 // which is unique in its organisation.
 type RunListWorkspace struct {
-	ID   string `json:"id"`
-	Slug string `json:"slug"`
+	ID   string `json:"id,case:strict"`
+	Slug string `json:"slug,case:strict"`
 }
 
 // RunListRefusal is the body of a refusal of GET /v1/runs, diagnostics/v1
@@ -119,6 +119,6 @@ type RunListWorkspace struct {
 // [RunListInvalidRequest]: the name of a query parameter that breaks its rule, at most
 // 64 characters, and empty for a parameter with an empty name.
 type RunListRefusal struct {
-	Error     string  `json:"error"`
-	Parameter *string `json:"parameter,omitempty"`
+	Error     string  `json:"error,case:strict"`
+	Parameter *string `json:"parameter,omitempty,case:strict"`
 }

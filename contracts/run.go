@@ -48,9 +48,9 @@ const MaxInputs = 768 << 10
 // plane wrote it, whose shape belongs to the step's schema. A reader ignores a member of
 // the documents that Documents does not have, unless MustUnderstand lists it.
 type Documents struct {
-	Step   string          `json:"step"`
-	Domain string          `json:"domain"`
-	Inputs json.RawMessage `json:"inputs"`
+	Step   string          `json:"step,case:strict"`
+	Domain string          `json:"domain,case:strict"`
+	Inputs json.RawMessage `json:"inputs,case:strict"`
 	// Access is set exactly when Target is: what the run may do on its target,
 	// "read", "write-no-push" or "write". With "read", the run gets a read credential
 	// and works on a copy of the target that the agent cannot change. With
@@ -60,8 +60,8 @@ type Documents struct {
 	// run with "write" may have Submit. On a target that is a repository, the copy is a
 	// checkout and a change is a commit. The machine's credential integration narrows
 	// the run's access to it.
-	Access string  `json:"access,omitempty"`
-	Target *Target `json:"target,omitempty"`
+	Access string  `json:"access,omitempty,case:strict"`
+	Target *Target `json:"target,omitempty,case:strict"`
 	// TargetVersion is set only with Target, and never for the step prebuild: the
 	// version of the target at which the control plane checked for a harness file, the
 	// resolved_at of the read at the path of the harness file, whether the read returned
@@ -85,21 +85,21 @@ type Documents struct {
 	// to another version later. The grammar is generic, because a target in another
 	// system has another kind of version: 1 to 255 letters, digits and the characters
 	// ._/-.
-	TargetVersion string   `json:"target_version,omitempty"`
-	Subject       *Subject `json:"subject,omitempty"`
+	TargetVersion string   `json:"target_version,omitempty,case:strict"`
+	Subject       *Subject `json:"subject,omitempty,case:strict"`
 	// Trigger is what started the run, in snake_case, such as take_in. It is optional.
-	Trigger     string       `json:"trigger,omitempty"`
-	RunSettings *RunSettings `json:"run_settings,omitempty"`
+	Trigger     string       `json:"trigger,omitempty,case:strict"`
+	RunSettings *RunSettings `json:"run_settings,omitempty,case:strict"`
 	// TimeLimitMinutes is the time limit of session 1, in minutes, from 1 to 1440,
 	// and 0 when the control plane sets none. The machine sets it as that session's
 	// time limit. The limit of each later session is the TimeLimitMinutes of the
 	// [NextSessionAnswer]. It is set only for the step workflow.
-	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
+	TimeLimitMinutes int `json:"time_limit_minutes,omitempty,case:strict"`
 	// SharedRun is true when qory sends the next-session request after each session
 	// and runs the session that the answer sets. False and absent in the JSON are the
 	// same: qory sends no request, and the run has session 1 only. It is set only for
 	// the step workflow.
-	SharedRun bool `json:"shared_run,omitempty"`
+	SharedRun bool `json:"shared_run,omitempty,case:strict"`
 	// TypeSettings is the type_settings object of session 1, the settings that belong to
 	// the type of the workspace. It is a JSON object whose members this contract does not
 	// list: the process of the workspace type registers its schema, and the schema of
@@ -107,17 +107,17 @@ type Documents struct {
 	// session is the TypeSettings of the [NextSessionAnswer]. It is set only for the
 	// step workflow. The schema accepts a pointer below it in MustUnderstand, because
 	// the members below it belong to the workspace type's schema, not to this contract.
-	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
+	TypeSettings json.RawMessage `json:"type_settings,omitempty,case:strict"`
 	// Workflow is set exactly when HarnessHidden is, and for every run of the step
 	// workflow: the workflow of the harness that
 	// the run starts, such as hello. qory starts the first of these that the harness
 	// has: the skill workflow-hello, the command workflow-hello, the skill hello, the
 	// command hello. At most 55 characters, so that workflow-<name> stays within 64.
-	Workflow string `json:"workflow,omitempty"`
+	Workflow string `json:"workflow,omitempty,case:strict"`
 	// HarnessHidden is set exactly when Workflow is: when true, the text that comes
 	// from the harness is hidden in the run, and when false, that text is shown. A
 	// pointer, so that false is written.
-	HarnessHidden *bool `json:"harness_hidden,omitempty"`
+	HarnessHidden *bool `json:"harness_hidden,omitempty,case:strict"`
 	// Harness is set only when the run composes a harness, in one of three cases:
 	// TargetVersion is set and the read returned a harness file of the target whose
 	// harness section is absent, or has no extends and lists no module; TargetVersion is
@@ -135,7 +135,7 @@ type Documents struct {
 	// that requirement, the run stops. It reads none of the other machine harness
 	// settings of that file and none of its git and env sections, so the harness file of
 	// the target does not set how the run starts.
-	Harness *HarnessDocument `json:"harness,omitempty"`
+	Harness *HarnessDocument `json:"harness,omitempty,case:strict"`
 	// ImageDestination is set exactly for the step prebuild: the place at the registry
 	// where the build pushes the target image, the image that the runs of the target
 	// start from, such as registry.example.com/targets/0123456789abcdef. The target
@@ -145,14 +145,14 @@ type Documents struct {
 	// Docker Hub host, docker.io, index.docker.io, registry-1.docker.io,
 	// registry.hub.docker.com or registry.docker.com, in any case and with or without a
 	// port, is refused. The run reports the image by its digest.
-	ImageDestination string `json:"image_destination,omitempty"`
+	ImageDestination string `json:"image_destination,omitempty,case:strict"`
 	// EnvironmentDestination is set only for the step prebuild: the place at the
 	// registry where the build pushes the environment image, in the form of
 	// ImageDestination. The environment image is built from the environment definition
 	// alone, and is one image for all of the organisation's targets with the same
 	// environment definition. The build pushes nothing there when the environment
 	// definition alone does not determine the environment image.
-	EnvironmentDestination string `json:"environment_destination,omitempty"`
+	EnvironmentDestination string `json:"environment_destination,omitempty,case:strict"`
 	// EnvironmentImage is set only for the step prebuild: the organisation's existing
 	// environment image for this environment definition, by digest: a place at the
 	// registry in the form of ImageDestination, then @sha256: and 64 lower-case
@@ -162,23 +162,23 @@ type Documents struct {
 	// port, is refused. The build starts the target image from it and builds no
 	// environment image. A run of the step prebuild has exactly one of
 	// EnvironmentDestination and EnvironmentImage.
-	EnvironmentImage string `json:"environment_image,omitempty"`
+	EnvironmentImage string `json:"environment_image,omitempty,case:strict"`
 	// LargestPrebuiltImageBytes is set only for the step prebuild: the largest size, in
 	// decimal bytes, that the target image of the build may have, at least 1 and within
 	// int64. When it is nil, the image has no size limit.
-	LargestPrebuiltImageBytes *int64 `json:"largest_prebuilt_image_bytes,omitempty"`
+	LargestPrebuiltImageBytes *int64 `json:"largest_prebuilt_image_bytes,omitempty,case:strict"`
 	// Submit is set only with Workflow and with Access "write": the settings of the
 	// submission of the run, which the control plane writes whenever the process version
 	// of the workspace has one. On a run with a run code, qory takes the settings of the
 	// submission only from Submit, never from process.yaml. For what qory does when
 	// process.yaml has a different submit, see submit in documents.schema.json.
-	Submit *Submit `json:"submit,omitempty"`
+	Submit *Submit `json:"submit,omitempty,case:strict"`
 	// MustUnderstand lists members of the documents that the reader must understand, as
 	// JSON Pointers counted from the documents, such as "/run_settings/runtime". A
 	// reader ignores a member that this type does not have, unless MustUnderstand lists
 	// it. A reader refuses documents whose MustUnderstand lists a pointer to a member that
 	// this type does not have: [CheckMustUnderstand] returns an error for them.
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // HarnessDocument is the run's harness, documents.schema.json. It is the harness document
@@ -188,7 +188,7 @@ type Documents struct {
 // source. A source of the form {path} and a module given by name alone are refused. A
 // reader ignores link, the machine harness settings and every other member of qory.yaml.
 type HarnessDocument struct {
-	Harness HarnessSection `json:"harness"`
+	Harness HarnessSection `json:"harness,case:strict"`
 }
 
 // HarnessSection is the harness section of a [HarnessDocument]. A section extends a
@@ -202,31 +202,31 @@ type HarnessDocument struct {
 // have Bind, Extensions, Name and Description.
 type HarnessSection struct {
 	// Name is the name of the harness.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty,case:strict"`
 	// Description is a description of the harness. An empty description is not
 	// written.
-	Description string `json:"description,omitempty"`
+	Description string `json:"description,omitempty,case:strict"`
 	// Extends is the stack the harness extends, the base, and nil when the section
 	// defines a stack.
-	Extends *HarnessBase `json:"extends,omitempty"`
+	Extends *HarnessBase `json:"extends,omitempty,case:strict"`
 	// Modules are the modules, in order: appended to the base when Extends is set, and
 	// the modules of the stack the section defines when it is nil, where at least 1 is
 	// required.
-	Modules []HarnessModule `json:"modules,omitempty"`
+	Modules []HarnessModule `json:"modules,omitempty,case:strict"`
 	// Bind maps a kind, agents, commands or skills, to the roles of that kind, each
 	// role to the name of the entry of that kind that fills it, such as agents:
 	// {developer: web-developer}, or, for a group role of the kind agents, to the list
 	// of the agents that fill it, such as agents: {reviewers: [copy-reviewer,
 	// legal-reviewer]}. See [BindValue].
-	Bind map[string]map[string]BindValue `json:"bind,omitempty"`
+	Bind map[string]map[string]BindValue `json:"bind,omitempty,case:strict"`
 	// Extensions are values that qory copies into the report and does not read, by
 	// key, each a JSON value of any shape. Empty extensions are not written.
-	Extensions map[string]json.RawMessage `json:"extensions,omitempty"`
+	Extensions map[string]json.RawMessage `json:"extensions,omitempty,case:strict"`
 	// Workflows are the settings of each workflow of the stack the section defines, by
 	// the workflow's name, as workflows in qory-stack.yaml has them: a lower-case
 	// letter, then up to 54 lower-case letters, digits and hyphens. Only without
 	// Extends: a section with Extends takes the workflows of its base.
-	Workflows map[string]HarnessWorkflow `json:"workflows,omitempty"`
+	Workflows map[string]HarnessWorkflow `json:"workflows,omitempty,case:strict"`
 }
 
 // definesPointer reports whether a pointer below a HarnessSection leads to one of its
@@ -252,7 +252,7 @@ func (s *HarnessSection) UnmarshalJSON(b []byte) error {
 	// A section that does not read as raw roles fails the decode below, which returns
 	// that error.
 	var raw struct {
-		Bind map[string]map[string]json.RawMessage `json:"bind"`
+		Bind map[string]map[string]json.RawMessage `json:"bind,case:strict"`
 	}
 	if json.Unmarshal(b, &raw) == nil {
 		if err := checkBind(raw.Bind); err != nil {
@@ -399,15 +399,15 @@ type HarnessWorkflow struct {
 	// Access is the access level the workflow declares for what a run of it works on,
 	// "read", "write-no-push" or "write", as described under access in the run documents
 	// (see [Documents.Access]), and empty for read.
-	Access string `json:"access,omitempty"`
+	Access string `json:"access,omitempty,case:strict"`
 	// Plan is the artifact type whose launch version sets what a run of the workflow
 	// may push, such as "build-plan", and empty for none. Only a workflow whose Access
 	// is "write" has a Plan.
-	Plan string `json:"plan,omitempty"`
+	Plan string `json:"plan,omitempty,case:strict"`
 	// Tier is the tier of the model and effort of the main session of a run of the
 	// workflow, "light", "balanced" or "thinking", and empty for none. The control plane
 	// resolves the model and effort from the tier.
-	Tier string `json:"tier,omitempty"`
+	Tier string `json:"tier,omitempty,case:strict"`
 }
 
 // HarnessBase is a remote source of a stack, the extends of a [HarnessSection]: Git and
@@ -416,24 +416,24 @@ type HarnessWorkflow struct {
 // the root of the remote source.
 type HarnessBase struct {
 	// Git is the address of the remote source.
-	Git string `json:"git"`
+	Git string `json:"git,case:strict"`
 	// Ref is the version of the remote source.
-	Ref   string `json:"ref"`
-	Path  string `json:"path,omitempty"`
-	Stack string `json:"stack,omitempty"`
+	Ref   string `json:"ref,case:strict"`
+	Path  string `json:"path,omitempty,case:strict"`
+	Stack string `json:"stack,omitempty,case:strict"`
 }
 
 // HarnessModule is a module appended to the stack of a [HarnessSection]: a remote
 // source, with an optional name, exclude or only, and variant.
 type HarnessModule struct {
 	// Name is the name of the module, which the manifest of the module must declare.
-	Name   string        `json:"name,omitempty"`
-	Source HarnessSource `json:"source"`
+	Name   string        `json:"name,omitempty,case:strict"`
+	Source HarnessSource `json:"source,case:strict"`
 	// Exclude is what of the module the compose leaves out. Not with Only.
-	Exclude *HarnessSelection `json:"exclude,omitempty"`
+	Exclude *HarnessSelection `json:"exclude,omitempty,case:strict"`
 	// Only is the only things of the module the compose takes. Not with Exclude.
-	Only    *HarnessSelection `json:"only,omitempty"`
-	Variant string            `json:"variant,omitempty"`
+	Only    *HarnessSelection `json:"only,omitempty,case:strict"`
+	Variant string            `json:"variant,omitempty,case:strict"`
 }
 
 // HarnessSource is a remote source of a module, the source of a [HarnessModule]: Git
@@ -442,11 +442,11 @@ type HarnessModule struct {
 // the source is the root of the remote source.
 type HarnessSource struct {
 	// Git is the address of the remote source.
-	Git string `json:"git"`
+	Git string `json:"git,case:strict"`
 	// Ref is the version of the remote source.
-	Ref    string `json:"ref"`
-	Path   string `json:"path,omitempty"`
-	Module string `json:"module,omitempty"`
+	Ref    string `json:"ref,case:strict"`
+	Path   string `json:"path,omitempty,case:strict"`
+	Module string `json:"module,omitempty,case:strict"`
 }
 
 // Submit is the settings of the submission of a run, the submit of the run documents,
@@ -456,27 +456,27 @@ type Submit struct {
 	// artifact_types of the process. The name is lower-case letters and digits in groups
 	// joined by single hyphens, 1 to 64 bytes. The schema cannot check that
 	// artifact_types has that entry.
-	Type string `json:"type"`
+	Type string `json:"type,case:strict"`
 	// Send is when the control plane writes the change_request entry to the change feed. With
 	// "end_of_run", it writes the entry at the end of the run. With "after_gate", it stores
 	// the submission and writes the entry after the gate of the stage passes.
-	Send string `json:"send"`
+	Send string `json:"send,case:strict"`
 }
 
 // HarnessSelection is parts of a module, by kind, the exclude or only of a
 // [HarnessModule]: the names of some entries of each kind listed, Instructions true for
 // the instructions, and Settings and Env for the settings and the variables.
 type HarnessSelection struct {
-	Skills       []string     `json:"skills,omitempty"`
-	Agents       []string     `json:"agents,omitempty"`
-	Commands     []string     `json:"commands,omitempty"`
-	OutputStyles []string     `json:"output-styles,omitempty"`
-	Hooks        []string     `json:"hooks,omitempty"`
-	MCP          []string     `json:"mcp,omitempty"`
-	Files        []string     `json:"files,omitempty"`
-	Instructions bool         `json:"instructions,omitempty"`
-	Settings     *HarnessPart `json:"settings,omitempty"`
-	Env          *HarnessPart `json:"env,omitempty"`
+	Skills       []string     `json:"skills,omitempty,case:strict"`
+	Agents       []string     `json:"agents,omitempty,case:strict"`
+	Commands     []string     `json:"commands,omitempty,case:strict"`
+	OutputStyles []string     `json:"output-styles,omitempty,case:strict"`
+	Hooks        []string     `json:"hooks,omitempty,case:strict"`
+	MCP          []string     `json:"mcp,omitempty,case:strict"`
+	Files        []string     `json:"files,omitempty,case:strict"`
+	Instructions bool         `json:"instructions,omitempty,case:strict"`
+	Settings     *HarnessPart `json:"settings,omitempty,case:strict"`
+	Env          *HarnessPart `json:"env,omitempty,case:strict"`
 }
 
 // HarnessPart is a merged part of a [HarnessSelection]: in JSON, true for all of it,
@@ -519,10 +519,10 @@ func (p *HarnessPart) UnmarshalJSON(b []byte) error {
 // snake_case, and work_item is its first value, a work item of the control plane, whose
 // ID starts with wi_. URL and Title are empty when the control plane has none.
 type Subject struct {
-	Kind  string `json:"kind"`
-	ID    string `json:"id"`
-	URL   string `json:"url,omitempty"`
-	Title string `json:"title,omitempty"`
+	Kind  string `json:"kind,case:strict"`
+	ID    string `json:"id,case:strict"`
+	URL   string `json:"url,omitempty,case:strict"`
+	Title string `json:"title,omitempty,case:strict"`
 }
 
 // RunSettings is the run's run_settings, documents.schema.json: the runtime and
@@ -541,11 +541,11 @@ type Subject struct {
 // value to another.
 type RunSettings struct {
 	// Runtime is the runtime's name in Forager's runtime descriptor, such as claude.
-	Runtime string `json:"runtime"`
+	Runtime string `json:"runtime,case:strict"`
 	// Model is the exact id of the model the run uses.
-	Model string `json:"model,omitempty"`
+	Model string `json:"model,omitempty,case:strict"`
 	// Effort is the effort value the run uses with Model.
-	Effort string `json:"effort,omitempty"`
+	Effort string `json:"effort,omitempty,case:strict"`
 	// ProviderModels are the models of the run's provider, 1 to 256. When it is empty,
 	// the agents run on the provider of the run's default model provider credential, and
 	// for a run with a target, the job applies the tier map set at the run's target as
@@ -554,9 +554,9 @@ type RunSettings struct {
 	// model. When it is set and the run has a target, an entry of the tier map set at
 	// the run's target applies only when its model id is listed in ProviderModels, and
 	// its effort only when that effort is listed for that model.
-	ProviderModels []ProviderModel `json:"provider_models,omitempty"`
+	ProviderModels []ProviderModel `json:"provider_models,omitempty,case:strict"`
 	// Tiers is the tier map the control plane resolved for the run.
-	Tiers *Tiers `json:"tiers,omitempty"`
+	Tiers *Tiers `json:"tiers,omitempty,case:strict"`
 }
 
 // ModelChoice is a model_choice of the next-session answer, run/v1
@@ -579,17 +579,17 @@ type RunSettings struct {
 type ModelChoice struct {
 	// Runtime is the runtime's name in Forager's runtime descriptor, such as claude. It
 	// is the runtime the session runs on; empty, the runtime of [RunSettings].
-	Runtime string `json:"runtime,omitempty"`
+	Runtime string `json:"runtime,omitempty,case:strict"`
 	// Model is the exact id of the model the session uses.
-	Model string `json:"model,omitempty"`
+	Model string `json:"model,omitempty,case:strict"`
 	// Effort is the effort value the session uses with Model.
-	Effort string `json:"effort,omitempty"`
+	Effort string `json:"effort,omitempty,case:strict"`
 	// ProviderModels are the models of the session's provider, as [RunSettings] has
 	// them. It is set exactly when Model is.
-	ProviderModels []ProviderModel `json:"provider_models,omitempty"`
+	ProviderModels []ProviderModel `json:"provider_models,omitempty,case:strict"`
 	// Tiers is the tier map the control plane resolved for the session. It is set only
 	// with Model.
-	Tiers *Tiers `json:"tiers,omitempty"`
+	Tiers *Tiers `json:"tiers,omitempty,case:strict"`
 }
 
 // NextSessionRequest is the body of the next-session request, run/v1
@@ -608,16 +608,16 @@ type ModelChoice struct {
 type NextSessionRequest struct {
 	// Session is Forager's number of the session that ended, from 1, as in its
 	// dev.qory.session.exited.
-	Session int `json:"session"`
+	Session int `json:"session,case:strict"`
 	// State is how the session ended: "succeeded", "failed" or "cancelled". A session
 	// that paused has no request.
-	State string `json:"state"`
+	State string `json:"state,case:strict"`
 	// Reason is the reason of the session's dev.qory.session.exited, and nil, written
 	// as null, when that event has none.
-	Reason *string `json:"reason"`
+	Reason *string `json:"reason,case:strict"`
 	// MustUnderstand lists the members of the request that the control plane must
 	// understand, as JSON Pointers counted from the request: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // NextSessionAnswer is the answer to the next-session request, run/v1
@@ -630,18 +630,18 @@ type NextSessionRequest struct {
 // zero values.
 type NextSessionAnswer struct {
 	// Next is the kind of the answer: "session" or "end".
-	Next string `json:"next"`
+	Next string `json:"next,case:strict"`
 	// Session is the control plane's sequence number of the session in the run, from 1.
 	// It is not Forager's number, which Forager assigns at the join.
-	Session int `json:"session,omitempty"`
+	Session int `json:"session,omitempty,case:strict"`
 	// Workflow is the workflow that the session starts, as [Documents.Workflow].
-	Workflow string `json:"workflow,omitempty"`
+	Workflow string `json:"workflow,omitempty,case:strict"`
 	// ModelChoice is the model choice of the session, nil when the session runs on the
 	// runtime of [RunSettings] and no provider is chosen: the session uses the default
 	// model of that runtime, with the key of the credential whose name is in
 	// ModelProviderCredentialName or, without one, the key of the run's default model
 	// provider credential (the active key of its group when it has a group).
-	ModelChoice *ModelChoice `json:"model_choice,omitempty"`
+	ModelChoice *ModelChoice `json:"model_choice,omitempty,case:strict"`
 	// ModelProviderCredentialName is the name of the credential of the run that the
 	// session joins with, such as <the provider's public id>-<its place from 1>. The
 	// schema checks only the grammar of a credential's name in Forager's run
@@ -650,18 +650,18 @@ type NextSessionAnswer struct {
 	// sets it for every later session whose key is a credential of the run configuration
 	// other than the run's default model provider credential and the active key of its
 	// group.
-	ModelProviderCredentialName string `json:"model_provider_credential_name,omitempty"`
+	ModelProviderCredentialName string `json:"model_provider_credential_name,omitempty,case:strict"`
 	// TimeLimitMinutes is the time limit of the session, in minutes, from 1 to 1440.
-	TimeLimitMinutes int `json:"time_limit_minutes,omitempty"`
+	TimeLimitMinutes int `json:"time_limit_minutes,omitempty,case:strict"`
 	// TypeSettings is the type_settings object of the session, as
 	// [Documents.TypeSettings]. It is written only when it is set.
-	TypeSettings json.RawMessage `json:"type_settings,omitempty"`
+	TypeSettings json.RawMessage `json:"type_settings,omitempty,case:strict"`
 	// Inputs is the input of the session, as [Documents.Inputs].
-	Inputs json.RawMessage `json:"inputs,omitempty"`
+	Inputs json.RawMessage `json:"inputs,omitempty,case:strict"`
 	// MustUnderstand lists members of the answer that the reader must understand, as
 	// [Documents.MustUnderstand] does for the documents. An answer of either shape may
 	// have it.
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // The values of [NextSessionAnswer.Next].
@@ -679,8 +679,8 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 	switch a.Next {
 	case NextSessionKindEnd:
 		return json.Marshal(struct {
-			Next           string   `json:"next"`
-			MustUnderstand []string `json:"must_understand,omitempty"`
+			Next           string   `json:"next,case:strict"`
+			MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 		}{a.Next, a.MustUnderstand})
 	case NextSessionKindSession:
 		if len(a.Inputs) == 0 {
@@ -690,15 +690,15 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 		return nil, fmt.Errorf("set Next of an answer to %q or %q, not %q", NextSessionKindSession, NextSessionKindEnd, a.Next)
 	}
 	return json.Marshal(struct {
-		Next                        string          `json:"next"`
-		Session                     int             `json:"session"`
-		Workflow                    string          `json:"workflow"`
-		ModelChoice                 *ModelChoice    `json:"model_choice,omitempty"`
-		ModelProviderCredentialName string          `json:"model_provider_credential_name,omitempty"`
-		TimeLimitMinutes            int             `json:"time_limit_minutes"`
-		TypeSettings                json.RawMessage `json:"type_settings,omitempty"`
-		Inputs                      json.RawMessage `json:"inputs"`
-		MustUnderstand              []string        `json:"must_understand,omitempty"`
+		Next                        string          `json:"next,case:strict"`
+		Session                     int             `json:"session,case:strict"`
+		Workflow                    string          `json:"workflow,case:strict"`
+		ModelChoice                 *ModelChoice    `json:"model_choice,omitempty,case:strict"`
+		ModelProviderCredentialName string          `json:"model_provider_credential_name,omitempty,case:strict"`
+		TimeLimitMinutes            int             `json:"time_limit_minutes,case:strict"`
+		TypeSettings                json.RawMessage `json:"type_settings,omitempty,case:strict"`
+		Inputs                      json.RawMessage `json:"inputs,case:strict"`
+		MustUnderstand              []string        `json:"must_understand,omitempty,case:strict"`
 	}{a.Next, a.Session, a.Workflow, a.ModelChoice, a.ModelProviderCredentialName,
 		a.TimeLimitMinutes, a.TypeSettings, a.Inputs, a.MustUnderstand})
 }
@@ -708,16 +708,16 @@ func (a NextSessionAnswer) MarshalJSON() ([]byte, error) {
 // It is not the body of Forager's run-outcome.schema.json.
 type RunOutcome struct {
 	// State is how the run ended: "succeeded", "failed" or "cancelled".
-	State string `json:"state"`
+	State string `json:"state,case:strict"`
 	// Reason is the reason of the run's dev.qory.run.exited, empty for none. qory sets one
 	// of the [EndCode] values, with State "failed", to say why a run failed.
-	Reason string `json:"reason,omitempty"`
+	Reason string `json:"reason,omitempty,case:strict"`
 	// ExitCode is the run's exit code, from -1, and nil for none. A nil ExitCode is left
 	// out, and a pointer to 0 is written as 0.
-	ExitCode *int `json:"exit_code,omitempty"`
+	ExitCode *int `json:"exit_code,omitempty,case:strict"`
 	// MustUnderstand lists the members of the outcome that the control plane must
 	// understand, as JSON Pointers counted from the outcome: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // EndCode is a code that qory sets in [RunOutcome.Reason] to say why a run failed: a code
@@ -784,8 +784,8 @@ const (
 // run_settings.provider_models. Effort lists the effort values the model accepts, 1 to
 // 16, each listed once. An entry with no Effort means the model takes no effort value.
 type ProviderModel struct {
-	ID     string   `json:"id"`
-	Effort []string `json:"effort,omitempty"`
+	ID     string   `json:"id,case:strict"`
+	Effort []string `json:"effort,omitempty,case:strict"`
 }
 
 // Tiers is run_settings.tiers: a model, and optionally an effort value, for each tier
@@ -795,9 +795,9 @@ type ProviderModel struct {
 // only the tiers left nil. A run with no target has no such tier map: only the tiers the
 // control plane maps apply.
 type Tiers struct {
-	Light    *Tier `json:"light,omitempty"`
-	Balanced *Tier `json:"balanced,omitempty"`
-	Thinking *Tier `json:"thinking,omitempty"`
+	Light    *Tier `json:"light,omitempty,case:strict"`
+	Balanced *Tier `json:"balanced,omitempty,case:strict"`
+	Thinking *Tier `json:"thinking,omitempty,case:strict"`
 }
 
 // Tier is the model of one tier: in JSON, a model id, or an object of model and an
@@ -819,8 +819,8 @@ func (Tier) definesPointer(segments []string) bool {
 
 // tierObject is the object form of a [Tier].
 type tierObject struct {
-	Model  string `json:"model"`
-	Effort string `json:"effort,omitempty"`
+	Model  string `json:"model,case:strict"`
+	Effort string `json:"effort,omitempty,case:strict"`
 }
 
 // MarshalJSON writes t as a model id, or as an object of model and effort.

@@ -133,24 +133,24 @@ func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 // sent whole: the same JSON document, which json.Marshal writes compacted and with <, >
 // and & escaped. A nil Description marshals as null, which adapter.schema.json refuses.
 type Adapter struct {
-	Version     int             `json:"version"`
-	Time        string          `json:"time"`
-	ConnectURL  string          `json:"connect_url"`
-	SetupURL    string          `json:"setup_url,omitempty"`
-	CallURL     string          `json:"call_url,omitempty"`
-	Sync        Sync            `json:"sync"`
-	Description json.RawMessage `json:"description"`
+	Version     int             `json:"version,case:strict"`
+	Time        string          `json:"time,case:strict"`
+	ConnectURL  string          `json:"connect_url,case:strict"`
+	SetupURL    string          `json:"setup_url,omitempty,case:strict"`
+	CallURL     string          `json:"call_url,omitempty,case:strict"`
+	Sync        Sync            `json:"sync,case:strict"`
+	Description json.RawMessage `json:"description,case:strict"`
 	// MustUnderstand lists the members of the body that the control plane must
 	// understand, as JSON Pointers counted from the body: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // Sync is how often an adapter pulls changes from the source, in seconds, and whether
 // it sends the source's changes as they happen.
 type Sync struct {
-	DefaultInterval int  `json:"default_interval"`
-	MinimumInterval int  `json:"minimum_interval"`
-	SendsChanges    bool `json:"sends_changes"`
+	DefaultInterval int  `json:"default_interval,case:strict"`
+	MinimumInterval int  `json:"minimum_interval,case:strict"`
+	SendsChanges    bool `json:"sends_changes,case:strict"`
 }
 
 // SourceCollections is the body of POST /v1/source-collections,
@@ -158,14 +158,14 @@ type Sync struct {
 // adapter reaches through the connection ConnectionID. A nil Collections marshals as an
 // empty list.
 type SourceCollections struct {
-	Version      int          `json:"version"`
-	Time         string       `json:"time"`
-	ConnectionID string       `json:"connection_id"`
-	Collections  []Collection `json:"collections"`
-	Listing      Listing      `json:"listing"`
+	Version      int          `json:"version,case:strict"`
+	Time         string       `json:"time,case:strict"`
+	ConnectionID string       `json:"connection_id,case:strict"`
+	Collections  []Collection `json:"collections,case:strict"`
+	Listing      Listing      `json:"listing,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MarshalJSON writes the document, a nil Collections as an empty list.
@@ -184,48 +184,48 @@ func (s SourceCollections) MarshalJSON() ([]byte, error) {
 // changes; empty, the collection has none. Items points to false while the collection
 // has no items; nil, the collection has items whenever its source does.
 type Collection struct {
-	Ref            string  `json:"ref"`
-	URL            string  `json:"url"`
-	Title          string  `json:"title"`
-	GrantRef       string  `json:"grant_ref"`
-	Target         *Target `json:"target,omitempty"`
-	EnvironmentRef string  `json:"environment_ref,omitempty"`
-	Items          *bool   `json:"items,omitempty"`
+	Ref            string  `json:"ref,case:strict"`
+	URL            string  `json:"url,case:strict"`
+	Title          string  `json:"title,case:strict"`
+	GrantRef       string  `json:"grant_ref,case:strict"`
+	Target         *Target `json:"target,omitempty,case:strict"`
+	EnvironmentRef string  `json:"environment_ref,omitempty,case:strict"`
+	Items          *bool   `json:"items,omitempty,case:strict"`
 }
 
 // Target is where a change would go: the Collection, the ref of one of the adapter's
 // collections, and its Address, nil when the place has none.
 type Target struct {
-	Collection string         `json:"collection"`
-	Address    *TargetAddress `json:"address,omitempty"`
+	Collection string         `json:"collection,case:strict"`
+	Address    *TargetAddress `json:"address,omitempty,case:strict"`
 }
 
 // TargetAddress is the address of a place on a system: a host name and a path on it.
 type TargetAddress struct {
-	System string `json:"system"`
-	Path   string `json:"path"`
+	System string `json:"system,case:strict"`
+	Path   string `json:"path,case:strict"`
 }
 
 // Listing is one part of a listing of the source.
 type Listing struct {
-	ID        string `json:"id"`
-	Part      int    `json:"part"`
-	StartedAt string `json:"started_at"`
-	Complete  bool   `json:"complete"`
+	ID        string `json:"id,case:strict"`
+	Part      int    `json:"part,case:strict"`
+	StartedAt string `json:"started_at,case:strict"`
+	Complete  bool   `json:"complete,case:strict"`
 }
 
 // SourceItems is the body of POST /v1/source-items, source-items.schema.json: items of
 // one collection, an event of 1 to 100 items when Listing is nil, and a listing's part
 // of 0 to 100 otherwise. A nil Items marshals as an empty list.
 type SourceItems struct {
-	Version       int      `json:"version"`
-	Time          string   `json:"time"`
-	CollectionRef string   `json:"collection_ref"`
-	Items         []Item   `json:"items"`
-	Listing       *Listing `json:"listing,omitempty"`
+	Version       int      `json:"version,case:strict"`
+	Time          string   `json:"time,case:strict"`
+	CollectionRef string   `json:"collection_ref,case:strict"`
+	Items         []Item   `json:"items,case:strict"`
+	Listing       *Listing `json:"listing,omitempty,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MarshalJSON writes the document, a nil Items as an empty list.
@@ -245,22 +245,22 @@ func (s SourceItems) MarshalJSON() ([]byte, error) {
 // at a code-point boundary, or "labels", some cut to 100 characters or those past the
 // 100th left out; nil, the adapter cut none.
 type Item struct {
-	Ref          string   `json:"ref"`
-	URL          string   `json:"url"`
-	Key          string   `json:"key,omitempty"`
-	Type         string   `json:"type,omitempty"`
-	Title        string   `json:"title"`
-	Body         string   `json:"body"`
-	BodyFormat   string   `json:"body_format"`
-	FiledBy      Person   `json:"filed_by"`
-	Labels       []string `json:"labels"`
-	State        string   `json:"state"`
-	StateReason  *string  `json:"state_reason"`
-	CommentCount int      `json:"comment_count"`
-	CreatedAt    string   `json:"created_at"`
-	UpdatedAt    string   `json:"updated_at"`
-	Target       *Target  `json:"target,omitempty"`
-	Truncated    []string `json:"truncated,omitempty"`
+	Ref          string   `json:"ref,case:strict"`
+	URL          string   `json:"url,case:strict"`
+	Key          string   `json:"key,omitempty,case:strict"`
+	Type         string   `json:"type,omitempty,case:strict"`
+	Title        string   `json:"title,case:strict"`
+	Body         string   `json:"body,case:strict"`
+	BodyFormat   string   `json:"body_format,case:strict"`
+	FiledBy      Person   `json:"filed_by,case:strict"`
+	Labels       []string `json:"labels,case:strict"`
+	State        string   `json:"state,case:strict"`
+	StateReason  *string  `json:"state_reason,case:strict"`
+	CommentCount int      `json:"comment_count,case:strict"`
+	CreatedAt    string   `json:"created_at,case:strict"`
+	UpdatedAt    string   `json:"updated_at,case:strict"`
+	Target       *Target  `json:"target,omitempty,case:strict"`
+	Truncated    []string `json:"truncated,omitempty,case:strict"`
 }
 
 // MarshalJSON writes the item, a nil Labels as an empty list.
@@ -275,22 +275,22 @@ func (i Item) MarshalJSON() ([]byte, error) {
 // Person is who wrote something at the source: a display name, and Kind "person" or
 // "automation".
 type Person struct {
-	Name string `json:"name"`
-	Kind string `json:"kind"`
+	Name string `json:"name,case:strict"`
+	Kind string `json:"kind,case:strict"`
 }
 
 // SourceItemComments is the body of POST /v1/source-items/comments,
 // source-item-comments.schema.json: comments of one item, 1 to 100, or 0 to 100 with
 // Complete. A nil Comments marshals as an empty list.
 type SourceItemComments struct {
-	Version  int               `json:"version"`
-	Time     string            `json:"time"`
-	ItemRef  string            `json:"item_ref"`
-	Comments []Comment         `json:"comments"`
-	Complete *CommentsComplete `json:"complete,omitempty"`
+	Version  int               `json:"version,case:strict"`
+	Time     string            `json:"time,case:strict"`
+	ItemRef  string            `json:"item_ref,case:strict"`
+	Comments []Comment         `json:"comments,case:strict"`
+	Complete *CommentsComplete `json:"complete,omitempty,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MarshalJSON writes the document, a nil Comments as an empty list.
@@ -309,57 +309,57 @@ func (s SourceItemComments) MarshalJSON() ([]byte, error) {
 // control plane matches the sent comment to the comment it stored by that id. Empty, the
 // comment has no comment_id member.
 type Comment struct {
-	Ref        string   `json:"ref"`
-	URL        string   `json:"url"`
-	CommentID  string   `json:"comment_id,omitempty"`
-	Author     Person   `json:"author"`
-	Body       string   `json:"body"`
-	BodyFormat string   `json:"body_format"`
-	CreatedAt  string   `json:"created_at"`
-	UpdatedAt  string   `json:"updated_at"`
-	Deleted    bool     `json:"deleted,omitempty"`
-	Truncated  []string `json:"truncated,omitempty"`
+	Ref        string   `json:"ref,case:strict"`
+	URL        string   `json:"url,case:strict"`
+	CommentID  string   `json:"comment_id,omitempty,case:strict"`
+	Author     Person   `json:"author,case:strict"`
+	Body       string   `json:"body,case:strict"`
+	BodyFormat string   `json:"body_format,case:strict"`
+	CreatedAt  string   `json:"created_at,case:strict"`
+	UpdatedAt  string   `json:"updated_at,case:strict"`
+	Deleted    bool     `json:"deleted,omitempty,case:strict"`
+	Truncated  []string `json:"truncated,omitempty,case:strict"`
 }
 
 // CommentsComplete is present when a request's comments are all of the item's
 // comments, read from Since.
 type CommentsComplete struct {
-	Since string `json:"since"`
+	Since string `json:"since,case:strict"`
 }
 
 // SourcesDisconnect is the body of POST /v1/sources/disconnect,
 // sources-disconnect.schema.json: the adapter no longer reaches the collection
 // CollectionRef through the connection ConnectionID.
 type SourcesDisconnect struct {
-	Version       int    `json:"version"`
-	Time          string `json:"time"`
-	ConnectionID  string `json:"connection_id"`
-	CollectionRef string `json:"collection_ref"`
+	Version       int    `json:"version,case:strict"`
+	Time          string `json:"time,case:strict"`
+	ConnectionID  string `json:"connection_id,case:strict"`
+	CollectionRef string `json:"collection_ref,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // ConnectionsDisconnect is the body of POST /v1/connections/disconnect,
 // connections-disconnect.schema.json: the source no longer grants the connection
 // ConnectionID access.
 type ConnectionsDisconnect struct {
-	Version      int    `json:"version"`
-	Time         string `json:"time"`
-	ConnectionID string `json:"connection_id"`
+	Version      int    `json:"version,case:strict"`
+	Time         string `json:"time,case:strict"`
+	ConnectionID string `json:"connection_id,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // Changes is the body of the answer to GET /v1/work-items/changes, changes.schema.json:
 // the entries of the adapter's change feed after a cursor. A nil Changes marshals as an
 // empty list.
 type Changes struct {
-	Version  int      `json:"version"`
-	Revision int      `json:"revision"`
-	Cursor   string   `json:"cursor"`
-	Changes  []Change `json:"changes"`
+	Version  int      `json:"version,case:strict"`
+	Revision int      `json:"revision,case:strict"`
+	Cursor   string   `json:"cursor,case:strict"`
+	Changes  []Change `json:"changes,case:strict"`
 }
 
 // MarshalJSON writes the document, a nil Changes as an empty list.
@@ -411,38 +411,38 @@ const (
 // any line break before it are at most 536 characters together: the room that
 // Body, at most 65000 characters, leaves of the 65536 characters of a comment.
 type Change struct {
-	Kind          string `json:"kind"`
-	WorkItemID    string `json:"work_item_id,omitempty"`
-	Ref           string `json:"ref,omitempty"`
-	CollectionRef string `json:"collection_ref,omitempty"`
-	ConnectionID  string `json:"connection_id,omitempty"`
-	GrantRef      string `json:"grant_ref,omitempty"`
-	Status        string `json:"status,omitempty"`
-	URL           string `json:"url,omitempty"`
-	Interval      *int   `json:"interval,omitempty"`
-	CommentID     string `json:"comment_id,omitempty"`
-	AuthorName    string `json:"author_name,omitempty"`
-	Body          string `json:"body,omitempty"`
+	Kind          string `json:"kind,case:strict"`
+	WorkItemID    string `json:"work_item_id,omitempty,case:strict"`
+	Ref           string `json:"ref,omitempty,case:strict"`
+	CollectionRef string `json:"collection_ref,omitempty,case:strict"`
+	ConnectionID  string `json:"connection_id,omitempty,case:strict"`
+	GrantRef      string `json:"grant_ref,omitempty,case:strict"`
+	Status        string `json:"status,omitempty,case:strict"`
+	URL           string `json:"url,omitempty,case:strict"`
+	Interval      *int   `json:"interval,omitempty,case:strict"`
+	CommentID     string `json:"comment_id,omitempty,case:strict"`
+	AuthorName    string `json:"author_name,omitempty,case:strict"`
+	Body          string `json:"body,omitempty,case:strict"`
 
-	ChangeRequestID string          `json:"change_request_id,omitempty"`
-	ChangeKind      string          `json:"change_kind,omitempty"`
-	Target          *Target         `json:"target,omitempty"`
-	Title           string          `json:"title,omitempty"`
-	Text            string          `json:"text,omitempty"`
-	Previous        *ChangePrevious `json:"previous,omitempty"`
-	Data            json.RawMessage `json:"data,omitempty"`
+	ChangeRequestID string          `json:"change_request_id,omitempty,case:strict"`
+	ChangeKind      string          `json:"change_kind,omitempty,case:strict"`
+	Target          *Target         `json:"target,omitempty,case:strict"`
+	Title           string          `json:"title,omitempty,case:strict"`
+	Text            string          `json:"text,omitempty,case:strict"`
+	Previous        *ChangePrevious `json:"previous,omitempty,case:strict"`
+	Data            json.RawMessage `json:"data,omitempty,case:strict"`
 
 	// MustUnderstand lists the members of the entry that the adapter must understand, as
 	// JSON Pointers counted from the entry: see [CheckChangeMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // ChangeAddress is where a change is at its target: URL, the address of the change, and
 // Ref, the reference that the target gives it, such as the number of a pull request,
 // empty when the target gives none.
 type ChangeAddress struct {
-	URL string `json:"url"`
-	Ref string `json:"ref,omitempty"`
+	URL string `json:"url,case:strict"`
+	Ref string `json:"ref,omitempty,case:strict"`
 }
 
 // ChangePrevious is the previous version of a change request for a target, as a
@@ -450,8 +450,8 @@ type ChangeAddress struct {
 // when the adapter reported none for it. A Change marshals Previous only when it has a
 // member, since the schema refuses an empty previous.
 type ChangePrevious struct {
-	Title   string         `json:"title,omitempty"`
-	Address *ChangeAddress `json:"address,omitempty"`
+	Title   string         `json:"title,omitempty,case:strict"`
+	Address *ChangeAddress `json:"address,omitempty,case:strict"`
 }
 
 // DraftOpen is the value of QORY_SUBMIT_DRAFT that asks the submit program to open a
@@ -462,56 +462,56 @@ const DraftOpen = "open"
 // and [CheckChangeMustUnderstand] resolves a pointer through them.
 type (
 	workItemEntry struct {
-		Kind           string   `json:"kind"`
-		WorkItemID     string   `json:"work_item_id"`
-		Ref            string   `json:"ref"`
-		Status         string   `json:"status"`
-		URL            string   `json:"url"`
-		MustUnderstand []string `json:"must_understand,omitempty"`
+		Kind           string   `json:"kind,case:strict"`
+		WorkItemID     string   `json:"work_item_id,case:strict"`
+		Ref            string   `json:"ref,case:strict"`
+		Status         string   `json:"status,case:strict"`
+		URL            string   `json:"url,case:strict"`
+		MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 	}
 	commentEntry struct {
-		Kind           string   `json:"kind"`
-		CommentID      string   `json:"comment_id"`
-		Ref            string   `json:"ref"`
-		AuthorName     string   `json:"author_name"`
-		Body           string   `json:"body"`
-		MustUnderstand []string `json:"must_understand,omitempty"`
+		Kind           string   `json:"kind,case:strict"`
+		CommentID      string   `json:"comment_id,case:strict"`
+		Ref            string   `json:"ref,case:strict"`
+		AuthorName     string   `json:"author_name,case:strict"`
+		Body           string   `json:"body,case:strict"`
+		MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 	}
 	collectionEntry struct {
-		Kind           string   `json:"kind"`
-		CollectionRef  string   `json:"collection_ref"`
-		Status         string   `json:"status"`
-		MustUnderstand []string `json:"must_understand,omitempty"`
+		Kind           string   `json:"kind,case:strict"`
+		CollectionRef  string   `json:"collection_ref,case:strict"`
+		Status         string   `json:"status,case:strict"`
+		MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 	}
 	grantEntry struct {
-		Kind           string   `json:"kind"`
-		ConnectionID   string   `json:"connection_id"`
-		GrantRef       string   `json:"grant_ref"`
-		Status         string   `json:"status"`
-		MustUnderstand []string `json:"must_understand,omitempty"`
+		Kind           string   `json:"kind,case:strict"`
+		ConnectionID   string   `json:"connection_id,case:strict"`
+		GrantRef       string   `json:"grant_ref,case:strict"`
+		Status         string   `json:"status,case:strict"`
+		MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 	}
 	syncEntry struct {
-		Kind           string   `json:"kind"`
-		Interval       *int     `json:"interval"`
-		MustUnderstand []string `json:"must_understand,omitempty"`
+		Kind           string   `json:"kind,case:strict"`
+		Interval       *int     `json:"interval,case:strict"`
+		MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 	}
 	watchEntry struct {
-		Kind           string   `json:"kind"`
-		WorkItemID     string   `json:"work_item_id"`
-		URL            string   `json:"url"`
-		MustUnderstand []string `json:"must_understand,omitempty"`
+		Kind           string   `json:"kind,case:strict"`
+		WorkItemID     string   `json:"work_item_id,case:strict"`
+		URL            string   `json:"url,case:strict"`
+		MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 	}
 	changeRequestEntry struct {
-		Kind            string          `json:"kind"`
-		ChangeRequestID string          `json:"change_request_id"`
-		ChangeKind      string          `json:"change_kind"`
-		Target          *Target         `json:"target"`
-		Ref             string          `json:"ref,omitempty"`
-		Title           string          `json:"title"`
-		Text            string          `json:"text"`
-		Previous        *ChangePrevious `json:"previous,omitempty"`
-		Data            json.RawMessage `json:"data"`
-		MustUnderstand  []string        `json:"must_understand,omitempty"`
+		Kind            string          `json:"kind,case:strict"`
+		ChangeRequestID string          `json:"change_request_id,case:strict"`
+		ChangeKind      string          `json:"change_kind,case:strict"`
+		Target          *Target         `json:"target,case:strict"`
+		Ref             string          `json:"ref,omitempty,case:strict"`
+		Title           string          `json:"title,case:strict"`
+		Text            string          `json:"text,case:strict"`
+		Previous        *ChangePrevious `json:"previous,omitempty,case:strict"`
+		Data            json.RawMessage `json:"data,case:strict"`
+		MustUnderstand  []string        `json:"must_understand,omitempty,case:strict"`
 	}
 )
 
@@ -545,7 +545,7 @@ var entryTypes = map[string]reflect.Type{
 // escaped and cut.
 func CheckChangeMustUnderstand(entry []byte) error {
 	var head struct {
-		Kind string `json:"kind"`
+		Kind string `json:"kind,case:strict"`
 	}
 	if err := json.Unmarshal(entry, &head); err != nil {
 		return fmt.Errorf("read the entry as a JSON object: %w", err)
@@ -606,16 +606,16 @@ func (c Change) MarshalJSON() ([]byte, error) {
 // an entry whose must_understand lists a pointer that it does not define
 // ([CheckChangeMustUnderstand]).
 type ChangesFailed struct {
-	Version         int     `json:"version"`
-	Time            string  `json:"time"`
-	CommentID       string  `json:"comment_id,omitempty"`
-	ChangeRequestID string  `json:"change_request_id,omitempty"`
-	Target          *Target `json:"target,omitempty"`
-	Reason          string  `json:"reason"`
-	Detail          string  `json:"detail,omitempty"`
+	Version         int     `json:"version,case:strict"`
+	Time            string  `json:"time,case:strict"`
+	CommentID       string  `json:"comment_id,omitempty,case:strict"`
+	ChangeRequestID string  `json:"change_request_id,omitempty,case:strict"`
+	Target          *Target `json:"target,omitempty,case:strict"`
+	Reason          string  `json:"reason,case:strict"`
+	Detail          string  `json:"detail,omitempty,case:strict"`
 	// MustUnderstand lists the members of the body that the control plane must
 	// understand, as JSON Pointers counted from the body: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // The actions of a [ChangesSubmitted] reply.
@@ -632,16 +632,16 @@ const (
 // both left out when the entry asks for no change at the target. Data is the result that
 // the kind defines, which this contract does not describe, and is left out when nil.
 type ChangesSubmitted struct {
-	Version         int             `json:"version"`
-	Time            string          `json:"time"`
-	ChangeRequestID string          `json:"change_request_id"`
-	Target          Target          `json:"target"`
-	Action          string          `json:"action,omitempty"`
-	Address         *ChangeAddress  `json:"address,omitempty"`
-	Data            json.RawMessage `json:"data,omitempty"`
+	Version         int             `json:"version,case:strict"`
+	Time            string          `json:"time,case:strict"`
+	ChangeRequestID string          `json:"change_request_id,case:strict"`
+	Target          Target          `json:"target,case:strict"`
+	Action          string          `json:"action,omitempty,case:strict"`
+	Address         *ChangeAddress  `json:"address,omitempty,case:strict"`
+	Data            json.RawMessage `json:"data,omitempty,case:strict"`
 	// MustUnderstand lists the members of the body that the control plane must
 	// understand, as JSON Pointers counted from the body: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // The states and actions of a [SubmittedDraft].
@@ -662,23 +662,23 @@ const (
 // it. A submit program prints these values (submit_program.go); a reply of the
 // pull-request kind may have them in its Data as example data.
 type SubmittedDraft struct {
-	Number int64  `json:"number"`
-	URL    string `json:"url"`
-	Title  string `json:"title"`
-	State  string `json:"state"`
-	Action string `json:"action"`
+	Number int64  `json:"number,case:strict"`
+	URL    string `json:"url,case:strict"`
+	Title  string `json:"title,case:strict"`
+	State  string `json:"state,case:strict"`
+	Action string `json:"action,case:strict"`
 }
 
 // ConnectPass is the payload of a connect pass, connect-pass.schema.json.
 type ConnectPass struct {
-	Version      int    `json:"version"`
-	AdapterID    string `json:"adapter_id"`
-	ConnectionID string `json:"connection_id"`
-	Nonce        string `json:"nonce"`
-	ExpiresAt    string `json:"expires_at"`
+	Version      int    `json:"version,case:strict"`
+	AdapterID    string `json:"adapter_id,case:strict"`
+	ConnectionID string `json:"connection_id,case:strict"`
+	Nonce        string `json:"nonce,case:strict"`
+	ExpiresAt    string `json:"expires_at,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // SetupPass is the payload of a setup pass, setup-pass.schema.json, which the control
@@ -686,14 +686,14 @@ type ConnectPass struct {
 // the instance's organisation in the control plane, which an adapter may use to suggest
 // a name at its source; it is optional, and empty marshals no organisation_slug member.
 type SetupPass struct {
-	Version          int    `json:"version"`
-	AdapterID        string `json:"adapter_id"`
-	Nonce            string `json:"nonce"`
-	ExpiresAt        string `json:"expires_at"`
-	OrganisationSlug string `json:"organisation_slug,omitempty"`
+	Version          int    `json:"version,case:strict"`
+	AdapterID        string `json:"adapter_id,case:strict"`
+	Nonce            string `json:"nonce,case:strict"`
+	ExpiresAt        string `json:"expires_at,case:strict"`
+	OrganisationSlug string `json:"organisation_slug,omitempty,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // ConnectReturn is the payload of a connect return, connect-return.schema.json, which
@@ -701,15 +701,15 @@ type SetupPass struct {
 // at most 1024 characters, as a connect pass is. Outcome is "linked", "refused" or
 // "cancelled"; Reason is set only when Outcome is "refused".
 type ConnectReturn struct {
-	Version      int    `json:"version"`
-	ConnectionID string `json:"connection_id"`
-	Nonce        string `json:"nonce"`
-	Outcome      string `json:"outcome"`
-	Reason       string `json:"reason,omitempty"`
-	ExpiresAt    string `json:"expires_at"`
+	Version      int    `json:"version,case:strict"`
+	ConnectionID string `json:"connection_id,case:strict"`
+	Nonce        string `json:"nonce,case:strict"`
+	Outcome      string `json:"outcome,case:strict"`
+	Reason       string `json:"reason,omitempty,case:strict"`
+	ExpiresAt    string `json:"expires_at,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // SealSuite is the suite of a sealed value on the wire: RFC 9180 base mode with
@@ -781,60 +781,60 @@ func lp(b []byte, s string) []byte {
 // the adapter's secrets, [AdapterSecretsPlaintext], sealed to the control plane's server
 // key.
 type AdapterSecrets struct {
-	Version int            `json:"version"`
-	Time    string         `json:"time"`
-	Sealed  SealedToServer `json:"sealed"`
+	Version int            `json:"version,case:strict"`
+	Time    string         `json:"time,case:strict"`
+	Sealed  SealedToServer `json:"sealed,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // SealedToServer is a value sealed to the control plane's server key ServerKey, an
 // Ed25519 public key in base64url: Enc, the ephemeral key, and CT, the ciphertext and
 // its tag, each in base64url without padding.
 type SealedToServer struct {
-	Suite     string `json:"suite"`
-	ServerKey string `json:"server_key"`
-	Enc       string `json:"enc"`
-	CT        string `json:"ct"`
+	Suite     string `json:"suite,case:strict"`
+	ServerKey string `json:"server_key,case:strict"`
+	Enc       string `json:"enc,case:strict"`
+	CT        string `json:"ct,case:strict"`
 }
 
 // AdapterSecretsAnswer is the body of the answer to GET /v1/adapter/secrets,
 // adapter-secrets-answer.schema.json: the adapter's secrets, [AdapterSecretsPlaintext],
 // sealed to the access key the request verified under.
 type AdapterSecretsAnswer struct {
-	Version  int               `json:"version"`
-	Revision int               `json:"revision"`
-	Sealed   SealedToAccessKey `json:"sealed"`
+	Version  int               `json:"version,case:strict"`
+	Revision int               `json:"revision,case:strict"`
+	Sealed   SealedToAccessKey `json:"sealed,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // SealedToAccessKey is a value sealed to the access key AccessKeyID: Enc, the ephemeral
 // key, and CT, the ciphertext and its tag, each in base64url without padding.
 type SealedToAccessKey struct {
-	Suite       string `json:"suite"`
-	AccessKeyID string `json:"access_key_id"`
-	Enc         string `json:"enc"`
-	CT          string `json:"ct"`
+	Suite       string `json:"suite,case:strict"`
+	AccessKeyID string `json:"access_key_id,case:strict"`
+	Enc         string `json:"enc,case:strict"`
+	CT          string `json:"ct,case:strict"`
 }
 
 // AdapterSecretsPlaintext is what an adapter's secrets are sealed as,
 // adapter-secrets-plaintext.schema.json. A nil Secrets marshals as an empty list.
 type AdapterSecretsPlaintext struct {
-	Version int           `json:"version"`
-	Secrets []SecretEntry `json:"secrets"`
+	Version int           `json:"version,case:strict"`
+	Secrets []SecretEntry `json:"secrets,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // SecretEntry is one secret: its name, as the source role's secrets list it, and its
 // value.
 type SecretEntry struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name  string `json:"name,case:strict"`
+	Value string `json:"value,case:strict"`
 }
 
 // MarshalJSON writes the plaintext, a nil Secrets as an empty list.
@@ -868,23 +868,23 @@ func (p AdapterSecretsPlaintext) Check() error {
 // ConnectionID, the access the source grants for the external account Account, by the
 // adapter's ref GrantRef, linked under the connect pass whose nonce is PassNonce.
 type Grant struct {
-	Version      int     `json:"version"`
-	Time         string  `json:"time"`
-	ConnectionID string  `json:"connection_id"`
-	GrantRef     string  `json:"grant_ref"`
-	Account      Account `json:"account"`
-	PassNonce    string  `json:"pass_nonce"`
+	Version      int     `json:"version,case:strict"`
+	Time         string  `json:"time,case:strict"`
+	ConnectionID string  `json:"connection_id,case:strict"`
+	GrantRef     string  `json:"grant_ref,case:strict"`
+	Account      Account `json:"account,case:strict"`
+	PassNonce    string  `json:"pass_nonce,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // Account is the external account of a [Grant] at the source: Ref, its id at the
 // source, 1 to 200 characters, and Title, its display name, one line of 1 to 1024
 // characters.
 type Account struct {
-	Ref   string `json:"ref"`
-	Title string `json:"title"`
+	Ref   string `json:"ref,case:strict"`
+	Title string `json:"title,case:strict"`
 }
 
 // GrantEnd is the body of POST /v1/grants/end, grant-end.schema.json: the source no
@@ -892,25 +892,25 @@ type Account struct {
 // ends that grant and the collections whose grant_ref is GrantRef, and the connection
 // stays.
 type GrantEnd struct {
-	Version      int    `json:"version"`
-	Time         string `json:"time"`
-	ConnectionID string `json:"connection_id"`
-	GrantRef     string `json:"grant_ref"`
+	Version      int    `json:"version,case:strict"`
+	Time         string `json:"time,case:strict"`
+	ConnectionID string `json:"connection_id,case:strict"`
+	GrantRef     string `json:"grant_ref,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // Grants is the body of the answer to GET /v1/grants, grants.schema.json: the control
 // plane's copy of the grants of the adapter's connections. A nil Grants marshals as an
 // empty list.
 type Grants struct {
-	Version  int          `json:"version"`
-	Revision int          `json:"revision"`
-	Grants   []GrantEntry `json:"grants"`
+	Version  int          `json:"version,case:strict"`
+	Revision int          `json:"revision,case:strict"`
+	Grants   []GrantEntry `json:"grants,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MarshalJSON writes the document, a nil Grants as an empty list.
@@ -925,8 +925,8 @@ func (g Grants) MarshalJSON() ([]byte, error) {
 // GrantEntry is one grant of the control plane's copy: the connection that has it and
 // the grant's ref.
 type GrantEntry struct {
-	ConnectionID string `json:"connection_id"`
-	GrantRef     string `json:"grant_ref"`
+	ConnectionID string `json:"connection_id,case:strict"`
+	GrantRef     string `json:"grant_ref,case:strict"`
 }
 
 // RunCredentialPath is the path of the call for a run's access credential,
@@ -955,27 +955,27 @@ const RunCredentialTokenMaxBytes = 16384
 // Purpose "work", it has exactly one: the ref of the collection of the run's target, as
 // the adapter listed it, which for a target from an item is the item's collection.
 type RunCredential struct {
-	Version      int      `json:"version"`
-	Time         string   `json:"time"`
-	GrantRef     string   `json:"grant_ref,omitempty"`
-	ConnectionID string   `json:"connection_id,omitempty"`
-	Resources    []string `json:"resources"`
-	Access       string   `json:"access"`
-	Purpose      string   `json:"purpose"`
+	Version      int      `json:"version,case:strict"`
+	Time         string   `json:"time,case:strict"`
+	GrantRef     string   `json:"grant_ref,omitempty,case:strict"`
+	ConnectionID string   `json:"connection_id,omitempty,case:strict"`
+	Resources    []string `json:"resources,case:strict"`
+	Access       string   `json:"access,case:strict"`
+	Purpose      string   `json:"purpose,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // RunCredentialAnswer is the body of the adapter's answer to the call with the path
 // [RunCredentialPath], run-credential-answer.schema.json.
 type RunCredentialAnswer struct {
-	Version    int        `json:"version"`
-	Revision   int        `json:"revision"`
-	Credential Credential `json:"credential"`
+	Version    int        `json:"version,case:strict"`
+	Revision   int        `json:"revision,case:strict"`
+	Credential Credential `json:"credential,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // Credential is the Forager contract's credential document as a run credential answer
@@ -983,20 +983,20 @@ type RunCredentialAnswer struct {
 // exact, and it has no placeholders. ExpiresAt is RFC 3339; empty, the credential does
 // not expire.
 type Credential struct {
-	Version   int               `json:"version"`
-	Token     string            `json:"token"`
-	ExpiresAt string            `json:"expires_at,omitempty"`
-	Apply     []CredentialApply `json:"apply"`
+	Version   int               `json:"version,case:strict"`
+	Token     string            `json:"token,case:strict"`
+	ExpiresAt string            `json:"expires_at,omitempty,case:strict"`
+	Apply     []CredentialApply `json:"apply,case:strict"`
 }
 
 // CredentialApply is one item of a credential's apply: where the access token goes. Scheme is
 // "bearer", "basic" with Username, or "header" with Header; Paths empty means every path.
 type CredentialApply struct {
-	Hosts    []string `json:"hosts"`
-	Scheme   string   `json:"scheme"`
-	Username string   `json:"username,omitempty"`
-	Header   string   `json:"header,omitempty"`
-	Paths    []string `json:"paths,omitempty"`
+	Hosts    []string `json:"hosts,case:strict"`
+	Scheme   string   `json:"scheme,case:strict"`
+	Username string   `json:"username,omitempty,case:strict"`
+	Header   string   `json:"header,omitempty,case:strict"`
+	Paths    []string `json:"paths,omitempty,case:strict"`
 }
 
 // Check reports the first rule of run-credential-answer.schema.json that the answer
@@ -1032,12 +1032,12 @@ const ResolvePath = "resolve"
 // Resolve is the body of the call with the path [ResolvePath], resolve.schema.json: the
 // addresses, 1 to 64, each as the document the control plane read it from writes it.
 type Resolve struct {
-	Version   int      `json:"version"`
-	Time      string   `json:"time"`
-	Addresses []string `json:"addresses"`
+	Version   int      `json:"version,case:strict"`
+	Time      string   `json:"time,case:strict"`
+	Addresses []string `json:"addresses,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // ResolveAnswer is the body of the adapter's answer to the call with the path
@@ -1055,12 +1055,12 @@ type Resolve struct {
 // sends a [RunCredential] for a resource that it reads with a [ReadPublic]: reading a
 // public resource gives the run no credential.
 type ResolveAnswer struct {
-	Version  int        `json:"version"`
-	Revision int        `json:"revision"`
-	Results  []Resolved `json:"results"`
+	Version  int        `json:"version,case:strict"`
+	Revision int        `json:"revision,case:strict"`
+	Results  []Resolved `json:"results,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // Resolved is the result for one address: GrantRef and ResourceRef, the grant and the
@@ -1075,15 +1075,15 @@ type ResolveAnswer struct {
 // without a credential sees it, never from a grant it holds; a resource that the source
 // shows only to signed-in users is not public.
 type Resolved struct {
-	Address     string `json:"address"`
-	GrantRef    string `json:"grant_ref,omitempty"`
-	ResourceRef string `json:"resource_ref,omitempty"`
-	Covered     *bool  `json:"covered,omitempty"`
-	Public      bool   `json:"public,omitempty"`
+	Address     string `json:"address,case:strict"`
+	GrantRef    string `json:"grant_ref,omitempty,case:strict"`
+	ResourceRef string `json:"resource_ref,omitempty,case:strict"`
+	Covered     *bool  `json:"covered,omitempty,case:strict"`
+	Public      bool   `json:"public,omitempty,case:strict"`
 	// PublicRef is the ref of the resource that a request without a credential, under no
 	// grant, can use: the ResourceRef the control plane sends in a [ReadPublic]. It is
 	// set exactly when Public is true, and may equal ResourceRef when GrantRef is empty.
-	PublicRef string `json:"public_ref,omitempty"`
+	PublicRef string `json:"public_ref,omitempty,case:strict"`
 }
 
 // ReadPath is the path of the call that reads a document at a version, read.schema.json:
@@ -1097,15 +1097,15 @@ const ReadContentMaxBytes = 262144
 // Read is the body of the call with the path [ReadPath], read.schema.json: the document
 // at Path in the resource ResourceRef, read under the grant GrantRef, at the version At.
 type Read struct {
-	Version     int    `json:"version"`
-	Time        string `json:"time"`
-	GrantRef    string `json:"grant_ref"`
-	ResourceRef string `json:"resource_ref"`
-	Path        string `json:"path"`
-	At          string `json:"at"`
+	Version     int    `json:"version,case:strict"`
+	Time        string `json:"time,case:strict"`
+	GrantRef    string `json:"grant_ref,case:strict"`
+	ResourceRef string `json:"resource_ref,case:strict"`
+	Path        string `json:"path,case:strict"`
+	At          string `json:"at,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // ReadPublicPath is the path of the call that reads a document of a public resource at
@@ -1121,14 +1121,14 @@ const ReadPublicPath = "read-public"
 // that no longer exists included; 404 version_not_found; 409 document_not_text; 503
 // source_unavailable, the source's rate limit included.
 type ReadPublic struct {
-	Version     int    `json:"version"`
-	Time        string `json:"time"`
-	ResourceRef string `json:"resource_ref"`
-	Path        string `json:"path"`
-	At          string `json:"at"`
+	Version     int    `json:"version,case:strict"`
+	Time        string `json:"time,case:strict"`
+	ResourceRef string `json:"resource_ref,case:strict"`
+	Path        string `json:"path,case:strict"`
+	At          string `json:"at,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // ReadAnswer is the body of the adapter's answer to the call with the path [ReadPath],
@@ -1138,14 +1138,14 @@ type ReadPublic struct {
 // In both, ResolvedAt is the version of the resource at which the adapter read the
 // document, or at which the resource has no document, and it never changes.
 type ReadAnswer struct {
-	Version    int    `json:"version"`
-	Revision   int    `json:"revision"`
-	Content    string `json:"content"`
-	Found      *bool  `json:"found,omitempty"`
-	ResolvedAt string `json:"resolved_at"`
+	Version    int    `json:"version,case:strict"`
+	Revision   int    `json:"revision,case:strict"`
+	Content    string `json:"content,case:strict"`
+	Found      *bool  `json:"found,omitempty,case:strict"`
+	ResolvedAt string `json:"resolved_at,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MarshalJSON writes the answer: with Found set, without the member content; otherwise
@@ -1156,11 +1156,11 @@ func (a ReadAnswer) MarshalJSON() ([]byte, error) {
 		return json.Marshal(plain(a))
 	}
 	return json.Marshal(struct {
-		Version        int      `json:"version"`
-		Revision       int      `json:"revision"`
-		Found          *bool    `json:"found"`
-		ResolvedAt     string   `json:"resolved_at"`
-		MustUnderstand []string `json:"must_understand,omitempty"`
+		Version        int      `json:"version,case:strict"`
+		Revision       int      `json:"revision,case:strict"`
+		Found          *bool    `json:"found,case:strict"`
+		ResolvedAt     string   `json:"resolved_at,case:strict"`
+		MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 	}{a.Version, a.Revision, a.Found, a.ResolvedAt, a.MustUnderstand})
 }
 
@@ -1185,8 +1185,8 @@ func (a ReadAnswer) Check() error {
 // Refusal is the body of the control plane's refusal of an adapter's request, and of an
 // adapter's refusal of a call of the control plane, refusal.schema.json.
 type Refusal struct {
-	Error string `json:"error"`
+	Error string `json:"error,case:strict"`
 	// MustUnderstand lists the members of the document that the reader must understand, as
 	// JSON Pointers counted from the document: see [CheckMustUnderstand].
-	MustUnderstand []string `json:"must_understand,omitempty"`
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
