@@ -1066,6 +1066,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `auth`, `credential` and the data of `dev.qory.run.exited` are open. A reader ignores a
   member that their schema does not define, unless `must_understand` lists it. A reader
   refuses an unknown `scheme` or `format`. No member changed.
+- The module requires Forager at the commit 3a8876d (`v0.7.1-0.20261120100355-3a8876d85c0d`),
+  in place of 5e9ca86. From that commit, a reader of Forager's `auth`, `credential` and
+  the data of `dev.qory.run.exited` ignores a member that their schema does not define,
+  unless `must_understand` lists it.
 
 ### Removed
 
