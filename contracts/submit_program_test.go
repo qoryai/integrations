@@ -593,17 +593,6 @@ func TestTheFeedDescribesThePreviousTitle(t *testing.T) {
 	}
 }
 
-// TestTheReadmeSaysWhichDraftOfSeveralIsTaken pins the sentence that picks one draft from
-// several on the branch, in the README subsection of the pull-request kind, whose white
-// space is collapsed to single spaces.
-func TestTheReadmeSaysWhichDraftOfSeveralIsTaken(t *testing.T) {
-	readme := strings.Join(strings.Fields(string(read(t, "README.md"))), " ")
-	const want = "With several drafts on the branch, the adapter takes the entry's `data.draft.number` when it is among them. Otherwise it takes the not-closed, not-merged draft with the highest number. With none, it takes the closed or merged one with the highest number, reported as kept."
-	if !strings.Contains(readme, want) {
-		t.Errorf("the README does not contain %q", want)
-	}
-}
-
 // gatingTexts are the places that state that a change_request entry reaches only an
 // adapter whose source role lists the change's kind in change_kinds, by where they are. A
 // README section has its white space collapsed to single spaces.

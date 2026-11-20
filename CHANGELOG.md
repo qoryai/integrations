@@ -14,6 +14,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   A `reply` whose `text` has such a line passes `changes.schema.json`. A kind that needs
   marker lines defines the rule: the artifact type of the kind and the adapter that
   applies it. The submit program contract keeps its marker lines.
+- Take the rules of the `pull-request` kind from the artifact type of the kind and from
+  the adapter that applies it, not from the README of the integration contract. The
+  README had a section on the kind: the members of `data`, how an adapter finds a draft
+  by its branch, the block between the marker lines, the title rule and the members of
+  the reply. The section is gone. The README keeps the rules of every change request,
+  and the submit program section. No release had the section.
 - Rename `$defs/draft_title` in `definitions.schema.json` to `$defs/change_title`. It is
   the title of a change request of any kind, with the rule that `draft_title` had: 1 to
   256 characters on one line, the character rule of a prose line, and at least one
@@ -455,11 +461,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `ChangeUpdated` and `ChangeKept`. A draft has the states `DraftStateDraft`,
   `DraftStateOpen`, `DraftStateClosed` and `DraftStateMerged`, and the actions
   `DraftOpened`, `DraftUpdated` and `DraftKept`.
-- The README of the integration contract describes the `pull-request` kind of change
-  request, the one that the software factory uses. It describes the members of its
-  `data` and how the adapter finds a draft by its head branch. It describes the marked
-  block of the draft's description between `<!-- qory:start -->` and `<!-- qory:end -->`.
-  It describes the title rule. The members belong to the artifact type of the kind, not to this contract.
+- The README of the integration contract says that the artifact type of a kind defines the
+  kind, and that the adapter that applies it defines its rules. The `pull-request` kind
+  is an example. The README keeps the section on the submit program.
 - The submit program contract, `contracts/run/v1/submit-program/README.md`, is for the
   program that `qory run` runs on a run with no run code, with the login of the forge's
   command line that the person made. A run's draft is opened by the adapter from the
