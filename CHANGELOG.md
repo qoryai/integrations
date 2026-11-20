@@ -271,9 +271,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
     and the seven objects of `explore/v1/inputs.schema.json` ignore an unknown member. Each root of these, except the explore inputs, has an optional
     `must_understand`. The explore inputs use the list of the run documents.
   - The outcome of the run contract has the members `state`, `reason` and `exit_code` of
-    Forager's `dev.qory.run.exited`. These members follow Forager's schema, which is closed
-    and has no `must_understand`. The outcome schema accepts a member that it does not
-    define, and the control plane reads `state`, `reason` and `exit_code` from the event.
+    Forager's `dev.qory.run.exited`. A reader of that event ignores a member that Forager's
+    schema does not define, unless `must_understand` lists it. The outcome schema accepts a
+    member that it does not define, and the control plane reads `state`, `reason` and
+    `exit_code` from the event.
   - A writer marks a member that the reader must read by listing its pointer in
     `must_understand`. The reader refuses a document that lists a pointer it does not
     define. A machines answer that lists such a pointer is a failure of kind `defect`. The
@@ -1060,6 +1061,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   adapter cannot read. It uses the backoff of `grant.schema.json`, also while the connection
   is suspended. After `expires_at`, the adapter stops sending the report and drops
   the grant, unless the control plane's copy has it.
+- The text of `contracts/integration/v1/README.md`, `contracts/run/v1/README.md` and
+  `contracts/run/v1/outcome.schema.json` said that Forager's `auth`, `credential` and
+  `dev.qory.run.exited` refuse a member they do not define, and that the event has no
+  `must_understand`. A reader of those three Forager documents ignores such a member,
+  unless `must_understand` lists it. A reader refuses an unknown `scheme` or `format`. No
+  member changed.
 
 ### Removed
 
