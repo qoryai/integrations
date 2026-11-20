@@ -146,7 +146,7 @@ var invalidExploreFixtures = map[string]struct{ schema, reason string }{
 	"inputs-member-name-line-feed.json":             {"inputs", "/instruction/by/name pattern"},
 	"inputs-member-name-tab.json":                   {"inputs", "/instruction/by/name pattern"},
 	"inputs-member-name-bidi-override.json":         {"inputs", "/instruction/by/name pattern"},
-	"inputs-member-name-empty.json":                 {"inputs", "/instruction/by/name minLength"},
+	"inputs-member-name-empty.json":                 {"inputs", "/instruction/by/name minLength; /instruction/by/name pattern"},
 	"inputs-member-name-161-characters.json":        {"inputs", "/instruction/by/name maxLength"},
 	"inputs-comments-object.json":                   {"inputs", "/comments type"},
 	"inputs-comment-array.json":                     {"inputs", "/comments/1 type"},

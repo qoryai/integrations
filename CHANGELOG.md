@@ -1032,6 +1032,28 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `jsonv2` experiment is on, `encoding/json` and `encoding/json/v2` both honour it.
   A program built with `GOEXPERIMENT=nojsonv2` reads these members regardless of case.
   `CheckMustUnderstand`, `Tier` and `HarnessSection` read the same way.
+- A prose line (`$defs/line` of `description.schema.json`) refuses every control character
+  (category Cc), U+2028 and U+2029. It also refuses every format character (category Cf)
+  except U+200C and U+200D. Before this release, it refused a fixed list of characters.
+  That list missed format characters such as the tag characters U+E0001 and U+E0020 to
+  U+E007F. Emoji sequences and some scripts need U+200C and U+200D, so both stay allowed.
+  - These members refer to `$defs/line`, so they have the rule: the lines of a description,
+    the `vendor`, the `author_name` of a comment, and the `title` of a change request.
+    The `title` of a subject and, in the explore inputs, the member `name` have it too.
+  - The subject `id` of the run documents refers to `$defs/line` too. Before this release,
+    it refused only control characters, U+2028 and U+2029.
+  - These members have a copy of the pattern, because their length limit is above 300
+    or they allow tab, line feed and carriage return: the failure `detail`, the account
+    `title` of a grant, and the explore inputs `text`. `text` allows those three controls.
+  - A change request title and the `author_name` of a comment also need a character that is
+    not a space, U+200C or U+200D. Before this release, a value of U+200D alone was valid. A guide line of U+200D alone
+    stays valid.
+  - The rule follows the Unicode version of the Go toolchain that builds the program
+    (Unicode 17.0.0 with Go 1.27.4). A later Unicode version can add characters to Cf.
+    A validator on another Unicode version can accept them.
+  - A validator that does not read `\p{Cc}` and `\p{Cf}`, such as an ECMA-262 engine
+    without the `u` flag, cannot use these patterns as written.
+  - `ParseSubmitLines` reads the title patterns from the schemas, so it has the same rule.
 
 ### Removed
 

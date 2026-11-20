@@ -28,7 +28,7 @@
       "required": ["ref", "title"],
       "properties": {
         "ref": {"description": "The external account's id at the source, stable for that account: 1 to 200 characters with no NUL, as a collection's ref.", "$ref": "definitions.schema.json#/$defs/ref"},
-        "title": {"description": "The external account's display name at the source, one line: 1 to 1024 characters, as a collection's title, with no control characters, so no line feed or carriage return, no bidirectional controls and none of the format characters that are usually not shown, the characters description.schema.json refuses in a line.", "type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f\u00ad\u061c\u180e\u200b\u200e\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\ufff9-\ufffb]+$"}
+        "title": {"description": "The external account's display name at the source, as a collection's title: one line of 1 to 1024 characters. It has the character rule of a prose line (description.schema.json, $defs.line): no control character, so no line feed or carriage return, no U+2028 or U+2029, and no format character (category Cf) other than U+200C and U+200D.", "type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^(?:[^\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])+$"}
       }
     },
     "pass_nonce": {

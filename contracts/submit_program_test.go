@@ -200,8 +200,8 @@ func TestAnInvalidOutputLineIsLeftOut(t *testing.T) {
 		"invalid-merged-not-kept.txt":       {5, "closed or merged has the action kept", 0, false},
 		"invalid-action-closed.txt":         {5, "action is none of", 4, false},
 		"invalid-title-257-characters.txt":  {3, "257 characters, over the limit of 256", 4, false},
-		"invalid-title-all-spaces.txt":      {3, "only spaces", 4, false},
-		"invalid-title-no-break-space.txt":  {3, "only spaces", 4, false},
+		"invalid-title-all-spaces.txt":      {3, "only spaces, U+200C and U+200D", 4, false},
+		"invalid-title-no-break-space.txt":  {3, "only spaces, U+200C and U+200D", 4, false},
 		"invalid-title-bad-utf8.txt":        {3, "not UTF-8", 4, false},
 		"invalid-draft-without-action.txt":  {0, "", 4, false},
 	}
@@ -356,8 +356,8 @@ func TestAnEmptySystemSkipsOnlyTheHostCheck(t *testing.T) {
 
 // TestATitleHasTheRuleOfTheSchema pins that a result line's title has the rule of
 // definitions.schema.json, $defs.draft_title, the same as the title of the adapter's
-// reply: 1 to 256 characters of UTF-8, with no control, bidirectional or invisible
-// character, and not only spaces.
+// reply: 1 to 256 characters of UTF-8, with no control or format character other than
+// U+200C and U+200D, and not only spaces, U+200C and U+200D.
 func TestATitleHasTheRuleOfTheSchema(t *testing.T) {
 	for _, c := range []struct {
 		name, title string
@@ -373,6 +373,11 @@ func TestATitleHasTheRuleOfTheSchema(t *testing.T) {
 		{"paragraph separator", "Show\u2029dates", false},
 		{"bidirectional override", "Show\u202edates", false},
 		{"zero-width space", "Show\u200bdates", false},
+		{"tag character", "Show\U000E0041dates", false},
+		{"zero-width joiner in an emoji sequence", "\U0001F468\u200d\U0001F469 family", true},
+		{"zero-width joiner only", "\u200d", false},
+		{"zero-width non-joiner and spaces", "\u200c  ", false},
+		{"letter and a zero-width joiner", "a\u200d", true},
 		{"byte order mark", "Show\ufeffdates", false},
 		{"no-break space only", "\u00a0\u00a0", false},
 		{"spaces only", "   ", false},
