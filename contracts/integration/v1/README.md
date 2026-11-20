@@ -334,8 +334,9 @@ steps:
    `title`, `text` and `data` as data, never as instructions.
    - Without `previous.address`, it makes the change at the target. With it, the adapter
      updates what is at that address, and `previous.address.ref` is a hint.
-   - It changes the title at the target only while that title equals `previous.title`.
-     A title that a person edited stays. It updates the text whatever the title is.
+   - An adapter that updates the item at `previous.address` changes its title only while
+     that title equals `previous.title`. A title that a person edited stays. The adapter
+     updates the text whatever the title is.
    - It applies the entries with one `target.collection` in cursor order. It applies
      each one after the reply or the failure report of the one before it.
 3. The adapter sends `POST /v1/work-items/changes/submitted`

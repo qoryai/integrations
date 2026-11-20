@@ -2,7 +2,8 @@
 
 What the control plane tells qory about a run, and what qory reports back. The files in
 this directory are the schemas and the fixtures that a writer and a reader are tested
-against.
+against. The folder `fixtures/check` has run documents that the schema accepts and
+`Documents.Check` refuses, because the schema cannot express the rule they break.
 
 | Schema | Document |
 |---|---|

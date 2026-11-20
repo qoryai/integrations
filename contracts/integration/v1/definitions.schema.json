@@ -19,7 +19,7 @@
       "pattern": "^sc_[0-9a-hjkmnp-tv-z]{16}$"
     },
     "change_kind": {
-      "description": "The kind of a change request: the name of an artifact type in the process of the workspace's type, such as pull-request, reply or bid-changes. This contract lists no kind. Lower-case letters and digits in groups joined by single hyphens, 1 to 64 characters, the form of the type of an entry of deliver in run/v1/documents.schema.json.",
+      "description": "The kind of a change request: the name of an artifact type in the process of the workspace's type, such as pull-request, reply or bid-changes. This contract lists no kind. Lower-case letters and digits in groups joined by single hyphens, 1 to 64 characters. It has the form of the type of an entry of deliver in run/v1/documents.schema.json.",
       "type": "string",
       "maxLength": 64,
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"

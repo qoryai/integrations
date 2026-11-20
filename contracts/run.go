@@ -484,13 +484,13 @@ type Deliver struct {
 // Check reports the first rule of documents.schema.json that the documents break and
 // that the schema does not express: no two entries of Deliver have the same Type, no two
 // entries of FurtherTargets have the same Collection, and none has the Collection of
-// Target. A reader of run documents calls it after it decodes them and after it
+// Target. Each message starts with the fix. A reader of run documents calls it after it decodes them and after it
 // validates them against the schema.
 func (d Documents) Check() error {
 	types := make(map[string]bool, len(d.Deliver))
 	for _, e := range d.Deliver {
 		if types[e.Type] {
-			return fmt.Errorf("deliver lists the type %q twice", e.Type)
+			return fmt.Errorf("List each deliver type once: %q appears twice.", e.Type)
 		}
 		types[e.Type] = true
 	}
@@ -501,9 +501,9 @@ func (d Documents) Check() error {
 	for i, e := range d.FurtherTargets {
 		if collections[e.Collection] {
 			if d.Target != nil && e.Collection == d.Target.Collection {
-				return fmt.Errorf("further_targets has the collection %q of target at index %d", e.Collection, i)
+				return fmt.Errorf("Remove the collection %q from further_targets (index %d): target has it.", e.Collection, i)
 			}
-			return fmt.Errorf("further_targets lists the collection %q twice", e.Collection)
+			return fmt.Errorf("List each collection of further_targets once: %q appears twice.", e.Collection)
 		}
 		collections[e.Collection] = true
 	}

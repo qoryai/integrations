@@ -579,8 +579,9 @@ func TestATitleChangesOnlyWhileItIsThePreviousOne(t *testing.T) {
 // limit of a block.
 func TestTheFeedDescribesThePreviousTitle(t *testing.T) {
 	d, _ := node(t, "changes.schema.json", "/$defs/change_request")["description"].(string)
-	if !strings.Contains(d, "previous.title") {
-		t.Error("the description of the change_request entry does not contain \"previous.title\"")
+	const want = "An adapter that updates the item at previous.address changes its title only while that title equals previous.title"
+	if !strings.Contains(d, want) {
+		t.Errorf("the description of the change_request entry does not contain %q", want)
 	}
 	for _, marker := range []string{contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd} {
 		if strings.Contains(d, marker) {

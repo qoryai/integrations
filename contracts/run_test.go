@@ -325,8 +325,9 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 
 // TestAPrebuildIsRefusedForEachRunMemberAlone pins that the invalid run documents of
 // the step prebuild that have workflow, harness_hidden, harness, deliver,
-// further_targets, time_limit_minutes, shared_run or type_settings are refused for that member alone: the
-// same documents without it are accepted.
+// time_limit_minutes, shared_run or type_settings are refused for that member alone: the
+// same documents without it are accepted. TestFurtherTargetsAreRefusedForOneRuleAlone
+// covers further_targets.
 func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	for _, c := range []struct{ fixture, member string }{
@@ -550,9 +551,9 @@ func TestADeliverHasAtMostSixteenEntries(t *testing.T) {
 func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	want := map[string]string{
-		"documents-deliver-type-twice.json":                   `deliver lists the type "code-change" twice`,
-		"documents-further-targets-collection-twice.json":     `further_targets lists the collection "R_1002" twice`,
-		"documents-further-targets-collection-of-target.json": `further_targets has the collection "R_1001" of target at index 1`,
+		"documents-deliver-type-twice.json":                   `List each deliver type once: "code-change" appears twice.`,
+		"documents-further-targets-collection-twice.json":     `List each collection of further_targets once: "R_1002" appears twice.`,
+		"documents-further-targets-collection-of-target.json": `Remove the collection "R_1001" from further_targets (index 1): target has it.`,
 	}
 	got := runFiles(t, "fixtures/check")
 	if len(got) != len(want) {
@@ -684,8 +685,8 @@ func TestCheckReportsARepeatedCollection(t *testing.T) {
 		{"different collections", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_3"}}, ""},
 		{"no target", nil, []contracts.Target{{Collection: "R_2"}, {Collection: "R_3"}}, ""},
 		{"none", main, nil, ""},
-		{"twice", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_2"}}, `further_targets lists the collection "R_2" twice`},
-		{"the collection of the target", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_1"}}, `further_targets has the collection "R_1" of target at index 1`},
+		{"twice", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_2"}}, `List each collection of further_targets once: "R_2" appears twice.`},
+		{"the collection of the target", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_1"}}, `Remove the collection "R_1" from further_targets (index 1): target has it.`},
 		{"the same path under another collection", main, []contracts.Target{{Collection: "R_2", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}}, ""},
 	} {
 		got := ""

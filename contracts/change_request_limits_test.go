@@ -188,13 +188,11 @@ func TestAReplyTextMayHaveAMarkerLine(t *testing.T) {
 		!strings.HasPrefix(f.Changes[0].Text, "<!-- qory:start -->\n") || !strings.Contains(f.Changes[0].Text, "\n<!-- qory:end -->") {
 		t.Fatalf("change-request-reply-marker-line.json has %+v, want a reply with a start line and an end line", f.Changes)
 	}
-	for _, name := range []string{"changes.schema.json"} {
-		if err := validate(compile(t, name), b); err != nil {
-			t.Errorf("the entry is refused: %v", err)
-		}
-		if err := validate(compileClosed(t, name), b); err != nil {
-			t.Errorf("the closed copy refuses the entry: %v", err)
-		}
+	if err := validate(compile(t, "changes.schema.json"), b); err != nil {
+		t.Errorf("the entry is refused: %v", err)
+	}
+	if err := validate(compileClosed(t, "changes.schema.json"), b); err != nil {
+		t.Errorf("the closed copy refuses the entry: %v", err)
 	}
 }
 

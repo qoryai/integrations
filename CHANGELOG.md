@@ -22,13 +22,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   reply is a draft name.
 - Take the rules of the `pull-request` kind from the artifact type of the kind and from
   the adapter that applies it, not from the README of the integration contract. The
-  README had a section on the kind: the members of `data`, how an adapter finds a draft
-  by its branch, the block between the marker lines, the title rule and the members of
-  the reply. The section is gone. The README keeps the rules of every change request,
-  and the submit program section. No release had the section.
+  README had a section on the kind. It covered the members of `data`, how an adapter
+  finds a draft by its branch, the block between the marker lines, the title rule and
+  the members of the reply. The section is gone. The README keeps the rules of every
+  change request, and the submit program section. No release had the section.
 - Rename `$defs/draft_title` in `definitions.schema.json` to `$defs/change_title`. It is
-  the title of a change request of any kind, with the rule that `draft_title` had: 1 to
-  256 characters on one line, the character rule of a prose line, and at least one
+  the title of a change request of any kind. It keeps the rule that `draft_title` had: 1
+  to 256 characters on one line, the character rule of a prose line, and at least one
   character that is not a space. A schema with a `$ref` to `draft_title` no longer
   compiles, so change each such `$ref`. No release had `draft_title`. The key
   `draft_title` of the submit program result stays, and has the rule of `change_title`.
@@ -54,7 +54,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   no entry has the `collection` of `target`. The schema cannot check that, so a reader
   calls `Documents.Check` after it decodes the documents. An entry has no version:
   `target_version` applies to `target` only. In Go, `Documents.FurtherTargets` is a
-  `[]Target`, and `MaxFurtherTargets` is 20.
+  `[]Target`, and `MaxFurtherTargets` is 20. The folder `fixtures/check` of the run
+  contract has run documents that the schema accepts and `Documents.Check` refuses.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
@@ -417,8 +418,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   serialized, and the control plane enforces that limit. The schema limits each value
   inside `data`. An array has at most 1024 items, an object at most 256 members, and a
   string at most 20000 characters. A member name has 1 to 128 characters. No string or
-  name has U+0000. The adapter changes the title at the target only while it equals
-  `previous.title`. It updates what is at `previous.address` when there is one. It applies the entries with one
+  name has U+0000. An adapter that updates the item at `previous.address` changes its title
+  only while that title equals `previous.title`. It updates what is at `previous.address` when there is one. It applies the entries with one
   `target.collection` in cursor order. `change_kind` has the pattern of the `type` of an
   entry of `deliver` of the run documents: lower-case letters and digits in groups joined by single hyphens, 1
   to 64 characters. In Go, `ChangeRequest`, `ChangeAddress` and `ChangePrevious` are
@@ -465,9 +466,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - In Go, `ChangesSubmitted` is added. `ChangesFailed` has `ChangeRequestID`, `Target` and
   `Detail`. The actions of a reply are `ChangeCreated`, `ChangeUpdated` and `ChangeKept`.
   The reply has no draft type: its `data` is the part of the kind.
-- The README of the integration contract says that the artifact type of a kind defines the
-  kind, and that the adapter that applies it defines its rules. The `pull-request` kind
-  is an example. The README keeps the section on the submit program.
+- The README of the integration contract states that the artifact type of a kind defines
+  the kind. It states that the adapter that applies the kind defines its rules. The
+  `pull-request` kind is an example. The README keeps the section on the submit program.
 - The submit program contract, `contracts/run/v1/submit-program/README.md`, is for the
   program that `qory run` runs on a run with no run code, with the login of the forge's
   command line that the person made. A run's draft is opened by the adapter from the
@@ -617,7 +618,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   integer of at least 1 and at most 9223372036854775807. A run of any other step has no
   `largest_prebuilt_image_bytes`. When it is absent, the image has no size limit.
 - The run documents can contain `deliver`: the artifacts that the run delivers, a list of
-  1 to 16 entries with `type` and `send`, both required, and no other member. `type` is the
+  1 to 16 entries with `type` and `send`, both required. `type` is the
   name of the artifact type: lower-case letters and digits in groups joined by single
   hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`: the control
   plane writes the change_request entry at the end of the run or after the gate of the stage
