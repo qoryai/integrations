@@ -9,22 +9,7 @@
       "path": "acme/shop"
     }
   },
-  "further_targets": [
-    {
-      "collection": "R_1002",
-      "address": {
-        "system": "code.example.com",
-        "path": "acme/service-1002"
-      }
-    },
-    {
-      "collection": "R_1003",
-      "address": {
-        "system": "code.example.com",
-        "path": "acme/service-1003"
-      }
-    }
-  ],
+  "read_targets": [],
   "target_version": "0123456789abcdef0123456789abcdef01234567",
   "subject": {
     "kind": "work_item",

@@ -9,7 +9,7 @@
       "path": "acme/shop"
     }
   },
-  "further_targets": [
+  "read_targets": [
     {
       "collection": "R_1002",
       "address": {

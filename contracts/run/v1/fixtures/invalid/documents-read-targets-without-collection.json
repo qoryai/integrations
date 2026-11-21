@@ -9,19 +9,11 @@
       "path": "acme/shop"
     }
   },
-  "further_targets": [
+  "read_targets": [
     {
-      "collection": "R_1002",
       "address": {
         "system": "code.example.com",
-        "path": "acme/service-1002"
-      }
-    },
-    {
-      "collection": "R_1001",
-      "address": {
-        "system": "code.example.com",
-        "path": "acme/other"
+        "path": "acme/service-1"
       }
     }
   ],

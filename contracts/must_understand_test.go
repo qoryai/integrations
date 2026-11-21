@@ -1315,3 +1315,28 @@ func TestAMarshalledDocumentKeepsItsMustUnderstand(t *testing.T) {
 		}
 	}
 }
+
+// TestMustUnderstandListsReadTargetsAndNotFurtherTargets pins that the must_understand
+// of the run documents accepts a pointer to read_targets, to a member of an entry, and to
+// a member of the inputs, and refuses /further_targets, a member that no schema defines.
+func TestMustUnderstandListsReadTargetsAndNotFurtherTargets(t *testing.T) {
+	schema := compileRun(t, runSchema("documents"))
+	for pointer, ok := range map[string]bool{
+		"/read_targets":                 true,
+		"/read_targets/0":               true,
+		"/read_targets/0/collection":    true,
+		"/read_targets/0/address/path":  true,
+		"/inputs/destinations/0/id":     true,
+		"/further_targets":              false,
+		"/further_targets/0/collection": false,
+	} {
+		doc, err := contracts.RunDocument("fixtures/documents/explore-read-targets.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc.(map[string]any)["must_understand"] = []any{pointer}
+		if got := schema.Validate(doc); (got == nil) != ok {
+			t.Errorf("must_understand with %s: %v, want accepted %v", pointer, got, ok)
+		}
+	}
+}

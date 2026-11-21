@@ -12,7 +12,7 @@
   },
   "workflow": "hello",
   "harness_hidden": true,
-  "further_targets": [
+  "read_targets": [
     {
       "collection": "R_1002",
       "address": {

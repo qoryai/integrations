@@ -45,16 +45,17 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `must_understand` that lists `/submit`. In Go, `Submit` and `Documents.Submit` are
   `Deliver` and `Documents.Deliver`, a `[]Deliver` with `Type` and `Send`, and
   `MaxDeliver` is 16. The submit program contract and its Go names stay.
-- Read `further_targets` from the run documents when a run has more than one place for its
-  change. `further_targets` is a list of `{collection, address}` targets, in the form of
-  `target`, with 1 to 20 entries. A run with several places lists the main one in `target`
-  and each other one in `further_targets`. A run with no further place leaves the member
-  out, and an empty list is refused. It is present only when `target` is, and never
-  on a run of the step `prebuild`. No two entries have the same `collection`, and
-  no entry has the `collection` of `target`. The schema cannot check that, so a reader
-  calls `Documents.Check` after it decodes the documents. An entry has no version:
-  `target_version` applies to `target` only. In Go, `Documents.FurtherTargets` is a
-  `[]Target`, and `MaxFurtherTargets` is 20. The folder `fixtures/check` of the run
+- Read `read_targets` from the run documents when a run reads places beside its `target`.
+  `read_targets` is a list of `{collection, address}` targets, in the form of `target`,
+  with 0 to 20 entries, and `[]` is valid. The run fetches each place with a read
+  credential and gets a copy that the agent may read. It changes, pushes and delivers
+  nothing to a place in `read_targets`. `target` stays the one place where a run changes,
+  and `access` applies to `target` only. `read_targets` is present with or without
+  `target`, and never on a run of the step `prebuild`. No two entries have the same
+  `collection`, and no entry has the `collection` of `target`. The schema cannot check
+  that, so a reader calls `Documents.Check` after it decodes the documents. An entry has
+  no version: `target_version` applies to `target` only. In Go, `Documents.ReadTargets`
+  is a `[]Target`, and `MaxReadTargets` is 20. The folder `fixtures/check` of the run
   contract has run documents that the schema accepts and `Documents.Check` refuses.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
