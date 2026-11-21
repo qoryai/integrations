@@ -96,6 +96,7 @@ from it.
 | `program_version` | the program's version, a string, such as `0.1.0` |
 | `settings` | a JSON Schema, draft 2020-12, of type `object`: the settings document the program takes |
 | `roles` | the roles the program plays, an object keyed by the role's name; at least one |
+| `links` | where a person opens a reference of the integration: 1 to 16 entries `{system, template}`, one for each system, as [Links](#links) describes; may be absent |
 | `must_understand` | the JSON Pointers of the members of the description that the reader must understand, as [Members a reader does not define](#members-a-reader-does-not-define) describes; may be absent |
 
 ```json
@@ -238,6 +239,64 @@ The tracker's `$X` is written `\u0024X`, which JSON reads as `$X`, and the quote
 
 A run's policy selects them by the key, as it selects any credential:
 `{name: github, argument: acme/shop}`.
+
+## Links
+
+`links` lets a reader give a reference a link to the page where a person opens it. A
+reference is a `collection` with an optional `address` of `system` and `path`, as
+`$defs/target` in `definitions.schema.json` defines it. A commit is a reference whose
+`collection` is the repository and whose `address.path` is the commit id.
+
+`links` has 1 to 16 entries `{system, template}`. List each system once. A schema cannot
+check that, so a reader calls `contracts.CheckLinks` after the schema accepts the
+description, and `conformance.Description` does. A `template` is an `https://` URL of at
+most 2048 characters on one line. Its only braces are these placeholders:
+
+| Placeholder | Value |
+|---|---|
+| `{system}` | the `address.system` of the reference |
+| `{collection_path}` | the address path of the reference's collection, such as `acme/shop` for a repository; the control plane has it from the target of the collection |
+| `{path}` | the `address.path` of the reference |
+
+A reader fills a template in these steps:
+
+1. A reference with no `address`, or whose `address.system` has no entry in `links`, gets
+   no link.
+2. The reader replaces each placeholder, in one pass, with the value written as a path.
+   The characters `A-Z`, `a-z`, `0-9`, `-`, `.`, `_`, `~` and `/` stay. Every other byte of
+   the value's UTF-8 becomes `%XX` with upper-case hex digits. A brace in a value is not a
+   placeholder.
+3. A reader that cannot fill every placeholder the template uses makes no link. A
+   placeholder with an empty value cannot be filled.
+4. The filled link starts with `https://`. A template that the schema accepts always
+   does, and a reader that did not check the template against the schema checks it.
+
+| Value | Written as |
+|---|---|
+| `a b` | `a%20b` |
+| `a/b` | `a/b` |
+| `a?b` | `a%3Fb` |
+| `a#b` | `a%23b` |
+| `a%b` | `a%25b` |
+| `ä` | `%C3%A4` |
+| `..` | `..` |
+
+`contracts.FillLink(template, system, collectionPath, path)` is the reference
+implementation of these steps. It returns the link and `true`, or `""` and `false` for no
+link.
+
+Examples, with example hosts. In each, the reference has the system of its entry.
+
+- Software: `{"system": "code.example.com", "template": "https://{system}/{collection_path}/commit/{path}"}`.
+  A commit with the collection path `acme/shop` and the address path `3e2d1c0b9a8f7e6d5c4b3a291807f6e5d4c3b2a1`
+  links to `https://code.example.com/acme/shop/commit/3e2d1c0b9a8f7e6d5c4b3a291807f6e5d4c3b2a1`.
+- Customer care: `{"system": "desk.example.com", "template": "https://{system}/conversations/{path}"}`.
+  A reply with the address path `48213` links to `https://desk.example.com/conversations/48213`,
+  the conversation in the help desk.
+- Performance marketing: `{"system": "ads.example.com", "template": "https://{system}/console/{collection_path}/keywords/{path}"}`.
+  A bid change with the collection path `profile-5521/campaign-9` and the address path `30417`
+  links to `https://ads.example.com/console/profile-5521/campaign-9/keywords/30417`, the
+  keyword in the advertising console.
 
 ## Change feed and comments
 
@@ -451,9 +510,9 @@ with `items: false` has no items, and its `source` role has no `comments`.
 
 | Path | Contains | Validated against |
 |---|---|---|
-| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential`; `example-source-apply-bearer.json`, a source role with an apply item of the scheme `bearer` whose paths are templates with `{target.path}` and a path without it; `example-source-apply-basic.json`, one with an apply item of the scheme `basic` and its `username`; `example-source-apply-header.json`, one with an apply item of the scheme `header` and its `header`, on a DNS name and an IPv4 address; `example-source-guide.json`, a source role with a `guide`: a `setup` part with `before`, three `steps` and `after`, and a `connect` part with two `steps` alone; `example-source-targets.json`, a source role with `targets: true`; `example-source-change-kinds.json`, a source role with `targets: true` and `change_kinds` of `pull-request` and `reply`; `example-source-comments.json`, a source role with `comments: true` | `description.schema.json` |
+| `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential`; `example-source-apply-bearer.json`, a source role with an apply item of the scheme `bearer` whose paths are templates with `{target.path}` and a path without it; `example-source-apply-basic.json`, one with an apply item of the scheme `basic` and its `username`; `example-source-apply-header.json`, one with an apply item of the scheme `header` and its `header`, on a DNS name and an IPv4 address; `example-source-guide.json`, a source role with a `guide`: a `setup` part with `before`, three `steps` and `after`, and a `connect` part with two `steps` alone; `example-source-targets.json`, a source role with `targets: true`; `example-source-change-kinds.json`, a source role with `targets: true` and `change_kinds` of `pull-request` and `reply`; `example-source-comments.json`, a source role with `comments: true`; `example-links.json`, a description with a `links` entry for each of two systems | `description.schema.json` |
 | `fixtures/adapter/<name>/` | the requests and answers of the adapter, named by their schema; among them, as example data of kinds that this contract does not define, `changes/change-request-pull-request.json` and `changes/change-request-pull-request-another-host.json`, an entry of the kind `pull-request` that opens a draft on one host and one that updates a draft on another, `changes/change-request-pull-request-two-versions.json`, a first version with no `previous` and a second whose `previous` has the title and the address of the first, `changes/change-request-pull-request-earlier-commits.json`, a part with 100 listed commits and `earlier_commits` 40, `changes/change-request-pull-request-one-commit.json`, a part with one commit, one step and `head` equal to that commit, `changes/change-request-reply.json` and `changes/change-request-bid-changes.json`, an entry of the kinds `reply` and `bid-changes`, the second with a number that has a fraction, `changes-submitted/pull-request-created.json` and the other replies there, one for each kind, and `changes-failed/change-request-*.json`, one for each reason of a change request and one for an entry whose kind the adapter did not list | `<name>.schema.json` |
-| `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define; `description-source-comments-false.json`, `comments: false`; `description-source-change-kinds-empty.json`, `change_kinds` with no kind; `description-source-change-kinds-string.json`, `change_kinds` as the string `"pull-request"`; `description-source-change-kinds-without-targets.json`, `change_kinds` with no `targets`; `description-source-change-kinds-duplicate.json`, `description-source-change-kinds-upper-case.json`, `description-source-change-kinds-65-characters.json` and `description-source-change-kinds-17-kinds.json`, a list with a kind twice, with a kind in upper case, with a kind of 65 characters and with 17 kinds; and `description-source-items-false-with-comments.json`, `comments` beside `items: false` | `description.schema.json`, expecting a failure |
+| `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define; `description-source-comments-false.json`, `comments: false`; `description-source-change-kinds-empty.json`, `change_kinds` with no kind; `description-source-change-kinds-string.json`, `change_kinds` as the string `"pull-request"`; `description-source-change-kinds-without-targets.json`, `change_kinds` with no `targets`; `description-source-change-kinds-duplicate.json`, `description-source-change-kinds-upper-case.json`, `description-source-change-kinds-65-characters.json` and `description-source-change-kinds-17-kinds.json`, a list with a kind twice, with a kind in upper case, with a kind of 65 characters and with 17 kinds; and `description-source-items-false-with-comments.json`, `comments` beside `items: false`; and the `description-links-*.json` fixtures, each with a `links` that breaks one rule: an `http://` template, an unknown placeholder, a placeholder inside a placeholder, a template of 2049 characters or with a line feed, no entries, 17 entries, an entry without `system` or without `template`, and a `system` in upper case | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.
 
