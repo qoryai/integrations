@@ -602,9 +602,10 @@ func TestARunCredentialHasTheResourcesOfItsPurposeAndAccess(t *testing.T) {
 }
 
 // TestConnectionHeldIsListedBesideGrantTaken pins that connection_held is a reason of the
-// connect return, after grant_taken, and that the descriptions of the grant report, of its
-// refusals and of the connect return mention it, with the fix for the person. A reason that
-// the connect return does not list is refused.
+// connect return, after grant_taken. It pins that the adapter treats it as final, as
+// grant_taken, and that the control plane checks it after grant_taken. It pins that the
+// descriptions of the grant report, of its refusals and of the connect return mention it,
+// with the fix for the person. A reason that the connect return does not list is refused.
 func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
 	const fix = "Disconnect the account that is connected first, then connect again. A connection has one account."
 	connectReturn := node(t, "connect-return.schema.json", "/properties/reason")
@@ -634,6 +635,9 @@ func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
 	}
 	for _, c := range []struct{ schema, want string }{
 		{"grant.schema.json", "409 connection_held"},
+		{"grant.schema.json", "On 409 grant_taken or 409 connection_held, to the first report or to one sent again, the adapter stops sending that report at once, drops the grant from its state"},
+		{"grant.schema.json", "then 409 grant_taken, then 409 connection_held, for grant_ref"},
+		{"refusal.schema.json", "pass_unknown, then grant_taken, and then connection_held"},
 		{"refusal.schema.json", "409 connection_held, a grant report whose grant_ref differs"},
 	} {
 		if !strings.Contains(description(c.schema), c.want) {

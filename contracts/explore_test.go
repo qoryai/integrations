@@ -159,6 +159,7 @@ var invalidExploreFixtures = map[string]struct{ schema, reason string }{
 	"inputs-without-destinations.json":              {"inputs", "/ required destinations"},
 	"inputs-destinations-empty.json":                {"inputs", "/destinations minItems"},
 	"inputs-destinations-501-entries.json":          {"inputs", "/destinations maxItems"},
+	"inputs-destinations-twice.json":                {"inputs", "/destinations uniqueItems"},
 	"inputs-destination-without-id.json":            {"inputs", "/destinations/0 required id"},
 	"inputs-destination-without-target.json":        {"inputs", "/destinations/0 required target"},
 	"inputs-destination-id-upper-case.json":         {"inputs", "/destinations/0/id pattern"},

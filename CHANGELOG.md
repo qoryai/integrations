@@ -60,7 +60,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   entries. Each entry is a destination: `id`, the control plane's id of a place, and
   `target`, the place as the adapter wrote it. An `id` is `tg_` and 16 characters, each a
   digit or a lower-case letter other than `i`, `l`, `o` and `u`. `target` of the inputs
-  stays optional. Before this release the inputs had no list of destinations, and a writer
+  stays optional. No two entries are equal, and the control plane drops the oldest
+  comments, never a destination, to keep the inputs within their bound. Before this
+  release the inputs had no list of destinations, and a writer
   without `destinations` fails the schema. `$defs/destination` in
   `definitions.schema.json` defines an entry. A document that an adapter writes keeps
   `target` with no `id`. In Go, `Destination` has `ID` and `Target`.
@@ -80,7 +82,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   report with the same `grant_ref` replaces that grant. The text for the person is
   "Disconnect the account that is connected first, then connect again. A connection has one
   account." Before this release a connection had a list of grants, one for each external
-  account. `grant_taken` stays for a grant that another connection has.
+  account. The adapter treats `connection_held` as final, as `grant_taken`. The control
+  plane checks a report for `pass_unknown`, then `grant_taken`, then `connection_held`.
+  `grant_taken` stays for a grant that another connection has.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test

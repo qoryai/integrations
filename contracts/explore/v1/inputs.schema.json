@@ -173,10 +173,11 @@
       "minimum": 0
     },
     "destinations": {
-      "description": "The places that the run's workspace works on, 1 to 500 of them. Each is a destination, https://qory.dev/contracts/integration/v1/definitions.schema.json, $defs.destination: id, the control plane's id of the place, and target, the place as the adapter wrote it. A run that reads the places of its workspace, such as an Explore run, takes them from this list.",
+      "description": "The places that the run's workspace works on, 1 to 500 of them. Each is a destination, https://qory.dev/contracts/integration/v1/definitions.schema.json, $defs.destination: id, the control plane's id of the place, and target, the place as the adapter wrote it. A run that reads the places of its workspace, such as an Explore run, takes them from this list. No two entries are equal. To keep the object within its bound, the control plane drops the oldest comments and never a destination.",
       "type": "array",
       "minItems": 1,
       "maxItems": 500,
+      "uniqueItems": true,
       "items": {
         "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/destination"
       }
