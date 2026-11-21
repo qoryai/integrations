@@ -11,6 +11,7 @@
     "instruction",
     "comments",
     "comments_omitted",
+    "destinations",
     "domain"
   ],
   "if": {
@@ -170,6 +171,15 @@
       "description": "How many of the oldest comments the control plane dropped to keep the object within its bound, from 0: 0 when it dropped none, and 0 when ticket is absent.",
       "type": "integer",
       "minimum": 0
+    },
+    "destinations": {
+      "description": "The places that the run's workspace works on, 1 to 500 of them. Each is a destination, https://qory.dev/contracts/integration/v1/definitions.schema.json, $defs.destination: id, the control plane's id of the place, and target, the place as the adapter wrote it. A run that reads the places of its workspace, such as an Explore run, takes them from this list.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": {
+        "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/destination"
+      }
     },
     "target": {
       "description": "Where the run's change would go: the same target as the run's target, https://qory.dev/contracts/run/v1/documents.schema.json, and absent when the run has none. The control plane writes the same value into both.",

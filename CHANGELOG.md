@@ -57,6 +57,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
   no version: `target_version` applies to `target` only. In Go, `Documents.ReadTargets`
   is a `[]Target`, and `MaxReadTargets` is 20. The folder `fixtures/check` of the run
   contract has run documents that the schema accepts and `Documents.Check` refuses.
+- Write and read `destinations` in the explore inputs. It is required, and it has 1 to 500
+  entries. Each entry is a destination: `id`, the control plane's id of a place, and
+  `target`, the place as the adapter wrote it. An `id` is `tg_` and 16 characters, each a
+  digit or a lower-case letter other than `i`, `l`, `o` and `u`. `target` of the inputs
+  stays optional. Before this release the inputs had no list of destinations, and a writer
+  without `destinations` fails the schema. `$defs/destination` in
+  `definitions.schema.json` defines an entry. A document that an adapter writes keeps
+  `target` with no `id`. In Go, `Destination` has `ID` and `Target`.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
