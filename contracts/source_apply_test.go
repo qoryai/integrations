@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/qoryai/forager/policy"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -176,6 +177,89 @@ func TestFilledPathsLeaveOutAPathTheyAlreadyHave(t *testing.T) {
 		}
 		if len(kept) < len(filled) && forager.Validate(filled) == nil {
 			t.Errorf("%v filled with %q is %v, and Forager accepts it with a path twice", tc.paths, tc.target, filled)
+		}
+	}
+}
+
+// fillExploreCall fills the path templates of one description item on one host for a run
+// with no target, as $defs.apply of description.schema.json says: each template for every
+// resource in the order of the call's resources, a path that equals an earlier path
+// left out, and each path that another path covers dropped. It returns the kept paths
+// and the first pair of kept paths that overlap, if any, which refuses the call. Forager's
+// policy package decides what covers and what overlaps.
+func fillExploreCall(templates, resources []string) (kept []string, first, second string, refused bool) {
+	var filled []string
+	for _, template := range templates {
+		for _, resource := range resources {
+			if p := strings.Replace(template, "{target.path}", resource, 1); !slices.Contains(filled, p) {
+				filled = append(filled, p)
+			}
+		}
+	}
+	for _, p := range filled {
+		if !slices.ContainsFunc(filled, func(other string) bool { return other != p && policy.CoversPath(other, p) }) {
+			kept = append(kept, p)
+		}
+	}
+	for i, p := range kept {
+		for _, other := range kept[:i] {
+			if policy.OverlapPaths(other, p) {
+				return kept, other, p, true
+			}
+		}
+	}
+	return kept, "", "", false
+}
+
+// TestAnExploreCallDropsACoveredPathAndRefusesAnOverlap pins the rule of $defs.apply
+// about the filled paths of a call: a path that another covers is dropped, and a call
+// whose kept paths overlap, with neither covering the other, is refused.
+func TestAnExploreCallDropsACoveredPathAndRefusesAnOverlap(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		templates     []string
+		resources     []string
+		kept          []string
+		first, second string
+		refused       bool
+	}{
+		{name: "a path under a path with a star is dropped", templates: []string{"/{target.path}/*"}, resources: []string{"group", "group/sub/repo"}, kept: []string{"/group/*"}},
+		{name: "the order of the resources does not matter", templates: []string{"/{target.path}/*"}, resources: []string{"group/sub/repo", "group"}, kept: []string{"/group/*"}},
+		{name: "a path equal to an earlier path is left out once", templates: []string{"/projects/{target.path}", "/projects/acme"}, resources: []string{"acme"}, kept: []string{"/projects/acme"}},
+		{name: "a template without the target path gives one path", templates: []string{"/user"}, resources: []string{"a", "b"}, kept: []string{"/user"}},
+		{name: "paths of different places stay", templates: []string{"/{target.path}/*"}, resources: []string{"a", "b"}, kept: []string{"/a/*", "/b/*"}},
+		{name: "a path without a star does not cover a longer path", templates: []string{"/{target.path}"}, resources: []string{"group", "group/sub"}, kept: []string{"/group", "/group/sub"}},
+		{
+			name: "a segment of a target path written {} overlaps another path and neither covers the other", templates: []string{"/{target.path}/*"}, resources: []string{"a/{}/x", "a/y"},
+			kept: []string{"/a/{}/x/*", "/a/y/*"}, first: "/a/{}/x/*", second: "/a/y/*", refused: true,
+		},
+	} {
+		kept, first, second, refused := fillExploreCall(tc.templates, tc.resources)
+		if !slices.Equal(kept, tc.kept) || first != tc.first || second != tc.second || refused != tc.refused {
+			t.Errorf("%s: kept %q, overlap %q and %q, refused %v; want %q, %q and %q, %v", tc.name, kept, first, second, refused, tc.kept, tc.first, tc.second, tc.refused)
+		}
+		for _, p := range kept {
+			if !foragerPath.MatchString(p) {
+				t.Errorf("%s: the kept path %q is not in Forager's path grammar", tc.name, p)
+			}
+		}
+		if refused && (policy.CoversPath(first, second) || policy.CoversPath(second, first)) {
+			t.Errorf("%s: a refused call has the paths %q and %q, and one covers the other", tc.name, first, second)
+		}
+	}
+}
+
+// TestPathsWithNoSegmentBraceOverlapOnlyWhenOneCoversTheOther pins why a call
+// whose paths have no {} segment is never refused for an overlap: after the covered
+// paths are dropped, no two such paths overlap, since Forager's OverlapPaths agrees
+// with CoversPath in either direction when no path has a {} segment.
+func TestPathsWithNoSegmentBraceOverlapOnlyWhenOneCoversTheOther(t *testing.T) {
+	paths := []string{"/", "/*", "/a", "/a/*", "/a/b", "/a/b/*", "/a/bc", "/a/b*", "/b/*", "/a/b/c", "/ab/*"}
+	for _, a := range paths {
+		for _, b := range paths {
+			if got, want := policy.OverlapPaths(a, b), policy.CoversPath(a, b) || policy.CoversPath(b, a); got != want {
+				t.Errorf("OverlapPaths(%q, %q) is %v, and CoversPath in either direction is %v", a, b, got, want)
+			}
 		}
 	}
 }

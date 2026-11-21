@@ -700,11 +700,11 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 	const limit = "An adapter covers N resources only when N × p + c ≤ 512. Here p is the number of path entries that one resource adds across all apply items. c is the number of paths that belong to no single resource, such as a template without {target.path}. It covers fewer when paths of different items cannot share one list of 32. It refuses a call over its limit with 403 resource_not_covered."
 	for _, c := range []struct{ schema, want string }{
 		{"run-credential.schema.json", "The answer has at most 512 paths (run-credential-answer.schema.json). " + limit},
-		{"run-credential.schema.json", "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json);"},
+		{"run-credential.schema.json", overlapRefusal + ";"},
 		{"run-credential-answer.schema.json", "The answer has at most 16 apply items of 1 to 32 paths each, 512 paths together."},
 		{"run-credential-answer.schema.json", limit},
 		{"run-credential-answer.schema.json", "In the Forager contract, several host credentials may claim one host (run-configuration.schema.json, $defs.apply). They may do so when each item on the host has paths and no path of one overlaps a path of another. The Forager gateway checks each apply item of an entry that way."},
-		{"refusal.schema.json", "or the paths of the resources do not fit in the answer"},
+		{"refusal.schema.json", overlapRefusal + ";"},
 	} {
 		d, err := contracts.Document(c.schema)
 		if err != nil {
@@ -735,9 +735,20 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 	}
 }
 
-// exploreFill is the text of the source apply of description.schema.json about how the
-// control plane fills the templates for a run with no target.
-const exploreFill = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources. It puts the filled paths into items of at most 32 paths, in that order. Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
+// The sentences of the source apply of description.schema.json about how the control
+// plane fills the templates for a run with no target. The source apply has the first
+// and the last, and $defs.apply has all of them, with the sentences about a covered and
+// an overlapping path between them.
+const (
+	exploreFillOrder = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources. It puts the filled paths into items of at most 32 paths, in that order."
+	exploreFillItems = "Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
+	exploreDrop      = "Before it puts the paths into items, the control plane drops each filled path that another filled path on the same host covers. The entry then grants the same access."
+	exploreRefuse    = "A call whose filled paths still overlap on one host after that step, where neither path covers the other, is refused with 403 resource_not_covered."
+	exploreCovers    = "A path covers another when every request path that matches the other also matches it. CoversPath in policy/policy.go of the Forager module decides this, and /group/* covers /group/sub/repo/*."
+	exploreOverlaps  = "Two paths overlap when one request path can match both, as OverlapPaths in the same file decides it."
+	// overlapRefusal is the clause of the refusal list of 403 resource_not_covered.
+	overlapRefusal = "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json), or the filled paths overlap on one host and neither covers the other (description.schema.json, $defs.apply)"
+)
 
 // TestAConnectionHasAtMostOneGrantThatHasNotEnded pins the texts of one account for each
 // connection: the description of the grant report and of its grant_ref, the description
@@ -748,7 +759,7 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 		{"grant.schema.json", "", one + " grant_ref is the adapter's ref to that grant, stable for that account."},
 		{"grant.schema.json", "/properties/grant_ref", "While the connection has a grant that has not ended, a report with another grant_ref is refused with 409 connection_held."},
 		{"definitions.schema.json", "", one + " The adapter reports that grant with POST /v1/grants"},
-		{"description.schema.json", "/properties/roles/properties/source/properties/apply", exploreFill},
+		{"description.schema.json", "/properties/roles/properties/source/properties/apply", exploreFillOrder + " " + exploreFillItems},
 	} {
 		doc, err := contracts.Document(c.schema)
 		if err != nil {
@@ -771,8 +782,8 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T) {
 	const apply = "/properties/roles/properties/source/properties/apply"
 	for _, c := range []struct{ schema, pointer, want string }{
-		{"description.schema.json", apply, exploreFill},
-		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFill},
+		{"description.schema.json", apply, exploreFillOrder + " " + exploreFillItems},
+		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFillOrder + " " + exploreDrop + " " + exploreRefuse + " " + exploreCovers + " " + exploreOverlaps + " " + exploreFillItems},
 		{"description.schema.json", "/$defs/apply/properties/paths", "For a run with no target, a template with {target.path} gives one path per resource. A template without it gives one path."},
 		{"connect-pass.schema.json", "", "or of a live connection that the person connects one external account to. While the connection has a grant that has not ended, only the same external account connects again, and its grant is replaced. Another account ends in 409 connection_held."},
 		{"connect-pass.schema.json", "/properties/connection_id", "the live connection that the person connects one external account to, as the control plane issued it."},
