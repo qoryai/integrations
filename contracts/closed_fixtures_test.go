@@ -63,6 +63,7 @@ var closedRunFixtures = map[string]closedFixture{
 // closedDescriptionFixtures are the fixtures of integration/v1/fixtures/closed, by file
 // name.
 var closedDescriptionFixtures = map[string]closedFixture{
+	"description-links-undefined-member.json":                        {"description", "/links/0 additionalProperties"},
 	"description-model-provider-api-undefined-member.json":           {"description", "/roles/model_provider/apis/0 additionalProperties"},
 	"description-model-provider-endpoint-setting-and-path.json":      {"description", "/roles/model_provider/apis/0/endpoint additionalProperties"},
 	"description-model-provider-model-undefined-member.json":         {"description", "/roles/model_provider/models/0 additionalProperties"},

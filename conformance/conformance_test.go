@@ -517,3 +517,31 @@ func TestBothFormsKeepTheEgressHostsRules(t *testing.T) {
 		t.Errorf("Description, a *. credential host and the same *. entry: %v, want it to start with %q", err, "describe: "+refused)
 	}
 }
+
+// TestBothFormsKeepTheLinksRule pins that Description and DataDescription refuse two
+// links entries with the same system, which the schema accepts, with the message that
+// states the fix, and accept the same description with each system once.
+func TestBothFormsKeepTheLinksRule(t *testing.T) {
+	links := func(second string) string {
+		return `, "links": [{"system": "code.example.com", "template": "https://{system}/{path}"}, {"system": "` + second + `", "template": "https://{system}/{path}"}]}`
+	}
+	program := func(second string) []byte {
+		return bytes.Replace(describe(`{"type": "object"}`), []byte("}\n"), []byte(links(second)+"\n"), 1)
+	}
+	data := func(second string) []byte {
+		return bytes.Replace(gateway(`{"type": "object", "properties": {"url": {"type": "string"}}}`, `[]`), []byte("}\n"), []byte(links(second)+"\n"), 1)
+	}
+	want := `List each system of links once: the entries 0 and 1 both have the system "code.example.com".`
+	if err := conformance.Description(program("code.example.com")); err == nil || err.Error() != "describe: "+want {
+		t.Errorf("Description, a system twice: %v, want %q", err, "describe: "+want)
+	}
+	if err := conformance.DataDescription(data("code.example.com")); err == nil || err.Error() != "data description: "+want {
+		t.Errorf("DataDescription, a system twice: %v, want %q", err, "data description: "+want)
+	}
+	if err := conformance.Description(program("desk.example.com")); err != nil {
+		t.Errorf("Description, each system once: %v", err)
+	}
+	if err := conformance.DataDescription(data("desk.example.com")); err != nil {
+		t.Errorf("DataDescription, each system once: %v", err)
+	}
+}
