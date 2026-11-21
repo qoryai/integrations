@@ -47,10 +47,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `MaxDeliver` is 16. The submit program contract and its Go names stay.
 - Read `read_targets` from the run documents when a run reads places beside its `target`.
   `read_targets` is a list of `{collection, address}` targets, in the form of `target`,
-  with 0 to 20 entries, and `[]` is valid. The run fetches each place with a read
-  credential and gets a copy that the agent may read. It changes, pushes and delivers
-  nothing to a place in `read_targets`. `target` stays the one place where a run changes,
-  and `access` applies to `target` only. `read_targets` is present with or without
+  with 0 to 20 entries, and `[]` is valid. The run only reads a place in `read_targets`:
+  it changes, pushes and delivers nothing to it. `target` stays the one place where a
+  run changes, and `access` applies to `target` only. `read_targets` is present with or without
   `target`, and never on a run of the step `prebuild`. No two entries have the same
   `collection`, and no entry has the `collection` of `target`. The schema cannot check
   that, so a reader calls `Documents.Check` after it decodes the documents. An entry has
@@ -69,8 +68,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `read`. Before this release a work call had exactly 1, and an adapter refused more with
   `400`. A work call with `access` `write` still has exactly 1, and a `harness` call has 1
   to 64. All resources of a call are collections of one connection, the `connection_id` of
-  the call. The answer is one credential, with one `apply` item for each host. Its `paths`
-  list the path of each resource, and Forager sets no maximum for them.
+  the call. The answer is one credential. In an `apply` item of the answer, `paths` lists
+  each template filled with the path of each resource.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A

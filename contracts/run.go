@@ -62,14 +62,14 @@ type Documents struct {
 	// the run's access to it.
 	Access string  `json:"access,omitempty,case:strict"`
 	Target *Target `json:"target,omitempty,case:strict"`
-	// ReadTargets are the places that the run only reads, 0 to [MaxReadTargets] of them,
-	// never set for the step prebuild, and set with or without Target. The run fetches
-	// each place with a read credential and gets a copy that the agent may read, and it
-	// changes, pushes and delivers nothing to the place. Target stays the one place where
-	// the run's change would go, and Access applies to Target only. No two entries have
-	// the same Collection, and none has the Collection of Target. The schema cannot
-	// check that: [Documents.Check] does. An entry has no version: TargetVersion is the
-	// version of Target only. A nil list is left out, and an empty list is written as [].
+	// ReadTargets are the places that the run only reads, 0 to [MaxReadTargets] of them.
+	// It is never set for the step prebuild, and it is set with or without Target. The
+	// run only reads a place in it: it changes, pushes and delivers nothing to the place.
+	// Target stays the one place where the run's change would go, and Access applies to
+	// Target only. No two entries have the same Collection, and none has the Collection
+	// of Target. The schema cannot check that: [Documents.Check] does. An entry has no
+	// version: TargetVersion is the version of Target only. A nil list is left out, and
+	// an empty list is written as [].
 	ReadTargets []Target `json:"read_targets,omitzero,case:strict"`
 	// TargetVersion is set only with Target, and never for the step prebuild: the
 	// version of the target at which the control plane checked for a harness file, the
@@ -498,7 +498,7 @@ func (d Documents) Check() error {
 		types[e.Type] = true
 	}
 	// shortcut: repeats are keyed on the collection, not on an id, because run documents
-	// carry no id; replace when run documents carry the id of a target.
+	// have no id; replace when run documents carry the id of a target.
 	collections := make(map[string]bool, len(d.ReadTargets)+1)
 	if d.Target != nil {
 		collections[d.Target.Collection] = true

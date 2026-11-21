@@ -200,9 +200,9 @@ type Target struct {
 	Address    *TargetAddress `json:"address,omitempty,case:strict"`
 }
 
-// Destination is one place that a workspace works on: the Target as the adapter wrote
-// it, and ID, the control plane's id of that target, tg_ and 16 characters. The
-// definitions schema, $defs.destination, defines it.
+// Destination is one place that a workspace works on. Target is the place as the
+// adapter wrote it, and ID is the control plane's id of that place: tg_ and 16
+// characters. $defs.destination in the definitions schema defines it.
 type Destination struct {
 	ID     string `json:"id,case:strict"`
 	Target Target `json:"target,case:strict"`
@@ -932,7 +932,7 @@ const RunCredentialTokenMaxBytes = 16384
 // grant's report again. Resources has 1 to 64 resource refs for Purpose "harness", each
 // the ResourceRef of a [Resolved], as the adapter answered it, never its PublicRef. For
 // Purpose "work", it has 1 to 500 refs with Access "read" and exactly one with Access
-// "write": each is the ref of a collection, as the adapter listed it, which for a target
+// "write". Each is the ref of a collection, as the adapter listed it, which for a target
 // from an item is the item's collection.
 type RunCredential struct {
 	Version      int      `json:"version,case:strict"`
