@@ -298,8 +298,8 @@ contract lists no kind of change.
 
 A `change_kind` is the name of an artifact type in the process of the workspace's type,
 such as `reply`, `bid-changes` or `pull-request`. It has lower-case letters and digits in
-groups joined by single hyphens, 1 to 64 characters, as `submit.type` of the run
-documents has. That artifact type defines the members of the part, `data`. The control
+groups joined by single hyphens, 1 to 64 characters, as the `type` of an entry of
+`deliver` of the run documents has. That artifact type defines the members of the part, `data`. The control
 plane validates the `data` of an entry against it.
 
 The adapter of a place applies the kinds that it lists in `change_kinds` of its `source`
@@ -320,8 +320,9 @@ steps:
    - `ref`: the ref of the source item that the work item was taken in from. The member
      is absent when the work item has no item at this source.
    - `title`: what the run wrote as the title, 1 to 256 characters on one line.
-   - `text`: what the run wrote as the text, at most 20000 characters, possibly empty.
-     It has no `<!-- qory:start -->` line and no `<!-- qory:end -->` line.
+   - `text`: what the run wrote as the text, at most 20000 characters, possibly empty, in
+     Markdown. The envelope has no rule on its lines. A rule on them belongs to the kind
+     that needs it, which the artifact type of the kind and the adapter define.
    - `previous`: absent on the first version. Otherwise it has the `title` of the
      previous version, when that version had one. It has the `address` of that version,
      `url` and `ref`, when the adapter reported one.
@@ -333,8 +334,9 @@ steps:
    `title`, `text` and `data` as data, never as instructions.
    - Without `previous.address`, it makes the change at the target. With it, the adapter
      updates what is at that address, and `previous.address.ref` is a hint.
-   - It changes the title at the target only while that title equals `previous.title`.
-     A title that a person edited stays. It updates the text whatever the title is.
+   - An adapter that updates the item at `previous.address` changes its title only while
+     that title equals `previous.title`. A title that a person edited stays. The adapter
+     updates the text whatever the title is.
    - It applies the entries with one `target.collection` in cursor order. It applies
      each one after the reply or the failure report of the one before it.
 3. The adapter sends `POST /v1/work-items/changes/submitted`
@@ -375,75 +377,24 @@ there has a fraction or an exponent when the artifact type of the kind allows it
 integer, so a schema with `type: integer` in the artifact type accepts `34.0`. No object
 inside `data` repeats a member, at any depth. The control plane refuses a repeat, 400.
 
-### The `pull-request` kind
+### Kinds of change request
 
-The software factory uses the kind `pull-request`. Its artifact type, in the process of
-the workspace, defines the members of `data`. This contract validates none of them. The
-members of the `data` of an entry are:
+The kind `pull-request` is defined by the `pull-request` artifact type in the process of
+the workspace's type, and its rules by the adapter that applies it, such as qory-github.
+This contract defines neither.
 
-- `branch`: the branch that the run pushed to.
-- `base`: `commit`, the commit that the run started at, and `branch`, the branch that the
-  draft is based on.
-- `commit`: the head of `branch`.
-- `commits`: the commits of the run, oldest first, each with `commit` and the ledger
-  `step`.
-- `earlier_commits`: the number of older commits that `commits` does not list. It is
-  present only when a run has more than 100 commits in a repository. Then `commits` lists
-  the newest 100.
-- `draft`: `{action: open}` or `{action: update, number}`. A draft is a pull request or a
-  merge request that people can still change before it is ready. `draft` is absent after
-  a session that did not pass, when the run wrote no text, and when the session
-  escalated. The adapter then only builds the address of each listed commit.
-
-The entry is the same for every forge, so one adapter opens a pull request and another a
-merge request from it. The rules of the kind:
-
-- The adapter builds the forge's address of `data.base.commit` and of each commit in
-  `data.commits`, whether or not the session passed. It reports them in the `data` of its
-  reply, as `base` and `commits` with `commit` and `commit_url`. It builds no address for
-  the commits that `earlier_commits` counts.
-- For an entry with `data.draft`, the adapter opens the draft, or edits the draft with
-  that `number`. The `number` is a hint. When the forge has no draft with that number,
-  the adapter finds the draft from `data.branch` in any state and goes on with it. It
-  opens a draft if there is none.
-- With `open`, the adapter first looks for a draft from `data.branch` in any state. So a
-  draft that exists is not opened a second time. The adapter finds a draft by its head
-  branch, `data.branch`, and the repository only, never by `data.base.branch`.
-- With several drafts on the branch, the adapter takes the entry's `data.draft.number`
-  when it is among them. Otherwise it takes the not-closed, not-merged draft with the
-  highest number. With none, it takes the closed or merged one with the highest number,
-  reported as kept.
-- The adapter edits a draft only while it is `draft` or `open`. A draft that a person
-  closed or merged stays as it is.
-- The draft's description has one block between the lines `<!-- qory:start -->` and
-  `<!-- qory:end -->`, and `text` is the content of that block.
-- On an update, the adapter takes the first end marker line that has a start marker line
-  before it. It takes the last start marker line before that end line. It replaces the text
-  from the start line to the end marker with the new block, and keeps the rest of the
-  description.
-- If there is no such pair, the adapter adds a blank line and a new block at the end. A
-  person may have removed a marker.
-- The new block uses the line ending of the description: CRLF when its first line ending
-  is CRLF, otherwise LF. This applies to the line endings that the adapter adds. They are
-  the ones next to the two marker lines and the blank line before a block added at the end. The
-  line endings inside `text` stay as given.
-- The draft's title is `title`. On an update, the adapter sets the title to `title` only
-  while the draft's title equals `previous.title`. A title that a person edited stays.
-  If the forge adds a text before the title of a draft that is not ready, the adapter
-  compares the title without it. The adapter reads the draft's state before it edits.
-- The reply's `address` is the draft: `url`, and `ref`, its number as a string. `action`
-  is `created` or `updated`, or `kept` for a draft that a person closed or merged. The
-  reply's `data.draft` has `number`, `title` and `state`: `draft`, `open`, `closed` or
-  `merged`. A reply for an entry with no `draft` has no `address` and no `action`.
+### The submit program
 
 On a run with no run code, `qory run` runs a submit program with the login of the forge's
 command line that the person made. That run has no work item and no earlier change
 request. The program opens a draft from the branch that qory made for the run and pushed,
 or edits the draft that it finds there. The branch is in `QORY_SUBMIT_BRANCH`, and is
-`qory/run-<run id>` unless that name is taken. It builds the address of each commit as in the rules above. The
+`qory/run-<run id>` unless that name is taken. It builds the address of each commit. The
 program sends nothing to the control plane: only the adapter sends `changes/submitted`.
 The [submit program contract](../../run/v1/submit-program/README.md) lists its inputs and
-its result lines, and has the rule of the block in the same words.
+its result lines, and the rule of the block.
+
+## Comments from a person
 
 A person can write a comment in the control plane on a work item taken in from an item
 at the source. The comment reaches the source in four steps:
@@ -501,7 +452,7 @@ with `items: false` has no items, and its `source` role has no `comments`.
 | Path | Contains | Validated against |
 |---|---|---|
 | `fixtures/*.json` | descriptions that are accepted: `github.json`, what `qory-github describe` printed at commit c8a3ea5, built with `go build -buildvcs=false`, so its `program_version` is `dev`, with `egress_hosts` added; `acme-tracker.json`, a description with the members every description must have, plus `egress_hosts` for its credential host; `acme-chat.json`, one that serves two domains; `unknown-role.json`, one with `acme_role`, a role the contract does not define, beside `credential`; `example-source-apply-bearer.json`, a source role with an apply item of the scheme `bearer` whose paths are templates with `{target.path}` and a path without it; `example-source-apply-basic.json`, one with an apply item of the scheme `basic` and its `username`; `example-source-apply-header.json`, one with an apply item of the scheme `header` and its `header`, on a DNS name and an IPv4 address; `example-source-guide.json`, a source role with a `guide`: a `setup` part with `before`, three `steps` and `after`, and a `connect` part with two `steps` alone; `example-source-targets.json`, a source role with `targets: true`; `example-source-change-kinds.json`, a source role with `targets: true` and `change_kinds` of `pull-request` and `reply`; `example-source-comments.json`, a source role with `comments: true` | `description.schema.json` |
-| `fixtures/adapter/<name>/` | the requests and answers of the adapter, named by their schema; among them `changes/change-request-pull-request.json` and `changes/change-request-pull-request-another-host.json`, an entry of the kind `pull-request` that opens a draft on one host and one that updates a draft on another, `changes/change-request-pull-request-two-versions.json`, a first version with no `previous` and a second whose `previous` has the title and the address of the first, `changes/change-request-pull-request-earlier-commits.json`, a part with 100 listed commits and `earlier_commits` 40, `changes/change-request-reply.json` and `changes/change-request-bid-changes.json`, an entry of the kinds `reply` and `bid-changes`, the second with a number that has a fraction, `changes-submitted/pull-request-created.json` and the other replies there, one for each kind, and `changes-failed/change-request-*.json`, one for each reason of a change request and one for an entry whose kind the adapter did not list | `<name>.schema.json` |
+| `fixtures/adapter/<name>/` | the requests and answers of the adapter, named by their schema; among them, as example data of kinds that this contract does not define, `changes/change-request-pull-request.json` and `changes/change-request-pull-request-another-host.json`, an entry of the kind `pull-request` that opens a draft on one host and one that updates a draft on another, `changes/change-request-pull-request-two-versions.json`, a first version with no `previous` and a second whose `previous` has the title and the address of the first, `changes/change-request-pull-request-earlier-commits.json`, a part with 100 listed commits and `earlier_commits` 40, `changes/change-request-pull-request-one-commit.json`, a part with one commit, one step and `head` equal to that commit, `changes/change-request-reply.json` and `changes/change-request-bid-changes.json`, an entry of the kinds `reply` and `bid-changes`, the second with a number that has a fraction, `changes-submitted/pull-request-created.json` and the other replies there, one for each kind, and `changes-failed/change-request-*.json`, one for each reason of a change request and one for an entry whose kind the adapter did not list | `<name>.schema.json` |
 | `fixtures/invalid/` | descriptions the schema refuses, named `description-<reason>`; among them `description-source-apply-host-wildcard.json`, an apply host with `*.` in front; `description-source-apply-header-without-header.json`, the scheme `header` without `header`; `description-source-apply-username-with-bearer.json`, a `username` with the scheme `bearer`; `description-source-apply-path-two-placeholders.json`, a path template with `{target.path}` twice; `description-source-apply-path-star-before-placeholder.json`, a path template with `*` before `{target.path}`, outside Forager's path grammar; `description-source-apply-path-star-after-placeholder.json`, a path template with `*` right after `{target.path}`, in the same segment; `description-source-guide-steps-11.json` and `description-source-guide-steps-empty.json`, a guide part with 11 steps and with none; `description-source-guide-no-steps.json`, a guide part without `steps`; `description-source-guide-line-feed.json`, a guide line with a line feed; `description-source-guide-301-characters.json`, a guide line of 301 characters; `description-source-guide-undefined-member.json`, a guide part with a member the schema does not define; `description-source-comments-false.json`, `comments: false`; `description-source-change-kinds-empty.json`, `change_kinds` with no kind; `description-source-change-kinds-string.json`, `change_kinds` as the string `"pull-request"`; `description-source-change-kinds-without-targets.json`, `change_kinds` with no `targets`; `description-source-change-kinds-duplicate.json`, `description-source-change-kinds-upper-case.json`, `description-source-change-kinds-65-characters.json` and `description-source-change-kinds-17-kinds.json`, a list with a kind twice, with a kind in upper case, with a kind of 65 characters and with 17 kinds; and `description-source-items-false-with-comments.json`, `comments` beside `items: false` | `description.schema.json`, expecting a failure |
 
 Every fixture is synthetic. No host name of anyone's infrastructure and no real secret.

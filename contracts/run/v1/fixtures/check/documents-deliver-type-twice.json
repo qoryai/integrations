@@ -21,10 +21,16 @@
   },
   "workflow": "build",
   "harness_hidden": false,
-  "submit": {
-    "type": "code-change",
-    "send": "after_gate"
-  },
+  "deliver": [
+    {
+      "type": "code-change",
+      "send": "after_gate"
+    },
+    {
+      "type": "code-change",
+      "send": "end_of_run"
+    }
+  ],
   "inputs": {
     "version": 1,
     "work_item": {

@@ -21,10 +21,7 @@
   },
   "workflow": "build",
   "harness_hidden": false,
-  "submit": {
-    "type": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "send": "after_gate"
-  },
+  "deliver": [],
   "inputs": {
     "version": 1,
     "work_item": {

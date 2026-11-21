@@ -19,12 +19,12 @@
   "run_settings": {
     "runtime": "claude"
   },
-  "workflow": "build",
-  "harness_hidden": false,
-  "submit": {
-    "type": "code_change",
-    "send": "after_gate"
-  },
+  "deliver": [
+    {
+      "type": "code-change",
+      "send": "after_gate"
+    }
+  ],
   "inputs": {
     "version": 1,
     "work_item": {

@@ -19,7 +19,7 @@
       "pattern": "^sc_[0-9a-hjkmnp-tv-z]{16}$"
     },
     "change_kind": {
-      "description": "The kind of a change request: the name of an artifact type in the process of the workspace's type, such as pull-request, reply or bid-changes. This contract lists no kind. Lower-case letters and digits in groups joined by single hyphens, 1 to 64 characters, the form of submit.type in run/v1/documents.schema.json.",
+      "description": "The kind of a change request: the name of an artifact type in the process of the workspace's type, such as pull-request, reply or bid-changes. This contract lists no kind. Lower-case letters and digits in groups joined by single hyphens, 1 to 64 characters. It has the form of the type of an entry of deliver in run/v1/documents.schema.json.",
       "type": "string",
       "maxLength": 64,
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
@@ -53,8 +53,8 @@
       "items": {"$ref": "#/$defs/change_value"},
       "additionalProperties": {"$ref": "#/$defs/change_value"}
     },
-    "draft_title": {
-      "description": "The title of a draft, and the title of a change request, is 1 to 256 characters on one line. It has the character rule of a prose line (description.schema.json, $defs.line): no control character (category Cc: U+0000 to U+001F and U+007F to U+009F), no U+2028 or U+2029, and no format character (category Cf) other than U+200C and U+200D. It has at least one character that is not a space, U+200C or U+200D. A space is U+0020, U+00A0, U+1680, U+2000 to U+200A, U+202F, U+205F or U+3000.",
+    "change_title": {
+      "description": "The title of a change request of any kind is 1 to 256 characters on one line. It has the character rule of a prose line (description.schema.json, $defs.line): no control character (category Cc: U+0000 to U+001F and U+007F to U+009F), no U+2028 or U+2029, and no format character (category Cf) other than U+200C and U+200D. It has at least one character that is not a space, U+200C or U+200D. A space is U+0020, U+00A0, U+1680, U+2000 to U+200A, U+202F, U+205F or U+3000.",
       "type": "string",
       "maxLength": 256,
       "pattern": "[^ \u00a0\u1680\u2000-\u200a\u202f\u205f\u200c\u200d\u3000]",

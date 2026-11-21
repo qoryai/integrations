@@ -48,6 +48,10 @@ const (
 	SubmitEnvDescriptionFile = "QORY_SUBMIT_DESCRIPTION_FILE"
 )
 
+// DraftOpen is the value of [SubmitEnvDraft] that asks the submit program to open a
+// draft, as the submit program contract describes.
+const DraftOpen = "open"
+
 // SubmitDraftNone is the value of [SubmitEnvDraft] for no draft. The other value is
 // [DraftOpen]: a run with no run code has no earlier submission, so it has no update.
 const SubmitDraftNone = "none"
@@ -121,6 +125,30 @@ type SubmitLineError struct {
 	Reason string
 }
 
+// The states and actions of a [SubmittedDraft].
+const (
+	DraftStateDraft  = "draft"
+	DraftStateOpen   = "open"
+	DraftStateClosed = "closed"
+	DraftStateMerged = "merged"
+	DraftOpened      = "opened"
+	DraftUpdated     = "updated"
+	DraftKept        = "kept"
+)
+
+// SubmittedDraft is the draft that a submit program reports in its result lines: Number,
+// URL, Title, State [DraftStateDraft], [DraftStateOpen], [DraftStateClosed] or
+// [DraftStateMerged], and Action [DraftOpened], [DraftUpdated] or [DraftKept]. A draft
+// that a person closed or merged is reported with [DraftKept] and its real state, and the
+// program does not edit it.
+type SubmittedDraft struct {
+	Number int64  `json:"number,case:strict"`
+	URL    string `json:"url,case:strict"`
+	Title  string `json:"title,case:strict"`
+	State  string `json:"state,case:strict"`
+	Action string `json:"action,case:strict"`
+}
+
 // SubmitResult is what qory records from the result lines of a program: Draft, nil when
 // the lines do not make a whole draft, CommitURLs by commit id, and Invalid, the lines
 // that qory did not record, in the order of their numbers.
@@ -154,7 +182,7 @@ var submitRules = sync.OnceValue(func() struct{ url, line, title *regexp.Regexp 
 	return struct{ url, line, title *regexp.Regexp }{
 		url:   pattern("definitions.schema.json", "url", FS),
 		line:  pattern("description.schema.json", "line", FS),
-		title: pattern("definitions.schema.json", "draft_title", FS),
+		title: pattern("definitions.schema.json", "change_title", FS),
 	}
 })
 

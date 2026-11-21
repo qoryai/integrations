@@ -58,8 +58,8 @@ func members(n int) map[string]any {
 }
 
 // TestTheChangeRequestLimitsAreExact pins each limit and each rule of the change_request
-// entry and of its reply at the value on each side: the title, the text and its marker
-// lines, the kind, the id, the previous version, and the limits of the part.
+// entry and of its reply at the value on each side: the title, the text (a marker line is
+// no rule of the envelope), the kind, the id, the previous version, and the limits of the part.
 func TestTheChangeRequestLimitsAreExact(t *testing.T) {
 	const entry = "fixtures/adapter/changes/change-request-pull-request.json"
 	const reply = "fixtures/adapter/changes-submitted/pull-request-created.json"
@@ -81,10 +81,10 @@ func TestTheChangeRequestLimitsAreExact(t *testing.T) {
 		{"empty text", false, set("text", ""), true},
 		{"text of 20000 characters", false, set("text", strings.Repeat("é", 20000)), true},
 		{"text of 20001 characters", false, set("text", strings.Repeat("é", 20001)), false},
-		{"text with the start marker on its first line", false, set("text", "<!-- qory:start -->\nx"), false},
-		{"text with the end marker on its first line", false, set("text", "<!-- qory:end -->\nx"), false},
-		{"text with the start marker on a later line", false, set("text", "x\n<!-- qory:start -->\ny"), false},
-		{"text with the end marker on a later line", false, set("text", "x\n<!-- qory:end -->"), false},
+		{"text with the start marker on its first line", false, set("text", "<!-- qory:start -->\nx"), true},
+		{"text with the end marker on its first line", false, set("text", "<!-- qory:end -->\nx"), true},
+		{"text with the start marker on a later line", false, set("text", "x\n<!-- qory:start -->\ny"), true},
+		{"text with the end marker on a later line", false, set("text", "x\n<!-- qory:end -->"), true},
 		{"text with a marker in the middle of a line", false, set("text", "x <!-- qory:start --> y"), true},
 		{"text with a similar comment", false, set("text", "<!-- qory:note -->"), true},
 		{"text with U+0000", false, set("text", "a\x00b"), false},
@@ -169,6 +169,33 @@ func TestTheChangeRequestLimitsAreExact(t *testing.T) {
 	}
 }
 
+// TestAReplyTextMayHaveAMarkerLine pins that a change_request of the kind reply whose
+// text has a line that starts with <!-- qory:start --> and a line that starts with
+// <!-- qory:end --> passes the envelope, in the closed copy too: the envelope has no rule
+// on the lines of text.
+func TestAReplyTextMayHaveAMarkerLine(t *testing.T) {
+	b := read(t, "fixtures/adapter/changes/change-request-reply-marker-line.json")
+	var f struct {
+		Changes []struct {
+			ChangeKind string `json:"change_kind"`
+			Text       string `json:"text"`
+		}
+	}
+	if err := json.Unmarshal(b, &f); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Changes) != 1 || f.Changes[0].ChangeKind != "reply" ||
+		!strings.HasPrefix(f.Changes[0].Text, "<!-- qory:start -->\n") || !strings.Contains(f.Changes[0].Text, "\n<!-- qory:end -->") {
+		t.Fatalf("change-request-reply-marker-line.json has %+v, want a reply with a start line and an end line", f.Changes)
+	}
+	if err := validate(compile(t, "changes.schema.json"), b); err != nil {
+		t.Errorf("the entry is refused: %v", err)
+	}
+	if err := validate(compileClosed(t, "changes.schema.json"), b); err != nil {
+		t.Errorf("the closed copy refuses the entry: %v", err)
+	}
+}
+
 // TestAChangeRequestOfEachKindIsAccepted pins the card's fixtures: an entry of the kinds
 // pull-request, reply and bid-changes is accepted, each with the members of its kind in
 // data, and an entry without a target or without a title is refused.
@@ -231,19 +258,19 @@ func TestAChangeRequestOfEachKindIsAccepted(t *testing.T) {
 	}
 }
 
-// TestAChangeKindHasThePatternOfASubmitType pins that change_kind has the pattern and
-// the length of submit.type of the run documents, so the type that a run stores a
-// change request under is always a kind that an adapter can list.
-func TestAChangeKindHasThePatternOfASubmitType(t *testing.T) {
+// TestAChangeKindHasThePatternOfADeliverType pins that change_kind has the pattern and
+// the length of the type of an entry of deliver of the run documents, so the type that a
+// run stores a change request under is always a kind that an adapter can list.
+func TestAChangeKindHasThePatternOfADeliverType(t *testing.T) {
 	doc, err := contracts.RunDocument("documents.schema.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	submitType := doc.(map[string]any)["$defs"].(map[string]any)["submit"].(map[string]any)["properties"].(map[string]any)["type"].(map[string]any)
+	deliverType := doc.(map[string]any)["$defs"].(map[string]any)["deliver_entry"].(map[string]any)["properties"].(map[string]any)["type"].(map[string]any)
 	kind := node(t, "definitions.schema.json", "/$defs/change_kind")
 	for _, keyword := range []string{"pattern", "maxLength"} {
-		if kind[keyword] == nil || fmt.Sprint(kind[keyword]) != fmt.Sprint(submitType[keyword]) {
-			t.Errorf("change_kind has the %s %v, and submit.type has %v", keyword, kind[keyword], submitType[keyword])
+		if kind[keyword] == nil || fmt.Sprint(kind[keyword]) != fmt.Sprint(deliverType[keyword]) {
+			t.Errorf("change_kind has the %s %v, and the type of a deliver entry has %v", keyword, kind[keyword], deliverType[keyword])
 		}
 	}
 }
@@ -349,7 +376,7 @@ func TestAFailureDetailHasTheRuleOfALine(t *testing.T) {
 }
 
 // TestALineAndATitleRefuseEveryCcAndCfCharacterButZWNJAndZWJ pins the character rule of
-// $defs/line (a guide line) and $defs/draft_title (a change request title): U+200C and
+// $defs/line (a guide line) and $defs/change_title (a change request title): U+200C and
 // U+200D pass, and every Cc character and every Cf character besides them is refused,
 // also one outside the Basic Multilingual Plane.
 func TestALineAndATitleRefuseEveryCcAndCfCharacterButZWNJAndZWJ(t *testing.T) {
