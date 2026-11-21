@@ -189,79 +189,102 @@ func TestCheckLinksRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	}
 }
 
-// fillLinkByTheReadme fills template by the rule of the README, section Links, and
-// reports false for no link: each placeholder is replaced in one pass with its value,
-// every byte of the value except A-Z a-z 0-9 - . _ ~ and / is written as %XX, and an
-// empty value of a placeholder the template uses makes no link. It exists only in this
-// test, to pin the examples of the README; no reader of the contract calls it.
-func fillLinkByTheReadme(template, system, collectionPath, path string) (string, bool) {
+// fillLinkByTheReadme fills template by the steps 2 to 4 of the README, section Links,
+// and reports false for no link: each placeholder is replaced in one pass with its value;
+// the value is split at each /; a segment that is empty, . or .. gives no link; each
+// segment is written with every byte except A-Z a-z 0-9 - . _ ~ as %XX; the segments are
+// joined with /. It exists only in this test, to pin the vectors and the examples of
+// the README; no reader of the contract calls it.
+func fillLinkByTheReadme(template, collectionPath, path string) (string, bool) {
 	ok := true
-	link := regexp.MustCompile(`\{(system|collection_path|path)\}`).ReplaceAllStringFunc(template, func(holder string) string {
-		v := map[string]string{"{system}": system, "{collection_path}": collectionPath, "{path}": path}[holder]
-		if v == "" {
-			ok = false
+	link := regexp.MustCompile(`\{(collection_path|path)\}`).ReplaceAllStringFunc(template, func(holder string) string {
+		v := path
+		if holder == "{collection_path}" {
+			v = collectionPath
 		}
-		var b strings.Builder
-		for _, c := range []byte(v) {
-			if c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || strings.IndexByte("-._~/", c) >= 0 {
-				b.WriteByte(c)
-			} else {
-				fmt.Fprintf(&b, "%%%02X", c)
+		var segments []string
+		for _, segment := range strings.Split(v, "/") {
+			if segment == "" || segment == "." || segment == ".." {
+				ok = false
 			}
+			var b strings.Builder
+			for _, c := range []byte(segment) {
+				if c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || strings.IndexByte("-._~", c) >= 0 {
+					b.WriteByte(c)
+				} else {
+					fmt.Fprintf(&b, "%%%02X", c)
+				}
+			}
+			segments = append(segments, b.String())
 		}
-		return b.String()
+		return strings.Join(segments, "/")
 	})
 	return link, ok
 }
 
 // TestTheReadmeExamplesOfLinksFillAsPrinted pins the section Links of the README: each
-// row of its table of written values, and each of its three examples, is what the rule
-// of the section gives, and the section prints each template and each link. The
-// inputs of the examples are written here, from the same section.
+// row of its table of written values, and each of its three examples, is what the steps
+// of the section give. The inputs and the expected strings of the examples are written
+// here exactly as the section prints them, and the test fails when the section does not
+// print them. The rows of the table are read from the section.
 func TestTheReadmeExamplesOfLinksFillAsPrinted(t *testing.T) {
 	b, err := os.ReadFile("integration/v1/README.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	section := string(b)
-	_, section, _ = strings.Cut(section, "\n## Links\n")
+	_, section, _ := strings.Cut(string(b), "\n## Links\n")
 	section, _, _ = strings.Cut(section, "\n## ")
-	rows := regexp.MustCompile("(?m)^\\| `([^`]*)` \\| `([^`]*)` \\|$").FindAllStringSubmatch(section, -1)
-	if len(rows) != 7 {
-		t.Fatalf("the table of written values has %d rows, want 7", len(rows))
+	rows := regexp.MustCompile("(?m)^\\| `([^`]*)` \\| (`[^`]*`|no link) \\|$").FindAllStringSubmatch(section, -1)
+	if len(rows) != 10 {
+		t.Fatalf("the table of written values has %d rows, want 10", len(rows))
 	}
 	for _, r := range rows {
-		if got, ok := fillLinkByTheReadme("{path}", "", "", r[1]); !ok || got != r[2] {
-			t.Errorf("the README writes %q as %q, the rule gives %q, %v", r[1], r[2], got, ok)
+		got, ok := fillLinkByTheReadme("{path}", "", r[1])
+		switch {
+		case r[2] == "no link" && ok:
+			t.Errorf("the README gives no link for %q, the steps give %q", r[1], got)
+		case r[2] != "no link" && (!ok || "`"+got+"`" != r[2]):
+			t.Errorf("the README writes %q as %s, the steps give %q, %v", r[1], r[2], got, ok)
 		}
 	}
-	for _, tc := range []struct{ template, system, collection, path, want string }{
-		{"https://{system}/{collection_path}/commit/{path}", "code.example.com", "acme/shop", "3e2d1c0b9a8f7e6d5c4b3a291807f6e5d4c3b2a1",
+	for _, tc := range []struct{ entry, template, collection, path, want string }{
+		{`{"system": "code.example.com", "template": "https://code.example.com/{collection_path}/commit/{path}"}`,
+			"https://code.example.com/{collection_path}/commit/{path}", "acme/shop", "3e2d1c0b9a8f7e6d5c4b3a291807f6e5d4c3b2a1",
 			"https://code.example.com/acme/shop/commit/3e2d1c0b9a8f7e6d5c4b3a291807f6e5d4c3b2a1"},
-		{"https://{system}/conversations/{path}", "desk.example.com", "", "48213", "https://desk.example.com/conversations/48213"},
-		{"https://{system}/console/{collection_path}/keywords/{path}", "ads.example.com", "profile-5521/campaign-9", "30417",
+		{`{"system": "desk.example.com", "template": "https://desk.example.com/conversations/{path}"}`,
+			"https://desk.example.com/conversations/{path}", "", "48213", "https://desk.example.com/conversations/48213"},
+		{`{"system": "ads.example.com", "template": "https://ads.example.com/console/{collection_path}/keywords/{path}"}`,
+			"https://ads.example.com/console/{collection_path}/keywords/{path}", "profile-5521/campaign-9", "30417",
 			"https://ads.example.com/console/profile-5521/campaign-9/keywords/30417"},
 	} {
-		got, ok := fillLinkByTheReadme(tc.template, tc.system, tc.collection, tc.path)
+		got, ok := fillLinkByTheReadme(tc.template, tc.collection, tc.path)
 		if !ok || got != tc.want {
-			t.Errorf("%s: the rule gives %q, %v, want %q", tc.template, got, ok, tc.want)
+			t.Errorf("%s: the steps give %q, %v, want %q", tc.template, got, ok, tc.want)
 		}
-		for _, printed := range []string{"\"template\": \"" + tc.template + "\"", "`" + tc.want + "`"} {
+		for _, printed := range []string{"`" + tc.entry + "`", "`" + tc.want + "`", "`" + tc.path + "`"} {
 			if !strings.Contains(section, printed) {
 				t.Errorf("the section Links does not print %s", printed)
 			}
 		}
-	}
-	for _, tc := range []struct{ name, template, system, collection, path string }{
-		{"an empty system", "https://{system}/{path}", "", "acme/shop", "1"},
-		{"an empty collection path", "https://x.example.com/{collection_path}/{path}", "code.example.com", "", "1"},
-		{"an empty path", "https://x.example.com/{path}", "code.example.com", "acme/shop", ""},
-	} {
-		if got, ok := fillLinkByTheReadme(tc.template, tc.system, tc.collection, tc.path); ok {
-			t.Errorf("%s: the rule gives the link %q, want none", tc.name, got)
+		if tc.collection != "" && !strings.Contains(section, "`"+tc.collection+"`") {
+			t.Errorf("the section Links does not print the collection path %s", tc.collection)
 		}
 	}
-	if got, ok := fillLinkByTheReadme("https://x.example.com/{path}", "", "", "1"); !ok || got != "https://x.example.com/1" {
+	for _, tc := range []struct{ name, template, collection, path string }{
+		{"an empty collection path", "https://x.example.com/{collection_path}/{path}", "", "1"},
+		{"an empty path", "https://x.example.com/{path}", "acme/shop", ""},
+		{"a dot segment in the collection path", "https://x.example.com/{collection_path}/{path}", "acme/./shop", "1"},
+		{"a leading slash", "https://x.example.com/{path}", "acme/shop", "/1"},
+		{"a trailing slash", "https://x.example.com/{path}", "acme/shop", "1/"},
+	} {
+		if got, ok := fillLinkByTheReadme(tc.template, tc.collection, tc.path); ok {
+			t.Errorf("%s: the steps give the link %q, want none", tc.name, got)
+		}
+	}
+	if got, ok := fillLinkByTheReadme("https://x.example.com/{path}", "", "{path}"); !ok || got != "https://x.example.com/%7Bpath%7D" {
+		t.Errorf("a brace in a value: %q, %v", got, ok)
+	}
+	if got, ok := fillLinkByTheReadme("https://x.example.com/a", "", ""); !ok || got != "https://x.example.com/a" {
 		t.Errorf("empty values of placeholders the template does not use: %q, %v", got, ok)
 	}
 }
