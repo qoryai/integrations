@@ -207,3 +207,29 @@ func TestTheReadmeExamplesOfLinksFillAsPrinted(t *testing.T) {
 		t.Errorf("empty values of placeholders the template does not use: %q, %v", got, ok)
 	}
 }
+
+// TestCheckLinksLeavesAWrongShapeToTheSchema pins that CheckLinks returns nil, and does
+// not panic, for a description whose links the schema refuses by type: a document that
+// is no object, links that is no array, an entry that is no object, and a system that is
+// no string, which does not count as the empty system.
+func TestCheckLinksLeavesAWrongShapeToTheSchema(t *testing.T) {
+	for name, doc := range map[string]any{
+		"no document":        nil,
+		"an array":           []any{},
+		"links as a string":  map[string]any{"links": "https://x.example.com"},
+		"links as an object": map[string]any{"links": map[string]any{"system": "a.example.com"}},
+		"entries as strings": map[string]any{"links": []any{"a", "a"}},
+		"entries as null":    map[string]any{"links": []any{nil, nil}},
+		"systems as numbers": map[string]any{"links": []any{map[string]any{"system": 1}, map[string]any{"system": 1}}},
+		"systems missing":    map[string]any{"links": []any{map[string]any{}, map[string]any{}}},
+		"systems as null":    map[string]any{"links": []any{map[string]any{"system": nil}, map[string]any{"system": nil}}},
+	} {
+		if err := contracts.CheckLinks(doc); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	empty := map[string]any{"links": []any{map[string]any{"system": ""}, map[string]any{"system": ""}}}
+	if err := contracts.CheckLinks(empty); err == nil {
+		t.Error("two empty-string systems are accepted")
+	}
+}

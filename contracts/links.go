@@ -12,7 +12,10 @@ func CheckLinks(doc any) error {
 	first := map[string]int{}
 	for i, l := range links {
 		entry, _ := l.(map[string]any)
-		system, _ := entry["system"].(string)
+		system, ok := entry["system"].(string)
+		if !ok {
+			continue
+		}
 		if j, ok := first[system]; ok {
 			return fmt.Errorf("List each system of links once: the entries %d and %d both have the system %q.", j, i, system)
 		}
