@@ -697,7 +697,7 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 	if ref := at(configuration, "$defs", "apply", "properties", "paths")["$ref"]; ref != "#/$defs/credential_paths" {
 		t.Errorf("the paths of an apply item are %v, want #/$defs/credential_paths", ref)
 	}
-	const limit = "An adapter covers at most floor(512 / p) resources per call, where p is the number of path entries that one resource adds across all apply items; a template without {target.path} counts once for the call. It covers fewer when paths of different items cannot share one list of 32. It refuses a call over its limit with 403 resource_not_covered."
+	const limit = "An adapter covers N resources only when N × p + c ≤ 512, where p is the number of path entries that one resource adds across all apply items. c is the number of paths that no resource owns, such as a template without {target.path}. It covers fewer when paths of different items cannot share one list of 32. It refuses a call over its limit with 403 resource_not_covered."
 	for _, c := range []struct{ schema, want string }{
 		{"run-credential.schema.json", "The answer has at most 512 paths (run-credential-answer.schema.json). " + limit},
 		{"run-credential.schema.json", "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json);"},
