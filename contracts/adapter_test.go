@@ -735,6 +735,10 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 	}
 }
 
+// exploreFill is the text of the source apply of description.schema.json about how the
+// control plane fills the templates for a run with no target.
+const exploreFill = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources. It puts the filled paths into items of at most 32 paths, in that order. Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
+
 // TestAConnectionHasAtMostOneGrantThatHasNotEnded pins the texts of one account for each
 // connection: the description of the grant report and of its grant_ref, the description
 // of the definitions, and the path that fills {target.path} for a run with no target.
@@ -744,7 +748,7 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 		{"grant.schema.json", "", one + " grant_ref is the adapter's ref to that grant, stable for that account."},
 		{"grant.schema.json", "/properties/grant_ref", "While the connection has a grant that has not ended, a report with another grant_ref is refused with 409 connection_held."},
 		{"definitions.schema.json", "", one + " The adapter reports that grant with POST /v1/grants"},
-		{"description.schema.json", "/properties/roles/properties/source/properties/apply", "For a run with no target, such as Explore, the control plane fills each template once for each resource of the run-credential call, in the order of the resources. It puts the filled paths into items of at most 32 paths, each with the hosts and header of the description item it came from. Each such item is a valid Forager apply item."},
+		{"description.schema.json", "/properties/roles/properties/source/properties/apply", exploreFill},
 	} {
 		doc, err := contracts.Document(c.schema)
 		if err != nil {
@@ -765,12 +769,11 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 // connection, and the texts of the source apply about how the control plane fills the
 // templates for a run with no target.
 func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T) {
-	const fill = "For a run with no target, such as Explore, the control plane fills each template once for each resource of the run-credential call, in the order of the resources. It puts the filled paths into items of at most 32 paths, each with the hosts and header of the description item it came from. Each such item is a valid Forager apply item."
 	const apply = "/properties/roles/properties/source/properties/apply"
 	for _, c := range []struct{ schema, pointer, want string }{
-		{"description.schema.json", apply, fill},
-		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + fill},
-		{"description.schema.json", "/$defs/apply/properties/paths", "For a run with no target, one template gives one path per resource."},
+		{"description.schema.json", apply, exploreFill},
+		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFill},
+		{"description.schema.json", "/$defs/apply/properties/paths", "For a run with no target, a template with {target.path} gives one path per resource. A template without it gives one path."},
 		{"connect-pass.schema.json", "", "or of a live connection that the person connects one external account to. While the connection has a grant that has not ended, only the same external account connects again, and its grant is replaced. Another account ends in 409 connection_held."},
 		{"connect-pass.schema.json", "/properties/connection_id", "the live connection that the person connects one external account to, as the control plane issued it."},
 		{"definitions.schema.json", "/$defs/connection_id", "connects one external account to it, or replaces the grant of the account that is connected (grant.schema.json)."},
