@@ -601,6 +601,60 @@ func TestARunCredentialHasTheResourcesOfItsPurposeAndAccess(t *testing.T) {
 	}
 }
 
+// TestConnectionHeldIsListedBesideGrantTaken pins that connection_held is a reason of the
+// connect return, after grant_taken, and that the descriptions of the grant report, of its
+// refusals and of the connect return say it, with the fix for the person. A reason that
+// the connect return does not list is refused.
+func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
+	const fix = "Disconnect the account that is connected first, then connect again. A connection has one account."
+	connectReturn := node(t, "connect-return.schema.json", "/properties/reason")
+	var reasons []string
+	for _, r := range connectReturn["enum"].([]any) {
+		reasons = append(reasons, r.(string))
+	}
+	i := slices.Index(reasons, "grant_taken")
+	if i < 0 || i+1 >= len(reasons) || reasons[i+1] != "connection_held" {
+		t.Errorf("the reasons of the connect return are %v, want connection_held right after grant_taken", reasons)
+	}
+	description := func(schema string) string {
+		doc, err := contracts.Document(schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		d, _ := doc.(map[string]any)["description"].(string)
+		return d
+	}
+	for _, c := range []struct{ name, text string }{
+		{"the reason of connect-return.schema.json", connectReturn["description"].(string)},
+		{"grant.schema.json", description("grant.schema.json")},
+	} {
+		if !strings.Contains(c.text, "connection_held") || !strings.Contains(c.text, fix) {
+			t.Errorf("%s: the description does not say connection_held with %q", c.name, fix)
+		}
+	}
+	for _, c := range []struct{ schema, want string }{
+		{"grant.schema.json", "409 connection_held"},
+		{"refusal.schema.json", "409 connection_held, a grant report whose grant_ref differs"},
+	} {
+		if !strings.Contains(description(c.schema), c.want) {
+			t.Errorf("%s: the description does not say %q", c.schema, c.want)
+		}
+	}
+	schema := compile(t, "connect-return.schema.json")
+	var doc map[string]any
+	if err := json.Unmarshal(read(t, "fixtures/adapter/connect-return/refused-connection-held.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["reason"] != "connection_held" {
+		t.Errorf("refused-connection-held.json has the reason %v", doc["reason"])
+	}
+	doc["reason"] = "connection_holding"
+	b, _ := json.Marshal(doc)
+	if err := validate(schema, b); err == nil {
+		t.Error("a connect return with an unlisted reason is accepted")
+	}
+}
+
 // TestADestinationIsAnIdAndATarget pins definitions.schema.json, $defs.destination: id and
 // target are required, id is tg_ and 16 characters of Crockford base32 in lower case, and
 // target is a $defs.target. It also pins that [contracts.Destination] decodes a destination.
@@ -753,6 +807,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			Description: read(t, "fixtures/example-tracker.json")}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 		{"refusal", contracts.Refusal{Error: "grant_taken"}},
+		{"refusal", contracts.Refusal{Error: "connection_held"}},
 		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
 		{"adapter-secrets", contracts.AdapterSecrets{Version: contracts.Version, Time: now, Sealed: contracts.SealedToServer{
 			Suite: contracts.SealSuite, ServerKey: "rcFAEfgtHFbZVqpPnXPYhYNhpgYEhSXg0Ixjjcdd2Mc", Enc: strings.Repeat("A", 43), CT: strings.Repeat("A", 22)}}},

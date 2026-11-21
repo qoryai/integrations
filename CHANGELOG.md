@@ -71,6 +71,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   to 64. All resources of a call are collections of one connection, the `connection_id` of
   the call. The answer is one credential, with one `apply` item for each host. Its `paths`
   list the path of each resource, and Forager sets no maximum for them.
+- Handle the refusal `409 connection_held` of a grant report, and the reason
+  `connection_held` of a connect return. The control plane refuses a report with it when
+  the connection has a grant that has not ended and the report has another `grant_ref`. A
+  report with the same `grant_ref` replaces that grant. The text for the person is
+  "Disconnect the account that is connected first, then connect again. A connection has one
+  account." Before this release a connection had a list of grants, one for each external
+  account. `grant_taken` stays for a grant that another connection has.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
