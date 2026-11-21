@@ -933,8 +933,11 @@ const RunCredentialTokenMaxBytes = 16384
 // the ResourceRef of a [Resolved], as the adapter answered it, never its PublicRef. For
 // Purpose "work", it has 1 to 500 refs with Access "read" and exactly one with Access
 // "write". Each is the ref of a collection, as the adapter listed it, which for a target
-// from an item is the item's collection. The paths of the answer limit how many
-// resources one call covers: at most 512 paths.
+// from an item is the item's collection. The answer has at most 512 paths, so an adapter
+// covers at most floor(512 / p) resources per call, where p is the number of path entries
+// that one resource adds across all apply items. A template without {target.path} counts
+// once for the call. It covers fewer when paths of different items cannot share one list
+// of 32, and it refuses a call over its limit with 403 resource_not_covered.
 type RunCredential struct {
 	Version      int      `json:"version,case:strict"`
 	Time         string   `json:"time,case:strict"`

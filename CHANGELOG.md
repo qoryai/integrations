@@ -48,43 +48,47 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - Read `read_targets` from the run documents when a run reads places beside its `target`.
   `read_targets` is a list of `{collection, address}` targets, in the form of `target`,
   with 0 to 20 entries, and `[]` is valid. The run only reads a place in `read_targets`:
-  it changes, pushes and delivers nothing to it. `target` stays the one place where a
-  run changes, and `access` applies to `target` only. `read_targets` is present with or without
-  `target`, and never on a run of the step `prebuild`. No two entries have the same
-  `collection`, and no entry has the `collection` of `target`. The schema cannot check
-  that, so a reader calls `Documents.Check` after it decodes the documents. An entry has
-  no version: `target_version` applies to `target` only. In Go, `Documents.ReadTargets`
-  is a `[]Target`, and `MaxReadTargets` is 20. The folder `fixtures/check` of the run
-  contract has run documents that the schema accepts and `Documents.Check` refuses.
+  it changes, pushes and delivers nothing to it. `target` stays the one place where a run
+  changes, and `access` applies to `target` only. `read_targets` is present with or
+  without `target`, and never on a run of the step `prebuild`. No two entries have the
+  same `collection`, and no entry has the `collection` of `target`. The schema cannot
+  check that, so a reader calls `Documents.Check` after it decodes the documents. An entry
+  has no version: `target_version` applies to `target` only. In Go,
+  `Documents.ReadTargets` is a `[]Target`, and `MaxReadTargets` is 20. The folder
+  `fixtures/check` of the run contract has run documents that the schema accepts and
+  `Documents.Check` refuses.
 - Write and read `destinations` in the explore inputs. It is required, and it has 1 to 500
   entries. Each entry is a destination: `id`, the control plane's id of a place, and
   `target`, the place as the adapter wrote it. An `id` is `tg_` and 16 characters, each a
   digit or a lower-case letter other than `i`, `l`, `o` and `u`. `target` of the inputs
   stays optional. No two entries are equal, and the control plane drops the oldest
   comments, never a destination, to keep the inputs within their bound. Before this
-  release the inputs had no list of destinations, and a writer
-  without `destinations` fails the schema. `$defs/destination` in
-  `definitions.schema.json` defines an entry. A document that an adapter writes keeps
-  `target` with no `id`. In Go, `Destination` has `ID` and `Target`.
-- Accept 1 to 500 `resources` in a `run-credential` call with `purpose` `work` and `access`
-  `read`. Before this release a work call had exactly 1, and an adapter refused more with
-  `400`. A work call with `access` `write` still has exactly 1, and a `harness` call has 1
-  to 64. All resources of a call are collections of one connection, the `connection_id` of
-  the call. The answer is one credential. In an `apply` item of the answer, `paths` lists
-  each template filled with the path of each resource. The answer has at most 16 `apply`
-  items of 1 to 32 paths, 512 paths together, as the run configuration of the Forager
-  contract limits an entry. One call covers at most floor(512 / p) resources, where p is
-  the number of paths that one resource adds. The adapter refuses a larger call with
+  release the inputs had no list of destinations, and a writer without `destinations`
+  fails the schema. `$defs/destination` in `definitions.schema.json` defines an entry. A
+  document that an adapter writes keeps `target` with no `id`. In Go, `Destination` has
+  `ID` and `Target`.
+- Accept 1 to 500 `resources` in a `run-credential` call with `purpose` `work` and
+  `access` `read`. Before this release a work call had exactly 1, and an adapter refused
+  more with `400`. A work call with `access` `write` still has exactly 1, and a `harness`
+  call has 1 to 64. All resources of a call are collections of one connection, the
+  `connection_id` of the call. The answer is one credential. In an `apply` item of the
+  answer, `paths` lists each template filled with the path of each resource. The answer
+  has at most 16 `apply` items of 1 to 32 paths, 512 paths together, as the Forager
+  contract limits it. An adapter covers at most floor(512 / p) resources per call, where p
+  is the number of path entries that one resource adds across all `apply` items. A
+  template without `{target.path}` counts once for the call. It covers fewer when paths of
+  different items cannot share one list of 32. It refuses a call over its limit with
   `403 resource_not_covered`.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A
   report with the same `grant_ref` replaces that grant. The text for the person is
-  "Disconnect the account that is connected first, then connect again. A connection has one
-  account." Before this release a connection had a list of grants, one for each external
-  account. A connection has at most one grant that has not ended. The adapter treats `connection_held` as final, as `grant_taken`. The control
-  plane checks a report for `pass_unknown`, then `grant_taken`, then `connection_held`.
-  `grant_taken` stays for a grant that another connection has.
+  "Disconnect the account that is connected first, then connect again. A connection has
+  one account." Before this release a connection had a list of grants, one for each
+  external account. A connection has at most one grant that has not ended. The adapter
+  treats `connection_held` as final, as `grant_taken`. The control plane checks a report
+  for `pass_unknown`, then `grant_taken`, then `connection_held`. `grant_taken` stays for
+  a grant that another connection has.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
@@ -781,8 +785,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   in the control plane: 1 to 40 lower-case letters, digits and hyphens, with no hyphen at
   either end. An adapter may use it to suggest a name at its source, and accepts a pass
   without it. In Go, `SetupPass.OrganisationSlug` is added.
-- Grants: a connection has one grant per external account at the source. The adapter
-  reports one grant with `POST /v1/grants`, with `connection_id`, `grant_ref`, `account`
+- Grants: a connection has at most one grant that has not ended, for one external account
+  at the source. The adapter reports one grant with `POST /v1/grants`, with `connection_id`, `grant_ref`, `account`
   and `pass_nonce`, and the grant is added only when the control plane accepts the report.
   `account` is `{ref, title}`, both required: `ref` is the external account's id at the
   source, and `title` is its display name, one line. `GET /v1/grants` returns the control

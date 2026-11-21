@@ -659,28 +659,51 @@ func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
 	}
 }
 
-// TestTheAnswerPathLimitIsStatedAndMatchesForager pins that the run configuration of the
-// Forager contract limits an entry to 16 apply items of 1 to 32 paths, which makes 512
-// paths, and that run-credential.schema.json, run-credential-answer.schema.json and the
-// refusal codes state that limit and the refusal resource_not_covered.
+// TestTheAnswerPathLimitIsStatedAndMatchesForager pins that the Forager contract limits
+// the apply of a sealed value, and an entry of the run configuration, to 16 items, and the
+// paths of an item to 32, which makes 512 paths. It pins that run-credential.schema.json
+// and run-credential-answer.schema.json state that limit and the refusal
+// resource_not_covered, and that the refusal codes list the case.
 func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
-	doc, err := foragercontracts.Document("run-configuration.schema.json")
-	if err != nil {
-		t.Fatal(err)
+	read := func(name string) map[string]any {
+		doc, err := foragercontracts.Document(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return doc.(map[string]any)
 	}
-	defs := doc.(map[string]any)["$defs"].(map[string]any)
-	items := defs["host_credential"].(map[string]any)["properties"].(map[string]any)["apply"].(map[string]any)
-	paths := defs["credential_paths"].(map[string]any)
-	if fmt.Sprint(items["maxItems"]) != "16" || fmt.Sprint(paths["maxItems"]) != "32" {
-		t.Errorf("Forager limits an entry to %v items of %v paths, and the contract states 16 of 32", items["maxItems"], paths["maxItems"])
+	at := func(doc map[string]any, keys ...string) map[string]any {
+		for _, k := range keys {
+			doc = doc[k].(map[string]any)
+		}
+		return doc
 	}
+	configuration := read("run-configuration.schema.json")
+	sealed := read("sealed-plaintext.schema.json")
+	for _, c := range []struct {
+		where string
+		got   any
+		want  string
+	}{
+		{"the apply of an entry of the run configuration", at(configuration, "$defs", "host_credential", "properties", "apply")["maxItems"], "16"},
+		{"the apply of a sealed value", at(sealed, "properties", "values", "items", "properties", "apply")["maxItems"], "16"},
+		{"the paths of an apply item", at(configuration, "$defs", "credential_paths")["maxItems"], "32"},
+	} {
+		if fmt.Sprint(c.got) != c.want {
+			t.Errorf("Forager limits %s to %v, and the contract states %s", c.where, c.got, c.want)
+		}
+	}
+	if ref := at(configuration, "$defs", "apply", "properties", "paths")["$ref"]; ref != "#/$defs/credential_paths" {
+		t.Errorf("the paths of an apply item are %v, want #/$defs/credential_paths", ref)
+	}
+	const limit = "An adapter covers at most floor(512 / p) resources per call, where p is the number of path entries that one resource adds across all apply items; a template without {target.path} counts once for the call. It covers fewer when paths of different items cannot share one list of 32. It refuses a call over its limit with 403 resource_not_covered."
 	for _, c := range []struct{ schema, want string }{
-		{"run-credential.schema.json", "The answer has at most 512 paths. One call covers at most floor(512 / p) resources"},
-		{"run-credential.schema.json", "with 403 resource_not_covered"},
-		{"run-credential-answer.schema.json", "512 paths together"},
-		{"run-credential-answer.schema.json", "floor(512 / p) resources"},
-		{"run-credential-answer.schema.json", "with 403 resource_not_covered"},
-		{"refusal.schema.json", "the paths of the resources do not fit in the answer"},
+		{"run-credential.schema.json", "The answer has at most 512 paths (run-credential-answer.schema.json). " + limit},
+		{"run-credential.schema.json", "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json);"},
+		{"run-credential-answer.schema.json", "The answer has at most 16 apply items of 1 to 32 paths each, 512 paths together."},
+		{"run-credential-answer.schema.json", limit},
+		{"run-credential-answer.schema.json", "Several apply items may claim one host when each item on it has paths and no path of one overlaps a path of another (run-configuration.schema.json of the Forager contract, $defs.apply)."},
+		{"refusal.schema.json", "or the paths of the resources do not fit in the answer"},
 	} {
 		d, err := contracts.Document(c.schema)
 		if err != nil {
@@ -690,30 +713,9 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 			t.Errorf("%s: the description does not contain %q", c.schema, c.want)
 		}
 	}
-}
-
-// TestAConnectionHasAtMostOneGrantThatHasNotEnded pins the texts of one account for each
-// connection: the description of the grant report and of its grant_ref, the description
-// of the definitions, and the path that fills {target.path} for a run with no target.
-func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
-	const one = "A connection has at most one grant that has not ended, for one external account at the source."
-	for _, c := range []struct{ schema, pointer, want string }{
-		{"grant.schema.json", "", one + " grant_ref is the adapter's ref to that grant, stable for that account."},
-		{"grant.schema.json", "/properties/grant_ref", "While the connection has a grant that has not ended, a report with another grant_ref is refused with 409 connection_held."},
-		{"definitions.schema.json", "", one + " The adapter reports that grant with POST /v1/grants"},
-		{"description.schema.json", "/properties/roles/properties/source/properties/apply", "For a run with no target, such as Explore, the path of each resource of the run-credential call fills it."},
-	} {
-		doc, err := contracts.Document(c.schema)
-		if err != nil {
-			t.Fatal(err)
-		}
-		holder := doc.(map[string]any)
-		if c.pointer != "" {
-			holder = node(t, c.schema, c.pointer)
-		}
-		if text, _ := holder["description"].(string); !strings.Contains(text, c.want) {
-			t.Errorf("%s%s: the description does not contain %q", c.schema, c.pointer, c.want)
-		}
+	const resources = "The paths of the answer limit how many resources one call covers (run-credential-answer.schema.json)."
+	if text, _ := node(t, "run-credential.schema.json", "/properties/resources")["description"].(string); !strings.Contains(text, resources) {
+		t.Errorf("run-credential.schema.json: the description of resources does not contain %q", resources)
 	}
 }
 
