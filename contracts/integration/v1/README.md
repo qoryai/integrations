@@ -281,10 +281,6 @@ A reader fills a template in these steps:
 | `ä` | `%C3%A4` |
 | `..` | `..` |
 
-`contracts.FillLink(template, system, collectionPath, path)` is the reference
-implementation of these steps. It returns the link and `true`, or `""` and `false` for no
-link.
-
 Examples, with example hosts. In each, the reference has the system of its entry.
 
 - Software: `{"system": "code.example.com", "template": "https://{system}/{collection_path}/commit/{path}"}`.

@@ -360,9 +360,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   each system. A `template` is an `https://` URL of at most 2048 characters whose only
   braces are `{system}`, `{collection_path}` and `{path}`. A reader fills it from the
   address of a reference and writes each value as a path, as the section Links of the
-  integration README describes. `contracts.CheckLinks` refuses a system listed twice, and
-  `contracts.FillLink` is the reference implementation of the fill rule. Before this
-  release a description had no member for a link.
+  integration README describes. `contracts.CheckLinks` refuses a system listed twice.
+  Before this release a description had no member for a link.
 - `contracts.CompileClosed`, `contracts.CompileRunClosed`,
   `contracts.CompileProvisionerClosed`, `contracts.CompileMachinesClosed` and
   `contracts.CompileExploreClosed` compile the closed copy of a schema, and return an
