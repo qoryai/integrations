@@ -79,6 +79,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
   number of paths that belong to no single resource, such as a template without
   `{target.path}`. It covers fewer when paths of different items cannot share one list of
   32. It refuses a call over its limit with `403 resource_not_covered`.
+- Fill the source `apply` templates of a run with no target, such as Explore, for each
+  resource of the `run-credential` call. The control plane fills the templates of an
+  item one after another, each for every resource, and puts the filled paths into items
+  of at most 32 paths. It drops a filled path that another filled path on the same host
+  covers. It refuses a call whose filled paths still overlap on one host with
+  `403 resource_not_covered`. The read access of the run covers every destination of the
+  workspace from the start and does not grow during the session.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A

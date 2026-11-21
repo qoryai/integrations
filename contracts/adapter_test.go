@@ -744,8 +744,8 @@ const (
 	exploreFillItems = "Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
 	exploreDrop      = "Before it puts the paths into items, the control plane drops each filled path that another filled path on the same host covers. The entry then grants the same access."
 	exploreRefuse    = "A call whose filled paths still overlap on one host after that step, where neither path covers the other, is refused with 403 resource_not_covered."
-	exploreCovers    = "A path covers another when every request path that matches the other also matches it. CoversPath in policy/policy.go of the Forager module decides this, and /group/* covers /group/sub/repo/*."
-	exploreOverlaps  = "Two paths overlap when one request path can match both, as OverlapPaths in the same file decides it."
+	exploreCovers    = "A path covers another when every request path that matches the other also matches it. Forager's CoversPath (policy/policy.go) returns this, and /group/* covers /group/sub/repo/*."
+	exploreOverlaps  = "Two paths overlap when one request path can match both. Forager's OverlapPaths (policy/policy.go) returns this, and it counts a pair it cannot decide as overlapping."
 	// overlapRefusal is the clause of the refusal list of 403 resource_not_covered.
 	overlapRefusal = "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json), or the filled paths overlap on one host and neither covers the other (description.schema.json, $defs.apply)"
 )
@@ -810,6 +810,16 @@ func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T)
 		"A connect pass may be for a live connection, which connects\n  one external account to a connection, or replaces the grant of that account.",
 	} {
 		if !strings.Contains(string(changelog), want) {
+			t.Errorf("CHANGELOG.md does not contain %q", want)
+		}
+	}
+	flat := strings.Join(strings.Fields(strings.ReplaceAll(string(changelog), "`", "")), " ")
+	for _, want := range []string{
+		"Fill the source apply templates of a run with no target, such as Explore, for each resource of the run-credential call. The control plane fills the templates of an item one after another, each for every resource, and puts the filled paths into items of at most 32 paths.",
+		"It drops a filled path that another filled path on the same host covers. It refuses a call whose filled paths still overlap on one host with 403 resource_not_covered.",
+		"The read access of the run covers every destination of the workspace from the start and does not grow during the session.",
+	} {
+		if !strings.Contains(flat, want) {
 			t.Errorf("CHANGELOG.md does not contain %q", want)
 		}
 	}
