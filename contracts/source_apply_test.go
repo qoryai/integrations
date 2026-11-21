@@ -469,25 +469,27 @@ func TestAnAddressPathHasNoBrace(t *testing.T) {
 
 // refusedTargetPath models the refusal list of $defs/apply.paths in description.schema.json:
 // the control plane refuses a target path with a space character, {, }, .., //, *, ? or
-// #, with a segment ., a backslash or a %, or that ends in /. A space character is a
-// character below U+0021, U+007F, U+FEFF, or a Unicode White_Space character.
+// #, with a segment ., a backslash or a %, that starts or ends in /, or with a segment
+// that starts with ; or .;. A space character is a character below U+0021, U+007F,
+// U+FEFF, or a Unicode White_Space character.
 func refusedTargetPath(p string) bool {
-	if strings.ContainsAny(p, "{}*?#\\%") || strings.Contains(p, "..") || strings.Contains(p, "//") || strings.HasSuffix(p, "/") {
+	if strings.ContainsAny(p, "{}*?#\\%") || strings.Contains(p, "..") || strings.Contains(p, "//") || strings.HasPrefix(p, "/") || strings.HasSuffix(p, "/") {
 		return true
 	}
-	if slices.Contains(strings.Split(p, "/"), ".") {
-		return true
+	for _, segment := range strings.Split(p, "/") {
+		if segment == "." || strings.HasPrefix(segment, ";") || strings.HasPrefix(segment, ".;") {
+			return true
+		}
 	}
 	return strings.ContainsFunc(p, func(r rune) bool { return r < 0x21 || r == 0x7f || r == 0xfeff || unicode.IsSpace(r) })
 }
 
 // TestATargetPathWithAnUnclearPartIsRefused pins the refusal list of $defs/apply.paths:
-// each of acme/./x, acme\x, acme/%2f and a/b/ is refused, and for each target path that
-// the list passes, from a set built of segments with the parts that Forager's UnclearPath
-// refuses, no template of the set fills it into a path that UnclearPath refuses, so the
-// list is not narrower than UnclearPath. shortcut: a target path that starts with /, and a
-// segment that starts with ; or .;, are left out of the set, since UnclearPath refuses the
-// filled paths and the list does not; replace this when the list refuses them.
+// each of acme/./x, acme\x, acme/%2f, a/b/, /acme, ;x and .;x is refused, a;b is not, and
+// for each target path that the list passes, from a set built of segments with the parts
+// that Forager's UnclearPath refuses, no template of the set fills it into a path that
+// UnclearPath refuses, so the list is not narrower than UnclearPath. An empty target path
+// is left out: address_path refuses it.
 func TestATargetPathWithAnUnclearPartIsRefused(t *testing.T) {
 	for _, tc := range []struct {
 		path    string
@@ -497,6 +499,11 @@ func TestATargetPathWithAnUnclearPartIsRefused(t *testing.T) {
 		{"acme\\x", true},
 		{"acme/%2f", true},
 		{"a/b/", true},
+		{"/acme", true},
+		{";x", true},
+		{".;x", true},
+		{"a/;x", true},
+		{"a/.;x/b", true},
 		{".", true},
 		{"a//b", true},
 		{"a/../b", true},
@@ -505,13 +512,19 @@ func TestATargetPathWithAnUnclearPartIsRefused(t *testing.T) {
 		{"acme/widgets", false},
 		{"a.b/c-d", false},
 		{"acme/.hidden", false},
+		{"a;b", false},
+		{"a;", false},
+		{"a/b;c/d", false},
 		{"acme/widgets.v2", false},
 	} {
 		if got := refusedTargetPath(tc.path); got != tc.refused {
 			t.Errorf("the list refuses %q: %v, want %v", tc.path, got, tc.refused)
 		}
+		if !tc.refused && policy.UnclearPath("/projects/"+tc.path+"/*") {
+			t.Errorf("the target path %q passes the list, and Forager's UnclearPath refuses /projects/%s/*", tc.path, tc.path)
+		}
 	}
-	segments := []string{"a", "acme", ".", "..", "%2e", "%2F", "%25", "%3b", "%5C", "\\", "", "a b", "x%41", "a.", ".a", "..a", "a;b", "a;", "a%3Bb", "\t", "x\x7f"}
+	segments := []string{"a", "acme", ".", "..", "%2e", "%2F", "%25", "%3b", "%5C", "\\", "", "a b", "x%41", "a.", ".a", "..a", "a;b", "a;", "a%3Bb", ";x", ".;x", "..;x", ";", "\t", "x\x7f"}
 	templates := []string{"/projects/{target.path}/*", "/projects/{target.path}", "/{target.path}", "/projects/{target.path}.json", "/files/{target.path}.v2/*", "/projects/{target.path}/"}
 	passed := 0
 	var paths []string
@@ -525,7 +538,7 @@ func TestATargetPathWithAnUnclearPartIsRefused(t *testing.T) {
 		}
 	}
 	for _, p := range paths {
-		if p == "" || strings.HasPrefix(p, "/") || refusedTargetPath(p) {
+		if p == "" || refusedTargetPath(p) {
 			continue
 		}
 		passed++

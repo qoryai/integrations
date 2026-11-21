@@ -97,10 +97,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   that path, and Forager's `credential_paths` allows `{` and `}` only as the whole
   segment `{}`.
 - Before it fills a template, the control plane refuses a target path with a segment
-  `.`, a backslash, a `%` or a final `/`. Before this release it refused only `..`,
-  `//`, `*`, `?`, `#` and a space character. Forager's `UnclearPath` refuses a filled
-  path with a `.` segment, a backslash, `//`, or `%2f`, `%5c`, `%2e` or `%25` in any
-  case.
+  `.`, a backslash, a `%`, a first `/`, a final `/`, or a segment that starts with `;`
+  or `.;`. Before this release it refused only `..`, `//`, `*`, `?`, `#` and a space
+  character. Forager's `UnclearPath` refuses a filled path with a `.` segment, a
+  backslash, `//`, or `%2f`, `%5c`, `%2e` or `%25` in any case, and a segment that
+  starts with `;` or `.;`.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A
