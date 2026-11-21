@@ -156,6 +156,14 @@ var invalidExploreFixtures = map[string]struct{ schema, reason string }{
 	"inputs-without-domain.json":                    {"inputs", "/ required domain"},
 	"inputs-without-ticket-with-comments.json":      {"inputs", "/comments maxItems"},
 	"inputs-without-ticket-comments-omitted-1.json": {"inputs", "/comments_omitted const"},
+	"inputs-without-destinations.json":              {"inputs", "/ required destinations"},
+	"inputs-destinations-empty.json":                {"inputs", "/destinations minItems"},
+	"inputs-destinations-251-entries.json":          {"inputs", "/destinations maxItems"},
+	"inputs-destinations-twice.json":                {"inputs", "/destinations uniqueItems"},
+	"inputs-destination-without-id.json":            {"inputs", "/destinations/0 required id"},
+	"inputs-destination-without-target.json":        {"inputs", "/destinations/0 required target"},
+	"inputs-destination-id-upper-case.json":         {"inputs", "/destinations/0/id pattern"},
+	"inputs-destination-id-other-prefix.json":       {"inputs", "/destinations/0/id pattern"},
 }
 
 // TestInvalidExploreFixturesAreRefused pins that each document under fixtures/invalid
@@ -184,6 +192,92 @@ func TestInvalidExploreFixturesAreRefused(t *testing.T) {
 		}
 		if r := strings.Join(memberLeaves(v), "; "); r != w.reason {
 			t.Errorf("%s is refused for %q, want %q", f, r, w.reason)
+		}
+	}
+}
+
+// TestExploreInputsWithThreeDestinationsAreAccepted pins that the fixture of inputs with
+// three destinations has three different ids and three different targets, and that the
+// schema accepts it.
+func TestExploreInputsWithThreeDestinationsAreAccepted(t *testing.T) {
+	doc, err := contracts.ExploreDocument("fixtures/inputs/destinations-three.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := doc.(map[string]any)["destinations"].([]any)
+	if len(list) != 3 {
+		t.Fatalf("fixtures/inputs/destinations-three.json has %d destinations, want 3", len(list))
+	}
+	ids, targets := map[string]bool{}, map[string]bool{}
+	for _, e := range list {
+		entry := e.(map[string]any)
+		b, err := json.Marshal(entry["target"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[entry["id"].(string)], targets[string(b)] = true, true
+	}
+	if len(ids) != 3 || len(targets) != 3 {
+		t.Errorf("the destinations have %d ids and %d targets, want 3 and 3", len(ids), len(targets))
+	}
+	if err := compileExplore(t, "inputs.schema.json").Validate(doc); err != nil {
+		t.Errorf("three destinations are refused: %v", err)
+	}
+}
+
+// TestExploreDestinationsHaveOneTo250Entries pins the bounds of destinations: the fixture
+// with 250 entries is accepted, and the document with 251 entries is accepted again with
+// one entry fewer, and the document with no entry with one entry more. It also pins the
+// sentence of the description about the read access of the run.
+func TestExploreDestinationsHaveOneTo250Entries(t *testing.T) {
+	schema := compileExplore(t, "inputs.schema.json")
+	entries := func(file string) (map[string]any, []any) {
+		doc, err := contracts.ExploreDocument(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		inputs := doc.(map[string]any)
+		return inputs, inputs["destinations"].([]any)
+	}
+	inputs, list := entries("fixtures/inputs/destinations-250.json")
+	if len(list) != 250 {
+		t.Errorf("fixtures/inputs/destinations-250.json has %d destinations, want 250", len(list))
+	}
+	if err := schema.Validate(inputs); err != nil {
+		t.Errorf("250 destinations are refused: %v", err)
+	}
+	inputs, list = entries("fixtures/invalid/inputs-destinations-251-entries.json")
+	if len(list) != 251 {
+		t.Errorf("fixtures/invalid/inputs-destinations-251-entries.json has %d destinations, want 251", len(list))
+	}
+	if v, ok := schema.Validate(inputs).(*jsonschema.ValidationError); !ok || strings.Join(leaves(v), "; ") != "/destinations maxItems" {
+		t.Errorf("251 destinations are refused for %v, want /destinations maxItems", v)
+	}
+	inputs["destinations"] = list[:250]
+	if err := schema.Validate(inputs); err != nil {
+		t.Errorf("251 destinations with one fewer are refused: %v", err)
+	}
+	inputs, list = entries("fixtures/invalid/inputs-destinations-empty.json")
+	if len(list) != 0 {
+		t.Errorf("fixtures/invalid/inputs-destinations-empty.json has %d destinations, want 0", len(list))
+	}
+	_, one := entries("fixtures/inputs/first-attempt.json")
+	inputs["destinations"] = one
+	if err := schema.Validate(inputs); err != nil {
+		t.Errorf("no destination with one more is refused: %v", err)
+	}
+	doc, err := contracts.ExploreDocument("inputs.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	property := doc.(map[string]any)["properties"].(map[string]any)["destinations"].(map[string]any)
+	text, _ := property["description"].(string)
+	for _, want := range []string{
+		"1 to 250 of them",
+		"The read access of the run covers every destination of the workspace from the start and does not grow during the session.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the description of destinations does not contain %q", want)
 		}
 	}
 }
@@ -246,7 +340,7 @@ func TestExploreLengthFixturesAreOneCharacterPastTheBound(t *testing.T) {
 
 // TestExploreMembersAreRequiredAndClosed pins two rules that inputs.schema.json sets
 // for every object at every level: every member is required, except target, ticket and
-// the address of the target, and a member the schema does not define is accepted, which
+// the address of a target, and a member the schema does not define is accepted, which
 // the closed copy refuses. It
 // first checks that each object of fixtures/inputs/first-attempt.json has every member
 // that the schema defines at that location. It then removes each member in turn, then
@@ -316,7 +410,7 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 					objectAt(doc, where)["comments_omitted"] = json.Number("0")
 				}
 			}
-			if location == "/target" && member == "address" {
+			if strings.HasSuffix(location, "/target") && member == "address" {
 				want = "accepted"
 			}
 			if got := refusal(doc); got != want {

@@ -45,17 +45,76 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `must_understand` that lists `/submit`. In Go, `Submit` and `Documents.Submit` are
   `Deliver` and `Documents.Deliver`, a `[]Deliver` with `Type` and `Send`, and
   `MaxDeliver` is 16. The submit program contract and its Go names stay.
-- Read `further_targets` from the run documents when a run has more than one place for its
-  change. `further_targets` is a list of `{collection, address}` targets, in the form of
-  `target`, with 1 to 20 entries. A run with several places lists the main one in `target`
-  and each other one in `further_targets`. A run with no further place leaves the member
-  out, and an empty list is refused. It is present only when `target` is, and never
-  on a run of the step `prebuild`. No two entries have the same `collection`, and
-  no entry has the `collection` of `target`. The schema cannot check that, so a reader
-  calls `Documents.Check` after it decodes the documents. An entry has no version:
-  `target_version` applies to `target` only. In Go, `Documents.FurtherTargets` is a
-  `[]Target`, and `MaxFurtherTargets` is 20. The folder `fixtures/check` of the run
-  contract has run documents that the schema accepts and `Documents.Check` refuses.
+- Read `read_targets` from the run documents when a run reads places beside its `target`.
+  `read_targets` is a list of `{collection, address}` targets, in the form of `target`,
+  with 0 to 20 entries, and `[]` is valid. The run only reads a place in `read_targets`:
+  it changes, pushes and delivers nothing to it. `target` stays the one place where a run
+  changes, and `access` applies to `target` only. `read_targets` is present with or
+  without `target`, and never on a run of the step `prebuild`. No two entries have the
+  same `collection`, and no entry has the `collection` of `target`. The schema cannot
+  check that, so a reader calls `Documents.Check` after it decodes the documents. An entry
+  has no version: `target_version` applies to `target` only. In Go,
+  `Documents.ReadTargets` is a `[]Target`, and `MaxReadTargets` is 20. The folder
+  `fixtures/check` of the run contract has run documents that the schema accepts and
+  `Documents.Check` refuses.
+- Write and read `destinations` in the explore inputs. It is required, and it has 1 to 250
+  entries. Each entry is a destination: `id`, the control plane's id of a place, and
+  `target`, the place as the adapter wrote it. An `id` is `tg_` and 16 characters, each a
+  digit or a lower-case letter other than `i`, `l`, `o` and `u`. `target` of the inputs
+  stays optional. No two entries are equal, and the control plane drops the oldest
+  comments, never a destination, to keep the inputs within their bound. Before this
+  release the inputs had no list of destinations, and a writer without `destinations`
+  fails the schema. `$defs/destination` in `definitions.schema.json` defines an entry. A
+  document that an adapter writes keeps `target` with no `id`. In Go, `Destination` has
+  `ID` and `Target`.
+- Accept 1 to 250 `resources` in a `run-credential` call with `purpose` `work` and
+  `access` `read`. Before this release a work call had exactly 1, and an adapter refused
+  more with `400`. A work call with `access` `write` still has exactly 1, and a `harness`
+  call has 1 to 64. All resources of a call are collections of one connection, the
+  `connection_id` of the call. The answer is one credential. In an `apply` item of the
+  answer, `paths` lists each template filled with the path of each resource. The answer
+  has at most 16 `apply` items of 1 to 32 paths, 512 paths together, as the Forager
+  contract limits it. An adapter covers N resources only when N × p + c ≤ 512. Here p is
+  the number of path entries that one resource adds across all `apply` items. c is the
+  number of paths that belong to no single resource, such as a template without
+  `{target.path}`. It covers fewer when paths of different items cannot share one list of
+  32. It refuses a call over its limit with `403 resource_not_covered`.
+- Fill the source `apply` templates of a run with no target, such as Explore, for each
+  resource of the `run-credential` call. The control plane fills the templates of an
+  item one after another, each for every resource. It splits the filled paths into items
+  of at most 32 paths. Before that, it drops a covered path among paths that share host,
+  scheme, username and header. A path of an item is dropped only when, on every host of
+  the item, a path of the group of that host covers it. If it is covered on some hosts
+  of the item and not on others, the adapter refuses the call with
+  `403 resource_not_covered`. Of two equal paths, the control plane keeps the first: the
+  one of the earlier item in the description, then the earlier path in one item. Two
+  items on one host that differ in scheme, username or header may not have equal,
+  covered or overlapping paths. The adapter refuses such a call with
+  `403 resource_not_covered`. The read access of the run covers every destination of the
+  workspace from the start and does not grow during the session.
+- The `address_path` definition of `definitions.schema.json` refuses `{` and `}` in the
+  `address.path` of every target, and in `run.target` of `diagnostics.schema.json`.
+  Before this release it accepted them. The control plane fills a path template with
+  that path, and Forager's `credential_paths` allows `{` and `}` only as the whole
+  segment `{}`.
+- The control plane refuses a target path with a segment `.`, a backslash or a `%`
+  before it fills a template. It refuses a first `/`, a final `/` and a segment that
+  starts with `;` or `.;` too. Before this release it refused only `..`, `//`, `*`, `?`,
+  `#` and a space character. Forager's `UnclearPath` refuses a filled path with a `.`
+  segment, a backslash, `//`, or `%2f`, `%5c`, `%2e` or `%25` in any case. It also
+  refuses a segment that is not empty when its part before the first `;` or `%3b`, in
+  any case, is empty. It refuses the segment too when that part is a single dot or two
+  dots. The refusals of `..` and `%` cover `..;x` and `%3b`.
+- Handle the refusal `409 connection_held` of a grant report, and the reason
+  `connection_held` of a connect return. The control plane refuses a report with it when
+  the connection has a grant that has not ended and the report has another `grant_ref`. A
+  report with the same `grant_ref` replaces that grant. The text for the person is
+  "Disconnect the account that is connected first, then connect again. A connection has
+  one account." Before this release a connection had a list of grants, one for each
+  external account. A connection has at most one grant that has not ended. The adapter
+  treats `connection_held` as final, as `grant_taken`. The control plane checks a report
+  for `pass_unknown`, then `grant_taken`, then `connection_held`. `grant_taken` stays for
+  a grant that another connection has.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
@@ -184,7 +243,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   feed has. After the adapter mints a linked connect return, report the grant with `POST
   /v1/grants`, read `GET /v1/grants` when the adapter starts, follow the `grant`
   entries, and match the adapter's state to that copy. Accept a connect pass for a live
-  connection, which adds or replaces the grant of one external account.
+  connection, which connects one external account to a connection, or replaces the grant
+  of that account.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, add two
   members, because the schemas require them. In each grant report, `POST /v1/grants`,
   send `account`, `{ref, title}`: `ref` is the external account's id at the source, and
@@ -746,15 +806,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   it.
 - A connect pass and a setup pass, signed by the control plane, send a person to the
   adapter's `connect_url` or `setup_url`, and a connect return, signed by the adapter,
-  sends the person back. A connect pass may be for a live connection, to add or replace
-  the grant of one external account.
+  sends the person back. A connect pass may be for a live connection, which connects
+  one external account to a connection, or replaces the grant of that account.
 - A setup pass may contain `organisation_slug`, the slug of the instance's organisation
   in the control plane: 1 to 40 lower-case letters, digits and hyphens, with no hyphen at
   either end. An adapter may use it to suggest a name at its source, and accepts a pass
   without it. In Go, `SetupPass.OrganisationSlug` is added.
-- Grants: a connection has one grant per external account at the source. The adapter
-  reports one grant with `POST /v1/grants`, with `connection_id`, `grant_ref`, `account`
-  and `pass_nonce`, and the grant is added only when the control plane accepts the report.
+- Grants: a connection has at most one grant that has not ended, for one external
+  account at the source. The adapter reports one grant with `POST /v1/grants`, with
+  `connection_id`, `grant_ref`, `account` and `pass_nonce`, and the grant is added only
+  when the control plane accepts the report.
   `account` is `{ref, title}`, both required: `ref` is the external account's id at the
   source, and `title` is its display name, one line. `GET /v1/grants` returns the control
   plane's copy of grants, and the adapter matches its state to that copy.

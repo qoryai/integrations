@@ -200,6 +200,14 @@ type Target struct {
 	Address    *TargetAddress `json:"address,omitempty,case:strict"`
 }
 
+// Destination is one place that a workspace works on. Target is the place as the
+// adapter wrote it, and ID is the control plane's id of that place: tg_ and 16
+// characters. $defs.destination in the definitions schema defines it.
+type Destination struct {
+	ID     string `json:"id,case:strict"`
+	Target Target `json:"target,case:strict"`
+}
+
 // TargetAddress is the address of a place on a system: a host name and a path on it.
 type TargetAddress struct {
 	System string `json:"system,case:strict"`
@@ -914,17 +922,23 @@ const RunCredentialTokenMaxBytes = 16384
 // Purpose "harness". run-credential.schema.json lists the runs for which the control
 // plane uses a harness credential. GrantRef is set for Purpose "harness" and empty for
 // Purpose "work". ConnectionID is set for Purpose "work" and empty for Purpose
-// "harness": it is the connection of the run's target collection, as the control plane
+// "harness": it is the connection of the collections of Resources, as the control plane
 // holds it for the run's organisation, a live connection of that organisation when the
-// call is sent. For a work call, the adapter checks that the collection is a live
+// call is sent. For a work call, the adapter checks that each collection is a live
 // collection under ConnectionID in its state, and does not look the connection up from
-// the ref; it uses only a grant that the control plane's copy of grants, [Grants], has
-// under ConnectionID, that covers the collection and allows Access, and never a grant
+// a ref; it uses only a grant that the control plane's copy of grants, [Grants], has
+// under ConnectionID, that covers each collection and allows Access, and never a grant
 // of another connection. It never uses a grant that it keeps only while it sends that
 // grant's report again. Resources has 1 to 64 resource refs for Purpose "harness", each
 // the ResourceRef of a [Resolved], as the adapter answered it, never its PublicRef. For
-// Purpose "work", it has exactly one: the ref of the collection of the run's target, as
-// the adapter listed it, which for a target from an item is the item's collection.
+// Purpose "work", it has 1 to 250 refs with Access "read" and exactly one with Access
+// "write". Each is the ref of a collection, as the adapter listed it, which for a target
+// from an item is the item's collection. The answer has at most 512 paths. An adapter
+// covers N resources only when N × p + c ≤ 512. Here p is the number of path entries
+// that one resource adds across all apply items. c is the number of paths that belong to
+// no single resource, such as a template without {target.path}. It covers fewer when
+// paths of different items cannot share one list of 32. It refuses a call over its limit
+// with 403 resource_not_covered.
 type RunCredential struct {
 	Version      int      `json:"version,case:strict"`
 	Time         string   `json:"time,case:strict"`

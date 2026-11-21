@@ -62,13 +62,15 @@ type Documents struct {
 	// the run's access to it.
 	Access string  `json:"access,omitempty,case:strict"`
 	Target *Target `json:"target,omitempty,case:strict"`
-	// FurtherTargets is set only when Target is, and never for the step prebuild: the
-	// other places where the run's change would go, 1 to [MaxFurtherTargets] of them. A
-	// run that has several places lists the main one in Target and each other one here.
-	// No two entries have the same Collection, and none has the Collection of Target. The
-	// schema cannot check that: [Documents.Check] does. An entry has no version:
-	// TargetVersion is the version of Target only.
-	FurtherTargets []Target `json:"further_targets,omitempty,case:strict"`
+	// ReadTargets are the places that the run only reads, 0 to [MaxReadTargets] of them.
+	// It is never set for the step prebuild, and it is set with or without Target. The
+	// run only reads a place in it: it changes, pushes and delivers nothing to the place.
+	// Target stays the one place where the run's change would go, and Access applies to
+	// Target only. No two entries have the same Collection, and none has the Collection
+	// of Target. The schema cannot check that: [Documents.Check] does. An entry has no
+	// version: TargetVersion is the version of Target only. A nil list is left out, and
+	// an empty list is written as [].
+	ReadTargets []Target `json:"read_targets,omitzero,case:strict"`
 	// TargetVersion is set only with Target, and never for the step prebuild: the
 	// version of the target at which the control plane checked for a harness file, the
 	// resolved_at of the read at the path of the harness file, whether the read returned
@@ -463,9 +465,9 @@ type HarnessSource struct {
 // documents.schema.json.
 const MaxDeliver = 16
 
-// MaxFurtherTargets is the most entries that the further_targets of the run documents has,
+// MaxReadTargets is the most entries that the read_targets of the run documents has,
 // documents.schema.json.
-const MaxFurtherTargets = 20
+const MaxReadTargets = 20
 
 // Deliver is one artifact that a run delivers, an entry of the deliver of the run
 // documents, documents.schema.json: Type and Send, both required.
@@ -483,8 +485,9 @@ type Deliver struct {
 
 // Check reports the first rule of documents.schema.json that the documents
 // break and that the schema does not express: no two entries of Deliver have
-// the same Type, no two entries of FurtherTargets have the same Collection,
-// and none has the Collection of Target. Each message starts with the fix. A
+// the same Type, no two entries of ReadTargets have the same Collection,
+// none has the Collection of Target, and no two entries of the destinations of
+// the explore inputs have the same id. Each message starts with the fix. A
 // reader of run documents calls it after it decodes them and after it
 // validates them against the schema.
 func (d Documents) Check() error {
@@ -495,18 +498,36 @@ func (d Documents) Check() error {
 		}
 		types[e.Type] = true
 	}
-	collections := make(map[string]bool, len(d.FurtherTargets)+1)
+	// shortcut: repeats are keyed on the collection, not on an id, because run documents
+	// have no id; replace when run documents carry the id of a target.
+	collections := make(map[string]bool, len(d.ReadTargets)+1)
 	if d.Target != nil {
 		collections[d.Target.Collection] = true
 	}
-	for i, e := range d.FurtherTargets {
+	for i, e := range d.ReadTargets {
 		if collections[e.Collection] {
 			if d.Target != nil && e.Collection == d.Target.Collection {
-				return fmt.Errorf("Remove the collection %q from further_targets (index %d): target has it.", e.Collection, i)
+				return fmt.Errorf("Remove the collection %q from read_targets (index %d): target has it.", e.Collection, i)
 			}
-			return fmt.Errorf("List each collection of further_targets once: %q appears twice.", e.Collection)
+			return fmt.Errorf("List each collection of read_targets once: %q appears twice.", e.Collection)
 		}
 		collections[e.Collection] = true
+	}
+	var inputs struct {
+		Destinations []struct {
+			ID string `json:"id,case:strict"`
+		} `json:"destinations,case:strict"`
+	}
+	// An Inputs that is not an object, or has no destinations, has no id to check: the
+	// schema refuses it, or the step has no destinations.
+	if json.Unmarshal(d.Inputs, &inputs) == nil {
+		ids := make(map[string]bool, len(inputs.Destinations))
+		for _, e := range inputs.Destinations {
+			if ids[e.ID] {
+				return fmt.Errorf("List each destination once: %q appears twice.", e.ID)
+			}
+			ids[e.ID] = true
+		}
 	}
 	return nil
 }

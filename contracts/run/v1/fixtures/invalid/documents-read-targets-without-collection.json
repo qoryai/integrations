@@ -9,7 +9,14 @@
       "path": "acme/shop"
     }
   },
-  "further_targets": [],
+  "read_targets": [
+    {
+      "address": {
+        "system": "code.example.com",
+        "path": "acme/service-1"
+      }
+    }
+  ],
   "target_version": "0123456789abcdef0123456789abcdef01234567",
   "subject": {
     "kind": "work_item",
@@ -76,6 +83,18 @@
       }
     ],
     "comments_omitted": 0,
+    "destinations": [
+      {
+        "id": "tg_0123456789abcdef",
+        "target": {
+          "collection": "R_1001",
+          "address": {
+            "system": "code.example.com",
+            "path": "acme/shop"
+          }
+        }
+      }
+    ],
     "target": {
       "collection": "R_1001",
       "address": {

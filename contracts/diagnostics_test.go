@@ -483,6 +483,8 @@ func TestARunTargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 		{"a path with a tab", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\texample"}}, false},
 		{"a path with U+007F", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\x7fexample"}}, false},
 		{"a path with U+0000", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\x00"}}, false},
+		{"a path with a segment {}", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/{}/example"}}, false},
+		{"a path with a }", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/example}"}}, false},
 		{"no collection", map[string]any{"address": address()}, false},
 		{"an empty collection", map[string]any{"collection": ""}, false},
 		{"a collection of 201 characters", map[string]any{"collection": strings.Repeat("a", 201)}, false},

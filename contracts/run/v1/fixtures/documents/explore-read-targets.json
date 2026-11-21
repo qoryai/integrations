@@ -9,7 +9,7 @@
       "path": "acme/shop"
     }
   },
-  "further_targets": [
+  "read_targets": [
     {
       "collection": "R_1002",
       "address": {
@@ -91,6 +91,18 @@
       }
     ],
     "comments_omitted": 0,
+    "destinations": [
+      {
+        "id": "tg_0123456789abcdef",
+        "target": {
+          "collection": "R_1001",
+          "address": {
+            "system": "code.example.com",
+            "path": "acme/shop"
+          }
+        }
+      }
+    ],
     "target": {
       "collection": "R_1001",
       "address": {

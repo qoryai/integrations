@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"os"
 	"path"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -172,6 +174,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-change-request-previous-title-empty.json":                      {"changes", "/changes/0/previous/title minLength; /changes/0/previous/title pattern; /changes/0/previous/title pattern"},
 		"changes-change-request-previous-title-null.json":                       {"changes", "/changes/0/previous/title type"},
 		"changes-change-request-target-address-system-upper-case.json":          {"changes", "/changes/0/target/address/system pattern"},
+		"changes-change-request-target-address-path-braces.json":                {"changes", "/changes/0/target/address/path pattern"},
 		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection"},
 		"changes-change-request-target-without-collection.json":                 {"changes", "/changes/0/target required collection"},
 		"changes-change-request-text-20001.json":                                {"changes", "/changes/0/text maxLength"},
@@ -314,8 +317,10 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"run-credential-access-admin.json":                                      {"run-credential", "/access enum"},
 		"run-credential-access-write-no-push.json":                              {"run-credential", "/access enum"},
 		"run-credential-purpose-other.json":                                     {"run-credential", "/purpose enum"},
-		"run-credential-without-resources.json":                                 {"run-credential", "/resources minItems; /resources minItems"},
-		"run-credential-work-two-resources.json":                                {"run-credential", "/resources maxItems"},
+		"run-credential-without-resources.json":                                 {"run-credential", "/resources minItems"},
+		"run-credential-work-write-two-resources.json":                          {"run-credential", "/resources maxItems"},
+		"run-credential-work-read-251-resources.json":                           {"run-credential", "/resources maxItems"},
+		"run-credential-harness-65-resources.json":                              {"run-credential", "/resources maxItems"},
 		"run-credential-without-purpose.json":                                   {"run-credential", "/ required purpose"},
 		"run-credential-work-with-grant-ref.json":                               {"run-credential", "/ "},
 		"run-credential-harness-without-grant-ref.json":                         {"run-credential", "/ required grant_ref"},
@@ -549,6 +554,337 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 	}
 }
 
+// TestARunCredentialHasTheResourcesOfItsPurposeAndAccess pins how many resources a run
+// credential call has: 1 to 64 for the purpose harness, 1 to 250 for the purpose work with
+// the access read, and exactly 1 for the purpose work with the access write. A count past
+// a bound is refused for maxItems alone, and none is refused for minItems alone.
+func TestARunCredentialHasTheResourcesOfItsPurposeAndAccess(t *testing.T) {
+	schema := compile(t, "run-credential.schema.json")
+	call := func(purpose, access string, n int) map[string]any {
+		doc := map[string]any{"version": json.Number("1"), "time": "2026-10-15T12:00:00Z", "access": access, "purpose": purpose}
+		if purpose == "work" {
+			doc["connection_id"] = "ac_0123456789abcdef"
+		} else {
+			doc["grant_ref"] = "G_1"
+		}
+		resources := []any{}
+		for i := 1; i <= n; i++ {
+			resources = append(resources, fmt.Sprintf("C_%d", 2000+i))
+		}
+		doc["resources"] = resources
+		return doc
+	}
+	for _, c := range []struct {
+		purpose, access string
+		n               int
+		want            string
+	}{
+		{"harness", "read", 0, "/resources minItems"},
+		{"harness", "read", 1, ""},
+		{"harness", "read", 64, ""},
+		{"harness", "read", 65, "/resources maxItems"},
+		{"work", "read", 0, "/resources minItems"},
+		{"work", "read", 1, ""},
+		{"work", "read", 2, ""},
+		{"work", "read", 250, ""},
+		{"work", "read", 251, "/resources maxItems"},
+		{"work", "write", 0, "/resources minItems"},
+		{"work", "write", 1, ""},
+		{"work", "write", 2, "/resources maxItems"},
+		{"work", "write", 250, "/resources maxItems"},
+	} {
+		got := ""
+		if v, ok := schema.Validate(call(c.purpose, c.access, c.n)).(*jsonschema.ValidationError); ok {
+			got = strings.Join(leaves(v), "; ")
+		}
+		if got != c.want {
+			t.Errorf("a %s call with the access %s and %d resources is refused for %q, want %q", c.purpose, c.access, c.n, got, c.want)
+		}
+	}
+}
+
+// TestConnectionHeldIsListedBesideGrantTaken pins that connection_held is a reason of the
+// connect return, after grant_taken. It pins that the adapter treats it as final, as
+// grant_taken, and that the control plane checks it after grant_taken. It pins that the
+// descriptions of the grant report, of its refusals and of the connect return mention it,
+// with the fix for the person. A reason that the connect return does not list is refused.
+func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
+	const fix = "Disconnect the account that is connected first, then connect again. A connection has one account."
+	connectReturn := node(t, "connect-return.schema.json", "/properties/reason")
+	var reasons []string
+	for _, r := range connectReturn["enum"].([]any) {
+		reasons = append(reasons, r.(string))
+	}
+	i := slices.Index(reasons, "grant_taken")
+	if i < 0 || i+1 >= len(reasons) || reasons[i+1] != "connection_held" {
+		t.Errorf("the reasons of the connect return are %v, want connection_held right after grant_taken", reasons)
+	}
+	description := func(schema string) string {
+		doc, err := contracts.Document(schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		d, _ := doc.(map[string]any)["description"].(string)
+		return d
+	}
+	for _, c := range []struct{ name, text string }{
+		{"the reason of connect-return.schema.json", connectReturn["description"].(string)},
+		{"grant.schema.json", description("grant.schema.json")},
+	} {
+		if !strings.Contains(c.text, "connection_held") || !strings.Contains(c.text, fix) {
+			t.Errorf("%s: the description does not mention connection_held with %q", c.name, fix)
+		}
+	}
+	for _, c := range []struct{ schema, want string }{
+		{"grant.schema.json", "409 connection_held"},
+		{"grant.schema.json", "On 409 grant_taken or 409 connection_held, to the first report or to one sent again, the adapter stops sending that report at once, drops the grant from its state"},
+		{"grant.schema.json", "then 409 grant_taken, then 409 connection_held, for grant_ref"},
+		{"refusal.schema.json", "pass_unknown, then grant_taken, and then connection_held"},
+		{"refusal.schema.json", "409 connection_held, a grant report whose grant_ref differs"},
+	} {
+		if !strings.Contains(description(c.schema), c.want) {
+			t.Errorf("%s: the description does not contain %q", c.schema, c.want)
+		}
+	}
+	schema := compile(t, "connect-return.schema.json")
+	var doc map[string]any
+	if err := json.Unmarshal(read(t, "fixtures/adapter/connect-return/refused-connection-held.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["reason"] != "connection_held" {
+		t.Errorf("refused-connection-held.json has the reason %v", doc["reason"])
+	}
+	doc["reason"] = "connection_holding"
+	b, _ := json.Marshal(doc)
+	if err := validate(schema, b); err == nil {
+		t.Error("a connect return with an unlisted reason is accepted")
+	}
+}
+
+// TestTheAnswerPathLimitIsStatedAndMatchesForager pins that the Forager contract limits
+// the apply of a sealed value, and an entry of the run configuration, to 16 items, and the
+// paths of an item to 32, which makes 512 paths. It pins that run-credential.schema.json
+// and run-credential-answer.schema.json state that limit and the refusal
+// resource_not_covered, and that the refusal codes list the case.
+func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
+	read := func(name string) map[string]any {
+		doc, err := foragercontracts.Document(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return doc.(map[string]any)
+	}
+	at := func(doc map[string]any, keys ...string) map[string]any {
+		for _, k := range keys {
+			doc = doc[k].(map[string]any)
+		}
+		return doc
+	}
+	configuration := read("run-configuration.schema.json")
+	sealed := read("sealed-plaintext.schema.json")
+	for _, c := range []struct {
+		where string
+		got   any
+		want  string
+	}{
+		{"the apply of an entry of the run configuration", at(configuration, "$defs", "host_credential", "properties", "apply")["maxItems"], "16"},
+		{"the apply of a sealed value", at(sealed, "properties", "values", "items", "properties", "apply")["maxItems"], "16"},
+		{"the paths of an apply item", at(configuration, "$defs", "credential_paths")["maxItems"], "32"},
+	} {
+		if fmt.Sprint(c.got) != c.want {
+			t.Errorf("Forager limits %s to %v, and the contract states %s", c.where, c.got, c.want)
+		}
+	}
+	if ref := at(configuration, "$defs", "apply", "properties", "paths")["$ref"]; ref != "#/$defs/credential_paths" {
+		t.Errorf("the paths of an apply item are %v, want #/$defs/credential_paths", ref)
+	}
+	const limit = "An adapter covers N resources only when N × p + c ≤ 512. Here p is the number of path entries that one resource adds across all apply items. c is the number of paths that belong to no single resource, such as a template without {target.path}. It covers fewer when paths of different items cannot share one list of 32. It refuses a call over its limit with 403 resource_not_covered."
+	for _, c := range []struct{ schema, want string }{
+		{"run-credential.schema.json", "The answer has at most 512 paths (run-credential-answer.schema.json). " + limit},
+		{"run-credential.schema.json", overlapRefusal + ";"},
+		{"run-credential-answer.schema.json", "The answer has at most 16 apply items of 1 to 32 paths each, 512 paths together."},
+		{"run-credential-answer.schema.json", limit},
+		{"run-credential-answer.schema.json", "In the Forager contract, several host credentials may claim one host (run-configuration.schema.json, $defs.apply). They may do so when each item on the host has paths and no path of one overlaps a path of another. The Forager gateway checks each apply item of an entry that way."},
+		{"refusal.schema.json", overlapRefusal + ";"},
+	} {
+		d, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if text, _ := d.(map[string]any)["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s: the description does not contain %q", c.schema, c.want)
+		}
+	}
+	// The CHANGELOG and the Go comment wrap the sentences, and the CHANGELOG sets code in
+	// backticks, so the needle is compared with the words of each file alone.
+	words := func(s string) string {
+		s = strings.NewReplacer("`", "", "\n// ", " ", "\n//\n", " ").Replace(s)
+		return strings.Join(strings.Fields(s), " ")
+	}
+	for _, file := range []string{"../CHANGELOG.md", "adapter.go"} {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(words(string(b)), limit) {
+			t.Errorf("%s does not contain the limit %q", file, limit)
+		}
+	}
+	const resources = "The paths of the answer limit how many resources one call covers (run-credential-answer.schema.json)."
+	if text, _ := node(t, "run-credential.schema.json", "/properties/resources")["description"].(string); !strings.Contains(text, resources) {
+		t.Errorf("run-credential.schema.json: the description of resources does not contain %q", resources)
+	}
+}
+
+// The sentences of the source apply of description.schema.json about how the control
+// plane fills the templates for a run with no target. The source apply has the first
+// and the last, and $defs.apply has all of them, with the sentences about a covered and
+// an overlapping path between them.
+const (
+	exploreFill       = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources."
+	exploreSplit      = "It puts the filled paths into items of at most 32 paths, in that order."
+	exploreSplitBy    = "The control plane puts the filled paths into items of at most 32 paths, in the order in which it filled them."
+	exploreFillItems  = "Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
+	exploreDropGroup  = "Before the control plane splits the filled paths into items, it drops a covered path only among paths that share host, scheme, username and header."
+	exploreEveryHost  = "A path of an item is dropped only when, on every host of the item, a path of the group of that host covers it."
+	exploreSomeHosts  = "If it is covered on some hosts of the item and not on others, the adapter refuses the call with 403 resource_not_covered."
+	exploreKeepFirst  = "Of two equal paths, the control plane keeps the first: the one of the earlier item in the description, then the earlier path in one item."
+	exploreExample    = "For example, an item on host a with the path /x, then an item on hosts a and b with the path /x: the adapter refuses the call, because the second item's path is covered on a and not on b."
+	exploreSameAccess = "Inside such a group the entry then grants the same access."
+	exploreBetween    = "An equal or covered path between groups that differ in scheme, username or header on one host is refused: the adapter refuses it with 403 resource_not_covered."
+	exploreNeither    = "The adapter also refuses with 403 resource_not_covered a call whose filled paths still overlap on one host after that step, where neither path covers the other."
+	exploreChunk      = "A chunked item never has an empty path list."
+	exploreCovers     = "A path covers another when every request path that matches the other also matches it. Forager's CoversPath (policy/policy.go) returns this, and /group/* covers /group/sub/repo/*."
+	exploreOverlaps   = "Two paths overlap when one request path can match both. Forager's OverlapPaths (policy/policy.go) returns this, and it counts a pair it cannot decide as overlapping."
+	// overlapRefusal is the clause of the refusal list of 403 resource_not_covered.
+	overlapRefusal = "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json), or the filled paths overlap on one host (description.schema.json, $defs.apply)"
+)
+
+// TestAConnectionHasAtMostOneGrantThatHasNotEnded pins the texts of one account for each
+// connection: the description of the grant report and of its grant_ref, the description
+// of the definitions, and the path that fills {target.path} for a run with no target.
+func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
+	const one = "A connection has at most one grant that has not ended, for one external account at the source."
+	for _, c := range []struct{ schema, pointer, want string }{
+		{"grant.schema.json", "", one + " grant_ref is the adapter's ref to that grant, stable for that account."},
+		{"grant.schema.json", "/properties/grant_ref", "While the connection has a grant that has not ended, a report with another grant_ref is refused with 409 connection_held."},
+		{"definitions.schema.json", "", one + " The adapter reports that grant with POST /v1/grants"},
+		{"description.schema.json", "/properties/roles/properties/source/properties/apply", exploreFill + " " + exploreSplit + " " + exploreFillItems},
+	} {
+		doc, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		holder := doc.(map[string]any)
+		if c.pointer != "" {
+			holder = node(t, c.schema, c.pointer)
+		}
+		if text, _ := holder["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s%s: the description does not contain %q", c.schema, c.pointer, c.want)
+		}
+	}
+}
+
+// TestOneAccountConnectsAndExploreFillsTemplatesForEachResource pins the texts of the
+// connect pass and the connection id about one external account that connects to a
+// connection, and the texts of the source apply about how the control plane fills the
+// templates for a run with no target.
+func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T) {
+	const apply = "/properties/roles/properties/source/properties/apply"
+	for _, c := range []struct{ schema, pointer, want string }{
+		{"description.schema.json", apply, exploreFill + " " + exploreSplit + " " + exploreFillItems},
+		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFill + " " + exploreDropGroup + " " + exploreEveryHost + " " + exploreSameAccess + " " + exploreSomeHosts + " " + exploreKeepFirst + " " + exploreExample + " " + exploreBetween + " " + exploreNeither + " " + exploreSplitBy + " " + exploreChunk + " " + exploreCovers + " " + exploreOverlaps + " " + exploreFillItems},
+		{"description.schema.json", "/$defs/apply/properties/paths", "For a run with no target, a template with {target.path} gives one path per resource. A template without it gives one path."},
+		{"description.schema.json", "/$defs/apply/properties/paths", "A template has no space character and no { or } other than in the placeholder {target.path}, which it contains at most once. A space character is"},
+		{"description.schema.json", "/$defs/apply/properties/paths", "Before it fills any template, the control plane refuses a target path with a space character, {, }, .., //, *, ? or #. The control plane also refuses a target path with a segment ., a backslash, a %, a first / or a final /. It refuses a target path with a segment that starts with ; or .; too. Forager's UnclearPath (policy/policy.go) refuses a filled path with a . segment, a backslash, //, or %2f, %5c, %2e or %25 in any case. UnclearPath also refuses a segment that is not empty when its part before the first ; or %3b, in any case, is empty. It refuses the segment too when that part is a single dot or two dots. The refusals of .. and % in the control plane cover ..;x and %3b. So each filled path is in the grammar of credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths). That grammar allows { and } only as the whole segment {}, which a target path cannot contain."},
+		{"definitions.schema.json", "/$defs/address_path", "The path of a place in the address of a target, 1 to 200 characters. The path has no control character, U+0000 to U+001F or U+007F, and no { or }. A { or } is refused because the control plane fills a path template with this path. credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths) allows { and } only as the whole segment {}."},
+		{"connect-pass.schema.json", "", "or of a live connection that the person connects one external account to. While the connection has a grant that has not ended, only the same external account connects again, and its grant is replaced. Another account ends in 409 connection_held."},
+		{"connect-pass.schema.json", "/properties/connection_id", "the live connection that the person connects one external account to, as the control plane issued it."},
+		{"definitions.schema.json", "/$defs/connection_id", "connects one external account to it, or replaces the grant of the account that is connected (grant.schema.json)."},
+	} {
+		doc, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		holder := doc.(map[string]any)
+		if c.pointer != "" {
+			holder = node(t, c.schema, c.pointer)
+		}
+		if text, _ := holder["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s%s: the description does not contain %q", c.schema, c.pointer, c.want)
+		}
+	}
+	changelog, err := os.ReadFile("../CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"connection, which connects one external account to a connection, or replaces the grant\n  of that account.",
+		"A connect pass may be for a live connection, which connects\n  one external account to a connection, or replaces the grant of that account.",
+	} {
+		if !strings.Contains(string(changelog), want) {
+			t.Errorf("CHANGELOG.md does not contain %q", want)
+		}
+	}
+	flat := strings.Join(strings.Fields(strings.ReplaceAll(string(changelog), "`", "")), " ")
+	for _, want := range []string{
+		"Fill the source apply templates of a run with no target, such as Explore, for each resource of the run-credential call. The control plane fills the templates of an item one after another, each for every resource.",
+		"It splits the filled paths into items of at most 32 paths. Before that, it drops a covered path among paths that share host, scheme, username and header.",
+		"A path of an item is dropped only when, on every host of the item, a path of the group of that host covers it. If it is covered on some hosts of the item and not on others, the adapter refuses the call with 403 resource_not_covered. Of two equal paths, the control plane keeps the first: the one of the earlier item in the description, then the earlier path in one item.",
+		"The control plane refuses a target path with a segment ., a backslash or a % before it fills a template. It refuses a first /, a final / and a segment that starts with ; or .; too. Before this release it refused only .., //, *, ?, # and a space character. Forager's UnclearPath refuses a filled path with a . segment, a backslash, //, or %2f, %5c, %2e or %25 in any case. It also refuses a segment that is not empty when its part before the first ; or %3b, in any case, is empty. It refuses the segment too when that part is a single dot or two dots. The refusals of .. and % cover ..;x and %3b.",
+		"Two items on one host that differ in scheme, username or header may not have equal, covered or overlapping paths. The adapter refuses such a call with 403 resource_not_covered.",
+		"The read access of the run covers every destination of the workspace from the start and does not grow during the session.",
+		"The address_path definition of definitions.schema.json refuses { and } in the address.path of every target, and in run.target of diagnostics.schema.json. Before this release it accepted them.",
+	} {
+		if !strings.Contains(flat, want) {
+			t.Errorf("CHANGELOG.md does not contain %q", want)
+		}
+	}
+}
+
+// TestADestinationIsAnIdAndATarget pins definitions.schema.json, $defs.destination: id and
+// target are required, id is tg_ and 16 characters of Crockford base32 in lower case, and
+// target is a $defs.target. It also pins that [contracts.Destination] decodes a destination.
+func TestADestinationIsAnIdAndATarget(t *testing.T) {
+	schema := compile(t, "definitions.schema.json#/$defs/destination")
+	const target = `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop"}}`
+	for _, c := range []struct {
+		name, doc string
+		ok        bool
+	}{
+		{"an id and a target", `{"id":"tg_0123456789abcdef","target":` + target + `}`, true},
+		{"an id and a target with no address", `{"id":"tg_0123456789abcdef","target":{"collection":"R_1001"}}`, true},
+		{"an id with every letter that the alphabet has", `{"id":"tg_abcdefghjkmnpqrs","target":{"collection":"R_1001"}}`, true},
+		{"an id with the letters t to z", `{"id":"tg_tvwxyz0123456789","target":{"collection":"R_1001"}}`, true},
+		{"no id", `{"target":` + target + `}`, false},
+		{"no target", `{"id":"tg_0123456789abcdef"}`, false},
+		{"an id with 15 characters", `{"id":"tg_0123456789abcde","target":` + target + `}`, false},
+		{"an id with 17 characters", `{"id":"tg_0123456789abcdefg","target":` + target + `}`, false},
+		{"an id with an upper-case letter", `{"id":"tg_0123456789ABCDEF","target":` + target + `}`, false},
+		{"an id with the letter i", `{"id":"tg_0123456789abcdei","target":` + target + `}`, false},
+		{"an id with the letter l", `{"id":"tg_0123456789abcdel","target":` + target + `}`, false},
+		{"an id with the letter o", `{"id":"tg_0123456789abcdeo","target":` + target + `}`, false},
+		{"an id with the letter u", `{"id":"tg_0123456789abcdeu","target":` + target + `}`, false},
+		{"an id with another prefix", `{"id":"ac_0123456789abcdef","target":` + target + `}`, false},
+		{"an id that is a number", `{"id":1,"target":` + target + `}`, false},
+		{"a target with no collection", `{"id":"tg_0123456789abcdef","target":{"address":{"system":"code.example.com","path":"acme/shop"}}}`, false},
+		{"a collection beside the id, which a reader ignores", `{"id":"tg_0123456789abcdef","collection":"R_1001","target":` + target + `}`, true},
+	} {
+		if err := validate(schema, []byte(c.doc)); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	var d contracts.Destination
+	if err := json.Unmarshal([]byte(`{"id":"tg_0123456789abcdef","target":`+target+`}`), &d); err != nil {
+		t.Fatal(err)
+	}
+	want := contracts.Destination{ID: "tg_0123456789abcdef", Target: contracts.Target{Collection: "R_1001",
+		Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}}
+	if !reflect.DeepEqual(d, want) {
+		t.Errorf("the destination decodes to %+v, want %+v", d, want)
+	}
+}
+
 // TestTypesMarshalToTheirSchemas marshals one value of each request and answer type,
 // with its optional members left out where it has them, and validates it against its
 // schema, so the types and the schemas cannot drift apart.
@@ -658,6 +994,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			Description: read(t, "fixtures/example-tracker.json")}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 		{"refusal", contracts.Refusal{Error: "grant_taken"}},
+		{"refusal", contracts.Refusal{Error: "connection_held"}},
 		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
 		{"adapter-secrets", contracts.AdapterSecrets{Version: contracts.Version, Time: now, Sealed: contracts.SealedToServer{
 			Suite: contracts.SealSuite, ServerKey: "rcFAEfgtHFbZVqpPnXPYhYNhpgYEhSXg0Ixjjcdd2Mc", Enc: strings.Repeat("A", 43), CT: strings.Repeat("A", 22)}}},

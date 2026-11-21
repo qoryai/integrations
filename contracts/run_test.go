@@ -257,11 +257,9 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-bind-name-slash.json":                             {"documents", "/harness/harness/bind/agents/writer pattern; /harness/harness/bind/agents/writer type"},
 		"documents-harness-bind-role-dot.json":                               {"documents", "/ pattern"},
 		"documents-target-version-without-target.json":                       {"documents", "/ dependentRequired/target_version"},
-		"documents-further-targets-21-entries.json":                          {"documents", "/further_targets maxItems"},
-		"documents-further-targets-empty.json":                               {"documents", "/further_targets minItems"},
-		"documents-further-targets-without-collection.json":                  {"documents", "/further_targets/0 required collection"},
-		"documents-further-targets-without-target.json":                      {"documents", "/ dependentRequired/further_targets"},
-		"documents-prebuild-with-further-targets.json":                       {"documents", "/further_targets "},
+		"documents-read-targets-21-entries.json":                             {"documents", "/read_targets maxItems"},
+		"documents-read-targets-without-collection.json":                     {"documents", "/read_targets/0 required collection"},
+		"documents-prebuild-with-read-targets.json":                          {"documents", "/read_targets "},
 		"documents-target-version-space.json":                                {"documents", "/target_version pattern"},
 		"documents-prebuild-with-harness.json":                               {"documents", "/harness "},
 		"documents-prebuild-with-target-version.json":                        {"documents", "/target_version "},
@@ -326,8 +324,8 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 // TestAPrebuildIsRefusedForEachRunMemberAlone pins that the invalid run documents of
 // the step prebuild that have workflow, harness_hidden, harness, deliver,
 // time_limit_minutes, shared_run or type_settings are refused for that member alone: the
-// same documents without it are accepted. TestFurtherTargetsAreRefusedForOneRuleAlone
-// covers further_targets.
+// same documents without it are accepted. TestReadTargetsAreRefusedForOneRuleAlone
+// covers read_targets.
 func TestAPrebuildIsRefusedForEachRunMemberAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	for _, c := range []struct{ fixture, member string }{
@@ -551,9 +549,11 @@ func TestADeliverHasAtMostSixteenEntries(t *testing.T) {
 func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	want := map[string]string{
-		"documents-deliver-type-twice.json":                   `List each deliver type once: "code-change" appears twice.`,
-		"documents-further-targets-collection-twice.json":     `List each collection of further_targets once: "R_1002" appears twice.`,
-		"documents-further-targets-collection-of-target.json": `Remove the collection "R_1001" from further_targets (index 1): target has it.`,
+		"documents-deliver-type-twice.json":                 `List each deliver type once: "code-change" appears twice.`,
+		"documents-read-targets-collection-twice.json":      `List each collection of read_targets once: "R_1002" appears twice.`,
+		"documents-read-targets-collection-of-target.json":  `Remove the collection "R_1001" from read_targets (index 1): target has it.`,
+		"documents-destination-id-twice.json":               `List each destination once: "tg_0123456789abcdef" appears twice.`,
+		"documents-destination-id-twice-after-another.json": `List each destination once: "tg_0123456789abcdef" appears twice.`,
 	}
 	got := runFiles(t, "fixtures/check")
 	if len(got) != len(want) {
@@ -594,36 +594,29 @@ func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	}
 }
 
-// TestFurtherTargetsAreRefusedForOneRuleAlone pins that run documents are refused for
-// further_targets with 21 entries, with no entry, with an entry that has no collection,
-// with no target, and on the step prebuild, and for that alone: the same documents with 20 entries, with
-// an entry that has a collection, with a target and access, or without further_targets,
-// are accepted.
-func TestFurtherTargetsAreRefusedForOneRuleAlone(t *testing.T) {
+// TestReadTargetsAreRefusedForOneRuleAlone pins that run documents are refused for
+// read_targets with 21 entries, with an entry that has no collection, and on the step
+// prebuild, and for that alone: the same documents with 20 entries, with an entry that
+// has a collection, or without read_targets, are accepted.
+func TestReadTargetsAreRefusedForOneRuleAlone(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
-	valid, err := contracts.RunDocument("fixtures/documents/explore-further-targets.json")
+	valid, err := contracts.RunDocument("fixtures/documents/explore-read-targets.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	one := valid.(map[string]any)["further_targets"].([]any)[0]
+	one := valid.(map[string]any)["read_targets"].([]any)[0]
 	for _, c := range []struct {
 		fixture string
 		fix     func(map[string]any)
 	}{
-		{"documents-further-targets-21-entries.json", func(doc map[string]any) {
-			doc["further_targets"] = doc["further_targets"].([]any)[:20]
+		{"documents-read-targets-21-entries.json", func(doc map[string]any) {
+			doc["read_targets"] = doc["read_targets"].([]any)[:20]
 		}},
-		{"documents-further-targets-empty.json", func(doc map[string]any) {
-			doc["further_targets"] = []any{one}
+		{"documents-read-targets-without-collection.json", func(doc map[string]any) {
+			doc["read_targets"] = []any{one}
 		}},
-		{"documents-further-targets-without-collection.json", func(doc map[string]any) {
-			doc["further_targets"] = []any{one}
-		}},
-		{"documents-further-targets-without-target.json", func(doc map[string]any) {
-			delete(doc, "further_targets")
-		}},
-		{"documents-prebuild-with-further-targets.json", func(doc map[string]any) {
-			delete(doc, "further_targets")
+		{"documents-prebuild-with-read-targets.json", func(doc map[string]any) {
+			delete(doc, "read_targets")
 		}},
 	} {
 		v, err := contracts.RunDocument(path.Join("fixtures/invalid", c.fixture))
@@ -631,8 +624,8 @@ func TestFurtherTargetsAreRefusedForOneRuleAlone(t *testing.T) {
 			t.Fatal(err)
 		}
 		doc := v.(map[string]any)
-		if doc["further_targets"] == nil {
-			t.Errorf("%s does not have further_targets", c.fixture)
+		if doc["read_targets"] == nil {
+			t.Errorf("%s does not have read_targets", c.fixture)
 			continue
 		}
 		if schema.Validate(doc) == nil {
@@ -645,18 +638,18 @@ func TestFurtherTargetsAreRefusedForOneRuleAlone(t *testing.T) {
 	}
 }
 
-// TestFurtherTargetsHaveAtMostTwentyEntries pins MaxFurtherTargets and maxItems of
-// further_targets: a list of 1 or 20 targets is accepted, a list of 21 is refused for
-// maxItems, and an empty list is refused for minItems.
-func TestFurtherTargetsHaveAtMostTwentyEntries(t *testing.T) {
-	if contracts.MaxFurtherTargets != 20 {
-		t.Errorf("MaxFurtherTargets is %d, want 20", contracts.MaxFurtherTargets)
+// TestReadTargetsHaveAtMostTwentyEntries pins MaxReadTargets and maxItems of
+// read_targets: a list of 0, 1 or 20 targets is accepted, and a list of 21 is refused
+// for maxItems.
+func TestReadTargetsHaveAtMostTwentyEntries(t *testing.T) {
+	if contracts.MaxReadTargets != 20 {
+		t.Errorf("MaxReadTargets is %d, want 20", contracts.MaxReadTargets)
 	}
-	schema := compileRun(t, runSchema("documents/further_targets"))
+	schema := compileRun(t, runSchema("documents/read_targets"))
 	for _, c := range []struct {
 		n    int
 		want string
-	}{{0, "/ minItems"}, {1, ""}, {20, ""}, {21, "/ maxItems"}} {
+	}{{0, ""}, {1, ""}, {20, ""}, {21, "/ maxItems"}} {
 		list := []any{}
 		for i := 1; i <= c.n; i++ {
 			list = append(list, map[string]any{"collection": fmt.Sprintf("R_%d", i)})
@@ -666,31 +659,54 @@ func TestFurtherTargetsHaveAtMostTwentyEntries(t *testing.T) {
 			got = strings.Join(leaves(v), "; ")
 		}
 		if got != c.want {
-			t.Errorf("further_targets of %d entries is refused for %q, want %q", c.n, got, c.want)
+			t.Errorf("read_targets of %d entries is refused for %q, want %q", c.n, got, c.want)
+		}
+	}
+}
+
+// TestCheckReportsARepeatedDestinationID pins the id rule of Documents.Check: an id twice
+// among the destinations of the inputs is reported, different ids are not, and inputs
+// with no destinations, or that are not an object, are not checked.
+func TestCheckReportsARepeatedDestinationID(t *testing.T) {
+	for _, c := range []struct{ name, inputs, want string }{
+		{"different ids", `{"destinations":[{"id":"tg_a"},{"id":"tg_b"}]}`, ""},
+		{"an id twice", `{"destinations":[{"id":"tg_a"},{"id":"tg_b"},{"id":"tg_a"}]}`, `List each destination once: "tg_a" appears twice.`},
+		{"no destinations", `{"version":1}`, ""},
+		{"inputs that are not an object", `[]`, ""},
+		{"no inputs", ``, ""},
+	} {
+		got := ""
+		if err := (contracts.Documents{Inputs: json.RawMessage(c.inputs)}).Check(); err != nil {
+			got = err.Error()
+		}
+		if got != c.want {
+			t.Errorf("%s: Check returns %q, want %q", c.name, got, c.want)
 		}
 	}
 }
 
 // TestCheckReportsARepeatedCollection pins the collection rules of Documents.Check:
-// a collection twice among the further targets, and the collection of the target among
+// a collection twice among the read targets, and the collection of the target among
 // them, are reported, and different collections are not.
 func TestCheckReportsARepeatedCollection(t *testing.T) {
 	main := &contracts.Target{Collection: "R_1"}
 	for _, c := range []struct {
-		name    string
-		target  *contracts.Target
-		further []contracts.Target
-		want    string
+		name   string
+		target *contracts.Target
+		read   []contracts.Target
+		want   string
 	}{
 		{"different collections", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_3"}}, ""},
 		{"no target", nil, []contracts.Target{{Collection: "R_2"}, {Collection: "R_3"}}, ""},
 		{"none", main, nil, ""},
-		{"twice", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_2"}}, `List each collection of further_targets once: "R_2" appears twice.`},
-		{"the collection of the target", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_1"}}, `Remove the collection "R_1" from further_targets (index 1): target has it.`},
+		{"an empty list", main, []contracts.Target{}, ""},
+		{"twice, with no target", nil, []contracts.Target{{Collection: "R_2"}, {Collection: "R_2"}}, `List each collection of read_targets once: "R_2" appears twice.`},
+		{"twice", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_2"}}, `List each collection of read_targets once: "R_2" appears twice.`},
+		{"the collection of the target", main, []contracts.Target{{Collection: "R_2"}, {Collection: "R_1"}}, `Remove the collection "R_1" from read_targets (index 1): target has it.`},
 		{"the same path under another collection", main, []contracts.Target{{Collection: "R_2", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}}, ""},
 	} {
 		got := ""
-		if err := (contracts.Documents{Target: c.target, FurtherTargets: c.further}).Check(); err != nil {
+		if err := (contracts.Documents{Target: c.target, ReadTargets: c.read}).Check(); err != nil {
 			got = err.Error()
 		}
 		if got != c.want {
@@ -1084,11 +1100,11 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 		{"documents", contracts.Documents{Step: "workflow", Domain: "marketing",
 			Inputs: json.RawMessage(`{"version":1}`), Subject: &item, RunSettings: settings,
 			Workflow: "hello", HarnessHidden: &hidden, Harness: full}},
-		{"documents/further_targets", []contracts.Target{*ads, {Collection: "R_1002", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/api"}}}},
+		{"documents/read_targets", []contracts.Target{*ads, {Collection: "R_1002", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/api"}}}},
 		{"documents", contracts.Documents{Step: "workflow", Domain: "software",
 			Inputs: json.RawMessage(`{"version":1}`), Access: "write", Target: target,
-			FurtherTargets: []contracts.Target{{Collection: "R_1002", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/api"}}, *ads},
-			TargetVersion:  "0123456789abcdef0123456789abcdef01234567", Subject: &item, RunSettings: settings, Workflow: "build",
+			ReadTargets:   []contracts.Target{{Collection: "R_1002", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/api"}}, *ads},
+			TargetVersion: "0123456789abcdef0123456789abcdef01234567", Subject: &item, RunSettings: settings, Workflow: "build",
 			HarnessHidden: &shown, Deliver: []contracts.Deliver{step}}},
 		{"documents/deliver_entry", step},
 		{"documents/deliver_entry", contracts.Deliver{Type: "customer-facts", Send: "after_gate"}},
@@ -1330,7 +1346,7 @@ func TestProviderModelsHaveAtMost256Entries(t *testing.T) {
 // at least one fixture has deliver with harness and one without, and that the fixtures
 // with deliver have each value of send.
 func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
-	n, harnesses, binds, furthers := 0, 0, 0, 0
+	n, harnesses, binds, reads := 0, 0, 0, 0
 	delivers := map[bool]int{}
 	sends := map[string]int{}
 	for _, f := range runFiles(t, "fixtures/documents") {
@@ -1362,8 +1378,8 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 				binds++
 			}
 		}
-		if len(d.FurtherTargets) > 0 {
-			furthers++
+		if len(d.ReadTargets) > 0 {
+			reads++
 		}
 		if d.Deliver != nil {
 			delivers[d.Harness != nil]++
@@ -1372,12 +1388,12 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 			}
 		}
 		for name, v := range map[string]any{
-			"target":          &contracts.Target{},
-			"further_targets": &[]contracts.Target{},
-			"subject":         &contracts.Subject{},
-			"run_settings":    &contracts.RunSettings{},
-			"harness":         &contracts.HarnessDocument{},
-			"deliver":         &[]contracts.Deliver{},
+			"target":       &contracts.Target{},
+			"read_targets": &[]contracts.Target{},
+			"subject":      &contracts.Subject{},
+			"run_settings": &contracts.RunSettings{},
+			"harness":      &contracts.HarnessDocument{},
+			"deliver":      &[]contracts.Deliver{},
 		} {
 			raw, ok := members[name]
 			if !ok {
@@ -1409,8 +1425,8 @@ func TestTheRunDocumentsReadIntoTheirGoTypes(t *testing.T) {
 	if binds == 0 {
 		t.Error("fixtures/documents has no harness with bind")
 	}
-	if furthers == 0 {
-		t.Error("fixtures/documents has no document with further_targets")
+	if reads == 0 {
+		t.Error("fixtures/documents has no document with read_targets")
 	}
 	if delivers[true] == 0 || delivers[false] == 0 {
 		t.Errorf("fixtures/documents has %d documents with deliver and harness, and %d with deliver and no harness; want 1 or more of each",

@@ -172,17 +172,19 @@ var closedMachinesFixtures = map[string]closedFixture{
 
 // closedExploreFixtures are the fixtures of explore/v1/fixtures/closed, by file name.
 var closedExploreFixtures = map[string]closedFixture{
-	"inputs-answers.json":                         {"inputs", "/ additionalProperties"},
-	"inputs-changes.json":                         {"inputs", "/ additionalProperties"},
-	"inputs-collection-ref.json":                  {"inputs", "/ticket additionalProperties"},
-	"inputs-comment-by-undefined-member.json":     {"inputs", "/comments/0/by additionalProperties"},
-	"inputs-comment-undefined-member.json":        {"inputs", "/comments/0 additionalProperties"},
-	"inputs-facts.json":                           {"inputs", "/ additionalProperties"},
-	"inputs-instruction-by-undefined-member.json": {"inputs", "/instruction/by additionalProperties"},
-	"inputs-instruction-undefined-member.json":    {"inputs", "/instruction additionalProperties"},
-	"inputs-proposal.json":                        {"inputs", "/ additionalProperties"},
-	"inputs-run-of.json":                          {"inputs", "/run additionalProperties"},
-	"inputs-work-item-undefined-member.json":      {"inputs", "/work_item additionalProperties"},
+	"inputs-answers.json":                             {"inputs", "/ additionalProperties"},
+	"inputs-changes.json":                             {"inputs", "/ additionalProperties"},
+	"inputs-collection-ref.json":                      {"inputs", "/ticket additionalProperties"},
+	"inputs-comment-by-undefined-member.json":         {"inputs", "/comments/0/by additionalProperties"},
+	"inputs-comment-undefined-member.json":            {"inputs", "/comments/0 additionalProperties"},
+	"inputs-facts.json":                               {"inputs", "/ additionalProperties"},
+	"inputs-instruction-by-undefined-member.json":     {"inputs", "/instruction/by additionalProperties"},
+	"inputs-instruction-undefined-member.json":        {"inputs", "/instruction additionalProperties"},
+	"inputs-proposal.json":                            {"inputs", "/ additionalProperties"},
+	"inputs-run-of.json":                              {"inputs", "/run additionalProperties"},
+	"inputs-work-item-undefined-member.json":          {"inputs", "/work_item additionalProperties"},
+	"inputs-destination-undefined-member.json":        {"inputs", "/destinations/0 additionalProperties"},
+	"inputs-destination-target-undefined-member.json": {"inputs", "/destinations/0/target additionalProperties"},
 }
 
 // checkClosedFixtures pins that the files under dir are exactly the keys of want, that each

@@ -355,7 +355,7 @@ var closedSites = map[string][]string{
 	"integration/source-collections.schema.json":        {"", "/properties/collections/items"},
 	"integration/source-item-comments.schema.json":      {"", "/$defs/comment", "/properties/complete"},
 	"integration/sources-disconnect.schema.json":        {""},
-	"integration/definitions.schema.json":               {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
+	"integration/definitions.schema.json":               {"/$defs/change_address", "/$defs/destination", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
 	"run/documents.schema.json": {
 		"", "/$defs/deliver_entry", "/$defs/harness", "/$defs/harness_base", "/$defs/harness_module", "/$defs/harness_section",
 		"/$defs/harness_section/properties/bind", "/$defs/harness_selection", "/$defs/harness_source",
@@ -1312,6 +1312,31 @@ func TestAMarshalledDocumentKeepsItsMustUnderstand(t *testing.T) {
 		}
 		if got, ok := m["must_understand"].([]any); !ok || len(got) != 1 || got[0] != "/version" {
 			t.Errorf("%T writes %s, want must_understand [\"/version\"]", v, b)
+		}
+	}
+}
+
+// TestMustUnderstandListsReadTargetsAndNotFurtherTargets pins that the must_understand
+// of the run documents accepts a pointer to read_targets, to a member of an entry, and to
+// a member of the inputs, and refuses /further_targets, a member that no schema defines.
+func TestMustUnderstandListsReadTargetsAndNotFurtherTargets(t *testing.T) {
+	schema := compileRun(t, runSchema("documents"))
+	for pointer, ok := range map[string]bool{
+		"/read_targets":                 true,
+		"/read_targets/0":               true,
+		"/read_targets/0/collection":    true,
+		"/read_targets/0/address/path":  true,
+		"/inputs/destinations/0/id":     true,
+		"/further_targets":              false,
+		"/further_targets/0/collection": false,
+	} {
+		doc, err := contracts.RunDocument("fixtures/documents/explore-read-targets.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc.(map[string]any)["must_understand"] = []any{pointer}
+		if got := schema.Validate(doc); (got == nil) != ok {
+			t.Errorf("must_understand with %s: %v, want accepted %v", pointer, got, ok)
 		}
 	}
 }

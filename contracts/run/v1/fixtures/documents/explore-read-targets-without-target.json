@@ -12,7 +12,7 @@
   },
   "workflow": "hello",
   "harness_hidden": true,
-  "further_targets": [
+  "read_targets": [
     {
       "collection": "R_1002",
       "address": {
@@ -80,6 +80,18 @@
       }
     ],
     "comments_omitted": 0,
+    "destinations": [
+      {
+        "id": "tg_0123456789abcdef",
+        "target": {
+          "collection": "R_2001",
+          "address": {
+            "system": "code.example.com",
+            "path": "example/service"
+          }
+        }
+      }
+    ],
     "domain": "marketing"
   }
 }

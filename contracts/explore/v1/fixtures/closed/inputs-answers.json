@@ -58,6 +58,14 @@
       "at": "2026-10-17T10:06:00Z"
     }
   ],
+  "destinations": [
+    {
+      "id": "tg_0123456789abcdef",
+      "target": {
+        "collection": "SQ_1001"
+      }
+    }
+  ],
   "target": {
     "collection": "SQ_1001"
   },
