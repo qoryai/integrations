@@ -386,7 +386,7 @@
       }
     },
     "link_template": {
-      "description": "At most 2048 characters (code points). It starts with https://, then a host of lower-case letters, digits, hyphens and dots, then a path that starts with /. The host has no placeholder. The path is on one line, and its only braces are the placeholders {collection_path} and {path}. It has no ? and no #, so a value reaches only the path. {collection_path} is the address.path of the target that source-collections.schema.json lists for the collection of the reference. {path} is the address.path of the reference.",
+      "description": "At most 2048 characters (code points). It starts with https://, then a host of lower-case letters, digits, hyphens and dots, then a path that starts with /. The host has no placeholder. The path is on one line, and its only braces are the placeholders {collection_path} and {path}. The path has no ? and no #, so a value reaches only the path. {collection_path} is the address.path of the target that source-collections.schema.json lists for the collection of the reference. {path} is the address.path of the reference.",
       "type": "string",
       "maxLength": 2048,
       "not": {"pattern": "\\n"},

@@ -270,19 +270,20 @@ A reader makes a link in these steps, in any language:
    `system` of the `target` that `source-collections.schema.json` lists for the collection
    of the reference. This applies to every template, including one that uses only
    `{path}`. If the collection has no `target` there, make no link, whether or not the
-   template uses `{collection_path}`.
+   template uses `{collection_path}`. A `target` with no `address` has no system to
+   compare, so make no link.
 3. For each placeholder the template uses, build its written value first. Split the value
-   at each `/`. If a segment is empty, `.` or `..`, make no link. Write each segment:
-   the characters `A-Z`, `a-z`, `0-9`, `-`, `.`, `_` and `~` stay, and every other byte of
-   the segment's UTF-8 becomes `%XX` with upper-case hex digits. Join the segments with
+   at each `/`. If a segment is empty, `.` or `..`, make no link. Write each segment so
+   that the characters `A-Z`, `a-z`, `0-9`, `-`, `.`, `_` and `~` stay. Write every other
+   byte of the segment's UTF-8 as `%XX` with upper-case hex digits. Join the segments with
    `/`. An empty value has an empty segment, so it makes no link. These checks apply only
    to the placeholders the template uses.
 4. Put each written value into the template in one pass. Copy the text outside the
    placeholders unchanged. A brace in a value is not a placeholder.
 5. Check the filled link: it starts with `https://`, has the host of the template, and
-   has no user information. A correct fill always passes, because a value cannot reach
-   the host, and the template has no `?` or `#`, so a value reaches only the path. If the
-   check fails, show plain text, not a link.
+   has no user information. A correct fill always passes. A value cannot reach the host,
+   and the template has no `?` or `#`, so a value reaches only the path. If the check
+   fails, show plain text, not a link.
 
 Written values, for `{path}` in a template:
 

@@ -81,6 +81,7 @@ func TestTheSchemaTakesTheEdgesOfLinks(t *testing.T) {
 		"a query":                        host + "x?y={path}",
 		"a fragment":                     host + "x#{path}",
 		"a final question mark":          host + "{path}?",
+		"a final fragment":               host + "{path}#",
 		"an empty port":                  "https://code.example.com:/{path}",
 		"a port of 6 digits":             "https://code.example.com:123456/{path}",
 		"{path} as the host":             "https://{path}",
@@ -204,12 +205,13 @@ func keptByTheReadme(c byte) bool {
 	return false
 }
 
-// fillLinkByTheReadme fills template by the steps 2 to 4 of the README, section Links,
-// and reports false for no link: each placeholder is replaced in one pass with its value;
-// the value is split at each /; with a segment that is empty, . or .. there is no link; each
-// segment is written with every byte except A-Z a-z 0-9 - . _ ~ as %XX; the segments are
-// joined with /. It exists only in this test, to pin the vectors and the examples of
-// the README; no reader of the contract calls it.
+// fillLinkByTheReadme fills template by steps 3 and 4 of the README, section Links, and
+// reports false for no link. Step 3: the value of each placeholder is split at each /;
+// with a segment that is empty, . or .. there is no link; each segment is written with
+// every byte except A-Z a-z 0-9 - . _ ~ as %XX; the segments are joined with /. Step 4:
+// each written value goes into the template in one pass. It does not do steps 1, 2 and
+// 5, which need a reference and its target. It exists only in this test, to pin the
+// vectors and the examples of the README; no reader of the contract calls it.
 func fillLinkByTheReadme(template, collectionPath, path string) (string, bool) {
 	ok := true
 	link := regexp.MustCompile(`\{(collection_path|path)\}`).ReplaceAllStringFunc(template, func(holder string) string {
