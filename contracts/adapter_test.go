@@ -741,10 +741,13 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 // and the last, and $defs.apply has all of them, with the sentences about a covered and
 // an overlapping path between them.
 const (
-	exploreFillOrder  = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources. It puts the filled paths into items of at most 32 paths, in that order."
+	exploreFill       = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources."
+	exploreSplit      = "It puts the filled paths into items of at most 32 paths, in that order."
 	exploreFillItems  = "Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
 	exploreDropGroup  = "Before the control plane splits the filled paths into items, it drops a covered path only among paths that share host, scheme, username and header."
-	exploreKeepFirst  = "Of two equal paths, it keeps the first."
+	exploreEveryHost  = "A path of an item is dropped only when a path of its group covers it on every host of the item."
+	exploreSomeHosts  = "If it is covered on some hosts of the item and not on others, the adapter refuses the call with 403 resource_not_covered."
+	exploreKeepFirst  = "Of two equal paths, the first is the one of the earlier item in the description, then the earlier path in one item."
 	exploreSameAccess = "Inside such a group the entry then grants the same access."
 	exploreBetween    = "An equal or covered path between groups that differ in scheme, username or header on one host is refused: the adapter refuses it with 403 resource_not_covered."
 	exploreNeither    = "The adapter also refuses with 403 resource_not_covered a call whose filled paths still overlap on one host after that step, where neither path covers the other."
@@ -764,7 +767,7 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 		{"grant.schema.json", "", one + " grant_ref is the adapter's ref to that grant, stable for that account."},
 		{"grant.schema.json", "/properties/grant_ref", "While the connection has a grant that has not ended, a report with another grant_ref is refused with 409 connection_held."},
 		{"definitions.schema.json", "", one + " The adapter reports that grant with POST /v1/grants"},
-		{"description.schema.json", "/properties/roles/properties/source/properties/apply", exploreFillOrder + " " + exploreFillItems},
+		{"description.schema.json", "/properties/roles/properties/source/properties/apply", exploreFill + " " + exploreSplit + " " + exploreFillItems},
 	} {
 		doc, err := contracts.Document(c.schema)
 		if err != nil {
@@ -787,11 +790,11 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T) {
 	const apply = "/properties/roles/properties/source/properties/apply"
 	for _, c := range []struct{ schema, pointer, want string }{
-		{"description.schema.json", apply, exploreFillOrder + " " + exploreFillItems},
-		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFillOrder + " " + exploreDropGroup + " " + exploreKeepFirst + " " + exploreSameAccess + " " + exploreBetween + " " + exploreNeither + " " + exploreChunk + " " + exploreCovers + " " + exploreOverlaps + " " + exploreFillItems},
+		{"description.schema.json", apply, exploreFill + " " + exploreSplit + " " + exploreFillItems},
+		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFill + " " + exploreDropGroup + " " + exploreEveryHost + " " + exploreSomeHosts + " " + exploreKeepFirst + " " + exploreSameAccess + " " + exploreBetween + " " + exploreNeither + " " + exploreSplit + " " + exploreChunk + " " + exploreCovers + " " + exploreOverlaps + " " + exploreFillItems},
 		{"description.schema.json", "/$defs/apply/properties/paths", "For a run with no target, a template with {target.path} gives one path per resource. A template without it gives one path."},
 		{"description.schema.json", "/$defs/apply/properties/paths", "A template has no space character and no { or } other than in the placeholder {target.path}, which it contains at most once. A space character is"},
-		{"description.schema.json", "/$defs/apply/properties/paths", "Before it fills any template, the control plane refuses a target path with a space character, {, }, .., //, *, ? or #. So each filled path is in the grammar of credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths). That grammar allows { and } only as the whole segment {}, which a target path cannot contain."},
+		{"description.schema.json", "/$defs/apply/properties/paths", "Before it fills any template, the control plane refuses a target path with a space character, {, }, .., //, *, ? or #. It also refuses a target path with a segment ., a backslash, a % or a final /. Forager's UnclearPath (policy/policy.go) refuses a filled path with a . segment, a backslash, //, or %2f, %5c, %2e or %25 in any case. So each filled path is in the grammar of credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths). That grammar allows { and } only as the whole segment {}, which a target path cannot contain."},
 		{"definitions.schema.json", "/$defs/address_path", "The path of a place in the address of a target, 1 to 200 characters. The path has no control character, U+0000 to U+001F or U+007F, and no { or }. A { or } is refused because the control plane fills a path template with this path. credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths) allows { and } only as the whole segment {}."},
 		{"connect-pass.schema.json", "", "or of a live connection that the person connects one external account to. While the connection has a grant that has not ended, only the same external account connects again, and its grant is replaced. Another account ends in 409 connection_held."},
 		{"connect-pass.schema.json", "/properties/connection_id", "the live connection that the person connects one external account to, as the control plane issued it."},
@@ -824,7 +827,9 @@ func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T)
 	flat := strings.Join(strings.Fields(strings.ReplaceAll(string(changelog), "`", "")), " ")
 	for _, want := range []string{
 		"Fill the source apply templates of a run with no target, such as Explore, for each resource of the run-credential call. The control plane fills the templates of an item one after another, each for every resource.",
-		"It splits the filled paths into items of at most 32 paths. Before that, it drops a covered path among paths that share host, scheme, username and header. It keeps the first of two equal paths.",
+		"It splits the filled paths into items of at most 32 paths. Before that, it drops a covered path among paths that share host, scheme, username and header.",
+		"A path of an item is dropped only when a path of its group covers it on every host of the item. If it is covered on some hosts of the item and not on others, the adapter refuses the call with 403 resource_not_covered. Of two equal paths, the first is the one of the earlier item in the description, then the earlier path in one item.",
+		"Before it fills a template, the control plane refuses a target path with a segment ., a backslash, a % or a final /. Before this release it refused only .., //, *, ?, # and a space character. Forager's UnclearPath refuses a filled path with a . segment, a backslash, //, or %2f, %5c, %2e or %25 in any case.",
 		"Two items on one host that differ in scheme, username or header may not have equal, covered or overlapping paths. The adapter refuses such a call with 403 resource_not_covered.",
 		"The read access of the run covers every destination of the workspace from the start and does not grow during the session.",
 		"The address_path definition of definitions.schema.json refuses { and } in the address.path of every target, and in run.target of diagnostics.schema.json. Before this release it accepted them.",

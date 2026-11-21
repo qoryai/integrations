@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode"
 
 	foragercontracts "github.com/qoryai/forager/contracts"
 	"github.com/qoryai/forager/policy"
@@ -180,37 +181,39 @@ func TestFilledPathsLeaveOutAPathTheyAlreadyHave(t *testing.T) {
 	}
 }
 
-// applyItem is one description item of the source apply for the helper below: the host,
-// scheme, username and header, and the path templates. shortcut: the helper models one
-// host for each item, since the text does not say whether a path that is covered on one
-// host of an item is dropped for its other hosts; replace it when the text says.
+// applyItem is one description item of the source apply for the helper below: its hosts,
+// scheme, username and header, and its path templates.
 type applyItem struct {
-	host, scheme, username, header string
-	templates                      []string
+	hosts                    []string
+	scheme, username, header string
+	templates                []string
 }
 
-// exploreItem is one item of the run configuration that the helper makes: the paths of
-// one chunk of the filled paths of a description item.
+// exploreItem is one item of the run configuration that the helper makes: one chunk of
+// the filled paths of the description item with the index from.
 type exploreItem struct {
-	from                           int
-	host, scheme, username, header string
-	paths                          []string
+	from                     int
+	hosts                    []string
+	scheme, username, header string
+	paths                    []string
 }
 
 // fillExploreCall makes the items of the run configuration for a run with no target, as
 // $defs.apply of description.schema.json says. Each template of an item is filled for
-// every resource in the order of the call's resources, one template after another. Before
-// the filled paths are split into items of at most 32 paths, a group, the paths of the
-// items that share host, scheme, username and header, keeps the first of two equal paths
-// and drops each path that another path of the group covers. A call is refused when an
-// equal, covered or overlapping path stays on one host between two groups. Forager's
-// policy package decides what covers and what overlaps. An item whose paths are all
-// dropped has no chunk.
+// every resource in the order of the call's resources, one template after another. The
+// paths of the items that share host, scheme, username and header are a group, one for
+// each host of an item. Before the filled paths are split into items of at most 32 paths,
+// a path is dropped when another path of its group covers it, or an equal path comes
+// earlier in the group, the earlier item first and then the earlier path of one item. A
+// path is dropped only when that holds on every host of its item. A path that holds it on
+// some hosts and not on others refuses the call, and so does an equal, covered or
+// overlapping path between two groups of one host. Forager's policy package decides what
+// covers and what overlaps. An item whose paths are all dropped has no chunk.
 func fillExploreCall(items []applyItem, resources []string) (out []exploreItem, refused bool) {
 	const chunk = 32
 	type entry struct {
-		item int
-		path string
+		item, index int
+		path        string
 	}
 	type group struct {
 		host    string
@@ -219,31 +222,67 @@ func fillExploreCall(items []applyItem, resources []string) (out []exploreItem, 
 	}
 	var groups []*group
 	byKey := map[string]*group{}
-	for i, item := range items {
-		key := strings.Join([]string{item.host, item.scheme, item.username, item.header}, "\x00")
+	groupOf := func(item applyItem, host string) *group {
+		key := strings.Join([]string{host, item.scheme, item.username, item.header}, "\x00")
 		g := byKey[key]
 		if g == nil {
-			g = &group{host: item.host}
+			g = &group{host: host}
 			byKey[key] = g
 			groups = append(groups, g)
 		}
+		return g
+	}
+	filled := make([][]string, len(items))
+	for i, item := range items {
 		for _, template := range item.templates {
 			for _, resource := range resources {
-				g.entries = append(g.entries, entry{i, strings.Replace(template, "{target.path}", resource, 1)})
+				filled[i] = append(filled[i], strings.Replace(template, "{target.path}", resource, 1))
+			}
+		}
+		for _, host := range item.hosts {
+			g := groupOf(item, host)
+			for k, p := range filled[i] {
+				g.entries = append(g.entries, entry{i, k, p})
 			}
 		}
 	}
-	kept := make([][]string, len(items))
-	for _, g := range groups {
-		var seen []string
+	// coveredOn reports whether the path at index k of item i is covered in its group on host.
+	coveredOn := func(i, k int, host string) bool {
+		g := groupOf(items[i], host)
+		p := filled[i][k]
 		for _, e := range g.entries {
-			if slices.Contains(seen, e.path) {
-				continue
+			if e.path != p && policy.CoversPath(e.path, p) {
+				return true
 			}
-			seen = append(seen, e.path)
-			if !slices.ContainsFunc(g.entries, func(other entry) bool { return other.path != e.path && policy.CoversPath(other.path, e.path) }) {
-				kept[e.item] = append(kept[e.item], e.path)
-				g.kept = append(g.kept, e.path)
+		}
+		for _, e := range g.entries {
+			if e.item == i && e.index == k {
+				return false // the first entry of the path in the group is this one
+			}
+			if e.path == p {
+				return true
+			}
+		}
+		return false
+	}
+	kept := make([][]string, len(items))
+	for i, item := range items {
+		for k, p := range filled[i] {
+			covered := 0
+			for _, host := range item.hosts {
+				if coveredOn(i, k, host) {
+					covered++
+				}
+			}
+			switch {
+			case covered == 0:
+				kept[i] = append(kept[i], p)
+				for _, host := range item.hosts {
+					g := groupOf(item, host)
+					g.kept = append(g.kept, p)
+				}
+			case covered < len(item.hosts):
+				return nil, true
 			}
 		}
 	}
@@ -264,7 +303,7 @@ func fillExploreCall(items []applyItem, resources []string) (out []exploreItem, 
 	for i, paths := range kept {
 		for len(paths) > 0 {
 			n := min(chunk, len(paths))
-			out = append(out, exploreItem{i, items[i].host, items[i].scheme, items[i].username, items[i].header, paths[:n]})
+			out = append(out, exploreItem{i, items[i].hosts, items[i].scheme, items[i].username, items[i].header, paths[:n]})
 			paths = paths[n:]
 		}
 	}
@@ -286,25 +325,33 @@ func fillers(count int, at map[int]string) []string {
 }
 
 // TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem pins the rule of $defs.apply about
-// the filled paths of a call: a path that another path of its group covers is dropped
-// before the split into items of at most 32 paths, of two equal paths the first stays, and
-// an equal, covered or overlapping path between two groups of one host is refused. A group
-// is the items that share host, scheme, username and header.
+// the filled paths of a call: a path that another path of its group covers on every host
+// of its item is dropped before the split into items of at most 32 paths, a path covered
+// on some hosts only refuses the call, of two equal paths the first of the description
+// stays, and an equal, covered or overlapping path between two groups of one host is
+// refused. A group is the items that share host, scheme, username and header on a host.
 func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
+	const a, b = "code.example.com", "other.example.com"
 	bearer := func(templates ...string) applyItem {
-		return applyItem{host: "code.example.com", scheme: "bearer", templates: templates}
+		return applyItem{hosts: []string{a}, scheme: "bearer", templates: templates}
+	}
+	bearerOn := func(hosts []string, templates ...string) applyItem {
+		return applyItem{hosts: hosts, scheme: "bearer", templates: templates}
 	}
 	header := func(templates ...string) applyItem {
-		return applyItem{host: "code.example.com", scheme: "header", header: "X-Api-Key", templates: templates}
+		return applyItem{hosts: []string{a}, scheme: "header", header: "X-Api-Key", templates: templates}
 	}
 	basicAs := func(username string, templates ...string) applyItem {
-		return applyItem{host: "code.example.com", scheme: "basic", username: username, templates: templates}
+		return applyItem{hosts: []string{a}, scheme: "basic", username: username, templates: templates}
 	}
 	headerAs := func(name string, templates ...string) applyItem {
-		return applyItem{host: "code.example.com", scheme: "header", header: name, templates: templates}
+		return applyItem{hosts: []string{a}, scheme: "header", header: name, templates: templates}
 	}
 	other := func(templates ...string) applyItem {
-		return applyItem{host: "other.example.com", scheme: "bearer", templates: templates}
+		return applyItem{hosts: []string{b}, scheme: "bearer", templates: templates}
+	}
+	one := func(from int, scheme string, paths ...string) exploreItem {
+		return exploreItem{from: from, hosts: []string{a}, scheme: scheme, paths: paths}
 	}
 	// The fortieth resource is covered by the thirty-second, which is in the first item.
 	forty := fillers(40, map[int]string{32: "group", 40: "group/sub/repo"})
@@ -324,26 +371,32 @@ func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 		refused   bool
 	}{
 		{name: "a path under a path with a star is dropped", items: []applyItem{bearer("/{target.path}/*")}, resources: []string{"group", "group/sub/repo"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/group/*"}}}},
+			want: []exploreItem{one(0, "bearer", "/group/*")}},
 		{name: "the order of the resources does not matter", items: []applyItem{bearer("/{target.path}/*")}, resources: []string{"group/sub/repo", "group"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/group/*"}}}},
+			want: []exploreItem{one(0, "bearer", "/group/*")}},
 		{name: "a path without a star does not cover a longer path", items: []applyItem{bearer("/{target.path}")}, resources: []string{"group", "group/sub"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/group", "/group/sub"}}}},
+			want: []exploreItem{one(0, "bearer", "/group", "/group/sub")}},
 		{name: "of two equal paths of one item the first stays", items: []applyItem{bearer("/projects/{target.path}", "/projects/acme")}, resources: []string{"acme"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/projects/acme"}}}},
-		{name: "of two equal paths of two items of one group the first stays, and the second item has no chunk", items: []applyItem{bearer("/user"), bearer("/user")}, resources: []string{"a", "b"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/user"}}}},
+			want: []exploreItem{one(0, "bearer", "/projects/acme")}},
+		{name: "of two equal paths of two items of one group the earlier item keeps it, and the later item has no chunk", items: []applyItem{bearer("/user"), bearer("/user")}, resources: []string{"a", "b"},
+			want: []exploreItem{one(0, "bearer", "/user")}},
 		{name: "an item whose paths another item of its group covers has no chunk", items: []applyItem{bearer("/{target.path}/*"), bearer("/{target.path}/issues")}, resources: []string{"group"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/group/*"}}}},
+			want: []exploreItem{one(0, "bearer", "/group/*")}},
 		{name: "a template without the target path gives one path", items: []applyItem{bearer("/user")}, resources: []string{"a", "b"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/user"}}}},
+			want: []exploreItem{one(0, "bearer", "/user")}},
 		{name: "a covered path that falls in the second chunk is dropped before the split", items: []applyItem{bearer("/{target.path}/*"), header("/other/{target.path}")}, resources: forty,
 			want: []exploreItem{
-				{0, "code.example.com", "bearer", "", "", firstChunk},
-				{0, "code.example.com", "bearer", "", "", secondChunk},
-				{1, "code.example.com", "header", "", "X-Api-Key", otherFirst},
-				{1, "code.example.com", "header", "", "X-Api-Key", otherSecond},
+				one(0, "bearer", firstChunk...),
+				one(0, "bearer", secondChunk...),
+				{from: 1, hosts: []string{a}, scheme: "header", header: "X-Api-Key", paths: otherFirst},
+				{from: 1, hosts: []string{a}, scheme: "header", header: "X-Api-Key", paths: otherSecond},
 			}},
+		{name: "an item covered on one of its two hosts is refused", items: []applyItem{bearerOn([]string{a, b}, "/{target.path}/issues"), bearer("/{target.path}/*")}, resources: []string{"group"}, refused: true},
+		{name: "an item covered on both of its hosts is dropped", items: []applyItem{bearerOn([]string{a, b}, "/{target.path}/issues"), bearerOn([]string{a, b}, "/{target.path}/*")}, resources: []string{"group"},
+			want: []exploreItem{{from: 1, hosts: []string{a, b}, scheme: "bearer", paths: []string{"/group/*"}}}},
+		{name: "an equal path on one of two hosts is refused", items: []applyItem{bearer("/user"), bearerOn([]string{a, b}, "/user")}, resources: []string{"x"}, refused: true},
+		{name: "of an equal path in two items the earlier item keeps it on two hosts", items: []applyItem{bearerOn([]string{a, b}, "/user"), bearerOn([]string{a, b}, "/user")}, resources: []string{"x"},
+			want: []exploreItem{{from: 0, hosts: []string{a, b}, scheme: "bearer", paths: []string{"/user"}}}},
 		{name: "an equal path in two groups of one host is refused", items: []applyItem{bearer("/user"), basicAs("robot", "/user")}, resources: []string{"a"}, refused: true},
 		{name: "an equal path in two groups that differ in the username is refused", items: []applyItem{basicAs("robot", "/user"), basicAs("clerk", "/user")}, resources: []string{"a"}, refused: true},
 		{name: "a covered path in two groups that differ in the username is refused", items: []applyItem{basicAs("robot", "/{target.path}/*"), basicAs("clerk", "/{target.path}/issues")}, resources: []string{"group"}, refused: true},
@@ -351,14 +404,15 @@ func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 		{name: "a covered path in two groups that differ in the header is refused", items: []applyItem{headerAs("X-Api-Key", "/{target.path}/*"), headerAs("X-Token", "/{target.path}/issues")}, resources: []string{"group"}, refused: true},
 		{name: "a covered path in two groups of one host is refused", items: []applyItem{bearer("/{target.path}/*"), header("/{target.path}/issues")}, resources: []string{"group"}, refused: true},
 		{name: "a path in two groups of one host that do not overlap is kept", items: []applyItem{bearer("/a/{target.path}"), header("/b/{target.path}")}, resources: []string{"x"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/a/x"}}, {1, "code.example.com", "header", "", "X-Api-Key", []string{"/b/x"}}}},
+			want: []exploreItem{one(0, "bearer", "/a/x"), {from: 1, hosts: []string{a}, scheme: "header", header: "X-Api-Key", paths: []string{"/b/x"}}}},
 		{name: "an equal path in two groups of two hosts is kept", items: []applyItem{bearer("/user"), other("/user")}, resources: []string{"a"},
-			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/user"}}, {1, "other.example.com", "bearer", "", "", []string{"/user"}}}},
+			want: []exploreItem{one(0, "bearer", "/user"), {from: 1, hosts: []string{b}, scheme: "bearer", paths: []string{"/user"}}}},
 	} {
 		got, refused := fillExploreCall(tc.items, tc.resources)
-		if refused != tc.refused || !slices.EqualFunc(got, tc.want, func(a, b exploreItem) bool {
-			return a.from == b.from && a.host == b.host && a.scheme == b.scheme && a.username == b.username && a.header == b.header && slices.Equal(a.paths, b.paths)
-		}) {
+		same := func(x, y exploreItem) bool {
+			return x.from == y.from && slices.Equal(x.hosts, y.hosts) && x.scheme == y.scheme && x.username == y.username && x.header == y.header && slices.Equal(x.paths, y.paths)
+		}
+		if refused != tc.refused || !slices.EqualFunc(got, tc.want, same) {
 			t.Errorf("%s: got %d items, refused %v; want %d items, refused %v\n got %v\nwant %v", tc.name, len(got), refused, len(tc.want), tc.refused, got, tc.want)
 		}
 		for _, item := range got {
@@ -410,5 +464,78 @@ func TestAnAddressPathHasNoBrace(t *testing.T) {
 		if err := schema.Validate(tc.path); (err == nil) != tc.ok {
 			t.Errorf("the address path %q: accepted %v, want %v", tc.path, err == nil, tc.ok)
 		}
+	}
+}
+
+// refusedTargetPath models the refusal list of $defs/apply.paths in description.schema.json:
+// the control plane refuses a target path with a space character, {, }, .., //, *, ? or
+// #, with a segment ., a backslash or a %, or that ends in /. A space character is a
+// character below U+0021, U+007F, U+FEFF, or a Unicode White_Space character.
+func refusedTargetPath(p string) bool {
+	if strings.ContainsAny(p, "{}*?#\\%") || strings.Contains(p, "..") || strings.Contains(p, "//") || strings.HasSuffix(p, "/") {
+		return true
+	}
+	if slices.Contains(strings.Split(p, "/"), ".") {
+		return true
+	}
+	return strings.ContainsFunc(p, func(r rune) bool { return r < 0x21 || r == 0x7f || r == 0xfeff || unicode.IsSpace(r) })
+}
+
+// TestATargetPathWithAnUnclearPartIsRefused pins the refusal list of $defs/apply.paths:
+// each of acme/./x, acme\x, acme/%2f and a/b/ is refused, and for each target path that
+// the list passes, from a set built of segments with the parts that Forager's UnclearPath
+// refuses, no template of the set fills it into a path that UnclearPath refuses, so the
+// list is not narrower than UnclearPath. shortcut: a target path that starts with /, and a
+// segment that starts with ; or .;, are left out of the set, since UnclearPath refuses the
+// filled paths and the list does not; replace this when the list refuses them.
+func TestATargetPathWithAnUnclearPartIsRefused(t *testing.T) {
+	for _, tc := range []struct {
+		path    string
+		refused bool
+	}{
+		{"acme/./x", true},
+		{"acme\\x", true},
+		{"acme/%2f", true},
+		{"a/b/", true},
+		{".", true},
+		{"a//b", true},
+		{"a/../b", true},
+		{"a b", true},
+		{"acme", false},
+		{"acme/widgets", false},
+		{"a.b/c-d", false},
+		{"acme/.hidden", false},
+		{"acme/widgets.v2", false},
+	} {
+		if got := refusedTargetPath(tc.path); got != tc.refused {
+			t.Errorf("the list refuses %q: %v, want %v", tc.path, got, tc.refused)
+		}
+	}
+	segments := []string{"a", "acme", ".", "..", "%2e", "%2F", "%25", "%3b", "%5C", "\\", "", "a b", "x%41", "a.", ".a", "..a", "a;b", "a;", "a%3Bb", "\t", "x\x7f"}
+	templates := []string{"/projects/{target.path}/*", "/projects/{target.path}", "/{target.path}", "/projects/{target.path}.json", "/files/{target.path}.v2/*", "/projects/{target.path}/"}
+	passed := 0
+	var paths []string
+	for _, a := range segments {
+		paths = append(paths, a, a+"/")
+		for _, b := range segments {
+			paths = append(paths, a+"/"+b, a+"/"+b+"/")
+			for _, c := range segments {
+				paths = append(paths, a+"/"+b+"/"+c)
+			}
+		}
+	}
+	for _, p := range paths {
+		if p == "" || strings.HasPrefix(p, "/") || refusedTargetPath(p) {
+			continue
+		}
+		passed++
+		for _, template := range templates {
+			if filled := strings.Replace(template, "{target.path}", p, 1); policy.UnclearPath(filled) {
+				t.Errorf("the target path %q passes the list, and the template %q fills it into %q, which Forager's UnclearPath refuses", p, template, filled)
+			}
+		}
+	}
+	if passed == 0 {
+		t.Error("no target path of the set passes the list")
 	}
 }

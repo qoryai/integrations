@@ -83,16 +83,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   resource of the `run-credential` call. The control plane fills the templates of an
   item one after another, each for every resource. It splits the filled paths into items
   of at most 32 paths. Before that, it drops a covered path among paths that share host,
-  scheme, username and header. It keeps the first of two equal paths. Two items on one
-  host that differ in scheme, username or header may not have equal, covered or
-  overlapping paths. The adapter refuses such a call with `403 resource_not_covered`.
-  The read access of the run covers every destination of the workspace from the start
-  and does not grow during the session.
+  scheme, username and header. A path of an item is dropped only when a path of its
+  group covers it on every host of the item. If it is covered on some hosts of the item
+  and not on others, the adapter refuses the call with `403 resource_not_covered`. Of
+  two equal paths, the first is the one of the earlier item in the description, then the
+  earlier path in one item. Two items on one host that differ in scheme, username or
+  header may not have equal, covered or overlapping paths. The adapter refuses such a
+  call with `403 resource_not_covered`. The read access of the run covers every
+  destination of the workspace from the start and does not grow during the session.
 - The `address_path` definition of `definitions.schema.json` refuses `{` and `}` in the
   `address.path` of every target, and in `run.target` of `diagnostics.schema.json`.
   Before this release it accepted them. The control plane fills a path template with
   that path, and Forager's `credential_paths` allows `{` and `}` only as the whole
   segment `{}`.
+- Before it fills a template, the control plane refuses a target path with a segment
+  `.`, a backslash, a `%` or a final `/`. Before this release it refused only `..`,
+  `//`, `*`, `?`, `#` and a space character. Forager's `UnclearPath` refuses a filled
+  path with a `.` segment, a backslash, `//`, or `%2f`, `%5c`, `%2e` or `%25` in any
+  case.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A
