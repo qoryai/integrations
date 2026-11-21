@@ -247,13 +247,14 @@ reference is a `collection` with an optional `address` of `system` and `path`, a
 `$defs/target` in `definitions.schema.json` defines it. A commit is a reference whose
 `collection` is the repository and whose `address.path` is the commit id.
 
-`links` has 1 to 16 entries `{system, template}`. List each system once. A `template` has
-at most 2048 characters (Unicode code points), on one line. It starts with `https://`,
-then the host, then a path that starts with `/`. The host is the `system` of the entry,
-written out. It has no placeholder and no port. The path has no `?` or `#`, so a value
-reaches only the path. A reader ignores an entry whose template has another host than
-its `system`. A schema cannot check that rule or the rule that each system is listed once,
-so `integration-conformance` refuses a description that breaks one of them.
+`links` has 1 to 16 entries `{system, template}`. List each system once. The program
+`integration-conformance` refuses a description with two entries for one `system`, so a
+reader never sees two. A `template` has at most 2048 characters (Unicode code points), on
+one line. It starts with `https://`, then the host, then a path that starts with `/`. The
+host is the `system` of the entry, written out. It has no placeholder and no port. The
+path has no `?` or `#`, so a value reaches only the path. A reader ignores an entry whose
+template has another host than its `system`, and `integration-conformance` refuses such a
+description.
 
 The path has two placeholders, and no other brace:
 
@@ -264,21 +265,24 @@ The path has two placeholders, and no other brace:
 
 A reader makes a link in these steps, in any language:
 
-1. A reference with no `address` has no link. The `address.system` must be the `system`
-   of an entry of `links`. It must also be the `system` of the target that
-   `source-collections.schema.json` lists for the collection of the reference. Otherwise
-   the reference has no link.
-2. The reader replaces each placeholder the template uses, in one pass, with its value.
-   A brace in a value is not a placeholder.
-3. The reader splits the value at each `/`. A segment that is empty, `.` or `..` gives no
-   link at all, and so does an empty value.
-4. The reader writes each segment as a path segment. The characters `A-Z`, `a-z`, `0-9`,
-   `-`, `.`, `_` and `~` stay. Every other byte of the segment's UTF-8 becomes `%XX` with
-   upper-case hex digits. The reader joins the segments with `/`.
-5. The reader checks the filled link. It starts with `https://`, has the host of the
-   template, and has no user information. A correct fill always passes, because the host
-   is literal and a value reaches only the path. A link that fails shows as plain text,
-   not as a link.
+1. If the reference has no `address`, make no link.
+2. The `address.system` must be the `system` of an entry of `links`. It must also be the
+   `system` of the `target` that `source-collections.schema.json` lists for the collection
+   of the reference. This applies to every template, including one that uses only
+   `{path}`. If the collection has no `target` there, make no link, whether or not the
+   template uses `{collection_path}`.
+3. For each placeholder the template uses, build its written value first. Split the value
+   at each `/`. If a segment is empty, `.` or `..`, make no link. Write each segment:
+   the characters `A-Z`, `a-z`, `0-9`, `-`, `.`, `_` and `~` stay, and every other byte of
+   the segment's UTF-8 becomes `%XX` with upper-case hex digits. Join the segments with
+   `/`. An empty value has an empty segment, so it makes no link. These checks apply only
+   to the placeholders the template uses.
+4. Put each written value into the template in one pass. Copy the text outside the
+   placeholders unchanged. A brace in a value is not a placeholder.
+5. Check the filled link: it starts with `https://`, has the host of the template, and
+   has no user information. A correct fill always passes, because a value cannot reach
+   the host, and the template has no `?` or `#`, so a value reaches only the path. If the
+   check fails, show plain text, not a link.
 
 Written values, for `{path}` in a template:
 

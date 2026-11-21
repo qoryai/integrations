@@ -190,9 +190,23 @@ func TestCheckLinksRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	}
 }
 
+// keptCharacters are the characters that the README, section Links, keeps in a written
+// segment: a range as two characters with a dash between, and a single character.
+const keptCharacters = "A-Z a-z 0-9 - . _ ~"
+
+// keptByTheReadme reports whether c is one of the [keptCharacters].
+func keptByTheReadme(c byte) bool {
+	for _, k := range strings.Fields(keptCharacters) {
+		if len(k) == 3 && c >= k[0] && c <= k[2] || len(k) == 1 && c == k[0] {
+			return true
+		}
+	}
+	return false
+}
+
 // fillLinkByTheReadme fills template by the steps 2 to 4 of the README, section Links,
 // and reports false for no link: each placeholder is replaced in one pass with its value;
-// the value is split at each /; a segment that is empty, . or .. gives no link; each
+// the value is split at each /; with a segment that is empty, . or .. there is no link; each
 // segment is written with every byte except A-Z a-z 0-9 - . _ ~ as %XX; the segments are
 // joined with /. It exists only in this test, to pin the vectors and the examples of
 // the README; no reader of the contract calls it.
@@ -210,7 +224,7 @@ func fillLinkByTheReadme(template, collectionPath, path string) (string, bool) {
 			}
 			var b strings.Builder
 			for _, c := range []byte(segment) {
-				if c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || strings.IndexByte("-._~", c) >= 0 {
+				if keptByTheReadme(c) {
 					b.WriteByte(c)
 				} else {
 					fmt.Fprintf(&b, "%%%02X", c)
@@ -235,6 +249,17 @@ func TestTheReadmeExamplesOfLinksFillAsPrinted(t *testing.T) {
 	}
 	_, section, _ := strings.Cut(string(b), "\n## Links\n")
 	section, _, _ = strings.Cut(section, "\n## ")
+	kept := regexp.MustCompile("(?s)the characters (.*?) stay").FindStringSubmatch(section)
+	if kept == nil {
+		t.Fatal("the section Links does not list the characters that stay")
+	}
+	var spans []string
+	for _, m := range regexp.MustCompile("`([^`]+)`").FindAllStringSubmatch(kept[1], -1) {
+		spans = append(spans, m[1])
+	}
+	if got := strings.Join(spans, " "); got != keptCharacters {
+		t.Errorf("the section Links keeps the characters %q, the test helper keeps %q", got, keptCharacters)
+	}
 	rows := regexp.MustCompile("(?m)^\\| `([^`]*)` \\| (`[^`]*`|no link) \\|$").FindAllStringSubmatch(section, -1)
 	if len(rows) != 10 {
 		t.Fatalf("the table of written values has %d rows, want 10", len(rows))
