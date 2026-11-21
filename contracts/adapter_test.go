@@ -697,13 +697,13 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 	if ref := at(configuration, "$defs", "apply", "properties", "paths")["$ref"]; ref != "#/$defs/credential_paths" {
 		t.Errorf("the paths of an apply item are %v, want #/$defs/credential_paths", ref)
 	}
-	const limit = "An adapter covers N resources only when N × p + c ≤ 512, where p is the number of path entries that one resource adds across all apply items. c is the number of paths that no resource owns, such as a template without {target.path}. It covers fewer when paths of different items cannot share one list of 32. It refuses a call over its limit with 403 resource_not_covered."
+	const limit = "An adapter covers N resources only when N × p + c ≤ 512. Here p is the number of path entries that one resource adds across all apply items. c is the number of paths that belong to no single resource, such as a template without {target.path}. It covers fewer when paths of different items cannot share one list of 32. It refuses a call over its limit with 403 resource_not_covered."
 	for _, c := range []struct{ schema, want string }{
 		{"run-credential.schema.json", "The answer has at most 512 paths (run-credential-answer.schema.json). " + limit},
 		{"run-credential.schema.json", "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json);"},
 		{"run-credential-answer.schema.json", "The answer has at most 16 apply items of 1 to 32 paths each, 512 paths together."},
 		{"run-credential-answer.schema.json", limit},
-		{"run-credential-answer.schema.json", "Several apply items may claim one host when each item on it has paths and no path of one overlaps a path of another (run-configuration.schema.json of the Forager contract, $defs.apply)."},
+		{"run-credential-answer.schema.json", "In the Forager contract, several host credentials may claim one host (run-configuration.schema.json, $defs.apply). That holds when each item on it has paths and no path of one overlaps a path of another. The Forager gateway checks every pair of items on one host that way."},
 		{"refusal.schema.json", "or the paths of the resources do not fit in the answer"},
 	} {
 		d, err := contracts.Document(c.schema)
@@ -712,6 +712,21 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 		}
 		if text, _ := d.(map[string]any)["description"].(string); !strings.Contains(text, c.want) {
 			t.Errorf("%s: the description does not contain %q", c.schema, c.want)
+		}
+	}
+	// The CHANGELOG and the Go comment wrap the sentences, and the CHANGELOG sets code in
+	// backticks, so the needle is compared with the words of each file alone.
+	words := func(s string) string {
+		s = strings.NewReplacer("`", "", "\n// ", " ", "\n//\n", " ").Replace(s)
+		return strings.Join(strings.Fields(s), " ")
+	}
+	for _, file := range []string{"../CHANGELOG.md", "adapter.go"} {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(words(string(b)), limit) {
+			t.Errorf("%s does not contain the limit %q", file, limit)
 		}
 	}
 	const resources = "The paths of the answer limit how many resources one call covers (run-credential-answer.schema.json)."
@@ -746,8 +761,8 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 }
 
 // TestOneAccountConnectsAndExploreFillsTemplatesForEachResource pins the texts of the
-// connect pass and the connection id that say one external account connects to a
-// connection, and the texts of the source apply that say how the control plane fills the
+// connect pass and the connection id about one external account that connects to a
+// connection, and the texts of the source apply about how the control plane fills the
 // templates for a run with no target.
 func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T) {
 	const fill = "For a run with no target, such as Explore, the control plane fills each template once for each resource of the run-credential call, in the order of the resources. It puts the filled paths into items of at most 32 paths, each with the hosts and header of the description item it came from. Each such item is a valid Forager apply item."

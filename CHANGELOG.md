@@ -74,11 +74,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `connection_id` of the call. The answer is one credential. In an `apply` item of the
   answer, `paths` lists each template filled with the path of each resource. The answer
   has at most 16 `apply` items of 1 to 32 paths, 512 paths together, as the Forager
-  contract limits it. An adapter covers N resources only when N × p + c ≤ 512, where p is
+  contract limits it. An adapter covers N resources only when N × p + c ≤ 512. Here p is
   the number of path entries that one resource adds across all `apply` items. c is the
-  number of paths that no resource owns, such as a template without `{target.path}`. It
-  covers fewer when paths of different items cannot share one list of 32. It refuses a
-  call over its limit with `403 resource_not_covered`.
+  number of paths that belong to no single resource, such as a template without
+  `{target.path}`. It covers fewer when paths of different items cannot share one list of
+  32. It refuses a call over its limit with `403 resource_not_covered`.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A
@@ -787,8 +787,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   either end. An adapter may use it to suggest a name at its source, and accepts a pass
   without it. In Go, `SetupPass.OrganisationSlug` is added.
 - Grants: a connection has at most one grant that has not ended, for one external account
-  at the source. The adapter reports one grant with `POST /v1/grants`, with `connection_id`, `grant_ref`, `account`
-  and `pass_nonce`, and the grant is added only when the control plane accepts the report.
+  at the source. The adapter reports one grant with `POST /v1/grants`, with `connection_id`,
+  `grant_ref`, `account` and `pass_nonce`, and the grant is added only when the control plane
+  accepts the report.
   `account` is `{ref, title}`, both required: `ref` is the external account's id at the
   source, and `title` is its display name, one line. `GET /v1/grants` returns the control
   plane's copy of grants, and the adapter matches its state to that copy.
