@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -546,6 +547,49 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 				t.Errorf("%s: the target with %s is accepted", f.file, r.name)
 			}
 		}
+	}
+}
+
+// TestADestinationIsAnIdAndATarget pins definitions.schema.json, $defs.destination: id and
+// target are required, id is tg_ and 16 characters of Crockford base32 in lower case, and
+// target is a $defs.target. It also pins that [contracts.Destination] decodes a destination.
+func TestADestinationIsAnIdAndATarget(t *testing.T) {
+	schema := compile(t, "definitions.schema.json#/$defs/destination")
+	const target = `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop"}}`
+	for _, c := range []struct {
+		name, doc string
+		ok        bool
+	}{
+		{"an id and a target", `{"id":"tg_0123456789abcdef","target":` + target + `}`, true},
+		{"an id and a target with no address", `{"id":"tg_0123456789abcdef","target":{"collection":"R_1001"}}`, true},
+		{"an id with every letter that the alphabet has", `{"id":"tg_abcdefghjkmnpqrs","target":{"collection":"R_1001"}}`, true},
+		{"an id with the letters t to z", `{"id":"tg_tvwxyz0123456789","target":{"collection":"R_1001"}}`, true},
+		{"no id", `{"target":` + target + `}`, false},
+		{"no target", `{"id":"tg_0123456789abcdef"}`, false},
+		{"an id with 15 characters", `{"id":"tg_0123456789abcde","target":` + target + `}`, false},
+		{"an id with 17 characters", `{"id":"tg_0123456789abcdefg","target":` + target + `}`, false},
+		{"an id with an upper-case letter", `{"id":"tg_0123456789ABCDEF","target":` + target + `}`, false},
+		{"an id with the letter i", `{"id":"tg_0123456789abcdei","target":` + target + `}`, false},
+		{"an id with the letter l", `{"id":"tg_0123456789abcdel","target":` + target + `}`, false},
+		{"an id with the letter o", `{"id":"tg_0123456789abcdeo","target":` + target + `}`, false},
+		{"an id with the letter u", `{"id":"tg_0123456789abcdeu","target":` + target + `}`, false},
+		{"an id with another prefix", `{"id":"ac_0123456789abcdef","target":` + target + `}`, false},
+		{"an id that is a number", `{"id":1,"target":` + target + `}`, false},
+		{"a target with no collection", `{"id":"tg_0123456789abcdef","target":{"address":{"system":"code.example.com","path":"acme/shop"}}}`, false},
+		{"a collection beside the id, which a reader ignores", `{"id":"tg_0123456789abcdef","collection":"R_1001","target":` + target + `}`, true},
+	} {
+		if err := validate(schema, []byte(c.doc)); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	var d contracts.Destination
+	if err := json.Unmarshal([]byte(`{"id":"tg_0123456789abcdef","target":`+target+`}`), &d); err != nil {
+		t.Fatal(err)
+	}
+	want := contracts.Destination{ID: "tg_0123456789abcdef", Target: contracts.Target{Collection: "R_1001",
+		Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}}
+	if !reflect.DeepEqual(d, want) {
+		t.Errorf("the destination decodes to %+v, want %+v", d, want)
 	}
 }
 

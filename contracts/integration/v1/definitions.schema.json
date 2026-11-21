@@ -179,6 +179,15 @@
         }
       }
     },
+    "destination": {
+      "description": "One place that a workspace of the control plane works on: the target as the adapter wrote it, and id, the control plane's id of that target. The id is tg_ followed by 16 characters, each a digit or a lower-case letter other than i, l, o and u. A destination wraps the target, so a target in a document that an adapter writes has no id.",
+      "type": "object",
+      "required": ["id", "target"],
+      "properties": {
+        "id": {"description": "The control plane's id of the target: tg_ followed by 16 characters, each a digit or a lower-case letter other than i, l, o and u.", "type": "string", "pattern": "^tg_[0-9a-hjkmnp-tv-z]{16}$"},
+        "target": {"description": "The place, as the adapter wrote it.", "$ref": "#/$defs/target"}
+      }
+    },
     "secret_name": {
       "description": "The name of a secret the adapter stores in the control plane (adapter-secrets.schema.json): 1 to 64 characters of lower-case letters, digits, dots, underscores and hyphens, starting with a letter or a digit. A name is never a value: the adapter names a secret, such as signing-key, and never writes its value into the name.",
       "type": "string",

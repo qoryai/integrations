@@ -200,6 +200,14 @@ type Target struct {
 	Address    *TargetAddress `json:"address,omitempty,case:strict"`
 }
 
+// Destination is one place that a workspace works on: the Target as the adapter wrote
+// it, and ID, the control plane's id of that target, tg_ and 16 characters. The
+// definitions schema, $defs.destination, defines it.
+type Destination struct {
+	ID     string `json:"id,case:strict"`
+	Target Target `json:"target,case:strict"`
+}
+
 // TargetAddress is the address of a place on a system: a host name and a path on it.
 type TargetAddress struct {
 	System string `json:"system,case:strict"`

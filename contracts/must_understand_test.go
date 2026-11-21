@@ -355,7 +355,7 @@ var closedSites = map[string][]string{
 	"integration/source-collections.schema.json":        {"", "/properties/collections/items"},
 	"integration/source-item-comments.schema.json":      {"", "/$defs/comment", "/properties/complete"},
 	"integration/sources-disconnect.schema.json":        {""},
-	"integration/definitions.schema.json":               {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
+	"integration/definitions.schema.json":               {"/$defs/change_address", "/$defs/destination", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
 	"run/documents.schema.json": {
 		"", "/$defs/deliver_entry", "/$defs/harness", "/$defs/harness_base", "/$defs/harness_module", "/$defs/harness_section",
 		"/$defs/harness_section/properties/bind", "/$defs/harness_selection", "/$defs/harness_source",
