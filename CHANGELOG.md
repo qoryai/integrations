@@ -81,11 +81,18 @@ change what an existing reader or program relies on, and notes it under Upgradin
   32. It refuses a call over its limit with `403 resource_not_covered`.
 - Fill the source `apply` templates of a run with no target, such as Explore, for each
   resource of the `run-credential` call. The control plane fills the templates of an
-  item one after another, each for every resource, and puts the filled paths into items
-  of at most 32 paths. It drops a filled path that another filled path on the same host
-  covers. It refuses a call whose filled paths still overlap on one host with
-  `403 resource_not_covered`. The read access of the run covers every destination of the
-  workspace from the start and does not grow during the session.
+  item one after another, each for every resource. Before it splits the filled paths
+  into items of at most 32 paths, it drops a covered path among paths that share host,
+  scheme, username and header, and keeps the first of two equal paths. The adapter
+  refuses with `403 resource_not_covered` a call with an equal, covered or overlapping
+  path between items that differ in scheme, username or header on one host. The read
+  access of the run covers every destination of the workspace from the start and does
+  not grow during the session.
+- The `address_path` definition of `definitions.schema.json` refuses `{` and `}` in the
+  `address.path` of every target, and in `run.target` of `diagnostics.schema.json`.
+  Before this release it accepted them. The control plane fills a path template with
+  that path, and Forager's `credential_paths` allows `{` and `}` only as the whole
+  segment `{}`.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A

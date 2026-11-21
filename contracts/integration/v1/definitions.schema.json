@@ -156,11 +156,11 @@
       "pattern": "^[a-z0-9.-]{1,253}$"
     },
     "address_path": {
-      "description": "The path of a place in the address of a target: 1 to 200 characters, none of them a control character, U+0000 to U+001F or U+007F.",
+      "description": "The path of a place in the address of a target: 1 to 200 characters, none of them a control character, U+0000 to U+001F or U+007F, and none of them { or }. A { or } is refused so that each path template that the control plane fills with this path gives a path of the grammar of credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths), where { and } are allowed only as the whole segment {}.",
       "type": "string",
       "minLength": 1,
       "maxLength": 200,
-      "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+      "pattern": "^[^\\x00-\\x1f\\x7f{}]+$"
     },
     "target": {
       "description": "Where a change would go: one of the adapter's collections, and, when the place has one, its address on a system.",

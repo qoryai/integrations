@@ -174,6 +174,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"changes-change-request-previous-title-empty.json":                      {"changes", "/changes/0/previous/title minLength; /changes/0/previous/title pattern; /changes/0/previous/title pattern"},
 		"changes-change-request-previous-title-null.json":                       {"changes", "/changes/0/previous/title type"},
 		"changes-change-request-target-address-system-upper-case.json":          {"changes", "/changes/0/target/address/system pattern"},
+		"changes-change-request-target-address-path-braces.json":                {"changes", "/changes/0/target/address/path pattern"},
 		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection"},
 		"changes-change-request-target-without-collection.json":                 {"changes", "/changes/0/target required collection"},
 		"changes-change-request-text-20001.json":                                {"changes", "/changes/0/text maxLength"},
@@ -740,14 +741,18 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 // and the last, and $defs.apply has all of them, with the sentences about a covered and
 // an overlapping path between them.
 const (
-	exploreFillOrder = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources. It puts the filled paths into items of at most 32 paths, in that order."
-	exploreFillItems = "Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
-	exploreDrop      = "Before it puts the paths into items, the control plane drops each filled path that another filled path on the same host covers. The entry then grants the same access."
-	exploreRefuse    = "A call whose filled paths still overlap on one host after that step, where neither path covers the other, is refused with 403 resource_not_covered."
-	exploreCovers    = "A path covers another when every request path that matches the other also matches it. Forager's CoversPath (policy/policy.go) returns this, and /group/* covers /group/sub/repo/*."
-	exploreOverlaps  = "Two paths overlap when one request path can match both. Forager's OverlapPaths (policy/policy.go) returns this, and it counts a pair it cannot decide as overlapping."
+	exploreFillOrder  = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources. It puts the filled paths into items of at most 32 paths, in that order."
+	exploreFillItems  = "Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
+	exploreDropGroup  = "Before the control plane splits the filled paths into items, it drops a covered path only among paths that share host, scheme, username and header."
+	exploreKeepFirst  = "Of two equal paths, it keeps the first."
+	exploreSameAccess = "Inside such a group the entry then grants the same access."
+	exploreBetween    = "An equal or covered path between groups that differ in scheme, username or header on one host is refused: the adapter refuses it with 403 resource_not_covered."
+	exploreNeither    = "The adapter also refuses with 403 resource_not_covered a call whose filled paths still overlap on one host after that step, where neither path covers the other."
+	exploreChunk      = "A chunked item never has an empty path list."
+	exploreCovers     = "A path covers another when every request path that matches the other also matches it. Forager's CoversPath (policy/policy.go) returns this, and /group/* covers /group/sub/repo/*."
+	exploreOverlaps   = "Two paths overlap when one request path can match both. Forager's OverlapPaths (policy/policy.go) returns this, and it counts a pair it cannot decide as overlapping."
 	// overlapRefusal is the clause of the refusal list of 403 resource_not_covered.
-	overlapRefusal = "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json), or the filled paths overlap on one host and neither covers the other (description.schema.json, $defs.apply)"
+	overlapRefusal = "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json), or the filled paths overlap on one host (description.schema.json, $defs.apply)"
 )
 
 // TestAConnectionHasAtMostOneGrantThatHasNotEnded pins the texts of one account for each
@@ -783,8 +788,10 @@ func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T)
 	const apply = "/properties/roles/properties/source/properties/apply"
 	for _, c := range []struct{ schema, pointer, want string }{
 		{"description.schema.json", apply, exploreFillOrder + " " + exploreFillItems},
-		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFillOrder + " " + exploreDrop + " " + exploreRefuse + " " + exploreCovers + " " + exploreOverlaps + " " + exploreFillItems},
+		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFillOrder + " " + exploreDropGroup + " " + exploreKeepFirst + " " + exploreSameAccess + " " + exploreBetween + " " + exploreNeither + " " + exploreChunk + " " + exploreCovers + " " + exploreOverlaps + " " + exploreFillItems},
 		{"description.schema.json", "/$defs/apply/properties/paths", "For a run with no target, a template with {target.path} gives one path per resource. A template without it gives one path."},
+		{"description.schema.json", "/$defs/apply/properties/paths", "Before it fills any template, the control plane refuses a target path that contains .., //, *, ?, #, a { or } or a space character. So each filled path is in the grammar of credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths), where { and } are allowed only as the whole segment {}, which a target path cannot contain."},
+		{"definitions.schema.json", "/$defs/address_path", "and none of them { or }. A { or } is refused so that each path template that the control plane fills with this path gives a path of the grammar of credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths), where { and } are allowed only as the whole segment {}."},
 		{"connect-pass.schema.json", "", "or of a live connection that the person connects one external account to. While the connection has a grant that has not ended, only the same external account connects again, and its grant is replaced. Another account ends in 409 connection_held."},
 		{"connect-pass.schema.json", "/properties/connection_id", "the live connection that the person connects one external account to, as the control plane issued it."},
 		{"definitions.schema.json", "/$defs/connection_id", "connects one external account to it, or replaces the grant of the account that is connected (grant.schema.json)."},
@@ -815,9 +822,11 @@ func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T)
 	}
 	flat := strings.Join(strings.Fields(strings.ReplaceAll(string(changelog), "`", "")), " ")
 	for _, want := range []string{
-		"Fill the source apply templates of a run with no target, such as Explore, for each resource of the run-credential call. The control plane fills the templates of an item one after another, each for every resource, and puts the filled paths into items of at most 32 paths.",
-		"It drops a filled path that another filled path on the same host covers. It refuses a call whose filled paths still overlap on one host with 403 resource_not_covered.",
+		"Fill the source apply templates of a run with no target, such as Explore, for each resource of the run-credential call. The control plane fills the templates of an item one after another, each for every resource.",
+		"Before it splits the filled paths into items of at most 32 paths, it drops a covered path among paths that share host, scheme, username and header, and keeps the first of two equal paths.",
+		"The adapter refuses with 403 resource_not_covered a call with an equal, covered or overlapping path between items that differ in scheme, username or header on one host.",
 		"The read access of the run covers every destination of the workspace from the start and does not grow during the session.",
+		"The address_path definition of definitions.schema.json refuses { and } in the address.path of every target, and in run.target of diagnostics.schema.json. Before this release it accepted them.",
 	} {
 		if !strings.Contains(flat, want) {
 			t.Errorf("CHANGELOG.md does not contain %q", want)
