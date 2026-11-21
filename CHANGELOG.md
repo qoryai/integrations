@@ -319,9 +319,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
     and the seven objects of `explore/v1/inputs.schema.json` ignore an unknown member. Each root of these, except the explore inputs, has an optional
     `must_understand`. The explore inputs use the list of the run documents.
   - The outcome of the run contract has the members `state`, `reason` and `exit_code` of
-    Forager's `dev.qory.run.exited`. These members follow Forager's schema, which is closed
-    and has no `must_understand`. The outcome schema accepts a member that it does not
-    define, and the control plane reads `state`, `reason` and `exit_code` from the event.
+    Forager's `dev.qory.run.exited`. A reader of the data of that event ignores a member that
+    Forager's schema does not define, unless the data's `must_understand` lists it. The
+    outcome schema accepts a member that it does not define, and the control plane reads
+    `state`, `reason` and `exit_code` from the event.
   - A writer marks a member that the reader must read by listing its pointer in
     `must_understand`. The reader refuses a document that lists a pointer it does not
     define. A machines answer that lists such a pointer is a failure of kind `defect`. The
@@ -582,6 +583,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   signing header sent twice gets a `400` `bad_request` that is not signed: the gateway
   returns `502` `control_plane_unavailable` with `from` `gateway` for it, and this
   schema does not describe it.
+- The gateway sets `retry_after` in a refusal of the next-session request when the
+  `Retry-After` header of the control plane's response is whole seconds of at least 1, sent
+  once. A wait over 2678400 seconds (31 days) becomes 2678400, the most the link refusal
+  allows. `next-session-refusal.schema.json` accepts the member through the link refusal,
+  and its description mentions it.
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
   `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning.
   `model_provider_credential_name` is the name of a credential of the run, such as the
@@ -1111,6 +1117,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   adapter cannot read. It uses the backoff of `grant.schema.json`, also while the connection
   is suspended. After `expires_at`, the adapter stops sending the report and drops
   the grant, unless the control plane's copy has it.
+- Three texts called Forager's `auth`, `credential` and `dev.qory.run.exited` closed: the
+  READMEs of the integration and run contracts, and `outcome.schema.json`. Forager's
+  `auth`, `credential` and the data of `dev.qory.run.exited` are open. A reader ignores a
+  member that their schema does not define, unless `must_understand` lists it. A reader
+  refuses an unknown `scheme` or `format`. No member changed.
+- The module requires Forager at the commit 3a8876d (`v0.7.1-0.20261120100355-3a8876d85c0d`),
+  in place of 5e9ca86. From that commit, a reader of Forager's `auth`, `credential` and
+  the data of `dev.qory.run.exited` ignores a member that their schema does not define,
+  unless `must_understand` lists it.
 
 ### Removed
 

@@ -41,10 +41,14 @@ A writer may add a member, and an older reader reads the rest.
 - The description's `settings` is the integration's settings schema. The contract
   neither opens nor closes it, and the schema accepts any pointer below it.
 - The Forager contract defines the `auth` and the `format` of an API. It also defines the
-  `credential` of `run-credential-answer.schema.json` and its `apply` items. These objects
-  refuse an undefined member. The schema accepts a pointer to `auth` and `format` and
-  refuses a pointer below them. For `credential`, it accepts a pointer to `/credential`
-  itself, to `token`, and to `apply` with its `hosts`.
+  `credential` of `run-credential-answer.schema.json` and its `apply` items. A reader of
+  `auth` or `credential` ignores a member that Forager's schema does not define, unless
+  `must_understand` lists it. A reader refuses an object whose `must_understand` lists a
+  member that the reader does not define. `format` stays a fixed list and the set of
+  schemes stays closed: a reader refuses an unknown `scheme` or `format`. The schema
+  accepts a pointer to `auth` and `format` and refuses a pointer below them. For
+  `credential`, it accepts a pointer to `/credential` itself, to `token`, and to `apply`
+  with its `hosts`.
 - The documents that carry a secret ignore an undefined member like any other. They are
   `adapter-secrets`, `adapter-secrets-answer`, `adapter-secrets-plaintext`,
   `run-credential` and `run-credential-answer`. A writer sends no key or secret in a member

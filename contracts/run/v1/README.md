@@ -43,9 +43,10 @@ It applies at the top level, and in `subject`, `run_settings`, each entry of `de
   defines for a body its contract refuses. This contract defines no body for that
   refusal.
 - The outcome has the members `state`, `reason` and `exit_code` of Forager's
-  `dev.qory.run.exited`. These members follow Forager's schema, which is closed and has no
-  `must_understand`. The outcome schema accepts a member that it does not define. The
-  control plane reads `state`, `reason` and `exit_code` from the event.
+  `dev.qory.run.exited`. A reader of the data of that event ignores a member that
+  Forager's schema does not define, unless the data's `must_understand` lists it. The
+  outcome schema accepts a member that it does not define. The control plane reads `state`,
+  `reason` and `exit_code` from the event.
 - A reader refuses a bad value of a member that it defines.
 - `minProperties` counts members, defined or not. A harness selection with only an
   undefined member reads as empty. `exclude: {"zz": 1}` leaves nothing out. `only: {"zz": 1}`
