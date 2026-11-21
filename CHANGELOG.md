@@ -786,10 +786,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   in the control plane: 1 to 40 lower-case letters, digits and hyphens, with no hyphen at
   either end. An adapter may use it to suggest a name at its source, and accepts a pass
   without it. In Go, `SetupPass.OrganisationSlug` is added.
-- Grants: a connection has at most one grant that has not ended, for one external account
-  at the source. The adapter reports one grant with `POST /v1/grants`, with `connection_id`,
-  `grant_ref`, `account` and `pass_nonce`, and the grant is added only when the control plane
-  accepts the report.
+- Grants: a connection has at most one grant that has not ended, for one external
+  account at the source. The adapter reports one grant with `POST /v1/grants`, with
+  `connection_id`, `grant_ref`, `account` and `pass_nonce`, and the grant is added only
+  when the control plane accepts the report.
   `account` is `{ref, title}`, both required: `ref` is the external account's id at the
   source, and `title` is its display name, one line. `GET /v1/grants` returns the control
   plane's copy of grants, and the adapter matches its state to that copy.

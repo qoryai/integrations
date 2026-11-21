@@ -703,7 +703,7 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 		{"run-credential.schema.json", "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json);"},
 		{"run-credential-answer.schema.json", "The answer has at most 16 apply items of 1 to 32 paths each, 512 paths together."},
 		{"run-credential-answer.schema.json", limit},
-		{"run-credential-answer.schema.json", "In the Forager contract, several host credentials may claim one host (run-configuration.schema.json, $defs.apply). That holds when each item on it has paths and no path of one overlaps a path of another. The Forager gateway checks every pair of items on one host that way."},
+		{"run-credential-answer.schema.json", "In the Forager contract, several host credentials may claim one host (run-configuration.schema.json, $defs.apply). They may do so when each item on the host has paths and no path of one overlaps a path of another. The Forager gateway checks each apply item of an entry that way."},
 		{"refusal.schema.json", "or the paths of the resources do not fit in the answer"},
 	} {
 		d, err := contracts.Document(c.schema)
