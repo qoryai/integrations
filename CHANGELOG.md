@@ -69,7 +69,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `400`. A work call with `access` `write` still has exactly 1, and a `harness` call has 1
   to 64. All resources of a call are collections of one connection, the `connection_id` of
   the call. The answer is one credential. In an `apply` item of the answer, `paths` lists
-  each template filled with the path of each resource.
+  each template filled with the path of each resource. The answer has at most 16 `apply`
+  items of 1 to 32 paths, 512 paths together, as the run configuration of the Forager
+  contract limits an entry. One call covers at most floor(512 / p) resources, where p is
+  the number of paths that one resource adds. The adapter refuses a larger call with
+  `403 resource_not_covered`.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A

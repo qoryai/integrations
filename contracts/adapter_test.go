@@ -655,6 +655,39 @@ func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
 	}
 }
 
+// TestTheAnswerPathLimitIsStatedAndMatchesForager pins that the run configuration of the
+// Forager contract limits an entry to 16 apply items of 1 to 32 paths, which makes 512
+// paths, and that run-credential.schema.json, run-credential-answer.schema.json and the
+// refusal codes state that limit and the refusal resource_not_covered.
+func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
+	doc, err := foragercontracts.Document("run-configuration.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defs := doc.(map[string]any)["$defs"].(map[string]any)
+	items := defs["host_credential"].(map[string]any)["properties"].(map[string]any)["apply"].(map[string]any)
+	paths := defs["credential_paths"].(map[string]any)
+	if fmt.Sprint(items["maxItems"]) != "16" || fmt.Sprint(paths["maxItems"]) != "32" {
+		t.Errorf("Forager limits an entry to %v items of %v paths, and the contract states 16 of 32", items["maxItems"], paths["maxItems"])
+	}
+	for _, c := range []struct{ schema, want string }{
+		{"run-credential.schema.json", "The answer has at most 512 paths. One call covers at most floor(512 / p) resources"},
+		{"run-credential.schema.json", "with 403 resource_not_covered"},
+		{"run-credential-answer.schema.json", "512 paths together"},
+		{"run-credential-answer.schema.json", "floor(512 / p) resources"},
+		{"run-credential-answer.schema.json", "with 403 resource_not_covered"},
+		{"refusal.schema.json", "the paths of the resources do not fit in the answer"},
+	} {
+		d, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if text, _ := d.(map[string]any)["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s: the description does not contain %q", c.schema, c.want)
+		}
+	}
+}
+
 // TestADestinationIsAnIdAndATarget pins definitions.schema.json, $defs.destination: id and
 // target are required, id is tg_ and 16 characters of Crockford base32 in lower case, and
 // target is a $defs.target. It also pins that [contracts.Destination] decodes a destination.
