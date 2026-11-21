@@ -217,7 +217,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   feed has. After the adapter mints a linked connect return, report the grant with `POST
   /v1/grants`, read `GET /v1/grants` when the adapter starts, follow the `grant`
   entries, and match the adapter's state to that copy. Accept a connect pass for a live
-  connection, which adds or replaces the grant of one external account.
+  connection, which connects one external account to a connection, or replaces the grant
+  of that account.
 - If an adapter follows the adapter contract as this module had it after 0.3.0, add two
   members, because the schemas require them. In each grant report, `POST /v1/grants`,
   send `account`, `{ref, title}`: `ref` is the external account's id at the source, and
@@ -779,8 +780,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   it.
 - A connect pass and a setup pass, signed by the control plane, send a person to the
   adapter's `connect_url` or `setup_url`, and a connect return, signed by the adapter,
-  sends the person back. A connect pass may be for a live connection, to add or replace
-  the grant of one external account.
+  sends the person back. A connect pass may be for a live connection, which connects
+  one external account to a connection, or replaces the grant of that account.
 - A setup pass may contain `organisation_slug`, the slug of the instance's organisation
   in the control plane: 1 to 40 lower-case letters, digits and hyphens, with no hyphen at
   either end. An adapter may use it to suggest a name at its source, and accepts a pass

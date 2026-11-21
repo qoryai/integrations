@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"os"
 	"path"
 	"reflect"
 	"regexp"
@@ -728,7 +729,7 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 		{"grant.schema.json", "", one + " grant_ref is the adapter's ref to that grant, stable for that account."},
 		{"grant.schema.json", "/properties/grant_ref", "While the connection has a grant that has not ended, a report with another grant_ref is refused with 409 connection_held."},
 		{"definitions.schema.json", "", one + " The adapter reports that grant with POST /v1/grants"},
-		{"description.schema.json", "/properties/roles/properties/source/properties/apply", "For a run with no target, such as Explore, the path of each resource of the run-credential call fills it."},
+		{"description.schema.json", "/properties/roles/properties/source/properties/apply", "For a run with no target, such as Explore, the control plane fills each template once for each resource of the run-credential call, in the order of the resources. It puts the filled paths into items of at most 32 paths, each with the hosts and header of the description item it came from. Each such item is a valid Forager apply item."},
 	} {
 		doc, err := contracts.Document(c.schema)
 		if err != nil {
@@ -740,6 +741,47 @@ func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
 		}
 		if text, _ := holder["description"].(string); !strings.Contains(text, c.want) {
 			t.Errorf("%s%s: the description does not contain %q", c.schema, c.pointer, c.want)
+		}
+	}
+}
+
+// TestOneAccountConnectsAndExploreFillsTemplatesForEachResource pins the texts of the
+// connect pass and the connection id that say one external account connects to a
+// connection, and the texts of the source apply that say how the control plane fills the
+// templates for a run with no target.
+func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T) {
+	const fill = "For a run with no target, such as Explore, the control plane fills each template once for each resource of the run-credential call, in the order of the resources. It puts the filled paths into items of at most 32 paths, each with the hosts and header of the description item it came from. Each such item is a valid Forager apply item."
+	const apply = "/properties/roles/properties/source/properties/apply"
+	for _, c := range []struct{ schema, pointer, want string }{
+		{"description.schema.json", apply, fill},
+		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + fill},
+		{"description.schema.json", "/$defs/apply/properties/paths", "For a run with no target, one template gives one path per resource."},
+		{"connect-pass.schema.json", "", "or of a live connection that the person connects one external account to. While the connection has a grant that has not ended, only the same external account connects again, and its grant is replaced. Another account ends in 409 connection_held."},
+		{"connect-pass.schema.json", "/properties/connection_id", "the live connection that the person connects one external account to, as the control plane issued it."},
+		{"definitions.schema.json", "/$defs/connection_id", "connects one external account to it, or replaces the grant of the account that is connected (grant.schema.json)."},
+	} {
+		doc, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		holder := doc.(map[string]any)
+		if c.pointer != "" {
+			holder = node(t, c.schema, c.pointer)
+		}
+		if text, _ := holder["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s%s: the description does not contain %q", c.schema, c.pointer, c.want)
+		}
+	}
+	changelog, err := os.ReadFile("../CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"connection, which connects one external account to a connection, or replaces the grant\n  of that account.",
+		"A connect pass may be for a live connection, which connects\n  one external account to a connection, or replaces the grant of that account.",
+	} {
+		if !strings.Contains(string(changelog), want) {
+			t.Errorf("CHANGELOG.md does not contain %q", want)
 		}
 	}
 }
