@@ -575,6 +575,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   signing header sent twice gets a `400` `bad_request` that is not signed: the gateway
   returns `502` `control_plane_unavailable` with `from` `gateway` for it, and this
   schema does not describe it.
+- The gateway sets `retry_after` in a refusal of the next-session request when the
+  `Retry-After` header of the control plane's response is whole seconds of at least 1, sent
+  once. A wait over 2678400 seconds (31 days) becomes 2678400, the most the link refusal
+  allows. `next-session-refusal.schema.json` accepts the member through the link refusal,
+  and its description mentions it.
 - `model_choice` of the next-session answer is `ModelChoice` in Go: the `model`,
   `effort`, `provider_models` and `tiers` of `run_settings`, with the same meaning.
   `model_provider_credential_name` is the name of a credential of the run, such as the
