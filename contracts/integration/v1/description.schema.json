@@ -219,7 +219,7 @@
       }
     },
     "links": {
-      "description": "Where a person opens a reference of this integration, one entry for each system. The control plane fills the template of the entry whose system is the address.system of a reference, and uses the filled link as the link of the reference. A reference with no address, or on a system with no entry, has no link. List each system once. A schema cannot check that, so a reader calls contracts.CheckLinks after the schema accepts the description. Absent means no link. The README of this contract, section Links, says how a reader fills a template.",
+      "description": "Where a person opens a reference of this integration, one entry for each system. A reference on the system of an entry gets the link that the template of the entry makes. A reference with no address, or on a system with no entry, has no link. List each system once, and use the system of an entry as the host of its template. A schema cannot check either rule, so a reader calls contracts.CheckLinks after the schema accepts the description. A reader ignores an entry whose template has another host than its system. Absent means no link. See the section Links of the README for how a reader fills a template.",
       "type": "array",
       "minItems": 1,
       "maxItems": 16,
@@ -377,19 +377,20 @@
     },
     "line": {"description": "A prose line of the integration's words is 1 to 300 characters on one line. It has no control character (category Cc: U+0000 to U+001F and U+007F to U+009F), no U+2028 or U+2029, and no format character (category Cf) other than U+200C and U+200D. Emoji sequences and some scripts need U+200C and U+200D. Category Cf includes the bidirectional controls such as U+202E, the zero-width space U+200B, U+00AD, U+FEFF and tag characters such as U+E0041. So no character in a value overrides the order it is shown in. A later Unicode version can add characters to category Cf. The Unicode version of the validator decides which characters are in category Cf, so validators on different versions can differ.", "type": "string", "minLength": 1, "maxLength": 300, "pattern": "^(?:[^\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])+$"},
     "link": {
-      "description": "The link template of one system: system is the address.system of the references it applies to, and template is the link with placeholders for the address.",
+      "description": "The link template of one system. system is the address.system of the references that the template applies to, and the host of the template. template is the link, with placeholders for the path.",
       "type": "object",
       "required": ["system", "template"],
       "properties": {
-        "system": {"description": "The system as definitions.schema.json $defs/system defines it.", "$ref": "definitions.schema.json#/$defs/system"},
+        "system": {"description": "The system as definitions.schema.json $defs/system defines it. It is also the host of template.", "$ref": "definitions.schema.json#/$defs/system"},
         "template": {"$ref": "#/$defs/link_template"}
       }
     },
     "link_template": {
-      "description": "An https URL of 1 to 2048 characters on one line, with placeholders. It starts with https:// in lower case. Its characters are those of $defs/line, with no limit of 300, and its only braces are the placeholders {system}, the address.system of the reference, {collection_path}, the address path of the reference's collection, such as owner/repo for a repository, and {path}, the address.path of the reference.",
+      "description": "At most 2048 characters (code points). It starts with https://, then a host of lower-case letters, digits, hyphens and dots with an optional port, then a path that starts with /. The host has no placeholder. The path is on one line, and its only braces are the placeholders {collection_path} and {path}. {collection_path} is the address.path of the target that source-collections.schema.json lists for the collection of the reference. {path} is the address.path of the reference.",
       "type": "string",
       "maxLength": 2048,
-      "pattern": "^https://(?:[^{}\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d]|\\{(?:system|collection_path|path)\\})+$"
+      "not": {"pattern": "\\n"},
+      "pattern": "^https://[a-z0-9.-]+(?::[0-9]{1,5})?/(?:[^\\{\\}\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])*(?:\\{(?:collection_path|path)\\}(?:[^\\{\\}\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])*)*$"
     },
     "guide_part": {
       "description": "The help for one step of the source role's guide: before, an optional line shown above the steps; steps, 1 to 10 lines, each one step a person takes, in order; and after, an optional line shown below the steps. Each value is a prose line ($defs.line).",

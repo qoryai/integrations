@@ -31,7 +31,7 @@
   "links": [
     {
       "system": "code.example.com",
-      "template": "http://{system}/{collection_path}/commit/{path}"
+      "template": "http://code.example.com/{collection_path}/commit/{path}"
     },
     {
       "system": "desk.example.com",

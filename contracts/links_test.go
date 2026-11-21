@@ -21,17 +21,28 @@ func withLinks(links string) string {
  "links": ` + links + `}`
 }
 
+// linkEntries is n entries, each with a system that is the host of its template.
 func linkEntries(n int) string {
 	var e []string
 	for i := range n {
-		e = append(e, fmt.Sprintf(`{"system": "host%d.example.com", "template": "https://{system}/{path}"}`, i))
+		e = append(e, fmt.Sprintf(`{"system": "host%d.example.com", "template": "https://host%d.example.com/{path}"}`, i, i))
 	}
 	return "[" + strings.Join(e, ", ") + "]"
 }
 
+// oneLink is links with one entry for the system code.example.com and the template.
+func oneLink(t *testing.T, template string) string {
+	t.Helper()
+	b, err := json.Marshal(template)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return `[{"system": "code.example.com", "template": ` + string(b) + `}]`
+}
+
 // TestTheSchemaTakesTheEdgesOfLinks pins the edges of links that the invalid fixtures
 // show on one side: 16 entries and a template of 2048 characters are accepted, and
-// each template that the pattern refuses is refused with a reason at the template.
+// each template that the pattern refuses is refused.
 func TestTheSchemaTakesTheEdgesOfLinks(t *testing.T) {
 	schema := compile(t, "description.schema.json")
 	check := func(links string) error {
@@ -41,73 +52,120 @@ func TestTheSchemaTakesTheEdgesOfLinks(t *testing.T) {
 		}
 		return schema.Validate(doc)
 	}
-	one := func(template string) string {
-		b, _ := json.Marshal(template)
-		return `[{"system": "code.example.com", "template": ` + string(b) + `}]`
-	}
-	for name, links := range map[string]string{
-		"16 entries":                      linkEntries(16),
-		"a template of 2048":              one("https://{system}/" + strings.Repeat("a", 2048-len("https://{system}/"))),
-		"a template with no placeholder":  one("https://example.com/"),
-		"the three placeholders":          one("https://{system}/{collection_path}/commit/{path}?x={path}#{system}"),
-		"U+200D in a template":            one("https://example.com/a‍b"),
-		"a path of characters of 2 bytes": one("https://example.com/ä"),
+	const host = "https://code.example.com/"
+	for name, template := range map[string]string{
+		"a template of 2048":              host + strings.Repeat("a", 2048-len(host)),
+		"a path of one slash":             host,
+		"no placeholder":                  host + "commits",
+		"both placeholders":               host + "{collection_path}/commit/{path}?x={path}#{collection_path}",
+		"adjacent placeholders":           host + "{collection_path}{path}",
+		"a port":                          "https://code.example.com:8443/{path}",
+		"a host of one label":             "https://intranet/{path}",
+		"a host with a hyphen and digits": "https://a-1.b2.example.com/{path}",
+		"U+200D in the path":              host + "a\u200db",
+		"a character of 2 bytes":          host + "ä",
+		"a percent sign and a space":      host + "100% done",
 	} {
-		if err := check(links); err != nil {
+		if err := check(oneLink(t, template)); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
 	for name, template := range map[string]string{
-		"upper-case scheme":    "HTTPS://{system}/{path}",
-		"http":                 "http://{system}/{path}",
-		"no scheme":            "{system}/{path}",
-		"only the scheme":      "https://",
-		"a space in a brace":   "https://{system}/{ path }",
-		"an upper-case holder": "https://{System}/{path}",
-		"a lone opening brace": "https://{system/{path}",
-		"a lone closing brace": "https://{system}/path}",
-		"an empty brace":       "https://{system}/{}",
-		"a holder in a holder": "https://{system}/{{path}}",
-		"a tab":                "https://{system}/\t{path}",
-		"a carriage return":    "https://{system}/\r{path}",
-		"U+2028":               "https://{system}/ {path}",
-		"U+202E":               "https://{system}/‮{path}",
-		"U+200B":               "https://{system}/​{path}",
-		"U+0085":               "https://{system}/\u0085{path}",
+		"an upper-case scheme":           "HTTPS://code.example.com/{path}",
+		"http":                           "http://code.example.com/{path}",
+		"no scheme":                      "code.example.com/{path}",
+		"only the scheme":                "https://",
+		"no path":                        "https://code.example.com",
+		"an upper-case host":             "https://Code.example.com/{path}",
+		"user information":               "https://user@code.example.com/{path}",
+		"an empty port":                  "https://code.example.com:/{path}",
+		"a port of 6 digits":             "https://code.example.com:123456/{path}",
+		"{path} as the host":             "https://{path}",
+		"{path} in the host":             "https://{path}.example.com/x",
+		"{system} as the host":           "https://{system}/{path}",
+		"{system} in the path":           host + "{system}/{path}",
+		"{collection_path} as the host":  "https://{collection_path}/{path}",
+		"an unknown placeholder":         host + "{id}",
+		"a space in a brace":             host + "{ path }",
+		"an upper-case placeholder":      host + "{Path}",
+		"a lone opening brace":           host + "{path",
+		"a lone closing brace":           host + "path}",
+		"an empty brace":                 host + "{}",
+		"a placeholder in a placeholder": host + "{{path}}",
+		"a tab":                          host + "\t{path}",
+		"a carriage return":              host + "\r{path}",
+		"a final line feed":              host + "{path}\n",
+		"U+2028":                         host + "\u2028{path}",
+		"U+202E":                         host + "\u202e{path}",
+		"U+200B":                         host + "\u200b{path}",
+		"U+0085":                         host + "\u0085{path}",
 	} {
-		if err := check(one(template)); err == nil {
+		if err := check(oneLink(t, template)); err == nil {
 			t.Errorf("%s: the schema accepts %q", name, template)
 		}
+	}
+	if err := check(linkEntries(16)); err != nil {
+		t.Errorf("16 entries: %v", err)
 	}
 	if err := check(linkEntries(17)); err == nil {
 		t.Error("17 entries are accepted")
 	}
 }
 
-// TestCheckLinksRefusesASystemTwice pins that CheckLinks refuses two entries with the
-// same system, which the schema accepts, and accepts distinct systems, no links, and
-// every description under fixtures.
-func TestCheckLinksRefusesASystemTwice(t *testing.T) {
+// TestALinkTemplateRefusesAFinalLineFeedBesideItsPattern pins that $defs/link_template
+// has the not that refuses a line feed, as each must_understand item has, besides a
+// pattern that starts with ^ and ends with $. An engine that lets $ match before a final
+// line feed, such as PCRE, would accept a template with one at its end without the not.
+// Go's regexp does not match $ there, so a mutation that drops the not fails only this
+// test.
+func TestALinkTemplateRefusesAFinalLineFeedBesideItsPattern(t *testing.T) {
+	n := node(t, "description.schema.json", "/$defs/link_template")
+	pattern, _ := n["pattern"].(string)
+	if !strings.HasPrefix(pattern, "^") || !strings.HasSuffix(pattern, "$") {
+		t.Errorf("the pattern %q does not start with ^ and end with $", pattern)
+	}
+	not, _ := n["not"].(map[string]any)
+	if not["pattern"] != `\n` {
+		t.Errorf("the not of $defs/link_template is %v, want a pattern that matches a line feed", n["not"])
+	}
+}
+
+// TestCheckLinksRefusesWhatTheSchemaCannotSay pins that CheckLinks refuses two entries
+// with the same system and an entry whose template has another host than its system,
+// the port included, which the schema accepts, with the message that states the fix;
+// and that it accepts distinct systems with their own hosts, no links, and every
+// description under fixtures.
+func TestCheckLinksRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	schema := compile(t, "description.schema.json")
-	repeated := `[{"system": "code.example.com", "template": "https://{system}/{path}"},
+	for _, tc := range []struct{ name, links, want string }{
+		{"a system twice", `[{"system": "code.example.com", "template": "https://code.example.com/{path}"},
  {"system": "desk.example.com", "template": "https://desk.example.com/{path}"},
- {"system": "code.example.com", "template": "https://{system}/{collection_path}/{path}"}]`
-	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(withLinks(repeated)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := schema.Validate(doc); err != nil {
-		t.Errorf("the schema refuses it, and the rule is CheckLinks's alone: %v", err)
-	}
-	want := `List each system of links once: the entries 0 and 2 both have the system "code.example.com".`
-	if err := contracts.CheckLinks(doc); err == nil || err.Error() != want {
-		t.Errorf("CheckLinks returns %v, want %q", err, want)
+ {"system": "code.example.com", "template": "https://code.example.com/{collection_path}/{path}"}]`,
+			`List each system of links once: the entries 0 and 2 both have the system "code.example.com".`},
+		{"another host", `[{"system": "code.example.com", "template": "https://evil.example.com/{path}"}]`,
+			`Use the system "code.example.com" as the host of the template of link 0, not "evil.example.com".`},
+		{"a port", `[{"system": "desk.example.com", "template": "https://desk.example.com/{path}"}, {"system": "code.example.com", "template": "https://code.example.com:8443/{path}"}]`,
+			`Use the system "code.example.com" as the host of the template of link 1, not "code.example.com:8443".`},
+		{"a longer host", `[{"system": "code.example.com", "template": "https://code.example.com.evil.example/{path}"}]`,
+			`Use the system "code.example.com" as the host of the template of link 0, not "code.example.com.evil.example".`},
+		{"a shorter host", `[{"system": "code.example.com", "template": "https://example.com/{path}"}]`,
+			`Use the system "code.example.com" as the host of the template of link 0, not "example.com".`},
+	} {
+		doc, err := jsonschema.UnmarshalJSON(strings.NewReader(withLinks(tc.links)))
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if err := schema.Validate(doc); err != nil {
+			t.Errorf("%s: the schema refuses it, and the rule is CheckLinks's alone: %v", tc.name, err)
+		}
+		if err := contracts.CheckLinks(doc); err == nil || err.Error() != tc.want {
+			t.Errorf("%s: CheckLinks returns %v, want %q", tc.name, err, tc.want)
+		}
 	}
 	for name, links := range map[string]string{
-		"two systems":             `[{"system": "code.example.com", "template": "https://{system}/{path}"}, {"system": "desk.example.com", "template": "https://{system}/{path}"}]`,
-		"one system":              `[{"system": "code.example.com", "template": "https://{system}/{path}"}]`,
-		"16 systems":              linkEntries(16),
-		"the same template twice": `[{"system": "a.example.com", "template": "https://x.example.com/{path}"}, {"system": "b.example.com", "template": "https://x.example.com/{path}"}]`,
+		"two systems": `[{"system": "code.example.com", "template": "https://code.example.com/{path}"}, {"system": "desk.example.com", "template": "https://desk.example.com/{path}"}]`,
+		"one system":  `[{"system": "code.example.com", "template": "https://code.example.com/"}]`,
+		"16 systems":  linkEntries(16),
 	} {
 		d, err := jsonschema.UnmarshalJSON(strings.NewReader(withLinks(links)))
 		if err != nil {

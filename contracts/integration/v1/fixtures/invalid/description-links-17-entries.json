@@ -31,71 +31,71 @@
   "links": [
     {
       "system": "host0.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host0.example.com/{path}"
     },
     {
       "system": "host1.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host1.example.com/{path}"
     },
     {
       "system": "host2.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host2.example.com/{path}"
     },
     {
       "system": "host3.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host3.example.com/{path}"
     },
     {
       "system": "host4.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host4.example.com/{path}"
     },
     {
       "system": "host5.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host5.example.com/{path}"
     },
     {
       "system": "host6.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host6.example.com/{path}"
     },
     {
       "system": "host7.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host7.example.com/{path}"
     },
     {
       "system": "host8.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host8.example.com/{path}"
     },
     {
       "system": "host9.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host9.example.com/{path}"
     },
     {
       "system": "host10.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host10.example.com/{path}"
     },
     {
       "system": "host11.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host11.example.com/{path}"
     },
     {
       "system": "host12.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host12.example.com/{path}"
     },
     {
       "system": "host13.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host13.example.com/{path}"
     },
     {
       "system": "host14.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host14.example.com/{path}"
     },
     {
       "system": "host15.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host15.example.com/{path}"
     },
     {
       "system": "host16.example.com",
-      "template": "https://{system}/{path}"
+      "template": "https://host16.example.com/{path}"
     }
   ]
 }
