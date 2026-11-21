@@ -13,10 +13,6 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// foragerPath is the path grammar of Forager's apply in run-configuration.schema.json,
-// which a path template and its filled form both follow.
-var foragerPath = regexp.MustCompile(`^/[^*?#\s]*\*?$`)
-
 // foragerCredentialPath is the pattern of $defs.credential_paths in Forager's
 // run-configuration.schema.json, read from the Forager module: the grammar of the paths
 // of a credential in a run configuration, where { and } are allowed only as the whole
@@ -129,9 +125,6 @@ func TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar(t *testing.T) {
 			}
 			continue
 		}
-		if !foragerPath.MatchString(tc.template) {
-			t.Errorf("the template %q is not in Forager's path grammar", tc.template)
-		}
 		for _, target := range []string{"acme", "acme/widgets", "acme/widgets.v2", "acme/reports", "a-b_c~d", "acme/.hidden", "acme/a%20b"} {
 			filled := strings.Replace(tc.template, "{target.path}", target, 1)
 			if !foragerCredentialPath.MatchString(filled) {
@@ -141,26 +134,17 @@ func TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar(t *testing.T) {
 	}
 }
 
-// foragerPaths is a copy of the paths member of Forager's apply in
-// run-configuration.schema.json at Forager 76d6638, which the forager module this
-// module requires does not contain yet.
-const foragerPaths = `{"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "pattern": "^/[^*?#\\s]*\\*?$"}}`
-
 // TestFilledPathsLeaveOutAPathTheyAlreadyHave pins why the control plane leaves out a
 // filled path that equals an earlier filled path of the same item: two templates that
 // the schema accepts, none twice, can fill to the same path, and the filled paths with
-// that path left out are valid as Forager's apply paths, in its grammar and none twice.
+// that path left out are valid as $defs.credential_paths of the Forager module, in its grammar and none twice.
 func TestFilledPathsLeaveOutAPathTheyAlreadyHave(t *testing.T) {
 	templates := compile(t, "description.schema.json#/$defs/apply/properties/paths")
-	c := jsonschema.NewCompiler()
-	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(foragerPaths))
+	c, err := foragercontracts.Compiler()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.AddResource("forager-paths.json", doc); err != nil {
-		t.Fatal(err)
-	}
-	forager, err := c.Compile("forager-paths.json")
+	forager, err := c.Compile(foragercontracts.Base + "/run-configuration.schema.json#/$defs/credential_paths")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,8 +297,11 @@ func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 	header := func(templates ...string) applyItem {
 		return applyItem{host: "code.example.com", scheme: "header", header: "X-Api-Key", templates: templates}
 	}
-	basic := func(templates ...string) applyItem {
-		return applyItem{host: "code.example.com", scheme: "basic", username: "robot", templates: templates}
+	basicAs := func(username string, templates ...string) applyItem {
+		return applyItem{host: "code.example.com", scheme: "basic", username: username, templates: templates}
+	}
+	headerAs := func(name string, templates ...string) applyItem {
+		return applyItem{host: "code.example.com", scheme: "header", header: name, templates: templates}
 	}
 	other := func(templates ...string) applyItem {
 		return applyItem{host: "other.example.com", scheme: "bearer", templates: templates}
@@ -357,7 +344,11 @@ func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 				{1, "code.example.com", "header", "", "X-Api-Key", otherFirst},
 				{1, "code.example.com", "header", "", "X-Api-Key", otherSecond},
 			}},
-		{name: "an equal path in two groups of one host is refused", items: []applyItem{bearer("/user"), basic("/user")}, resources: []string{"a"}, refused: true},
+		{name: "an equal path in two groups of one host is refused", items: []applyItem{bearer("/user"), basicAs("robot", "/user")}, resources: []string{"a"}, refused: true},
+		{name: "an equal path in two groups that differ in the username is refused", items: []applyItem{basicAs("robot", "/user"), basicAs("clerk", "/user")}, resources: []string{"a"}, refused: true},
+		{name: "a covered path in two groups that differ in the username is refused", items: []applyItem{basicAs("robot", "/{target.path}/*"), basicAs("clerk", "/{target.path}/issues")}, resources: []string{"group"}, refused: true},
+		{name: "an equal path in two groups that differ in the header is refused", items: []applyItem{headerAs("X-Api-Key", "/user"), headerAs("X-Token", "/user")}, resources: []string{"a"}, refused: true},
+		{name: "a covered path in two groups that differ in the header is refused", items: []applyItem{headerAs("X-Api-Key", "/{target.path}/*"), headerAs("X-Token", "/{target.path}/issues")}, resources: []string{"group"}, refused: true},
 		{name: "a covered path in two groups of one host is refused", items: []applyItem{bearer("/{target.path}/*"), header("/{target.path}/issues")}, resources: []string{"group"}, refused: true},
 		{name: "a path in two groups of one host that do not overlap is kept", items: []applyItem{bearer("/a/{target.path}"), header("/b/{target.path}")}, resources: []string{"x"},
 			want: []exploreItem{{0, "code.example.com", "bearer", "", "", []string{"/a/x"}}, {1, "code.example.com", "header", "", "X-Api-Key", []string{"/b/x"}}}},

@@ -156,7 +156,7 @@
       "pattern": "^[a-z0-9.-]{1,253}$"
     },
     "address_path": {
-      "description": "The path of a place in the address of a target: 1 to 200 characters, none of them a control character, U+0000 to U+001F or U+007F, and none of them { or }. A { or } is refused so that each path template that the control plane fills with this path gives a path of the grammar of credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths), where { and } are allowed only as the whole segment {}.",
+      "description": "The path of a place in the address of a target, 1 to 200 characters. The path has no control character, U+0000 to U+001F or U+007F, and no { or }. A { or } is refused because the control plane fills a path template with this path. credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths) allows { and } only as the whole segment {}.",
       "type": "string",
       "minLength": 1,
       "maxLength": 200,
