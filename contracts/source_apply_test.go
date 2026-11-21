@@ -198,17 +198,17 @@ type exploreItem struct {
 	paths                    []string
 }
 
-// fillExploreCall makes the items of the run configuration for a run with no target, as
-// $defs.apply of description.schema.json says. It fills each template of an item for every
+// fillExploreCall makes the items of the run configuration for a run with no target. See
+// $defs.apply in description.schema.json. It fills each template of an item for every
 // resource in the order of the call's resources, one template after another. The paths of
 // the items that share host, scheme, username and header are a group, one for each host of
 // an item. Before the split into items of at most 32 paths, a path is dropped when another
 // path of its group covers it. A path is dropped too when an equal path comes earlier: the
 // earlier item first, then the earlier path of one item. A path is dropped only when that
-// holds on every host of its item. A path that holds it on some hosts and not on others
-// refuses the call. An equal, covered or overlapping path between two groups of one host
-// refuses the call too. Forager's policy package decides what covers and what overlaps. An
-// item whose paths are all dropped has no chunk.
+// holds on every host of its item. The adapter refuses the call when a path is covered on
+// some hosts and not on others. It refuses the call too for an equal, covered or
+// overlapping path between two groups of one host. Forager's policy package decides what
+// covers and what overlaps. An item whose paths are all dropped has no chunk.
 func fillExploreCall(items []applyItem, resources []string) (out []exploreItem, refused bool) {
 	const chunk = 32
 	type entry struct {
@@ -326,10 +326,11 @@ func fillers(count int, at map[int]string) []string {
 
 // TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem pins the rule of $defs.apply about
 // the filled paths of a call. A path is dropped before the split into items of at most 32
-// paths when a path of its group covers it on every host of its item. A path covered on
-// some hosts only refuses the call, and of two equal paths the first of the description
-// stays. An equal, covered or overlapping path between two groups of one host is refused.
-// A group is the items that share host, scheme, username and header on a host.
+// paths when a path of its group covers it on every host of its item. The adapter refuses
+// the call when a path is covered on some hosts only. Of two equal paths the first of the
+// description stays. The adapter also refuses an equal, covered or overlapping path
+// between two groups of one host. A group is the items that share host, scheme, username
+// and header on a host.
 func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 	const a, b = "code.example.com", "other.example.com"
 	bearer := func(templates ...string) applyItem {
@@ -394,9 +395,9 @@ func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 		{name: "an item covered on one of its two hosts is refused", items: []applyItem{bearerOn([]string{a, b}, "/{target.path}/issues"), bearer("/{target.path}/*")}, resources: []string{"group"}, refused: true},
 		{name: "an item covered on both of its hosts is dropped", items: []applyItem{bearerOn([]string{a, b}, "/{target.path}/issues"), bearerOn([]string{a, b}, "/{target.path}/*")}, resources: []string{"group"},
 			want: []exploreItem{{from: 1, hosts: []string{a, b}, scheme: "bearer", paths: []string{"/group/*"}}}},
-		{name: "X on hosts a and b with /x/issues, Y on host a with /x/*, Z on host b with /x/*: X is dropped", items: []applyItem{bearerOn([]string{a, b}, "/x/issues"), bearer("/x/*"), other("/x/*")}, resources: []string{"r"},
+		{name: "an item on hosts a and b with /x/issues, an item on host a with /x/*, an item on host b with /x/*: the first item is dropped", items: []applyItem{bearerOn([]string{a, b}, "/x/issues"), bearer("/x/*"), other("/x/*")}, resources: []string{"r"},
 			want: []exploreItem{one(1, "bearer", "/x/*"), {from: 2, hosts: []string{b}, scheme: "bearer", paths: []string{"/x/*"}}}},
-		{name: "Y on host a with /x, then X on hosts a and b with /x: the call is refused", items: []applyItem{bearer("/x"), bearerOn([]string{a, b}, "/x")}, resources: []string{"r"}, refused: true},
+		{name: "an item on host a with /x, then an item on hosts a and b with /x: the call is refused", items: []applyItem{bearer("/x"), bearerOn([]string{a, b}, "/x")}, resources: []string{"r"}, refused: true},
 		{name: "an equal path on one of two hosts is refused", items: []applyItem{bearer("/user"), bearerOn([]string{a, b}, "/user")}, resources: []string{"x"}, refused: true},
 		{name: "of an equal path in two items the earlier item keeps it on two hosts", items: []applyItem{bearerOn([]string{a, b}, "/user"), bearerOn([]string{a, b}, "/user")}, resources: []string{"x"},
 			want: []exploreItem{{from: 0, hosts: []string{a, b}, scheme: "bearer", paths: []string{"/user"}}}},
@@ -488,7 +489,7 @@ func refusedTargetPath(p string) bool {
 }
 
 // TestATargetPathWithAnUnclearPartIsRefused pins the refusal list of $defs/apply.paths.
-// Each of acme/./x, acme\\x, acme/%2f, a/b/, /acme, ;x and .;x is refused, and a;b is not.
+// Each of acme/./x, acme\x, acme/%2f, a/b/, /acme, ;x and .;x is refused, and a;b is not.
 // A set of target paths is built of segments with the parts that Forager's UnclearPath
 // refuses. For each of them that the list passes, no template of the set fills it into a
 // path that UnclearPath refuses. So the list is not narrower than UnclearPath for that

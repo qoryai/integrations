@@ -86,23 +86,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   scheme, username and header. A path of an item is dropped only when, on every host of
   the item, a path of the group of that host covers it. If it is covered on some hosts
   of the item and not on others, the adapter refuses the call with
-  `403 resource_not_covered`. Of two equal paths, the first is the one of the earlier
-  item in the description, then the earlier path in one item. Two items on one host that
-  differ in scheme, username or header may not have equal, covered or overlapping paths.
-  The adapter refuses such a call with `403 resource_not_covered`. The read access of
-  the run covers every destination of the workspace from the start and does not grow
-  during the session.
+  `403 resource_not_covered`. Of two equal paths, the control plane keeps the first: the
+  one of the earlier item in the description, then the earlier path in one item. Two
+  items on one host that differ in scheme, username or header may not have equal,
+  covered or overlapping paths. The adapter refuses such a call with
+  `403 resource_not_covered`. The read access of the run covers every destination of the
+  workspace from the start and does not grow during the session.
 - The `address_path` definition of `definitions.schema.json` refuses `{` and `}` in the
   `address.path` of every target, and in `run.target` of `diagnostics.schema.json`.
   Before this release it accepted them. The control plane fills a path template with
   that path, and Forager's `credential_paths` allows `{` and `}` only as the whole
   segment `{}`.
-- Before it fills a template, the control plane refuses a target path with a segment
-  `.`, a backslash, a `%`, a first `/`, a final `/`, or a segment that starts with `;`
-  or `.;`. Before this release it refused only `..`, `//`, `*`, `?`, `#` and a space
-  character. Forager's `UnclearPath` refuses a filled path with a `.` segment, a
-  backslash, `//`, or `%2f`, `%5c`, `%2e` or `%25` in any case, and a segment that
-  starts with `;` or `.;`.
+- The control plane refuses a target path with a segment `.`, a backslash or a `%`
+  before it fills a template. It refuses a first `/`, a final `/` and a segment that
+  starts with `;` or `.;` too. Before this release it refused only `..`, `//`, `*`, `?`,
+  `#` and a space character. Forager's `UnclearPath` refuses a filled path with a `.`
+  segment, a backslash, `//`, or `%2f`, `%5c`, `%2e` or `%25` in any case. It also
+  refuses a segment that is not empty and whose part before the first `;` or `%3b` is
+  empty, `.` or `..`. The refusals of `..` and `%` cover `..;x` and `%3b`.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A

@@ -196,6 +196,35 @@ func TestInvalidExploreFixturesAreRefused(t *testing.T) {
 	}
 }
 
+// TestExploreInputsWithThreeDestinationsAreAccepted pins that the fixture of inputs with
+// three destinations has three different ids and three different targets, and that the
+// schema accepts it.
+func TestExploreInputsWithThreeDestinationsAreAccepted(t *testing.T) {
+	doc, err := contracts.ExploreDocument("fixtures/inputs/destinations-three.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := doc.(map[string]any)["destinations"].([]any)
+	if len(list) != 3 {
+		t.Fatalf("fixtures/inputs/destinations-three.json has %d destinations, want 3", len(list))
+	}
+	ids, targets := map[string]bool{}, map[string]bool{}
+	for _, e := range list {
+		entry := e.(map[string]any)
+		b, err := json.Marshal(entry["target"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[entry["id"].(string)], targets[string(b)] = true, true
+	}
+	if len(ids) != 3 || len(targets) != 3 {
+		t.Errorf("the destinations have %d ids and %d targets, want 3 and 3", len(ids), len(targets))
+	}
+	if err := compileExplore(t, "inputs.schema.json").Validate(doc); err != nil {
+		t.Errorf("three destinations are refused: %v", err)
+	}
+}
+
 // TestExploreDestinationsHaveOneTo250Entries pins the bounds of destinations: the fixture
 // with 250 entries is accepted, and the document with 251 entries is accepted again with
 // one entry fewer, and the document with no entry with one entry more. It also pins the
