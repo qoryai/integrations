@@ -517,3 +517,40 @@ func TestBothFormsKeepTheEgressHostsRules(t *testing.T) {
 		t.Errorf("Description, a *. credential host and the same *. entry: %v, want it to start with %q", err, "describe: "+refused)
 	}
 }
+
+// TestBothFormsKeepTheLinksRules pins that Description and DataDescription refuse the two
+// rules of links that the schema cannot express, with the message that states the fix:
+// two entries with the same system, and a template whose host is not the system of its
+// entry. They accept the same description with each system once and the host of each
+// template equal to its system.
+func TestBothFormsKeepTheLinksRules(t *testing.T) {
+	links := func(system, second, secondHost string) string {
+		return `, "links": [{"system": "` + system + `", "template": "https://` + system + `/{path}"}, {"system": "` + second + `", "template": "https://` + secondHost + `/{path}"}]}`
+	}
+	program := func(links string) []byte {
+		return bytes.Replace(describe(`{"type": "object"}`), []byte("}\n"), []byte(links+"\n"), 1)
+	}
+	data := func(links string) []byte {
+		return bytes.Replace(gateway(`{"type": "object", "properties": {"url": {"type": "string"}}}`, `[]`), []byte("}\n"), []byte(links+"\n"), 1)
+	}
+	for _, tc := range []struct{ name, links, want string }{
+		{"a system twice", links("code.example.com", "code.example.com", "code.example.com"),
+			`List each system of links once: the entries 0 and 1 both have the system "code.example.com".`},
+		{"another host", links("code.example.com", "desk.example.com", "evil.example.com"),
+			`Use the system "desk.example.com" as the host of the template of link 1, not "evil.example.com".`},
+	} {
+		if err := conformance.Description(program(tc.links)); err == nil || err.Error() != "describe: "+tc.want {
+			t.Errorf("Description, %s: %v, want %q", tc.name, err, "describe: "+tc.want)
+		}
+		if err := conformance.DataDescription(data(tc.links)); err == nil || err.Error() != "data description: "+tc.want {
+			t.Errorf("DataDescription, %s: %v, want %q", tc.name, err, "data description: "+tc.want)
+		}
+	}
+	ok := links("code.example.com", "desk.example.com", "desk.example.com")
+	if err := conformance.Description(program(ok)); err != nil {
+		t.Errorf("Description, each system once: %v", err)
+	}
+	if err := conformance.DataDescription(data(ok)); err != nil {
+		t.Errorf("DataDescription, each system once: %v", err)
+	}
+}

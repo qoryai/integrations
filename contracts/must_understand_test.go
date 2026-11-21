@@ -319,7 +319,7 @@ func (u understood) fixture(t *testing.T) map[string]any {
 var closedSites = map[string][]string{
 	"integration/description.schema.json": {
 		"", "/$defs/api", "/$defs/api/properties/endpoint/else", "/$defs/api/properties/oauth_device",
-		"/$defs/api/properties/oauth_refresh", "/$defs/apply", "/$defs/guide_part",
+		"/$defs/api/properties/oauth_refresh", "/$defs/apply", "/$defs/guide_part", "/$defs/link",
 		"/properties/egress_hosts/items/else", "/properties/roles/properties/credential",
 		"/properties/roles/properties/model_provider",
 		"/properties/roles/properties/model_provider/properties/models/items",

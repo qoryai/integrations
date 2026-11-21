@@ -339,7 +339,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - `conformance.Description` and `integration-conformance` validate a description
     against the closed copy.
   - `fixtures/closed` contains the documents that the schema accepts and the closed copy
-    refuses: 139 documents in all contracts, of which 95 moved there from
+    refuses: 142 documents in all contracts, of which 95 moved there from
     `fixtures/invalid`. These fixtures moved there because a retired or secret member
     was a refusal until this release: `claim-answer-run-id`, `release-with-retry`,
     `grant-end-with-pass-nonce`, `read-public-with-grant-ref`, `refusal-supported-member`,
@@ -357,6 +357,13 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- `description.schema.json` has `links`, optional: 1 to 16 entries `{system, template}`, one for
+  each system. A `template` is at most 2048 characters. It starts with `https://`, then
+  the host, then a path. The host is the `system` of the entry, with no port. The path
+  has no `?` or `#`, and only it has placeholders, `{collection_path}` and `{path}`. The
+  section Links of the integration README describes how a reader fills a template.
+  `contracts.CheckLinks` refuses a system listed twice and a host that is not the
+  `system`. Before this release a description had no member for a link.
 - `contracts.CompileClosed`, `contracts.CompileRunClosed`,
   `contracts.CompileProvisionerClosed`, `contracts.CompileMachinesClosed` and
   `contracts.CompileExploreClosed` compile the closed copy of a schema, and return an
