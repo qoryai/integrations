@@ -9,6 +9,53 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Upgrading
 
+- Read the `text` of a `change_request` entry as Markdown with no rule on its lines. The
+  entry refused a line that starts with `<!-- qory:start -->` or `<!-- qory:end -->`.
+  A `reply` whose `text` has such a line passes `changes.schema.json`. A kind that needs
+  marker lines defines the rule: the artifact type of the kind and the adapter that
+  applies it. The submit program contract keeps its marker lines.
+- Take the draft names of the Go package from the submit program, not from the change
+  request reply. `DraftOpen`, `DraftStateDraft`, `DraftStateOpen`, `DraftStateClosed`,
+  `DraftStateMerged`, `DraftOpened`, `DraftUpdated`, `DraftKept` and `SubmittedDraft`
+  are in `submit_program.go`, with the same values. The submit program uses all of them,
+  and `SubmitResult.Draft` is a `*SubmittedDraft`. No Go name of the change request
+  reply is a draft name.
+- Take the rules of the `pull-request` kind from the artifact type of the kind and from
+  the adapter that applies it, not from the README of the integration contract. The
+  README had a section on the kind. It covered the members of `data`, how an adapter
+  finds a draft by its branch, the block between the marker lines, the title rule and
+  the members of the reply. The section is gone. The README keeps the rules of every
+  change request, and the submit program section. No release had the section.
+- Rename `$defs/draft_title` in `definitions.schema.json` to `$defs/change_title`. It is
+  the title of a change request of any kind. It keeps the rule that `draft_title` had: 1
+  to 256 characters on one line, the character rule of a prose line, and at least one
+  character that is not a space. A schema with a `$ref` to `draft_title` no longer
+  compiles, so change each such `$ref`. No release had `draft_title`. The key
+  `draft_title` of the submit program result stays, and has the rule of `change_title`.
+- Change each reader and writer of the run documents from `submit` to `deliver`. No
+  release had `submit`. `deliver` is a list of `{type, send}` entries, both members
+  required, in place of the one object `{type, send}`. It has at most 16 entries, and at
+  least 1 when it is present. `type` has the grammar of `submit.type`, and `send` has
+  the values of `submit.send`. A run without `deliver` delivers nothing. `deliver` is
+  present only on a run with `workflow` and with `access` `write`, and never on a run of
+  the step `prebuild`. No two entries have the same `type`. The schema cannot check that,
+  so a reader calls `Documents.Check` after it decodes the documents. A reader ignores
+  a `submit` member, because the schema does not define it. The closed copy that
+  `CompileRunClosed` builds for a writer's test refuses it, and a reader refuses a
+  `must_understand` that lists `/submit`. In Go, `Submit` and `Documents.Submit` are
+  `Deliver` and `Documents.Deliver`, a `[]Deliver` with `Type` and `Send`, and
+  `MaxDeliver` is 16. The submit program contract and its Go names stay.
+- Read `further_targets` from the run documents when a run has more than one place for its
+  change. `further_targets` is a list of `{collection, address}` targets, in the form of
+  `target`, with 1 to 20 entries. A run with several places lists the main one in `target`
+  and each other one in `further_targets`. A run with no further place leaves the member
+  out, and an empty list is refused. It is present only when `target` is, and never
+  on a run of the step `prebuild`. No two entries have the same `collection`, and
+  no entry has the `collection` of `target`. The schema cannot check that, so a reader
+  calls `Documents.Check` after it decodes the documents. An entry has no version:
+  `target_version` applies to `target` only. In Go, `Documents.FurtherTargets` is a
+  `[]Target`, and `MaxFurtherTargets` is 20. The folder `fixtures/check` of the run
+  contract has run documents that the schema accepts and `Documents.Check` refuses.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
@@ -28,9 +75,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
     to 20, each with `system` and `path`.
   - `text.title` is `title`, and `text.description` is `text`. `previous_title` is
     `previous.title`, and `previous.address` is added.
-  - `branch`, `base`, `commit`, `commits`, `earlier_commits` and `draft` of a target are
-    members of `data`. The artifact type of the entry's `change_kind` defines them, and
-    this contract does not list them.
+  - A pull request has the members `target`, `title`, `text`, `commits`, `head`, `base`,
+    `branch`, `base_branch`, `steps`, `draft` and `earlier_commits` in `data`. The
+    artifact type of the entry's `change_kind` defines them. This contract does not list
+    them.
   - `submissions: true` is `change_kinds`, a list of 1 to 16 kinds.
   - The reply `changes-submitted` has `change_request_id` and `target`. It has `address`
     (`url`, `ref`) and `action` (`created`, `updated` or `kept`) together, or both left
@@ -77,7 +125,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   of `WorkItem`. `explore/v1/inputs.schema.json` keeps its `work_item`, and
   `inputs.work_item.id` is `subject.id` when `subject.kind` is `work_item`.
 - Update a reader of the run documents to this `documents.schema.json` before the
-  control plane writes `submit`, `write-no-push` in `access`, or `write-no-push` in the
+  control plane writes `deliver`, `write-no-push` in `access`, or `write-no-push` in the
   `access` of a workflow in `harness`, to the run documents: a reader that checks the
   run documents against an earlier copy refuses each of them.
 - Rename three members, which this module had after 0.3.0 and before this release, and
@@ -359,8 +407,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - `ref`: the ref of the item that the work item was taken from. It is absent when the
     work item came from no item.
   - `title`: 1 to 256 characters on one line.
-  - `text`: at most 20000 characters, possibly empty, with no `<!-- qory:start -->` line
-    and no `<!-- qory:end -->` line.
+  - `text`: at most 20000 characters, possibly empty, in Markdown. The envelope has no
+    rule on its lines.
   - `previous`: absent on the first version. Otherwise it has the `title` and the
     `address` of the previous version.
   - `data`: the part.
@@ -371,10 +419,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   serialized, and the control plane enforces that limit. The schema limits each value
   inside `data`. An array has at most 1024 items, an object at most 256 members, and a
   string at most 20000 characters. A member name has 1 to 128 characters. No string or
-  name has U+0000. The adapter changes the title at the target only while it equals
-  `previous.title`. It updates what is at `previous.address` when there is one. It applies the entries with one
-  `target.collection` in cursor order. `change_kind` has the pattern of `submit.type` of
-  the run documents: lower-case letters and digits in groups joined by single hyphens, 1
+  name has U+0000. An adapter that updates the item at `previous.address` changes its title
+  only while that title equals `previous.title`. It updates what is at `previous.address` when there is one. It applies the entries with one
+  `target.collection` in cursor order. `change_kind` has the pattern of the `type` of an
+  entry of `deliver` of the run documents: lower-case letters and digits in groups joined by single hyphens, 1
   to 64 characters. In Go, `ChangeRequest`, `ChangeAddress` and `ChangePrevious` are
   added.
 - The `source` role may contain `change_kinds`: the kinds of change request that the
@@ -416,16 +464,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   an access token, a secret or a header in it. A failure of a comment has no `detail`.
   An adapter that gets a `change_kind` that it did not list sends `refused` with a
   `detail`.
-- In Go, `ChangesSubmitted` and `SubmittedDraft` are added. `ChangesFailed` has
-  `ChangeRequestID`, `Target` and `Detail`. The actions of a reply are `ChangeCreated`,
-  `ChangeUpdated` and `ChangeKept`. A draft has the states `DraftStateDraft`,
-  `DraftStateOpen`, `DraftStateClosed` and `DraftStateMerged`, and the actions
-  `DraftOpened`, `DraftUpdated` and `DraftKept`.
-- The README of the integration contract describes the `pull-request` kind of change
-  request, the one that the software factory uses. It describes the members of its
-  `data` and how the adapter finds a draft by its head branch. It describes the marked
-  block of the draft's description between `<!-- qory:start -->` and `<!-- qory:end -->`.
-  It describes the title rule. The members belong to the artifact type of the kind, not to this contract.
+- In Go, `ChangesSubmitted` is added. `ChangesFailed` has `ChangeRequestID`, `Target` and
+  `Detail`. The actions of a reply are `ChangeCreated`, `ChangeUpdated` and `ChangeKept`.
+  The reply has no draft type: its `data` is the part of the kind.
+- The README of the integration contract states that the artifact type of a kind defines
+  the kind. It states that the adapter that applies the kind defines its rules. The
+  `pull-request` kind is an example. The README keeps the section on the submit program.
 - The submit program contract, `contracts/run/v1/submit-program/README.md`, is for the
   program that `qory run` runs on a run with no run code, with the login of the forge's
   command line that the person made. A run's draft is opened by the adapter from the
@@ -574,24 +618,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
   largest size, in decimal bytes, that the target image of the build may have. It is an
   integer of at least 1 and at most 9223372036854775807. A run of any other step has no
   `largest_prebuilt_image_bytes`. When it is absent, the image has no size limit.
-- The run documents can contain `submit`: the settings of the submission of the run,
-  with `type` and `send`, both required, and no other member. `type` is the name of the
-  artifact type of the submission: lower-case letters and digits in groups joined by
-  single hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`: the control
+- The run documents can contain `deliver`: the artifacts that the run delivers, a list of
+  1 to 16 entries with `type` and `send`, both required. `type` is the
+  name of the artifact type: lower-case letters and digits in groups joined by single
+  hyphens, 1 to 64 bytes. `send` is `end_of_run` or `after_gate`: the control
   plane writes the change_request entry at the end of the run or after the gate of the stage
-  passes. The control plane writes `submit` whenever the process version of the
-  workspace has one. `submit` is present only on a run with `workflow` and with `access`
-  `write`, and never on a run of the step `prebuild`. `submit` sets the `type` and the
-  `send` of the submission that the run stores. On a run with a run code, qory takes
-  these two settings only from `submit`, never from `process.yaml`. If `process.yaml`
-  has a different `submit`, qory prints one line with both values and uses `submit` of
+  passes. The control plane writes `deliver` whenever the process version of the
+  workspace has a type to deliver. `deliver` is present only on a run with `workflow` and
+  with `access` `write`, and never on a run of the step `prebuild`. `deliver` sets the
+  `type` and the `send` of each artifact that the run stores. On a run with a run code,
+  qory takes these settings only from `deliver`, never from `process.yaml`. If `process.yaml`
+  has different settings, qory prints one line with both values and uses `deliver` of
   the run documents. On that run, the adapter of the forge opens the draft from the
   change_request entry, and no submit program runs. A run that a person starts with no run
-  code has no run documents, so it has no `submit`; it runs the submit program of the
-  composed harness. In Go, `Submit` and `Documents.Submit` are added.
+  code has no run documents, so it has no `deliver`; it runs the submit program of the
+  composed harness. In Go, `Deliver` and `Documents.Deliver` are added.
 - `access` in the run documents, and `access` of a workflow in `harness`, can be
   `write-no-push`: the run gets a read credential and a copy of the target that the
-  agent may change, and the run sends nothing back to the target and has no `submit`.
+  agent may change, and the run sends nothing back to the target and has no `deliver`.
   A call with the path `run-credential` whose purpose is `work` has the access `read`
   for such a run.
 - A description can declare the role `model_provider`. The role lists the provider's APIs

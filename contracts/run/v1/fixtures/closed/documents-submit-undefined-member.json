@@ -23,8 +23,7 @@
   "harness_hidden": false,
   "submit": {
     "type": "code-change",
-    "send": "after_gate",
-    "gate": "review"
+    "send": "after_gate"
   },
   "inputs": {
     "version": 1,

@@ -357,11 +357,11 @@ var closedSites = map[string][]string{
 	"integration/sources-disconnect.schema.json":        {""},
 	"integration/definitions.schema.json":               {"/$defs/change_address", "/$defs/listing", "/$defs/person", "/$defs/target", "/$defs/target/properties/address"},
 	"run/documents.schema.json": {
-		"", "/$defs/harness", "/$defs/harness_base", "/$defs/harness_module", "/$defs/harness_section",
+		"", "/$defs/deliver_entry", "/$defs/harness", "/$defs/harness_base", "/$defs/harness_module", "/$defs/harness_section",
 		"/$defs/harness_section/properties/bind", "/$defs/harness_selection", "/$defs/harness_source",
 		"/$defs/harness_workflow", "/$defs/model_choice", "/$defs/prebuild_inputs", "/$defs/run_settings",
 		"/$defs/run_settings/properties/provider_models/items", "/$defs/run_settings/properties/tiers",
-		"/$defs/subject", "/$defs/submit", "/$defs/tier/else",
+		"/$defs/subject", "/$defs/tier/else",
 	},
 	"run/next-session-answer.schema.json":  {"/oneOf/0", "/oneOf/1"},
 	"run/next-session-request.schema.json": {""},

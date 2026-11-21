@@ -111,7 +111,7 @@ addresses end in `/pull/<number>` and one whose addresses end in
 An address passes the pattern of `$defs.url` in `contracts/integration/v1/definitions.schema.json`,
 the one that `address.url` of the adapter's reply has: the scheme is `https` in lower case, and the
 address has no double quote, no `<`, `>`, `{`, `}`, `|`, `^`, backtick or backslash, no space and
-no character outside ASCII. `draft_title` has the rule of `$defs.draft_title` in the same
+no character outside ASCII. `draft_title` has the rule of `$defs.change_title` in the same
 file: UTF-8, no control character (category Cc), no U+2028 or U+2029, no format character
 (category Cf) other than U+200C and U+200D, and at least one character that is not a space, U+200C or U+200D.
 

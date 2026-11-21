@@ -57,11 +57,18 @@ type Documents struct {
 	// "write-no-push", the run gets a read credential and a copy that the agent may
 	// change, and the run sends nothing back to the target. With "write", the run gets
 	// a write credential, the run sends the agent's changes to the target, and only a
-	// run with "write" may have Submit. On a target that is a repository, the copy is a
+	// run with "write" may have Deliver. On a target that is a repository, the copy is a
 	// checkout and a change is a commit. The machine's credential integration narrows
 	// the run's access to it.
 	Access string  `json:"access,omitempty,case:strict"`
 	Target *Target `json:"target,omitempty,case:strict"`
+	// FurtherTargets is set only when Target is, and never for the step prebuild: the
+	// other places where the run's change would go, 1 to [MaxFurtherTargets] of them. A
+	// run that has several places lists the main one in Target and each other one here.
+	// No two entries have the same Collection, and none has the Collection of Target. The
+	// schema cannot check that: [Documents.Check] does. An entry has no version:
+	// TargetVersion is the version of Target only.
+	FurtherTargets []Target `json:"further_targets,omitempty,case:strict"`
 	// TargetVersion is set only with Target, and never for the step prebuild: the
 	// version of the target at which the control plane checked for a harness file, the
 	// resolved_at of the read at the path of the harness file, whether the read returned
@@ -167,12 +174,15 @@ type Documents struct {
 	// decimal bytes, that the target image of the build may have, at least 1 and within
 	// int64. When it is nil, the image has no size limit.
 	LargestPrebuiltImageBytes *int64 `json:"largest_prebuilt_image_bytes,omitempty,case:strict"`
-	// Submit is set only with Workflow and with Access "write": the settings of the
-	// submission of the run, which the control plane writes whenever the process version
-	// of the workspace has one. On a run with a run code, qory takes the settings of the
-	// submission only from Submit, never from process.yaml. For what qory does when
-	// process.yaml has a different submit, see submit in documents.schema.json.
-	Submit *Submit `json:"submit,omitempty,case:strict"`
+	// Deliver is set only with Workflow and with Access "write": the artifacts that the
+	// run delivers, 1 to [MaxDeliver] entries with different types, which the control
+	// plane writes whenever the process version of the workspace has a type to deliver.
+	// When it is nil, the run delivers nothing. On a run with a run code, qory takes the
+	// settings of each entry only from Deliver, never from process.yaml. For what qory
+	// does when process.yaml has different settings, see deliver in
+	// documents.schema.json. The schema cannot check that the types differ:
+	// [Documents.Check] does.
+	Deliver []Deliver `json:"deliver,omitempty,case:strict"`
 	// MustUnderstand lists members of the documents that the reader must understand, as
 	// JSON Pointers counted from the documents, such as "/run_settings/runtime". A
 	// reader ignores a member that this type does not have, unless MustUnderstand lists
@@ -449,18 +459,56 @@ type HarnessSource struct {
 	Module string `json:"module,omitempty,case:strict"`
 }
 
-// Submit is the settings of the submission of a run, the submit of the run documents,
-// documents.schema.json: Type and Send, both required.
-type Submit struct {
-	// Type is the artifact type of the submission: the name of a structured entry of
+// MaxDeliver is the most entries that the deliver of the run documents has,
+// documents.schema.json.
+const MaxDeliver = 16
+
+// MaxFurtherTargets is the most entries that the further_targets of the run documents has,
+// documents.schema.json.
+const MaxFurtherTargets = 20
+
+// Deliver is one artifact that a run delivers, an entry of the deliver of the run
+// documents, documents.schema.json: Type and Send, both required.
+type Deliver struct {
+	// Type is the artifact type that the run delivers: the name of a structured entry of
 	// artifact_types of the process. The name is lower-case letters and digits in groups
 	// joined by single hyphens, 1 to 64 bytes. The schema cannot check that
 	// artifact_types has that entry.
 	Type string `json:"type,case:strict"`
 	// Send is when the control plane writes the change_request entry to the change feed. With
 	// "end_of_run", it writes the entry at the end of the run. With "after_gate", it stores
-	// the submission and writes the entry after the gate of the stage passes.
+	// the artifact and writes the entry after the gate of the stage passes.
 	Send string `json:"send,case:strict"`
+}
+
+// Check reports the first rule of documents.schema.json that the documents
+// break and that the schema does not express: no two entries of Deliver have
+// the same Type, no two entries of FurtherTargets have the same Collection,
+// and none has the Collection of Target. Each message starts with the fix. A
+// reader of run documents calls it after it decodes them and after it
+// validates them against the schema.
+func (d Documents) Check() error {
+	types := make(map[string]bool, len(d.Deliver))
+	for _, e := range d.Deliver {
+		if types[e.Type] {
+			return fmt.Errorf("List each deliver type once: %q appears twice.", e.Type)
+		}
+		types[e.Type] = true
+	}
+	collections := make(map[string]bool, len(d.FurtherTargets)+1)
+	if d.Target != nil {
+		collections[d.Target.Collection] = true
+	}
+	for i, e := range d.FurtherTargets {
+		if collections[e.Collection] {
+			if d.Target != nil && e.Collection == d.Target.Collection {
+				return fmt.Errorf("Remove the collection %q from further_targets (index %d): target has it.", e.Collection, i)
+			}
+			return fmt.Errorf("List each collection of further_targets once: %q appears twice.", e.Collection)
+		}
+		collections[e.Collection] = true
+	}
+	return nil
 }
 
 // HarnessSelection is parts of a module, by kind, the exclude or only of a

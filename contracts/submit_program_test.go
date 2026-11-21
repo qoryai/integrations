@@ -355,7 +355,7 @@ func TestAnEmptySystemSkipsOnlyTheHostCheck(t *testing.T) {
 }
 
 // TestATitleHasTheRuleOfTheSchema pins that a result line's title has the rule of
-// definitions.schema.json, $defs.draft_title, the same as the title of the adapter's
+// definitions.schema.json, $defs.change_title, the same as the title of the adapter's
 // reply: 1 to 256 characters of UTF-8, with no control or format character other than
 // U+200C and U+200D, and not only spaces, U+200C and U+200D.
 func TestATitleHasTheRuleOfTheSchema(t *testing.T) {
@@ -573,30 +573,24 @@ func TestATitleChangesOnlyWhileItIsThePreviousOne(t *testing.T) {
 	}
 }
 
-// TestTheFeedDescribesTheMarkers pins that the change_request entry's description mentions
-// the two marker lines of the submit program contract and previous.title, so an adapter
-// and a program use the same marker lines, and that text has the limit of a block.
-func TestTheFeedDescribesTheMarkers(t *testing.T) {
+// TestTheFeedDescribesThePreviousTitle pins that the change_request entry's description
+// mentions previous.title, and that it mentions neither marker line of the submit program
+// contract: the envelope has no rule on the lines of text. It pins too that text has the
+// limit of a block.
+func TestTheFeedDescribesThePreviousTitle(t *testing.T) {
 	d, _ := node(t, "changes.schema.json", "/$defs/change_request")["description"].(string)
-	for _, want := range []string{contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd, "previous.title"} {
-		if !strings.Contains(d, want) {
-			t.Errorf("the description of the change_request entry does not contain %q", want)
+	const want = "An adapter that updates the item at previous.address changes its title only while that title equals previous.title"
+	if !strings.Contains(d, want) {
+		t.Errorf("the description of the change_request entry does not contain %q", want)
+	}
+	for _, marker := range []string{contracts.SubmitMarkerStart, contracts.SubmitMarkerEnd} {
+		if strings.Contains(d, marker) {
+			t.Errorf("the description of the change_request entry contains %q", marker)
 		}
 	}
 	text := node(t, "changes.schema.json", "/$defs/change_request/properties/text")
 	if text["maxLength"] != json.Number("20000") {
 		t.Errorf("the text's limit is %v", text["maxLength"])
-	}
-}
-
-// TestTheReadmeSaysWhichDraftOfSeveralIsTaken pins the sentence that picks one draft from
-// several on the branch, in the README subsection of the pull-request kind, whose white
-// space is collapsed to single spaces.
-func TestTheReadmeSaysWhichDraftOfSeveralIsTaken(t *testing.T) {
-	readme := strings.Join(strings.Fields(string(read(t, "README.md"))), " ")
-	const want = "With several drafts on the branch, the adapter takes the entry's `data.draft.number` when it is among them. Otherwise it takes the not-closed, not-merged draft with the highest number. With none, it takes the closed or merged one with the highest number, reported as kept."
-	if !strings.Contains(readme, want) {
-		t.Errorf("the README does not contain %q", want)
 	}
 }
 
