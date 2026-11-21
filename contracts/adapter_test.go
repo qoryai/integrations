@@ -692,6 +692,31 @@ func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
 	}
 }
 
+// TestAConnectionHasAtMostOneGrantThatHasNotEnded pins the texts of one account for each
+// connection: the description of the grant report and of its grant_ref, the description
+// of the definitions, and the path that fills {target.path} for a run with no target.
+func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
+	const one = "A connection has at most one grant that has not ended, for one external account at the source."
+	for _, c := range []struct{ schema, pointer, want string }{
+		{"grant.schema.json", "", one + " grant_ref is the adapter's ref to that grant, stable for that account."},
+		{"grant.schema.json", "/properties/grant_ref", "While the connection has a grant that has not ended, a report with another grant_ref is refused with 409 connection_held."},
+		{"definitions.schema.json", "", one + " The adapter reports that grant with POST /v1/grants"},
+		{"description.schema.json", "/properties/roles/properties/source/properties/apply", "For a run with no target, such as Explore, the path of each resource of the run-credential call fills it."},
+	} {
+		doc, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		holder := doc.(map[string]any)
+		if c.pointer != "" {
+			holder = node(t, c.schema, c.pointer)
+		}
+		if text, _ := holder["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s%s: the description does not contain %q", c.schema, c.pointer, c.want)
+		}
+	}
+}
+
 // TestADestinationIsAnIdAndATarget pins definitions.schema.json, $defs.destination: id and
 // target are required, id is tg_ and 16 characters of Crockford base32 in lower case, and
 // target is a $defs.target. It also pins that [contracts.Destination] decodes a destination.

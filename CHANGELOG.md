@@ -82,7 +82,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   report with the same `grant_ref` replaces that grant. The text for the person is
   "Disconnect the account that is connected first, then connect again. A connection has one
   account." Before this release a connection had a list of grants, one for each external
-  account. The adapter treats `connection_held` as final, as `grant_taken`. The control
+  account. A connection has at most one grant that has not ended. The adapter treats `connection_held` as final, as `grant_taken`. The control
   plane checks a report for `pass_unknown`, then `grant_taken`, then `connection_held`.
   `grant_taken` stays for a grant that another connection has.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the

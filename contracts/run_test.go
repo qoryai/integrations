@@ -549,9 +549,11 @@ func TestADeliverHasAtMostSixteenEntries(t *testing.T) {
 func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
 	want := map[string]string{
-		"documents-deliver-type-twice.json":                `List each deliver type once: "code-change" appears twice.`,
-		"documents-read-targets-collection-twice.json":     `List each collection of read_targets once: "R_1002" appears twice.`,
-		"documents-read-targets-collection-of-target.json": `Remove the collection "R_1001" from read_targets (index 1): target has it.`,
+		"documents-deliver-type-twice.json":                 `List each deliver type once: "code-change" appears twice.`,
+		"documents-read-targets-collection-twice.json":      `List each collection of read_targets once: "R_1002" appears twice.`,
+		"documents-read-targets-collection-of-target.json":  `Remove the collection "R_1001" from read_targets (index 1): target has it.`,
+		"documents-destination-id-twice.json":               `List each destination once: "tg_0123456789abcdef" appears twice.`,
+		"documents-destination-id-twice-after-another.json": `List each destination once: "tg_0123456789abcdef" appears twice.`,
 	}
 	got := runFiles(t, "fixtures/check")
 	if len(got) != len(want) {
@@ -658,6 +660,27 @@ func TestReadTargetsHaveAtMostTwentyEntries(t *testing.T) {
 		}
 		if got != c.want {
 			t.Errorf("read_targets of %d entries is refused for %q, want %q", c.n, got, c.want)
+		}
+	}
+}
+
+// TestCheckReportsARepeatedDestinationID pins the id rule of Documents.Check: an id twice
+// among the destinations of the inputs is reported, different ids are not, and inputs
+// with no destinations, or that are not an object, are not checked.
+func TestCheckReportsARepeatedDestinationID(t *testing.T) {
+	for _, c := range []struct{ name, inputs, want string }{
+		{"different ids", `{"destinations":[{"id":"tg_a"},{"id":"tg_b"}]}`, ""},
+		{"an id twice", `{"destinations":[{"id":"tg_a"},{"id":"tg_b"},{"id":"tg_a"}]}`, `List each destination once: "tg_a" appears twice.`},
+		{"no destinations", `{"version":1}`, ""},
+		{"inputs that are not an object", `[]`, ""},
+		{"no inputs", ``, ""},
+	} {
+		got := ""
+		if err := (contracts.Documents{Inputs: json.RawMessage(c.inputs)}).Check(); err != nil {
+			got = err.Error()
+		}
+		if got != c.want {
+			t.Errorf("%s: Check returns %q, want %q", c.name, got, c.want)
 		}
 	}
 }
