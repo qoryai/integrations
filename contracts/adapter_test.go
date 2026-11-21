@@ -315,8 +315,10 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"run-credential-access-admin.json":                                      {"run-credential", "/access enum"},
 		"run-credential-access-write-no-push.json":                              {"run-credential", "/access enum"},
 		"run-credential-purpose-other.json":                                     {"run-credential", "/purpose enum"},
-		"run-credential-without-resources.json":                                 {"run-credential", "/resources minItems; /resources minItems"},
-		"run-credential-work-two-resources.json":                                {"run-credential", "/resources maxItems"},
+		"run-credential-without-resources.json":                                 {"run-credential", "/resources minItems"},
+		"run-credential-work-write-two-resources.json":                          {"run-credential", "/resources maxItems"},
+		"run-credential-work-read-501-resources.json":                           {"run-credential", "/resources maxItems"},
+		"run-credential-harness-65-resources.json":                              {"run-credential", "/resources maxItems"},
 		"run-credential-without-purpose.json":                                   {"run-credential", "/ required purpose"},
 		"run-credential-work-with-grant-ref.json":                               {"run-credential", "/ "},
 		"run-credential-harness-without-grant-ref.json":                         {"run-credential", "/ required grant_ref"},
@@ -546,6 +548,55 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 			if err := validate(f.schema, b); err == nil {
 				t.Errorf("%s: the target with %s is accepted", f.file, r.name)
 			}
+		}
+	}
+}
+
+// TestARunCredentialHasTheResourcesOfItsPurposeAndAccess pins how many resources a run
+// credential call has: 1 to 64 for the purpose harness, 1 to 500 for the purpose work with
+// the access read, and exactly 1 for the purpose work with the access write. A count past
+// a bound is refused for maxItems alone, and none is refused for minItems alone.
+func TestARunCredentialHasTheResourcesOfItsPurposeAndAccess(t *testing.T) {
+	schema := compile(t, "run-credential.schema.json")
+	call := func(purpose, access string, n int) map[string]any {
+		doc := map[string]any{"version": json.Number("1"), "time": "2026-10-15T12:00:00Z", "access": access, "purpose": purpose}
+		if purpose == "work" {
+			doc["connection_id"] = "ac_0123456789abcdef"
+		} else {
+			doc["grant_ref"] = "G_1"
+		}
+		resources := []any{}
+		for i := 1; i <= n; i++ {
+			resources = append(resources, fmt.Sprintf("C_%d", 2000+i))
+		}
+		doc["resources"] = resources
+		return doc
+	}
+	for _, c := range []struct {
+		purpose, access string
+		n               int
+		want            string
+	}{
+		{"harness", "read", 0, "/resources minItems"},
+		{"harness", "read", 1, ""},
+		{"harness", "read", 64, ""},
+		{"harness", "read", 65, "/resources maxItems"},
+		{"work", "read", 0, "/resources minItems"},
+		{"work", "read", 1, ""},
+		{"work", "read", 2, ""},
+		{"work", "read", 500, ""},
+		{"work", "read", 501, "/resources maxItems"},
+		{"work", "write", 0, "/resources minItems"},
+		{"work", "write", 1, ""},
+		{"work", "write", 2, "/resources maxItems"},
+		{"work", "write", 500, "/resources maxItems"},
+	} {
+		got := ""
+		if v, ok := schema.Validate(call(c.purpose, c.access, c.n)).(*jsonschema.ValidationError); ok {
+			got = strings.Join(leaves(v), "; ")
+		}
+		if got != c.want {
+			t.Errorf("a %s call with the access %s and %d resources is refused for %q, want %q", c.purpose, c.access, c.n, got, c.want)
 		}
 	}
 }

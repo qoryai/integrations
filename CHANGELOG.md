@@ -65,6 +65,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
   without `destinations` fails the schema. `$defs/destination` in
   `definitions.schema.json` defines an entry. A document that an adapter writes keeps
   `target` with no `id`. In Go, `Destination` has `ID` and `Target`.
+- Accept 1 to 500 `resources` in a `run-credential` call with `purpose` `work` and `access`
+  `read`. Before this release a work call had exactly 1, and an adapter refused more with
+  `400`. A work call with `access` `write` still has exactly 1, and a `harness` call has 1
+  to 64. All resources of a call are collections of one connection, the `connection_id` of
+  the call. The answer is one credential, with one `apply` item for each host. Its `paths`
+  list the path of each resource, and Forager sets no maximum for them.
 - Read `full_suite` from `type_settings`, in the run documents and in the answer to the
   next-session call. `full_suite` at the top level is no member of either, so a reader
   ignores it, and the closed copy that `CompileRunClosed` builds for a writer's test
