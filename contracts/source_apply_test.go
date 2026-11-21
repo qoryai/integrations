@@ -126,7 +126,7 @@ func TestAPathTemplateAndItsFilledFormFollowForagersPathGrammar(t *testing.T) {
 			}
 			continue
 		}
-		for _, target := range []string{"acme", "acme/widgets", "acme/widgets.v2", "acme/reports", "a-b_c~d", "acme/.hidden", "acme/a%20b"} {
+		for _, target := range []string{"acme", "acme/widgets", "acme/widgets.v2", "acme/reports", "a-b_c~d", "acme/.hidden", "acme/a-b"} {
 			filled := strings.Replace(tc.template, "{target.path}", target, 1)
 			if !foragerCredentialPath.MatchString(filled) {
 				t.Errorf("the template %q filled with %q is %q, which is not in the grammar of credential_paths of Forager", tc.template, target, filled)
@@ -199,16 +199,16 @@ type exploreItem struct {
 }
 
 // fillExploreCall makes the items of the run configuration for a run with no target, as
-// $defs.apply of description.schema.json says. Each template of an item is filled for
-// every resource in the order of the call's resources, one template after another. The
-// paths of the items that share host, scheme, username and header are a group, one for
-// each host of an item. Before the filled paths are split into items of at most 32 paths,
-// a path is dropped when another path of its group covers it, or an equal path comes
-// earlier in the group, the earlier item first and then the earlier path of one item. A
-// path is dropped only when that holds on every host of its item. A path that holds it on
-// some hosts and not on others refuses the call, and so does an equal, covered or
-// overlapping path between two groups of one host. Forager's policy package decides what
-// covers and what overlaps. An item whose paths are all dropped has no chunk.
+// $defs.apply of description.schema.json says. It fills each template of an item for every
+// resource in the order of the call's resources, one template after another. The paths of
+// the items that share host, scheme, username and header are a group, one for each host of
+// an item. Before the split into items of at most 32 paths, a path is dropped when another
+// path of its group covers it. A path is dropped too when an equal path comes earlier: the
+// earlier item first, then the earlier path of one item. A path is dropped only when that
+// holds on every host of its item. A path that holds it on some hosts and not on others
+// refuses the call. An equal, covered or overlapping path between two groups of one host
+// refuses the call too. Forager's policy package decides what covers and what overlaps. An
+// item whose paths are all dropped has no chunk.
 func fillExploreCall(items []applyItem, resources []string) (out []exploreItem, refused bool) {
 	const chunk = 32
 	type entry struct {
@@ -325,11 +325,11 @@ func fillers(count int, at map[int]string) []string {
 }
 
 // TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem pins the rule of $defs.apply about
-// the filled paths of a call: a path that another path of its group covers on every host
-// of its item is dropped before the split into items of at most 32 paths, a path covered
-// on some hosts only refuses the call, of two equal paths the first of the description
-// stays, and an equal, covered or overlapping path between two groups of one host is
-// refused. A group is the items that share host, scheme, username and header on a host.
+// the filled paths of a call. A path is dropped before the split into items of at most 32
+// paths when a path of its group covers it on every host of its item. A path covered on
+// some hosts only refuses the call, and of two equal paths the first of the description
+// stays. An equal, covered or overlapping path between two groups of one host is refused.
+// A group is the items that share host, scheme, username and header on a host.
 func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 	const a, b = "code.example.com", "other.example.com"
 	bearer := func(templates ...string) applyItem {
@@ -394,6 +394,9 @@ func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 		{name: "an item covered on one of its two hosts is refused", items: []applyItem{bearerOn([]string{a, b}, "/{target.path}/issues"), bearer("/{target.path}/*")}, resources: []string{"group"}, refused: true},
 		{name: "an item covered on both of its hosts is dropped", items: []applyItem{bearerOn([]string{a, b}, "/{target.path}/issues"), bearerOn([]string{a, b}, "/{target.path}/*")}, resources: []string{"group"},
 			want: []exploreItem{{from: 1, hosts: []string{a, b}, scheme: "bearer", paths: []string{"/group/*"}}}},
+		{name: "X on hosts a and b with /x/issues, Y on host a with /x/*, Z on host b with /x/*: X is dropped", items: []applyItem{bearerOn([]string{a, b}, "/x/issues"), bearer("/x/*"), other("/x/*")}, resources: []string{"r"},
+			want: []exploreItem{one(1, "bearer", "/x/*"), {from: 2, hosts: []string{b}, scheme: "bearer", paths: []string{"/x/*"}}}},
+		{name: "Y on host a with /x, then X on hosts a and b with /x: the call is refused", items: []applyItem{bearer("/x"), bearerOn([]string{a, b}, "/x")}, resources: []string{"r"}, refused: true},
 		{name: "an equal path on one of two hosts is refused", items: []applyItem{bearer("/user"), bearerOn([]string{a, b}, "/user")}, resources: []string{"x"}, refused: true},
 		{name: "of an equal path in two items the earlier item keeps it on two hosts", items: []applyItem{bearerOn([]string{a, b}, "/user"), bearerOn([]string{a, b}, "/user")}, resources: []string{"x"},
 			want: []exploreItem{{from: 0, hosts: []string{a, b}, scheme: "bearer", paths: []string{"/user"}}}},
@@ -429,8 +432,8 @@ func TestAnExploreCallDropsCoveredPathsBeforeItSplitsThem(t *testing.T) {
 }
 
 // TestPathsWithNoSegmentBraceOverlapOnlyWhenOneCoversTheOther pins why a call is never
-// refused for paths that overlap and neither covers the other: no target path and no
-// template has a { or }, so no filled path has a {} segment, and for paths with none
+// refused for paths that overlap and neither covers the other. No target path and no
+// template has a { or }, so no filled path has a {} segment. For paths with none,
 // Forager's OverlapPaths agrees with CoversPath in either direction.
 func TestPathsWithNoSegmentBraceOverlapOnlyWhenOneCoversTheOther(t *testing.T) {
 	paths := []string{"/", "/*", "/a", "/a/*", "/a/b", "/a/b/*", "/a/bc", "/a/b*", "/b/*", "/a/b/c", "/ab/*"}
@@ -444,7 +447,7 @@ func TestPathsWithNoSegmentBraceOverlapOnlyWhenOneCoversTheOther(t *testing.T) {
 }
 
 // TestAnAddressPathHasNoBrace pins $defs.address_path of definitions.schema.json: a { or
-// } is refused anywhere in the path, so a filled path template has no segment {} that
+// } is refused anywhere in the path. So a filled path template has no segment {} that
 // Forager reads as a wildcard, and no { or } that Forager refuses.
 func TestAnAddressPathHasNoBrace(t *testing.T) {
 	schema := compile(t, "definitions.schema.json#/$defs/address_path")
@@ -467,11 +470,11 @@ func TestAnAddressPathHasNoBrace(t *testing.T) {
 	}
 }
 
-// refusedTargetPath models the refusal list of $defs/apply.paths in description.schema.json:
-// the control plane refuses a target path with a space character, {, }, .., //, *, ? or
-// #, with a segment ., a backslash or a %, that starts or ends in /, or with a segment
-// that starts with ; or .;. A space character is a character below U+0021, U+007F,
-// U+FEFF, or a Unicode White_Space character.
+// refusedTargetPath models the refusal list of $defs/apply.paths in description.schema.json.
+// The control plane refuses a target path with a space character, {, }, .., //, *, ? or #,
+// a segment ., a backslash or a %. It refuses a target path that starts or ends in /, and
+// one with a segment that starts with ; or .;. A space character is a character below
+// U+0021, U+007F, U+FEFF, or a Unicode White_Space character.
 func refusedTargetPath(p string) bool {
 	if strings.ContainsAny(p, "{}*?#\\%") || strings.Contains(p, "..") || strings.Contains(p, "//") || strings.HasPrefix(p, "/") || strings.HasSuffix(p, "/") {
 		return true
@@ -484,12 +487,12 @@ func refusedTargetPath(p string) bool {
 	return strings.ContainsFunc(p, func(r rune) bool { return r < 0x21 || r == 0x7f || r == 0xfeff || unicode.IsSpace(r) })
 }
 
-// TestATargetPathWithAnUnclearPartIsRefused pins the refusal list of $defs/apply.paths:
-// each of acme/./x, acme\x, acme/%2f, a/b/, /acme, ;x and .;x is refused, a;b is not, and
-// for each target path that the list passes, from a set built of segments with the parts
-// that Forager's UnclearPath refuses, no template of the set fills it into a path that
-// UnclearPath refuses, so the list is not narrower than UnclearPath. An empty target path
-// is left out: address_path refuses it.
+// TestATargetPathWithAnUnclearPartIsRefused pins the refusal list of $defs/apply.paths.
+// Each of acme/./x, acme\\x, acme/%2f, a/b/, /acme, ;x and .;x is refused, and a;b is not.
+// A set of target paths is built of segments with the parts that Forager's UnclearPath
+// refuses. For each of them that the list passes, no template of the set fills it into a
+// path that UnclearPath refuses. So the list is not narrower than UnclearPath for that
+// set. The empty target path is left out, since address_path refuses it.
 func TestATargetPathWithAnUnclearPartIsRefused(t *testing.T) {
 	for _, tc := range []struct {
 		path    string
@@ -502,6 +505,8 @@ func TestATargetPathWithAnUnclearPartIsRefused(t *testing.T) {
 		{"/acme", true},
 		{";x", true},
 		{".;x", true},
+		{"..;x", true},
+		{"a/..;x", true},
 		{"a/;x", true},
 		{"a/.;x/b", true},
 		{".", true},
