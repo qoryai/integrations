@@ -102,8 +102,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   starts with `;` or `.;` too. Before this release it refused only `..`, `//`, `*`, `?`,
   `#` and a space character. Forager's `UnclearPath` refuses a filled path with a `.`
   segment, a backslash, `//`, or `%2f`, `%5c`, `%2e` or `%25` in any case. It also
-  refuses a segment that is not empty and whose part before the first `;` or `%3b` is
-  empty, `.` or `..`. The refusals of `..` and `%` cover `..;x` and `%3b`.
+  refuses a segment that is not empty when its part before the first `;` or `%3b`, in
+  any case, is empty. It refuses the segment too when that part is a single dot or two
+  dots. The refusals of `..` and `%` cover `..;x` and `%3b`.
 - Handle the refusal `409 connection_held` of a grant report, and the reason
   `connection_held` of a connect return. The control plane refuses a report with it when
   the connection has a grant that has not ended and the report has another `grant_ref`. A
