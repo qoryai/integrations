@@ -338,7 +338,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   - `conformance.Description` and `integration-conformance` validate a description
     against the closed copy.
   - `fixtures/closed` contains the documents that the schema accepts and the closed copy
-    refuses: 139 documents in all contracts, of which 95 moved there from
+    refuses: 142 documents in all contracts, of which 95 moved there from
     `fixtures/invalid`. These fixtures moved there because a retired or secret member
     was a refusal until this release: `claim-answer-run-id`, `release-with-retry`,
     `grant-end-with-pass-nonce`, `read-public-with-grant-ref`, `refusal-supported-member`,
