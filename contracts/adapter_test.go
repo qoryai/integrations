@@ -603,7 +603,7 @@ func TestARunCredentialHasTheResourcesOfItsPurposeAndAccess(t *testing.T) {
 
 // TestConnectionHeldIsListedBesideGrantTaken pins that connection_held is a reason of the
 // connect return, after grant_taken, and that the descriptions of the grant report, of its
-// refusals and of the connect return say it, with the fix for the person. A reason that
+// refusals and of the connect return mention it, with the fix for the person. A reason that
 // the connect return does not list is refused.
 func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
 	const fix = "Disconnect the account that is connected first, then connect again. A connection has one account."
@@ -629,7 +629,7 @@ func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
 		{"grant.schema.json", description("grant.schema.json")},
 	} {
 		if !strings.Contains(c.text, "connection_held") || !strings.Contains(c.text, fix) {
-			t.Errorf("%s: the description does not say connection_held with %q", c.name, fix)
+			t.Errorf("%s: the description does not mention connection_held with %q", c.name, fix)
 		}
 	}
 	for _, c := range []struct{ schema, want string }{
@@ -637,7 +637,7 @@ func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
 		{"refusal.schema.json", "409 connection_held, a grant report whose grant_ref differs"},
 	} {
 		if !strings.Contains(description(c.schema), c.want) {
-			t.Errorf("%s: the description does not say %q", c.schema, c.want)
+			t.Errorf("%s: the description does not contain %q", c.schema, c.want)
 		}
 	}
 	schema := compile(t, "connect-return.schema.json")
