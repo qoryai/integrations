@@ -318,7 +318,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"run-credential-purpose-other.json":                                     {"run-credential", "/purpose enum"},
 		"run-credential-without-resources.json":                                 {"run-credential", "/resources minItems"},
 		"run-credential-work-write-two-resources.json":                          {"run-credential", "/resources maxItems"},
-		"run-credential-work-read-501-resources.json":                           {"run-credential", "/resources maxItems"},
+		"run-credential-work-read-251-resources.json":                           {"run-credential", "/resources maxItems"},
 		"run-credential-harness-65-resources.json":                              {"run-credential", "/resources maxItems"},
 		"run-credential-without-purpose.json":                                   {"run-credential", "/ required purpose"},
 		"run-credential-work-with-grant-ref.json":                               {"run-credential", "/ "},
@@ -554,7 +554,7 @@ func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
 }
 
 // TestARunCredentialHasTheResourcesOfItsPurposeAndAccess pins how many resources a run
-// credential call has: 1 to 64 for the purpose harness, 1 to 500 for the purpose work with
+// credential call has: 1 to 64 for the purpose harness, 1 to 250 for the purpose work with
 // the access read, and exactly 1 for the purpose work with the access write. A count past
 // a bound is refused for maxItems alone, and none is refused for minItems alone.
 func TestARunCredentialHasTheResourcesOfItsPurposeAndAccess(t *testing.T) {
@@ -585,12 +585,12 @@ func TestARunCredentialHasTheResourcesOfItsPurposeAndAccess(t *testing.T) {
 		{"work", "read", 0, "/resources minItems"},
 		{"work", "read", 1, ""},
 		{"work", "read", 2, ""},
-		{"work", "read", 500, ""},
-		{"work", "read", 501, "/resources maxItems"},
+		{"work", "read", 250, ""},
+		{"work", "read", 251, "/resources maxItems"},
 		{"work", "write", 0, "/resources minItems"},
 		{"work", "write", 1, ""},
 		{"work", "write", 2, "/resources maxItems"},
-		{"work", "write", 500, "/resources maxItems"},
+		{"work", "write", 250, "/resources maxItems"},
 	} {
 		got := ""
 		if v, ok := schema.Validate(call(c.purpose, c.access, c.n)).(*jsonschema.ValidationError); ok {

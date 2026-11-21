@@ -931,7 +931,7 @@ const RunCredentialTokenMaxBytes = 16384
 // of another connection. It never uses a grant that it keeps only while it sends that
 // grant's report again. Resources has 1 to 64 resource refs for Purpose "harness", each
 // the ResourceRef of a [Resolved], as the adapter answered it, never its PublicRef. For
-// Purpose "work", it has 1 to 500 refs with Access "read" and exactly one with Access
+// Purpose "work", it has 1 to 250 refs with Access "read" and exactly one with Access
 // "write". Each is the ref of a collection, as the adapter listed it, which for a target
 // from an item is the item's collection. The answer has at most 512 paths. An adapter
 // covers N resources only when N × p + c ≤ 512. Here p is the number of path entries

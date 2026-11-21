@@ -57,7 +57,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `Documents.ReadTargets` is a `[]Target`, and `MaxReadTargets` is 20. The folder
   `fixtures/check` of the run contract has run documents that the schema accepts and
   `Documents.Check` refuses.
-- Write and read `destinations` in the explore inputs. It is required, and it has 1 to 500
+- Write and read `destinations` in the explore inputs. It is required, and it has 1 to 250
   entries. Each entry is a destination: `id`, the control plane's id of a place, and
   `target`, the place as the adapter wrote it. An `id` is `tg_` and 16 characters, each a
   digit or a lower-case letter other than `i`, `l`, `o` and `u`. `target` of the inputs
@@ -67,7 +67,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   fails the schema. `$defs/destination` in `definitions.schema.json` defines an entry. A
   document that an adapter writes keeps `target` with no `id`. In Go, `Destination` has
   `ID` and `Target`.
-- Accept 1 to 500 `resources` in a `run-credential` call with `purpose` `work` and
+- Accept 1 to 250 `resources` in a `run-credential` call with `purpose` `work` and
   `access` `read`. Before this release a work call had exactly 1, and an adapter refused
   more with `400`. A work call with `access` `write` still has exactly 1, and a `harness`
   call has 1 to 64. All resources of a call are collections of one connection, the

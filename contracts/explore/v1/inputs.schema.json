@@ -173,10 +173,10 @@
       "minimum": 0
     },
     "destinations": {
-      "description": "The places that the run's workspace works on, 1 to 500 of them. Each is a destination, https://qory.dev/contracts/integration/v1/definitions.schema.json, $defs.destination: id, the control plane's id of the place, and target, the place as the adapter wrote it. A run that reads the places of its workspace, such as an Explore run, takes them from this list. No two entries are equal, and no two have the same id. The schema cannot check that no two entries have the same id: Documents.Check of the run documents does. To keep the object within its bound, the control plane drops the oldest comments and never a destination.",
+      "description": "The places that the run's workspace works on, 1 to 250 of them. Each is a destination, https://qory.dev/contracts/integration/v1/definitions.schema.json, $defs.destination: id, the control plane's id of the place, and target, the place as the adapter wrote it. A run that reads the places of its workspace, such as an Explore run, takes them from this list. No two entries are equal, and no two have the same id. The schema cannot check that no two entries have the same id: Documents.Check of the run documents does. To keep the object within its bound, the control plane drops the oldest comments and never a destination. The read access of the run covers every destination of the workspace from the start and does not grow during the session.",
       "type": "array",
       "minItems": 1,
-      "maxItems": 500,
+      "maxItems": 250,
       "uniqueItems": true,
       "items": {
         "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/destination"
