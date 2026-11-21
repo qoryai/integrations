@@ -8,9 +8,8 @@ import (
 // CheckLinks reports the first rule of links in description.schema.json that a
 // description breaks and that the schema does not express: the host of the template of
 // an entry is the system of the entry, and no two entries have the same system. The
-// host is the whole text between the https:// of the template and its first /, a port
-// included, so a template with a port never has the host of a system, which has no
-// colon. doc is the description as a schema validates it, after the schema accepts it.
+// host is the whole text between the https:// of the template and its first /. The
+// schema refuses a port, so the host has none. doc is the description as a schema validates it, after the schema accepts it.
 // A description with no links keeps both rules. It skips an entry whose system or
 // template is no string, which the schema refuses.
 func CheckLinks(doc any) error {

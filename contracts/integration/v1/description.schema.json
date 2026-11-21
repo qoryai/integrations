@@ -386,11 +386,11 @@
       }
     },
     "link_template": {
-      "description": "At most 2048 characters (code points). It starts with https://, then a host of lower-case letters, digits, hyphens and dots with an optional port, then a path that starts with /. The host has no placeholder. The path is on one line, and its only braces are the placeholders {collection_path} and {path}. {collection_path} is the address.path of the target that source-collections.schema.json lists for the collection of the reference. {path} is the address.path of the reference.",
+      "description": "At most 2048 characters (code points). It starts with https://, then a host of lower-case letters, digits, hyphens and dots, then a path that starts with /. The host has no placeholder. The path is on one line, and its only braces are the placeholders {collection_path} and {path}. It has no ? and no #, so a value reaches only the path. {collection_path} is the address.path of the target that source-collections.schema.json lists for the collection of the reference. {path} is the address.path of the reference.",
       "type": "string",
       "maxLength": 2048,
       "not": {"pattern": "\\n"},
-      "pattern": "^https://[a-z0-9.-]+(?::[0-9]{1,5})?/(?:[^\\{\\}\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])*(?:\\{(?:collection_path|path)\\}(?:[^\\{\\}\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])*)*$"
+      "pattern": "^https://[a-z0-9.-]+/(?:[^\\{\\}\\?#\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])*(?:\\{(?:collection_path|path)\\}(?:[^\\{\\}\\?#\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])*)*$"
     },
     "guide_part": {
       "description": "The help for one step of the source role's guide: before, an optional line shown above the steps; steps, 1 to 10 lines, each one step a person takes, in order; and after, an optional line shown below the steps. Each value is a prose line ($defs.line).",

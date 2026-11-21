@@ -57,9 +57,8 @@ func TestTheSchemaTakesTheEdgesOfLinks(t *testing.T) {
 		"a template of 2048":              host + strings.Repeat("a", 2048-len(host)),
 		"a path of one slash":             host,
 		"no placeholder":                  host + "commits",
-		"both placeholders":               host + "{collection_path}/commit/{path}?x={path}#{collection_path}",
+		"both placeholders":               host + "{collection_path}/commit/{path}",
 		"adjacent placeholders":           host + "{collection_path}{path}",
-		"a port":                          "https://code.example.com:8443/{path}",
 		"a host of one label":             "https://intranet/{path}",
 		"a host with a hyphen and digits": "https://a-1.b2.example.com/{path}",
 		"U+200D in the path":              host + "a\u200db",
@@ -78,6 +77,10 @@ func TestTheSchemaTakesTheEdgesOfLinks(t *testing.T) {
 		"no path":                        "https://code.example.com",
 		"an upper-case host":             "https://Code.example.com/{path}",
 		"user information":               "https://user@code.example.com/{path}",
+		"a port":                         "https://code.example.com:8443/{path}",
+		"a query":                        host + "x?y={path}",
+		"a fragment":                     host + "x#{path}",
+		"a final question mark":          host + "{path}?",
 		"an empty port":                  "https://code.example.com:/{path}",
 		"a port of 6 digits":             "https://code.example.com:123456/{path}",
 		"{path} as the host":             "https://{path}",
@@ -132,9 +135,9 @@ func TestALinkTemplateRefusesAFinalLineFeedBesideItsPattern(t *testing.T) {
 
 // TestCheckLinksRefusesWhatTheSchemaCannotSay pins that CheckLinks refuses two entries
 // with the same system and an entry whose template has another host than its system,
-// the port included, which the schema accepts, with the message that states the fix;
-// and that it accepts distinct systems with their own hosts, no links, and every
-// description under fixtures.
+// which the schema accepts, with the message that states the fix; and that it accepts
+// distinct systems with the host of each template equal to its system, no links, and
+// every description under fixtures.
 func TestCheckLinksRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	schema := compile(t, "description.schema.json")
 	for _, tc := range []struct{ name, links, want string }{
@@ -144,8 +147,6 @@ func TestCheckLinksRefusesWhatTheSchemaCannotSay(t *testing.T) {
 			`List each system of links once: the entries 0 and 2 both have the system "code.example.com".`},
 		{"another host", `[{"system": "code.example.com", "template": "https://evil.example.com/{path}"}]`,
 			`Use the system "code.example.com" as the host of the template of link 0, not "evil.example.com".`},
-		{"a port", `[{"system": "desk.example.com", "template": "https://desk.example.com/{path}"}, {"system": "code.example.com", "template": "https://code.example.com:8443/{path}"}]`,
-			`Use the system "code.example.com" as the host of the template of link 1, not "code.example.com:8443".`},
 		{"a longer host", `[{"system": "code.example.com", "template": "https://code.example.com.evil.example/{path}"}]`,
 			`Use the system "code.example.com" as the host of the template of link 0, not "code.example.com.evil.example".`},
 		{"a shorter host", `[{"system": "code.example.com", "template": "https://example.com/{path}"}]`,
