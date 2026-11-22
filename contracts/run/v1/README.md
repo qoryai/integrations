@@ -115,9 +115,11 @@ their ids. qory reads them with `GET /v1/runs/<id>/findings` and writes them wit
 - A finding that a person closed with `dismissed_by_person` or `accepted` cannot be
   reopened through the run API. A run that repeats it adds `repeated_after_person_close`,
   and the finding stays closed. `sent_back` keeps a finding open.
-- The base of a target is the version that the first run of the work item on the target
-  started from. Qory Apiary stores it from the first POST that has it, and refuses a
-  different base later with `base_changed`.
+- A take in is one start of the work item in Qory Apiary. Taking the work item in again
+  starts a new take in, and `findings` and `bases` are those of the current one.
+- The base of a target is the version that the first run of the take in on the target
+  started from. Qory Apiary stores it once for each take in and each target, from the
+  first POST that has it, and refuses a different base later with `base_changed`.
 
 `POST` answers with `findings-post-answer.schema.json`. A stage with no open
 blocking finding has the count 0 in `open_blocking`, or is not listed. qory sends a

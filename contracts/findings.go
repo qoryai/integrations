@@ -7,7 +7,8 @@ import (
 
 // Findings is the 200 answer to GET /v1/runs/<id>/findings, run/v1
 // findings.schema.json: the findings of the run's work item on the run's targets, open
-// ones first, each with its events, and the base of each target. A finding is one
+// ones first, each with its events, and the base of each target, as of the current take in
+// of the work item (see [FindingBase]). A finding is one
 // problem that a reviewer, a check, a criterion, a scenario or a hook raised about a
 // target. Qory Apiary keeps the findings and mints their ids. A reader ignores a member
 // that Findings does not have, unless MustUnderstand lists it.
@@ -21,8 +22,10 @@ type Findings struct {
 	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
-// FindingBase is the base of a target: the version that the first run of the work item on
-// the target started from. Qory Apiary stores it once and refuses a different one later.
+// FindingBase is the base of a target: the version that the first run of a take in of the
+// work item on the target started from. A take in is one start of the work item in Qory
+// Apiary, and taking the work item in again starts a new take in. Qory Apiary stores the
+// base once for each take in and each target, and refuses a different one later.
 type FindingBase struct {
 	Target Target `json:"target,case:strict"`
 	// Base follows the grammar of [Documents.TargetVersion].
@@ -107,7 +110,7 @@ type FindingActor struct {
 // is [FindingsPostAnswer]. Qory Apiary refuses a request with a [FindingsRefusal].
 type FindingsPost struct {
 	// Bases are the bases of the targets that the events concern. Qory Apiary stores a
-	// base once for the work item and the target, and refuses a different one later with
+	// base once for each take in of the work item and each target, and refuses a different one later with
 	// the code base_changed. At most 20.
 	Bases []FindingBase `json:"bases,omitempty,case:strict"`
 	// Events are 1 to 100.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/run/v1/findings.schema.json",
   "title": "Findings",
-  "description": "The body of the 200 answer to GET /v1/runs/<id>/findings: the findings of the run's work item on the run's targets, open ones first, each with its events, and the base of each target. A finding is one problem that a reviewer, a check, a criterion, a scenario or a hook raised about a target of the work item. Qory Apiary keeps the findings and mints their ids. An event is one line of a finding's history: the raise, a repeat, a reply, a close, or the action of a person. Events are only added, never changed. A finding that a person closed stays closed: a run that repeats it adds the event repeated_after_person_close. bases has one entry for each target whose base Qory Apiary has stored: the version that the first run of the work item on the target started from. A reader ignores a member that this schema does not define, unless must_understand lists it. findings-post.schema.json is the body of the request that writes findings, and findings-refusal.schema.json is the body of a refusal.",
+  "description": "The body of the 200 answer to GET /v1/runs/<id>/findings: the findings of the run's work item on the run's targets, open ones first, each with its events, and the base of each target. The findings and the bases are those of the current take in of the work item: a take in is one start of the work item in Qory Apiary, and taking the work item in again starts a new take in. A finding is one problem that a reviewer, a check, a criterion, a scenario or a hook raised about a target of the work item. Qory Apiary keeps the findings and mints their ids. An event is one line of a finding's history: the raise, a repeat, a reply, a close, or the action of a person. Events are only added, never changed. A finding that a person closed stays closed: a run that repeats it adds the event repeated_after_person_close. bases has one entry for each target whose base Qory Apiary has stored: the version that the first run of the take in on the target started from. A reader ignores a member that this schema does not define, unless must_understand lists it. findings-post.schema.json is the body of the request that writes findings, and findings-refusal.schema.json is the body of a refusal.",
   "type": "object",
   "required": [
     "bases",
@@ -10,7 +10,7 @@
   ],
   "properties": {
     "bases": {
-      "description": "The base of each target that has one, at most 20. A base is written once, by the first POST that has it for the work item and the target.",
+      "description": "The base of each target that has one, at most 20. A base is written once for each take in of the work item and each target, by the first POST that has it.",
       "type": "array",
       "maxItems": 20,
       "uniqueItems": true,
@@ -68,7 +68,7 @@
       "$ref": "https://qory.dev/contracts/integration/v1/definitions.schema.json#/$defs/text"
     },
     "base_entry": {
-      "description": "The base of one target: target, and base, the version that the first run of the work item on the target started from, in the grammar of target_version in documents.schema.json.",
+      "description": "The base of one target: target, and base, the version that the first run of the take in on the target started from, in the grammar of target_version in documents.schema.json.",
       "type": "object",
       "required": [
         "target",

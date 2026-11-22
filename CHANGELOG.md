@@ -429,7 +429,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   closed: a run that repeats it adds `repeated_after_person_close`. The body of
   `findings-post` is a batch of events (`raise`, `repeat`, `reply_fixed`,
   `reply_disputed`, `close_fixed` and `close_dismissed`), with `bases`, which Qory Apiary
-  stores once for a work item and a target and refuses to change with `base_changed`. The
+  stores once for each take in of the work item and each target, and refuses to change with `base_changed`. The
   answer has the id of each raise and the count of open blocking findings of each stage.
   Qory Apiary refuses a verdict `passed` with `open_blocking_findings`, 409, while an open
   blocking finding is owned by the stage; `stage` and `findings`, at most 50 ids, are in
