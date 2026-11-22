@@ -602,18 +602,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `forge_unreachable` (qory could not reach the forge), `history_rewritten` (the HEAD of
   the run's working folder does not descend from the commit that the run started from,
   so a push would not be a fast-forward), `run_api_failed` (a call from qory to the run
-  API failed) and `prebuild_failed` (a prebuild failed: its build, the pull of its base
-  image, or the push or verification of the image it built). A `reason` that is not in
+  API failed), `prebuild_failed` (a prebuild failed: its build, the pull of its base
+  image, or the push or verification of the image it built) and `next_session_failed`
+  (the next-session request after a session failed: Qory Apiary refused it or did not
+  answer). A `reason` that is not in
   the list passes the schema, as a newer qory may send a code that an older reader does
   not know. One of the end codes with a `state` other than `failed` fails, and so does a
   member the schema does not define, such as `message` or `action`. None of them is one
   of Forager's reserved reasons. In Go, `RunOutcome`, `EndCode` and a constant for each
   code are added, named `EndCode` and the code in camel case, such as
   `EndCodePushHeadChanged`.
-- The end code `next_session_failed` is added to `$defs/end_codes` of the run contract's
-  `outcome.schema.json`: the next-session request after a session failed, because Qory
-  Apiary refused it or did not answer. In Go, `EndCodeNextSessionFailed` is added. Like
-  the other end codes, it is valid only with `state` `failed`.
 - The run contract has the next-session call, for a run of several sessions on one
   machine. After each session that did not pause, qory sends a request,
   `next-session-request.schema.json`: `session`, Forager's number of the session that
