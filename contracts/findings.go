@@ -13,13 +13,27 @@ import (
 // target. Qory Apiary keeps the findings and mints their ids. A reader ignores a member
 // that Findings does not have, unless MustUnderstand lists it.
 type Findings struct {
-	// Bases has one entry for each target whose base Qory Apiary has stored, at most 20.
+	// Bases has one entry for each target whose base Qory Apiary has stored, at most 20. A
+	// target with no earlier version has no entry.
 	Bases []FindingBase `json:"bases,case:strict"`
 	// Findings are at most 500.
 	Findings []Finding `json:"findings,case:strict"`
 	// MustUnderstand lists members of the answer that the reader must understand, as
 	// [Documents.MustUnderstand] does for the documents.
 	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
+}
+
+// MarshalJSON writes f, with a nil Bases or Findings as the empty list, which the schema
+// accepts, in place of null, which it refuses.
+func (f Findings) MarshalJSON() ([]byte, error) {
+	type plain Findings
+	if f.Bases == nil {
+		f.Bases = []FindingBase{}
+	}
+	if f.Findings == nil {
+		f.Findings = []Finding{}
+	}
+	return json.Marshal(plain(f))
 }
 
 // FindingBase is the base of a target: the version that the first run of a take in of the
@@ -195,6 +209,19 @@ type FindingsPostAnswer struct {
 	// A stage that is not listed has none.
 	OpenBlocking   []FindingsOpenBlocking `json:"open_blocking,case:strict"`
 	MustUnderstand []string               `json:"must_understand,omitempty,case:strict"`
+}
+
+// MarshalJSON writes a, with a nil Created or OpenBlocking as the empty list, which the
+// schema accepts, in place of null, which it refuses.
+func (a FindingsPostAnswer) MarshalJSON() ([]byte, error) {
+	type plain FindingsPostAnswer
+	if a.Created == nil {
+		a.Created = []FindingCreated{}
+	}
+	if a.OpenBlocking == nil {
+		a.OpenBlocking = []FindingsOpenBlocking{}
+	}
+	return json.Marshal(plain(a))
 }
 
 // FindingCreated is the id that Qory Apiary minted for the raise with the Ref.
