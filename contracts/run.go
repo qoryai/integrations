@@ -207,7 +207,7 @@ type HarnessDocument struct {
 // stack or defines one. A section with Extends appends Modules to that stack, the base,
 // and takes the workflows of the base, so it has no Workflows. A section without Extends
 // defines a stack: it requires Modules, at least 1, and may have Workflows, in which the
-// stack declares the access level of each of its workflows. A section that defines a
+// stack declares the settings of each of its workflows. A section that defines a
 // stack, without Extends, takes no target: the machine composes it for the runtime of
 // the session: for session 1, RunSettings.Runtime; for a later session, the Runtime of
 // its [ModelChoice], or RunSettings.Runtime when that is empty. Either kind may
@@ -420,6 +420,13 @@ type HarnessWorkflow struct {
 	// workflow, "light", "balanced" or "thinking", and empty for none. The control plane
 	// resolves the model and effort from the tier.
 	Tier string `json:"tier,omitempty,case:strict"`
+	// ReviewGroup is the name of the group role whose members' reports a review session
+	// of the workflow needs, such as "reviewers", and empty for none.
+	ReviewGroup string `json:"review_group,omitempty,case:strict"`
+	// RunsLockedChecks is true for a Verify workflow: before the agent of a session of
+	// the workflow starts, qory runs the locked checks that a module declares. It is
+	// false when left out, and a false value is left out of the document.
+	RunsLockedChecks bool `json:"runs_locked_checks,omitempty,case:strict"`
 }
 
 // HarnessBase is a remote source of a stack, the extends of a [HarnessSection]: Git and

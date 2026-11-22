@@ -417,6 +417,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- `$defs/harness_workflow` of `documents.schema.json` has `review_group` and
+  `runs_locked_checks`, both optional, as a workflow has them in `qory-stack.yaml`.
+  `review_group` is the name of the group role whose members' reports a review session
+  of the workflow needs: one path segment with no slash, backslash, `@` or space, and no
+  leading dot. `runs_locked_checks` is a boolean: `true` marks a Verify workflow, whose
+  locked checks qory runs before the agent of a session starts, and `false` or left out
+  means qory runs none. Without the two members, a run that Qory Apiary starts loses
+  both keys of a workflow, because the schema and the Go type define neither. In Go,
+  `HarnessWorkflow` has `ReviewGroup` and `RunsLockedChecks`. A false `RunsLockedChecks`
+  is left out of the document.
 - `description.schema.json` has `links`, optional: 1 to 16 entries `{system, template}`, one for
   each system. A `template` is at most 2048 characters. It starts with `https://`, then
   the host, then a path. The host is the `system` of the entry, with no port. The path
