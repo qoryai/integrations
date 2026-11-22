@@ -104,10 +104,10 @@ type Documents struct {
 	// time limit. The limit of each later session is the TimeLimitMinutes of the
 	// [NextSessionAnswer]. It is set only for the step workflow.
 	TimeLimitMinutes int `json:"time_limit_minutes,omitempty,case:strict"`
-	// SharedRun is true when qory sends the next-session request after each session
-	// and runs the session that the answer sets. False and absent in the JSON are the
-	// same: qory sends no request, and the run has session 1 only. It is set only for
-	// the step workflow.
+	// SharedRun is true when qory sends the next-session request after each workflow
+	// session that did not pause and runs the session that the answer sets. False and
+	// absent in the JSON are the same: qory sends no request, and the run has session 1
+	// only. It is set only for the step workflow.
 	SharedRun bool `json:"shared_run,omitempty,case:strict"`
 	// TypeSettings is the type_settings object of session 1, the settings that belong to
 	// the type of the workspace. It is a JSON object whose members this contract does not
@@ -667,16 +667,19 @@ type ModelChoice struct {
 // control plane reads the newest verdict that the run stored after the previous step.
 // When the session's type_settings turn on a check that runs after the session, and it
 // fails, qory stores that check's result before it sends the request. So the control
-// plane reads the newest verdict after that result. qory sends it after each session that did not pause, for a
-// run whose documents have SharedRun. State and Reason follow the rules of the
-// session's dev.qory.session.exited that do not depend on its exit_code: a cancelled
-// session has a reason; the reasons timeout and interrupted are for a cancelled session
-// only; and the reason gateway_lost is for a failed session only. qory sends the request
-// through Forager's link, and the gateway forwards it to the control plane. A container
-// cannot send it.
+// plane reads the newest verdict after that result. qory sends it after each workflow
+// session that did not pause, for a run whose documents have SharedRun. State and Reason
+// follow the rules of the session's dev.qory.session.exited that do not depend on its
+// exit_code: a cancelled session has a reason; the reasons timeout and interrupted are
+// for a cancelled session only; and the reason gateway_lost is for a failed session
+// only. qory sends the request through Forager's link, and the gateway forwards it to
+// the control plane. A container cannot send it.
 type NextSessionRequest struct {
 	// Session is Forager's number of the session that ended, from 1, as in its
-	// dev.qory.session.exited.
+	// dev.qory.session.exited. qory can run an agent hook as a session between two
+	// workflow sessions. The hook session takes the next Forager session number, and qory
+	// sends no next-session request for it, so the `session` numbers in the requests can
+	// have gaps.
 	Session int `json:"session,case:strict"`
 	// State is how the session ended: "succeeded", "failed" or "cancelled". A session
 	// that paused has no request.
@@ -701,7 +704,8 @@ type NextSessionAnswer struct {
 	// Next is the kind of the answer: "session" or "end".
 	Next string `json:"next,case:strict"`
 	// Session is the control plane's sequence number of the session in the run, from 1.
-	// It is not Forager's number, which Forager assigns at the join.
+	// It is not Forager's number, which Forager assigns at the join. Forager's numbers of
+	// the sessions can have gaps; see Session of [NextSessionRequest].
 	Session int `json:"session,omitempty,case:strict"`
 	// Workflow is the workflow that the session starts, as [Documents.Workflow].
 	Workflow string `json:"workflow,omitempty,case:strict"`
