@@ -601,9 +601,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   the run expected, its start commit or its last push, or the branch is missing),
   `push_scope_refused` (a commit of the session changes a file that the session may not
   change: a file outside its plan's scope at the session's start, or any file outside
-  `.qory/` when the session has no plan, unless the module's check allows it),
-  `push_key_found` (a commit of the session adds a key or a value of the run's secrets,
-  or the commits are too large to verify, so qory pushed nothing),
+  `.qory/` when the session has no plan, unless the scope check that the harness module
+  declares in `scope_checks` allows it), `push_key_found` (a commit of the session adds
+  a key or a value of the run's secrets, or the commits are too large to verify, so qory
+  pushed nothing),
   `run_documents_invalid` (the run's documents, or the response to the run code, fail
   qory's validation), `harness_invalid` (the harness that the run composes cannot be
   used), `machine_setup_invalid` (the machine cannot run the step, or has no registry),
