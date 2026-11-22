@@ -3,6 +3,7 @@ package contracts_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"path"
 	"slices"
@@ -102,11 +103,16 @@ func TestEachFindingsRefusalCodeHasAFixture(t *testing.T) {
 }
 
 // TestTheOpenBlockingFindingsMessageHasTwoLines pins the message of the fixture of the code
-// open_blocking_findings: two lines, the second indented by two spaces.
+// open_blocking_findings: two lines, the second indented by two spaces, built from the
+// stage, the number of ids and the ids of the fixture.
 func TestTheOpenBlockingFindingsMessageHasTwoLines(t *testing.T) {
 	m := fixture(t, "findings-refusal/open-blocking-findings.json")
-	want := "Send changes-requested in place of passed: build has 2 open blocking findings.\n" +
-		"  The open blocking findings are F1, F2."
+	var ids []string
+	for _, id := range m["findings"].([]any) {
+		ids = append(ids, id.(string))
+	}
+	want := fmt.Sprintf("Send changes-requested in place of passed: %s has %d open blocking findings.\n"+
+		"  The open blocking findings are %s.", m["stage"], len(ids), strings.Join(ids, ", "))
 	if m["message"] != want {
 		t.Errorf("the message is %q, want %q", m["message"], want)
 	}

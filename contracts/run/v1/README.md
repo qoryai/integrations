@@ -135,7 +135,7 @@ cause. The `message` has two lines:
 
 ```
 Send changes-requested in place of passed: build has 2 open blocking findings.
-  The open blocking findings are F1, F2.
+  The open blocking findings are f1, f2.
 ```
 
 The schema cannot check that no two events of a batch have the same `ref`, that no two
