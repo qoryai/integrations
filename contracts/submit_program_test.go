@@ -665,7 +665,7 @@ func TestTheChangeKindsListIsInEachPlaceThatGatesTheEntry(t *testing.T) {
 		}
 	}
 	if d := texts["the targets flag"]; !strings.Contains(d, "watch") {
-		t.Error("the text of targets does not mention that it gates the watch entry")
+		t.Error("the text of targets does not mention the watch entry")
 	}
 }
 
