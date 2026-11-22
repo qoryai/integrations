@@ -73,10 +73,14 @@ func withReason(state string, reason any) map[string]any {
 // Forager, that no code is one of Forager's reserved reasons, which Forager drops from
 // a starter's outcome, and that no cause contains advice or an action: no word of
 // contact, support, asking or checking, and no instruction to the reader. The words
-// "output check", which are a check that qory runs, are the one exception.
+// "output check" and "scope check", and the key `scope_checks`, are the exceptions: each
+// is a check or its name, not an instruction.
 func TestTheEndCodesAreTheSchemasList(t *testing.T) {
 	_, entries := schemaEndCodes(t)
 	pattern := regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+	// namedChecks are the checks that a cause may contain, as whole words: "checks" and
+	// "checking" stay banned.
+	namedChecks := regexp.MustCompile(`\b(output|scope) check\b|\bscope_checks\b`)
 	for code, text := range entries {
 		if _, ok := endCodes[contracts.EndCode(code)]; !ok {
 			t.Errorf("the schema lists %q, and no Go constant has it", code)
@@ -90,8 +94,8 @@ func TestTheEndCodesAreTheSchemasList(t *testing.T) {
 		if strings.TrimSpace(text) == "" {
 			t.Errorf("the end code %q has no cause", code)
 		}
-		// The output check is a check that qory runs, not an instruction: it may stay.
-		lower := strings.ReplaceAll(strings.ToLower(text), "output check", "")
+		// The output check, the scope check and the key scope_checks are not instructions.
+		lower := namedChecks.ReplaceAllString(strings.ToLower(text), "")
 		for _, banned := range []string{"contact", "support", "ask ", "check", "should", "please", "try ", "make ", "raise ", "retry", "again"} {
 			if strings.Contains(lower, banned) {
 				t.Errorf("the cause of %q contains %q: %s", code, banned, text)

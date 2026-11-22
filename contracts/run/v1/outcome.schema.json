@@ -86,7 +86,7 @@
         },
         {
           "const": "push_scope_refused",
-          "description": "A commit of the session changes a file that the session may not change: a file outside its plan's scope at the session's start, or any file outside .qory/ when the session has no plan."
+          "description": "A commit of the session changes a file that the session may not change: a file outside its plan's scope at the session's start, or any file outside .qory/ when the session has no plan, unless the scope check that the harness module declares in `scope_checks` allows it."
         },
         {
           "const": "push_key_found",

@@ -827,7 +827,8 @@ const (
 	EndCodePushHeadChanged EndCode = "push_head_changed"
 	// EndCodePushScopeRefused: a commit of the session changes a file that the session
 	// may not change: a file outside its plan's scope at the session's start, or any
-	// file outside .qory/ when the session has no plan.
+	// file outside .qory/ when the session has no plan, unless the scope check that the
+	// harness module declares in `scope_checks` allows it.
 	EndCodePushScopeRefused EndCode = "push_scope_refused"
 	// EndCodePushKeyFound: a commit of the session adds a key or a value of the run's
 	// secrets, or the commits are too large to verify, so qory pushed nothing.
