@@ -341,6 +341,21 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"findings-stage-upper-case.json":                                     {"findings", "/findings/0/stage pattern"},
 		"findings-state-closed.json":                                         {"findings", "/findings/0/state enum"},
 		"findings-without-bases.json":                                        {"findings", "/ required bases"},
+		"findings-base-entry-without-base.json":                              {"findings", "/bases/0 required base"},
+		"findings-event-without-actor.json":                                  {"findings", "/findings/0/events/0 required actor"},
+		"findings-event-without-round.json":                                  {"findings", "/findings/0/events/0 required round"},
+		"findings-event-without-stage.json":                                  {"findings", "/findings/0/events/0 required stage"},
+		"findings-finding-without-disputed.json":                             {"findings", "/findings/0 required disputed"},
+		"findings-finding-without-place.json":                                {"findings", "/findings/0 required place"},
+		"findings-finding-without-proof.json":                                {"findings", "/findings/0 required proof"},
+		"findings-finding-without-source.json":                               {"findings", "/findings/0 required source"},
+		"findings-place-without-quote.json":                                  {"findings", "/findings/0/place required quote"},
+		"findings-source-without-name.json":                                  {"findings", "/findings/0/source required name"},
+		"findings-post-answer-created-without-id.json":                       {"findings-post-answer", "/created/0 required id"},
+		"findings-post-answer-created-without-ref.json":                      {"findings-post-answer", "/created/0 required ref"},
+		"findings-post-close-dismissed-without-reason.json":                  {"findings-post", "/events/0 required reason"},
+		"findings-post-close-fixed-without-reason.json":                      {"findings-post", "/events/0 required reason"},
+		"findings-post-reply-disputed-without-reason.json":                   {"findings-post", "/events/0 required reason"},
 	}
 	got := runFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {

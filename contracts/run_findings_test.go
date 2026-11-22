@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -147,10 +148,41 @@ func TestAnInvalidFindingsFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"findings-place-line-without-file.json": func(t *testing.T, m map[string]any) {
 			object(t, m, "findings", 0, "place")["file"] = "src/cart.go"
 		},
-		"findings-severity-high.json":    func(t *testing.T, m map[string]any) { object(t, m, "findings", 0)["severity"] = "blocking" },
-		"findings-stage-upper-case.json": func(t *testing.T, m map[string]any) { object(t, m, "findings", 0)["stage"] = "build" },
-		"findings-state-closed.json":     func(t *testing.T, m map[string]any) { object(t, m, "findings", 0)["state"] = "fixed" },
-		"findings-without-bases.json":    func(t *testing.T, m map[string]any) { m["bases"] = []any{} },
+		"findings-severity-high.json":           func(t *testing.T, m map[string]any) { object(t, m, "findings", 0)["severity"] = "blocking" },
+		"findings-stage-upper-case.json":        func(t *testing.T, m map[string]any) { object(t, m, "findings", 0)["stage"] = "build" },
+		"findings-state-closed.json":            func(t *testing.T, m map[string]any) { object(t, m, "findings", 0)["state"] = "fixed" },
+		"findings-base-entry-without-base.json": func(t *testing.T, m map[string]any) { object(t, m, "bases", 0)["base"] = version },
+		"findings-event-without-actor.json": func(t *testing.T, m map[string]any) {
+			object(t, m, "findings", 0, "events", 0)["actor"] = map[string]any{"kind": "qory", "name": "code-reviewer"}
+		},
+		"findings-event-without-round.json": func(t *testing.T, m map[string]any) {
+			object(t, m, "findings", 0, "events", 0)["round"] = json.Number("1")
+		},
+		"findings-event-without-stage.json": func(t *testing.T, m map[string]any) {
+			object(t, m, "findings", 0, "events", 0)["stage"] = "build"
+		},
+		"findings-finding-without-disputed.json": func(t *testing.T, m map[string]any) { object(t, m, "findings", 0)["disputed"] = false },
+		"findings-finding-without-place.json": func(t *testing.T, m map[string]any) {
+			object(t, m, "findings", 0)["place"] = map[string]any{"quote": "total = price"}
+		},
+		"findings-finding-without-proof.json": func(t *testing.T, m map[string]any) { object(t, m, "findings", 0)["proof"] = "A test fails." },
+		"findings-finding-without-source.json": func(t *testing.T, m map[string]any) {
+			object(t, m, "findings", 0)["source"] = map[string]any{"kind": "reviewer", "name": "code-reviewer"}
+		},
+		"findings-place-without-quote.json":             func(t *testing.T, m map[string]any) { object(t, m, "findings", 0, "place")["quote"] = "total = price" },
+		"findings-source-without-name.json":             func(t *testing.T, m map[string]any) { object(t, m, "findings", 0, "source")["name"] = "code-reviewer" },
+		"findings-post-answer-created-without-id.json":  func(t *testing.T, m map[string]any) { object(t, m, "created", 0)["id"] = "f5" },
+		"findings-post-answer-created-without-ref.json": func(t *testing.T, m map[string]any) { object(t, m, "created", 0)["ref"] = "r1" },
+		"findings-post-close-dismissed-without-reason.json": func(t *testing.T, m map[string]any) {
+			object(t, m, "events", 0)["reason"] = "The dispute is accepted."
+		},
+		"findings-post-close-fixed-without-reason.json": func(t *testing.T, m map[string]any) {
+			object(t, m, "events", 0)["reason"] = "The suite passes."
+		},
+		"findings-post-reply-disputed-without-reason.json": func(t *testing.T, m map[string]any) {
+			object(t, m, "events", 0)["reason"] = "The rule of the shop applies."
+		},
+		"findings-without-bases.json": func(t *testing.T, m map[string]any) { m["bases"] = []any{} },
 
 		"findings-post-answer-count-negative.json": func(t *testing.T, m map[string]any) {
 			object(t, m, "open_blocking", 0)["count"] = json.Number("0")
@@ -521,6 +553,109 @@ func TestTheFindingsTypesMarshalToTheirSchemas(t *testing.T) {
 		}
 		if err := closed.Validate(doc); err != nil {
 			t.Errorf("%s: %T writes %s, which the closed copy refuses: %v", c.schema, c.v, b, err)
+		}
+	}
+}
+
+// TestAnEventThatIsNotARaiseHasNoMemberOfAFinding pins that a repeat, a reply or a close
+// with any member from stage to proof, or with a ref, is refused, and is accepted without
+// it.
+func TestAnEventThatIsNotARaiseHasNoMemberOfAFinding(t *testing.T) {
+	schema := compileRun(t, runSchema("findings-post"))
+	raise := object(t, fixture(t, "findings-post/raise.json"), "events", 0)
+	for _, kind := range []string{"repeat", "reply_fixed", "reply_disputed", "close_fixed", "close_dismissed"} {
+		for _, member := range []string{"ref", "target", "stage", "source", "severity", "place", "point", "problem", "fix", "proof"} {
+			e := map[string]any{"kind": kind, "by": "code-reviewer", "id": "f1", "reason": "Because."}
+			if err := schema.Validate(map[string]any{"events": []any{e}}); err != nil {
+				t.Errorf("the kind %s without %s is refused: %v", kind, member, err)
+			}
+			if member == "ref" {
+				e[member] = "r1"
+			} else {
+				e[member] = raise[member]
+			}
+			if err := schema.Validate(map[string]any{"events": []any{e}}); err == nil {
+				t.Errorf("the kind %s with %s is accepted", kind, member)
+			}
+		}
+	}
+}
+
+// TestTheFindingsListsAreBounded pins the sizes of the lists that the findings schemas
+// bound, at the limit and one above it, and the rules of the refusal on stage and findings.
+func TestTheFindingsListsAreBounded(t *testing.T) {
+	list := func(n int, item func(i int) any) []any {
+		out := make([]any, n)
+		for i := range out {
+			out[i] = item(i)
+		}
+		return out
+	}
+	get := compileRun(t, runSchema("findings"))
+	one := object(t, fixture(t, "findings/fixed-by-hook.json"), "findings", 0)
+	for _, n := range []int{500, 501} {
+		doc := map[string]any{"bases": []any{}, "findings": list(n, func(int) any { return one })}
+		if err := get.Validate(doc); (err == nil) != (n == 500) {
+			t.Errorf("%d findings: accepted is %v", n, err == nil)
+		}
+	}
+	events := list(101, func(int) any { return one["events"].([]any)[0] })
+	for _, n := range []int{100, 101} {
+		f := map[string]any{}
+		for k, v := range one {
+			f[k] = v
+		}
+		f["events"] = events[:n]
+		doc := map[string]any{"bases": []any{}, "findings": []any{f}}
+		if err := get.Validate(doc); (err == nil) != (n == 100) {
+			t.Errorf("%d events of a finding: accepted is %v", n, err == nil)
+		}
+	}
+	post := compileRun(t, runSchema("findings-post"))
+	for _, n := range []int{100, 101} {
+		doc := map[string]any{"events": list(n, func(int) any { return map[string]any{"kind": "repeat", "by": "suite", "id": "f1"} })}
+		if err := post.Validate(doc); (err == nil) != (n == 100) {
+			t.Errorf("%d events of a post: accepted is %v", n, err == nil)
+		}
+	}
+	answer := compileRun(t, runSchema("findings-post-answer"))
+	for _, n := range []int{100, 101} {
+		doc := map[string]any{
+			"created":       list(n, func(i int) any { return map[string]any{"ref": "r1", "id": "f1"} }),
+			"open_blocking": list(n, func(i int) any { return map[string]any{"stage": "build", "count": json.Number("0")} }),
+		}
+		if err := answer.Validate(doc); (err == nil) != (n == 100) {
+			t.Errorf("%d created and open_blocking entries: accepted is %v", n, err == nil)
+		}
+	}
+	for _, n := range []string{"0", "1"} {
+		m := fixture(t, "findings/three-targets.json")
+		object(t, m, "findings", 0, "place")["line"] = json.Number(n)
+		if err := get.Validate(m); (err == nil) != (n == "1") {
+			t.Errorf("place.line %s: accepted is %v", n, err == nil)
+		}
+	}
+	refusal := compileRun(t, runSchema("findings-refusal"))
+	base := fixture(t, "findings-refusal/open-blocking-findings.json")
+	for _, n := range []int{0, 1, 50, 51} {
+		doc := map[string]any{}
+		for k, v := range base {
+			doc[k] = v
+		}
+		doc["findings"] = list(n, func(i int) any { return "f" + strconv.Itoa(i+1) })
+		if err := refusal.Validate(doc); (err == nil) != (n == 1 || n == 50) {
+			t.Errorf("%d findings in a refusal: accepted is %v", n, err == nil)
+		}
+	}
+	for _, member := range []string{"stage", "findings"} {
+		doc := map[string]any{"error": "base_changed", "from": "apiary", "stage": "build", "findings": []any{"f1"}}
+		for _, other := range []string{"stage", "findings"} {
+			if other != member {
+				delete(doc, other)
+			}
+		}
+		if err := refusal.Validate(doc); err == nil {
+			t.Errorf("a base_changed refusal with %s alone is accepted", member)
 		}
 	}
 }
