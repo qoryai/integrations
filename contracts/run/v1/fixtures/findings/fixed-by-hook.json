@@ -17,12 +17,14 @@
       },
       "severity": "non-blocking",
       "place": {
-        "quote": "go vet ./... reports a copied lock"
+        "quote": "func total(c Cart) float64",
+        "file": "src/cart.go",
+        "line": 40
       },
-      "point": "The linter hook reports a warning",
-      "problem": "The total is computed before the discount is applied.",
-      "fix": "Apply the discount first, then add the tax.",
-      "proof": "An order of 100.00 with a 10 percent discount shows a total of 110.00.",
+      "point": "go vet reports a copied lock",
+      "problem": "total takes a Cart by value, and Cart has a lock, which go vet reports.",
+      "fix": "Pass the Cart by pointer.",
+      "proof": "Run go vet ./... and read the copylocks warning at src/cart.go line 40.",
       "state": "fixed",
       "disputed": false,
       "events": [
@@ -52,7 +54,7 @@
             "kind": "qory",
             "name": "implement-changes"
           },
-          "reason": "Passed the value by pointer."
+          "reason": "Passed the Cart by pointer."
         },
         {
           "kind": "closed_fixed",

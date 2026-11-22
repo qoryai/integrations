@@ -3,7 +3,7 @@
     {
       "kind": "reply_disputed",
       "id": "f1",
-      "reason": "The tax base excludes the discount by the shop's rule."
+      "reason": "The shop's rule charges the tax on the full price."
     }
   ]
 }

@@ -45,9 +45,9 @@
         "version": "0123456789abcdef0123456789abcdef01234567"
       },
       "point": "The discount is applied after the tax",
-      "problem": "The total is computed before the discount is applied.",
-      "fix": "Apply the discount first, then add the tax.",
-      "proof": "An order of 100.00 with a 10 percent discount shows a total of 110.00."
+      "problem": "total adds the tax before it subtracts the discount, so the tax is charged on the full price.",
+      "fix": "Subtract the discount first, then add the tax on the reduced price.",
+      "proof": "An order of 100.00 with a 10.00 discount and 20 percent tax totals 110.00. It should total 108.00."
     },
     {
       "kind": "raise",
@@ -61,17 +61,17 @@
       },
       "stage": "build",
       "source": {
-        "kind": "check",
-        "name": "suite"
+        "kind": "reviewer",
+        "name": "copy-reviewer"
       },
       "severity": "non-blocking",
       "place": {
-        "quote": "Free shipping on orders over 50"
+        "quote": "Free shiping on orders over 50"
       },
-      "point": "The discount is applied after the tax",
-      "problem": "The total is computed before the discount is applied.",
-      "fix": "Apply the discount first, then add the tax.",
-      "proof": "An order of 100.00 with a 10 percent discount shows a total of 110.00."
+      "point": "The listing text has a typo",
+      "problem": "The listing writes shipping with one p.",
+      "fix": "Write shipping with two p.",
+      "proof": "The listing text reads Free shiping on orders over 50."
     }
   ]
 }

@@ -44,9 +44,9 @@
         "version": "0123456789abcdef0123456789abcdef01234567"
       },
       "point": "The discount is applied after the tax",
-      "problem": "The total is computed before the discount is applied.",
-      "fix": "Apply the discount first, then add the tax.",
-      "proof": "An order of 100.00 with a 10 percent discount shows a total of 110.00.",
+      "problem": "total adds the tax before it subtracts the discount, so the tax is charged on the full price.",
+      "fix": "Subtract the discount first, then add the tax on the reduced price.",
+      "proof": "An order of 100.00 with a 10.00 discount and 20 percent tax totals 110.00. It should total 108.00.",
       "state": "open",
       "disputed": true,
       "events": [
@@ -69,7 +69,7 @@
             "name": "implement-changes"
           },
           "version": "89abcdef0123456789abcdef0123456789abcdef",
-          "reason": "The tax base excludes the discount by the shop's rule."
+          "reason": "The shop's rule charges the tax on the full price."
         },
         {
           "kind": "sent_back",
@@ -102,9 +102,9 @@
         "line": 17
       },
       "point": "TestCartTotal fails",
-      "problem": "The total is computed before the discount is applied.",
-      "fix": "Apply the discount first, then add the tax.",
-      "proof": "An order of 100.00 with a 10 percent discount shows a total of 110.00.",
+      "problem": "TestCartTotal gets 110.00 where it wants 108.00.",
+      "fix": "Subtract the discount before the tax in total.",
+      "proof": "Run go test ./... and read the failure: TestCartTotal got 110.00, want 108.00.",
       "state": "open",
       "disputed": false,
       "events": [
@@ -163,16 +163,16 @@
       "stage": "build",
       "source": {
         "kind": "reviewer",
-        "name": "code-reviewer"
+        "name": "copy-reviewer"
       },
       "severity": "non-blocking",
       "place": {
-        "quote": "Free shipping on orders over 50"
+        "quote": "Free shiping on orders over 50"
       },
       "point": "The listing text has a typo",
-      "problem": "The word shipping is written with one p.",
-      "fix": "Apply the discount first, then add the tax.",
-      "proof": "An order of 100.00 with a 10 percent discount shows a total of 110.00.",
+      "problem": "The listing writes shipping with one p.",
+      "fix": "Write shipping with two p.",
+      "proof": "The listing text reads Free shiping on orders over 50.",
       "state": "dismissed",
       "disputed": false,
       "events": [
@@ -220,10 +220,10 @@
         "quote": "The total on the receipt equals the sum of the lines.",
         "version": "7"
       },
-      "point": "The criterion is not met",
-      "problem": "The total is computed before the discount is applied.",
-      "fix": "Apply the discount first, then add the tax.",
-      "proof": "An order of 100.00 with a 10 percent discount shows a total of 110.00.",
+      "point": "The receipt total differs from the sum of its lines",
+      "problem": "A receipt of two lines, 40.00 and 60.00, shows a total of 90.00.",
+      "fix": "Compute the receipt total from its lines.",
+      "proof": "Open a receipt with two lines and add the lines by hand: the sum is 100.00, and the receipt shows 90.00.",
       "state": "accepted",
       "disputed": false,
       "events": [
@@ -233,7 +233,7 @@
           "stage": "verify",
           "actor": {
             "kind": "qory",
-            "name": "verify"
+            "name": "locked-checks"
           }
         },
         {
