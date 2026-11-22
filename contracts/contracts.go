@@ -151,7 +151,10 @@
 // a run of several sessions: next-session-request.schema.json, whose Go type is
 // [NextSessionRequest], next-session-answer.schema.json, whose Go type is
 // [NextSessionAnswer], and next-session-refusal.schema.json, the control plane's coded
-// refusal of the request, as Forager's gateway passes it on with from apiary.
+// refusal of the request, as Forager's gateway passes it on with from apiary. A workflow
+// session starts only after a next-session answer; an agent hook runs as a session between
+// two workflow sessions, with the next number and no request, so the numbers of the
+// workflow sessions that the control plane sees can have gaps.
 // It also contains a run's end, outcome.schema.json, whose Go type is [RunOutcome]: how
 // the run ended, with the end codes, [EndCode], that qory sets in its reason for a failed
 // run. The schema lists each end code with its cause.

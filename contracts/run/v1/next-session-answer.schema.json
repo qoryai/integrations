@@ -21,7 +21,7 @@
           "const": "session"
         },
         "session": {
-          "description": "The control plane's sequence number of this session in the run, from 1. It is not Forager's number of the session, which Forager assigns when qory joins the session.",
+          "description": "The control plane's sequence number of this session in the run, from 1. It is not Forager's number of the session, which Forager assigns when qory joins the session. A workflow session starts only after an answer with this member. qory runs an agent hook as a session between two workflow sessions, with the next session number and no request, so the numbers of the workflow sessions that the control plane sees can have gaps.",
           "type": "integer",
           "minimum": 1
         },

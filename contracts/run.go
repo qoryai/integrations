@@ -676,7 +676,8 @@ type ModelChoice struct {
 // cannot send it.
 type NextSessionRequest struct {
 	// Session is Forager's number of the session that ended, from 1, as in its
-	// dev.qory.session.exited.
+	// dev.qory.session.exited. It is the number of a workflow session: qory sends no
+	// request for an agent hook's session, so the numbers of the requests can have gaps.
 	Session int `json:"session,case:strict"`
 	// State is how the session ended: "succeeded", "failed" or "cancelled". A session
 	// that paused has no request.
@@ -701,7 +702,10 @@ type NextSessionAnswer struct {
 	// Next is the kind of the answer: "session" or "end".
 	Next string `json:"next,case:strict"`
 	// Session is the control plane's sequence number of the session in the run, from 1.
-	// It is not Forager's number, which Forager assigns at the join.
+	// It is not Forager's number, which Forager assigns at the join. A workflow session
+	// starts only after an answer with Next "session". qory runs an agent hook as a
+	// session between two workflow sessions, with the next number and no request, so the
+	// numbers of the workflow sessions that the control plane sees can have gaps.
 	Session int `json:"session,omitempty,case:strict"`
 	// Workflow is the workflow that the session starts, as [Documents.Workflow].
 	Workflow string `json:"workflow,omitempty,case:strict"`

@@ -73,7 +73,7 @@
   ],
   "properties": {
     "session": {
-      "description": "Forager's number of the session that ended, from 1: the session of its dev.qory.session.exited, https://qory.dev/contracts/forager/v1/events/session.exited.schema.json.",
+      "description": "Forager's number of the session that ended, from 1: the session of its dev.qory.session.exited, https://qory.dev/contracts/forager/v1/events/session.exited.schema.json. It is the number of a workflow session. qory runs an agent hook as a session between two workflow sessions, with the next number, and sends no request for it, so the numbers of the requests can have gaps.",
       "type": "integer",
       "minimum": 1
     },

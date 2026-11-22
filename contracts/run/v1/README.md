@@ -20,6 +20,14 @@ that belong to the type of the workspace. This contract lists none of its member
 process of the workspace type registers the schema of `type_settings`, and the schema of
 the software factory requires `full_suite` in it.
 
+## Session numbers
+
+Each workflow session after session 1 starts only after a next-session answer with
+`next` `session`. qory can run an agent hook as a session between two workflow
+sessions. The hook session takes the next session number, and qory sends no next-session
+request for it. The numbers of the workflow sessions that the control plane sees can
+therefore have gaps.
+
 ## Members a reader does not define
 
 A reader ignores a member that the schema of a document does not define, at any depth.
