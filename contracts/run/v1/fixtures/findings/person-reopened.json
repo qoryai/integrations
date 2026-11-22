@@ -1,0 +1,71 @@
+{
+  "bases": [
+    {
+      "target": {
+        "collection": "R_1001",
+        "address": {
+          "system": "code.example.com",
+          "path": "acme/shop"
+        }
+      },
+      "base": "0123456789abcdef0123456789abcdef01234567"
+    }
+  ],
+  "findings": [
+    {
+      "id": "f1",
+      "target": {
+        "collection": "R_1001",
+        "address": {
+          "system": "code.example.com",
+          "path": "acme/shop"
+        }
+      },
+      "stage": "build",
+      "source": {
+        "kind": "scenario",
+        "name": "empty-cart"
+      },
+      "severity": "blocking",
+      "place": {
+        "quote": "Your cart is empty"
+      },
+      "point": "The empty cart shows a total",
+      "problem": "The total is computed before the discount is applied.",
+      "fix": "Apply the discount first, then add the tax.",
+      "proof": "An order of 100.00 with a 10 percent discount shows a total of 110.00.",
+      "state": "open",
+      "disputed": false,
+      "events": [
+        {
+          "kind": "raised",
+          "round": 1,
+          "stage": "build",
+          "actor": {
+            "kind": "qory",
+            "name": "demo"
+          }
+        },
+        {
+          "kind": "closed_dismissed",
+          "round": 2,
+          "stage": "build",
+          "actor": {
+            "kind": "qory",
+            "name": "code-reviewer"
+          },
+          "reason": "The dispute is accepted."
+        },
+        {
+          "kind": "reopened",
+          "round": 2,
+          "stage": "build",
+          "actor": {
+            "kind": "person"
+          },
+          "reason": "It happens on the staging site."
+        }
+      ]
+    }
+  ]
+}

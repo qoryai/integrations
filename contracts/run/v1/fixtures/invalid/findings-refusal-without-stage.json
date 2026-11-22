@@ -1,0 +1,7 @@
+{
+  "error": "open_blocking_findings",
+  "from": "apiary",
+  "findings": [
+    "f1"
+  ]
+}

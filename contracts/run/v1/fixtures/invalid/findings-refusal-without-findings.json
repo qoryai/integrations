@@ -1,0 +1,5 @@
+{
+  "error": "open_blocking_findings",
+  "from": "apiary",
+  "stage": "build"
+}

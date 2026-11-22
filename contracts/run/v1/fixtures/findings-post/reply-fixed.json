@@ -1,0 +1,10 @@
+{
+  "events": [
+    {
+      "kind": "reply_fixed",
+      "id": "f1",
+      "reason": "Changed the order of the two steps in total.",
+      "version": "89abcdef0123456789abcdef0123456789abcdef"
+    }
+  ]
+}
