@@ -2,20 +2,22 @@
 
 What the control plane tells qory about a run, and what qory reports back. The files in
 this directory are the schemas and the fixtures that a writer and a reader are tested
-against. The folder `fixtures/check` has run documents that the schema accepts and
-`Documents.Check` refuses, because the schema cannot express the rule they break.
+against. The folder `fixtures/check` has documents that the schema accepts and that the
+`Check` method of their Go type refuses, because the schema cannot express the rule they
+break: `Documents.Check`, `Findings.Check`, `FindingsPost.Check` and
+`FindingsPostAnswer.Check`.
 
 | Schema | Document |
 |---|---|
 | `documents.schema.json` | the run's documents, which the machine receives with the run key |
 | `next-session-request.schema.json` | the request that qory sends after a session ends |
+| `next-session-answer.schema.json` | the next session of the run, or the end of the run |
+| `next-session-refusal.schema.json` | the control plane's coded refusal of the request |
+| `outcome.schema.json` | how the run ended |
 | `findings.schema.json` | the findings of the run's work item, with their events, and the base of each target |
 | `findings-post.schema.json` | the batch of events that qory writes about the findings |
 | `findings-post-answer.schema.json` | the id of each new finding, and the open blocking findings of each stage |
 | `findings-refusal.schema.json` | Qory Apiary's coded refusal of a findings request, or of a verdict |
-| `next-session-answer.schema.json` | the next session of the run, or the end of the run |
-| `next-session-refusal.schema.json` | the control plane's coded refusal of the request |
-| `outcome.schema.json` | how the run ended |
 
 ## Settings of the workspace type
 
@@ -36,7 +38,8 @@ numbers in the answers are the control plane's sequence numbers and have none.
 
 A reader ignores a member that the schema of a document does not define, at any depth.
 The rule covers the run documents, the next-session answer, the next-session request and
-the findings documents.
+the three findings documents `findings`, `findings-post` and `findings-post-answer`. The
+findings refusal has no `must_understand`.
 It applies at the top level, and in `subject`, `run_settings`, each entry of `deliver`,
 `harness`, `model_choice` and each other object inside them.
 
