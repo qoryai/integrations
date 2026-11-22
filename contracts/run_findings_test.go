@@ -100,6 +100,7 @@ func TestEachFindingsRefusalCodeHasAFixture(t *testing.T) {
 		`"Send changes-requested in place of passed: <stage> has <count> open blocking findings."`,
 		`"Send changes-requested in place of passed: <stage> has 1 open blocking finding."`,
 		`"  The open blocking findings are <ids>."`,
+		`"  The open blocking finding is <id>."`,
 	} {
 		if !strings.Contains(description, sentence) {
 			t.Errorf("the description of findings-refusal.schema.json does not contain %q", sentence)
@@ -109,8 +110,9 @@ func TestEachFindingsRefusalCodeHasAFixture(t *testing.T) {
 
 // TestTheOpenBlockingFindingsMessageHasTwoLines pins the message of each fixture of the code
 // open_blocking_findings: two lines, the second indented by two spaces, built from the
-// stage, the number of ids and the ids of the fixture. The first line has "finding" for one
-// id and "findings" for more, and the fixtures have both counts.
+// stage, the number of ids and the ids of the fixture. For one id, the first line has
+// "finding" and the second line is "The open blocking finding is <id>."; for more, the lines
+// have "findings" and "The open blocking findings are <ids>.". The fixtures have both counts.
 func TestTheOpenBlockingFindingsMessageHasTwoLines(t *testing.T) {
 	counts := map[int]bool{}
 	for _, name := range []string{"open-blocking-findings.json", "open-blocking-findings-one.json"} {
@@ -120,12 +122,12 @@ func TestTheOpenBlockingFindingsMessageHasTwoLines(t *testing.T) {
 			ids = append(ids, id.(string))
 		}
 		counts[len(ids)] = true
-		noun := "findings"
+		noun, verb := "findings", "findings are"
 		if len(ids) == 1 {
-			noun = "finding"
+			noun, verb = "finding", "finding is"
 		}
 		want := fmt.Sprintf("Send changes-requested in place of passed: %s has %d open blocking %s.\n"+
-			"  The open blocking findings are %s.", m["stage"], len(ids), noun, strings.Join(ids, ", "))
+			"  The open blocking %s %s.", m["stage"], len(ids), noun, verb, strings.Join(ids, ", "))
 		if m["message"] != want {
 			t.Errorf("%s: the message is %q, want %q", name, m["message"], want)
 		}
@@ -544,7 +546,7 @@ func TestTheFindingsTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: "close_fixed", By: "suite", ID: "f1", Reason: "The suite passes."}}}},
 		{"findings-post-answer", contracts.FindingsPostAnswer{Created: []contracts.FindingCreated{{Ref: "r1", ID: "f2"}}, OpenBlocking: []contracts.FindingsOpenBlocking{{Stage: "build", Count: 0}}}},
 		{"findings-post-answer", contracts.FindingsPostAnswer{Created: []contracts.FindingCreated{}, OpenBlocking: []contracts.FindingsOpenBlocking{}}},
-		{"findings-refusal", contracts.FindingsRefusal{Error: "open_blocking_findings", Message: "Send changes-requested in place of passed: build has 1 open blocking finding.\n  The open blocking findings are f1.", From: "apiary", Stage: "build", Findings: []string{"f1"}}},
+		{"findings-refusal", contracts.FindingsRefusal{Error: "open_blocking_findings", Message: "Send changes-requested in place of passed: build has 1 open blocking finding.\n  The open blocking finding is f1.", From: "apiary", Stage: "build", Findings: []string{"f1"}}},
 		{"findings-refusal", contracts.FindingsRefusal{Error: "invalid_request", Names: []string{"events"}, From: "apiary"}},
 	} {
 		b, err := json.Marshal(c.v)
