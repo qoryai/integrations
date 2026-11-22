@@ -36,6 +36,7 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodeRunAPIFailed:            "to the run API failed",
 	contracts.EndCodePrebuildFailed:          "the pull of its base image",
 	contracts.EndCodeNextSessionFailed:       "Qory Apiary refused it or did not answer",
+	contracts.EndCodeOutputsInvalid:          "or does not match its output type",
 }
 
 // schemaEndCodes reads $defs end_codes of outcome.schema.json: the definition, and the
@@ -71,10 +72,12 @@ func withReason(state string, reason any) map[string]any {
 // each entry has a cause in plain words, that each code has the pattern of a reason of
 // Forager, that no code is one of Forager's reserved reasons, which Forager drops from
 // a starter's outcome, and that no cause contains advice or an action: no word of
-// contact, support, asking or checking, and no instruction to the reader.
+// contact, support, asking or checking, and no instruction to the reader. A cause may
+// name a check that qory runs, such as the output check, as a noun.
 func TestTheEndCodesAreTheSchemasList(t *testing.T) {
 	_, entries := schemaEndCodes(t)
 	pattern := regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+	imperativeCheck := regexp.MustCompile(`(?i)(^|[.:;] )check\b`)
 	for code, text := range entries {
 		if _, ok := endCodes[contracts.EndCode(code)]; !ok {
 			t.Errorf("the schema lists %q, and no Go constant has it", code)
@@ -88,10 +91,15 @@ func TestTheEndCodesAreTheSchemasList(t *testing.T) {
 		if strings.TrimSpace(text) == "" {
 			t.Errorf("the end code %q has no cause", code)
 		}
-		for _, banned := range []string{"contact", "support", "ask ", "check", "should", "please", "try ", "make ", "raise ", "retry", "again"} {
+		for _, banned := range []string{"contact", "support", "ask ", "to check", "should", "please", "try ", "make ", "raise ", "retry", "again"} {
 			if strings.Contains(strings.ToLower(text), banned) {
 				t.Errorf("the cause of %q contains %q: %s", code, banned, text)
 			}
+		}
+		// A cause may name a check that qory runs, such as the output check, and may not
+		// tell the reader to check: the word is banned at the start of a sentence.
+		if imperativeCheck.MatchString(text) {
+			t.Errorf("the cause of %q starts a sentence with check: %s", code, text)
 		}
 	}
 	for code, cause := range endCodes {
@@ -357,6 +365,8 @@ func TestAnInvalidOutcomeFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"outcome-prebuild-failed-cancelled.json":           failed,
 		"outcome-next-session-failed-succeeded.json":       failed,
 		"outcome-next-session-failed-cancelled.json":       failed,
+		"outcome-outputs-invalid-succeeded.json":           failed,
+		"outcome-outputs-invalid-cancelled.json":           failed,
 		"outcome-reason-empty.json":                        func(m map[string]any) { delete(m, "reason") },
 		"outcome-reason-upper-case.json":                   func(m map[string]any) { m["reason"] = "push_exploded" },
 		"outcome-without-state.json":                       failed,
