@@ -366,7 +366,7 @@ An adapter without `change_kinds`, or without that kind in it, never receives a
 `change_request` entry.
 
 The control plane writes no `watch` entry. The kind `watch`, with `work_item_id` and
-`url`, and its rules stay defined in `changes.schema.json`. An adapter that reads a
+`url`, and its rules are defined in `changes.schema.json`. An adapter that reads a
 `watch` entry treats it as an entry of a defined kind.
 
 ## Change requests

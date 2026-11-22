@@ -500,8 +500,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   from no item at a source. An adapter without `change_kinds`, or without that kind in
   it, never receives the entry. The control plane keeps the change in the control plane
   only. A source with `change_kinds` also has `targets: true`, because the run's target
-  collection is one that `targets: true` offers. `targets: true` still offers the
-  collections as places for a run's changes.
+  collection is one that `targets: true` offers.
 - The adapter reports a `change_request` entry with `POST
   /v1/work-items/changes/submitted` (`changes-submitted.schema.json`). The reply has
   these members:
@@ -1188,10 +1187,12 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - The control plane writes no `watch` entry in the change feed. Four texts described a
   `watch` entry that it writes whenever a run stores a change request version:
   `changes.schema.json`, the `targets` text of `description.schema.json`, the README of
-  the integration contract, and the comment of `contracts.Change`. The kind `watch`, its
-  members `work_item_id` and `url`, and its rules stay defined, and `ChangeWatch` stays.
-  An adapter that reads a `watch` entry treats it as an entry of a defined kind. No
-  member changed.
+  the integration contract, and the comment of `contracts.Change`. The `targets` text has
+  no sentence on the `watch` entry, and the other three state that the control plane
+  writes none. The kind `watch`, its members `work_item_id` and `url`, and its rules stay
+  defined, and `ChangeWatch` stays. An adapter that reads a `watch` entry checks it
+  against `$defs/watch` and applies the `must_understand` rules, as for any entry of a
+  defined kind. No member changed.
 
 ### Removed
 

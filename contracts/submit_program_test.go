@@ -664,9 +664,6 @@ func TestTheChangeKindsListIsInEachPlaceThatGatesTheEntry(t *testing.T) {
 			t.Errorf("without the word in %s, the check finds %v", place, missing)
 		}
 	}
-	if d := texts["the targets flag"]; !strings.Contains(d, "watch") {
-		t.Error("the text of targets does not mention the watch entry")
-	}
 }
 
 // TestAKeyKeepsItsFirstValidLine pins that, for a draft key and for a commit, the first
