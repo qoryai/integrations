@@ -79,7 +79,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 }
 
 // TestRunFixturesValidate pins that each document under fixtures/<name>/ of the run
-// contract is accepted by <name>.schema.json, for the five schemas of the contract,
+// contract is accepted by <name>.schema.json, for each schema of the contract that has fixtures,
 // and that fixtures/ contains no other folder of valid documents.
 func TestRunFixturesValidate(t *testing.T) {
 	for _, name := range runSchemas {

@@ -77,7 +77,7 @@
           "stage": "build",
           "actor": {
             "kind": "person",
-            "name": "voldy"
+            "name": "member-1"
           },
           "reason": "The rule does not say that. Fix it."
         }

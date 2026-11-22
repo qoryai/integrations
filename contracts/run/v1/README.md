@@ -35,7 +35,8 @@ numbers in the answers are the control plane's sequence numbers and have none.
 ## Members a reader does not define
 
 A reader ignores a member that the schema of a document does not define, at any depth.
-The rule covers the run documents, the next-session answer and the next-session request.
+The rule covers the run documents, the next-session answer, the next-session request and
+the findings documents.
 It applies at the top level, and in `subject`, `run_settings`, each entry of `deliver`,
 `harness`, `model_choice` and each other object inside them.
 
