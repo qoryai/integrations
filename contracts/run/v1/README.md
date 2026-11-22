@@ -9,6 +9,10 @@ against. The folder `fixtures/check` has run documents that the schema accepts a
 |---|---|
 | `documents.schema.json` | the run's documents, which the machine receives with the run key |
 | `next-session-request.schema.json` | the request that qory sends after a session ends |
+| `findings.schema.json` | the findings of the run's work item, with their events, and the base of each target |
+| `findings-post.schema.json` | the batch of events that qory writes about the findings |
+| `findings-post-answer.schema.json` | the id of each new finding, and the open blocking findings of each stage |
+| `findings-refusal.schema.json` | Qory Apiary's coded refusal of a findings request, or of a verdict |
 | `next-session-answer.schema.json` | the next session of the run, or the end of the run |
 | `next-session-refusal.schema.json` | the control plane's coded refusal of the request |
 | `outcome.schema.json` | how the run ended |
@@ -75,7 +79,8 @@ A control plane's tests check its documents against a closed copy of the schema.
 closed copy refuses a member that the schema does not define, so a misspelled member
 fails the test. It covers each object of the schema and of the integration contract that
 it reaches by reference. `contracts.CompileRunClosed` returns the closed copy of
-`documents.schema.json`, `next-session-answer.schema.json`,
+`documents.schema.json`, `findings.schema.json`, `findings-post.schema.json`,
+`findings-post-answer.schema.json`, `next-session-answer.schema.json`,
 `next-session-request.schema.json` or `outcome.schema.json`.
 
 `contracts.CheckMustUnderstand` applies the rule to a document that a reader decodes into
@@ -85,3 +90,53 @@ a Go type. It resolves each pointer through the `json` tags of the type.
 
 `next-session-refusal.schema.json` has nine codes. An unsigned 401 or 415 from Qory
 Apiary is outside them, because the gateway always signs its requests and sends JSON.
+
+## Findings
+
+A finding is one problem that a reviewer, a check, a criterion, a scenario or a hook
+raised about a target of the run's work item. Qory Apiary keeps the findings and mints
+their ids. qory reads them with `GET /v1/runs/<id>/findings` and writes them with
+`POST /v1/runs/<id>/findings`.
+
+- A finding has a `state`: `open`, `fixed`, `dismissed` or `accepted`. Its `stage` is the
+  stage that owns it. Only an open finding with `severity` `blocking` keeps its stage from
+  passing. A finding of another stage, and a `non-blocking` finding, never does.
+- An event is one line of the history of a finding. Events are only added. The `round` of
+  an event is the `stage_round` of the work item when the event was written, and the
+  `stage` is the stage that counts the round.
+- qory writes `raised`, `repeated`, `replied_fixed`, `replied_disputed`, `closed_fixed`,
+  `closed_dismissed` and `repeated_after_person_close`, and, when a reviewer repeats a
+  finding that a run closed, `reopened`. A person writes `dismissed_by_person`, `accepted`,
+  `sent_back` and `reopened`. The run API does not write a person's events. The actor of
+  an event of qory has the `name` of the role of the session whose report the event came
+  from, such as `code-reviewer`, or of the check, such as `suite`. The actor of a person
+  has no `name`.
+- A finding that a person closed with `dismissed_by_person` or `accepted` cannot be
+  reopened through the run API. A run that repeats it adds `repeated_after_person_close`,
+  and the finding stays closed. `sent_back` keeps a finding open.
+- The base of a target is the version that the first run of the work item on the target
+  started from. Qory Apiary stores it from the first POST that has it, and refuses a
+  different base later with `base_changed`.
+
+`POST` answers with `findings-post-answer.schema.json`. A stage with no open
+blocking finding has the count 0 in `open_blocking`, or is not listed. qory sends a
+verdict `passed` for a stage only then.
+
+### Findings refusals
+
+`findings-refusal.schema.json` has four codes: `invalid_request` (400, with `names`),
+`not_found` (404), `base_changed` (409) and `open_blocking_findings` (409). The other
+members are as in Forager's link refusal. Qory Apiary answers a verdict `passed` of a stage
+with `open_blocking_findings` while the stage owns an open blocking finding, at
+`POST /v1/runs/<id>/verdict`. `stage` is the stage, and `findings` has the ids of up to 50
+of the findings. A verdict `changes-requested` or `escalate` is not refused for this
+cause. The `message` has two lines:
+
+```
+Send changes-requested in place of passed: build has 2 open blocking findings.
+  The open blocking findings are F1, F2.
+```
+
+The schema cannot check that no two events of a batch have the same `ref`, that no two
+findings have the same id, or that no list of bases, created ids or stages repeats an
+entry. `FindingsPost.Check`, `Findings.Check` and `FindingsPostAnswer.Check` check them.
