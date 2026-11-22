@@ -500,8 +500,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   from no item at a source. An adapter without `change_kinds`, or without that kind in
   it, never receives the entry. The control plane keeps the change in the control plane
   only. A source with `change_kinds` also has `targets: true`, because the run's target
-  collection is one that `targets: true` offers. `targets: true` still offers the
-  collections as places for a run's changes and gates the `watch` entry.
+  collection is one that `targets: true` offers.
 - The adapter reports a `change_request` entry with `POST
   /v1/work-items/changes/submitted` (`changes-submitted.schema.json`). The reply has
   these members:
@@ -788,10 +787,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `X-Qory-Contract-Version`, and checks each signed answer under a server key it pinned at
   enrolment. `refusal.schema.json` lists the refusals.
 - The change feed entry kind `watch`, with `work_item_id` and `url`, the work item's
-  page in the control plane. The control plane writes a `watch` entry whenever a run
-  stores a change request version, in the feed of the adapter of the run's target
-  collection, whatever source the work item came from, and also when the work item came
-  from no item at a source. In Go, `ChangeWatch` is added.
+  page in the control plane. The control plane writes no `watch` entry. In Go,
+  `ChangeWatch` is added.
 - In the change feed, entries for one item, the `work_item` and `comment` entries with
   the same `ref`, apply in cursor order. While the adapter retries an entry that failed,
   it may apply a later entry first when neither entry changes what the other depends on,
@@ -1187,6 +1184,15 @@ change what an existing reader or program relies on, and notes it under Upgradin
   in place of 5e9ca86. From that commit, a reader of Forager's `auth`, `credential` and
   the data of `dev.qory.run.exited` ignores a member that their schema does not define,
   unless `must_understand` lists it.
+- The control plane writes no `watch` entry in the change feed. Four texts described a
+  `watch` entry that it writes whenever a run stores a change request version:
+  `changes.schema.json`, the `targets` text of `description.schema.json`, the README of
+  the integration contract, and the comment of `contracts.Change`. The `targets` text has
+  no sentence on the `watch` entry, and the other three state that the control plane
+  writes none. The kind `watch`, its members `work_item_id` and `url`, and its rules stay
+  defined, and `ChangeWatch` stays. An adapter that reads a `watch` entry checks it
+  against `$defs/watch` and applies the `must_understand` rules, as for any entry of a
+  defined kind. No member changed.
 
 ### Removed
 

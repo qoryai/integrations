@@ -398,9 +398,8 @@ const (
 // and has CommentID, Ref, AuthorName and Body; a collection entry has
 // CollectionRef and Status "linked" or "unlinked"; a grant entry has ConnectionID,
 // GrantRef and Status "linked" or "unlinked"; a sync entry has Interval, nil for the
-// adapter's declared default; a watch entry, which the control plane writes when a run
-// whose target collection is one of the adapter's collections stores a change request
-// version, has WorkItemID and URL; a change_request entry, written for each target of
+// adapter's declared default; a watch entry has WorkItemID and URL, and the control
+// plane writes none; a change_request entry, written for each target of
 // each change request version that a run stores, has ChangeRequestID, ChangeKind, Target,
 // Ref (the item's ref, empty when the work item came from no item), Title, Text, Previous
 // (nil on the first version) and Data, the part that the artifact type of ChangeKind
