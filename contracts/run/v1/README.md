@@ -139,14 +139,14 @@ members are as in Forager's link refusal. Qory Apiary answers a verdict `passed`
 with `open_blocking_findings` while the stage owns an open blocking finding, at
 `POST /v1/runs/<id>/verdict`. `stage` is the stage, and `findings` has the ids of up to 50
 of the findings, and `message` is required. A verdict `changes-requested` or `escalate`
-is not refused for this cause. The `message` has two lines:
+is not refused for this cause. The `message` has two lines. For two ids, they are:
 
 ```
 Send changes-requested in place of passed: build has 2 open blocking findings.
   The open blocking findings are f1, f2.
 ```
 
-For one id, the lines are:
+For one id, they are:
 
 ```
 Send changes-requested in place of passed: build has 1 open blocking finding.
