@@ -98,7 +98,8 @@ type FindingEvent struct {
 
 // FindingActor is who wrote an event. For Kind "qory", Name is the role of the session
 // whose report the event came from, such as code-reviewer or implement-changes, or the
-// name of the check, such as suite, matrix or hook-1. For Kind "person", Name is empty:
+// name of the check, such as suite, locked-checks, demo-evidence or hook-1. It is the By
+// of the [FindingsPostEvent]. For Kind "person", Name is empty:
 // the run API does not show the user id.
 type FindingActor struct {
 	Kind string `json:"kind,case:strict"`
@@ -119,12 +120,19 @@ type FindingsPost struct {
 }
 
 // FindingsPostEvent is one event of a [FindingsPost]. Kind is "raise", "repeat",
-// "reply_fixed", "reply_disputed", "close_fixed" or "close_dismissed". A "raise" has Ref,
+// "reply_fixed", "reply_disputed", "close_fixed" or "close_dismissed". By is set for each
+// event. A "raise" has Ref,
 // a key that is unique in the batch, and the members from Target to Proof, which a
 // finding has, and no ID. Each other kind has ID and none of those members. Reason is
 // set for each kind except "raise" and "repeat".
 type FindingsPostEvent struct {
-	Kind     string         `json:"kind,case:strict"`
+	Kind string `json:"kind,case:strict"`
+	// By is the role of the session whose report the event comes from, such as
+	// code-reviewer or implement-changes, or the name of the check, such as suite or
+	// hook-1. For a finding that a criterion raises or closes, By is locked-checks, and
+	// for a scenario it is demo-evidence. Qory Apiary copies By to the Name of the
+	// [FindingActor] of the event that it writes. It is 1 to 200 characters on one line.
+	By       string         `json:"by,case:strict"`
 	Ref      string         `json:"ref,omitempty,case:strict"`
 	ID       string         `json:"id,omitempty,case:strict"`
 	Reason   string         `json:"reason,omitempty,case:strict"`

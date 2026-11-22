@@ -37,7 +37,7 @@
         "not": {
           "pattern": "\\n"
         },
-        "pattern": "^(?:/bases|/bases/(?:0|[1-9][0-9]*)|/bases/(?:0|[1-9][0-9]*)/base|/bases/(?:0|[1-9][0-9]*)/target|/bases/(?:0|[1-9][0-9]*)/target/address|/bases/(?:0|[1-9][0-9]*)/target/address/path|/bases/(?:0|[1-9][0-9]*)/target/address/system|/bases/(?:0|[1-9][0-9]*)/target/collection|/events|/events/(?:0|[1-9][0-9]*)|/events/(?:0|[1-9][0-9]*)/fix|/events/(?:0|[1-9][0-9]*)/id|/events/(?:0|[1-9][0-9]*)/kind|/events/(?:0|[1-9][0-9]*)/place|/events/(?:0|[1-9][0-9]*)/place/file|/events/(?:0|[1-9][0-9]*)/place/line|/events/(?:0|[1-9][0-9]*)/place/quote|/events/(?:0|[1-9][0-9]*)/place/version|/events/(?:0|[1-9][0-9]*)/point|/events/(?:0|[1-9][0-9]*)/problem|/events/(?:0|[1-9][0-9]*)/proof|/events/(?:0|[1-9][0-9]*)/reason|/events/(?:0|[1-9][0-9]*)/ref|/events/(?:0|[1-9][0-9]*)/severity|/events/(?:0|[1-9][0-9]*)/source|/events/(?:0|[1-9][0-9]*)/source/kind|/events/(?:0|[1-9][0-9]*)/source/name|/events/(?:0|[1-9][0-9]*)/stage|/events/(?:0|[1-9][0-9]*)/target|/events/(?:0|[1-9][0-9]*)/target/address|/events/(?:0|[1-9][0-9]*)/target/address/path|/events/(?:0|[1-9][0-9]*)/target/address/system|/events/(?:0|[1-9][0-9]*)/target/collection|/events/(?:0|[1-9][0-9]*)/version)$"
+        "pattern": "^(?:/bases|/bases/(?:0|[1-9][0-9]*)|/bases/(?:0|[1-9][0-9]*)/base|/bases/(?:0|[1-9][0-9]*)/target|/bases/(?:0|[1-9][0-9]*)/target/address|/bases/(?:0|[1-9][0-9]*)/target/address/path|/bases/(?:0|[1-9][0-9]*)/target/address/system|/bases/(?:0|[1-9][0-9]*)/target/collection|/events|/events/(?:0|[1-9][0-9]*)|/events/(?:0|[1-9][0-9]*)/by|/events/(?:0|[1-9][0-9]*)/fix|/events/(?:0|[1-9][0-9]*)/id|/events/(?:0|[1-9][0-9]*)/kind|/events/(?:0|[1-9][0-9]*)/place|/events/(?:0|[1-9][0-9]*)/place/file|/events/(?:0|[1-9][0-9]*)/place/line|/events/(?:0|[1-9][0-9]*)/place/quote|/events/(?:0|[1-9][0-9]*)/place/version|/events/(?:0|[1-9][0-9]*)/point|/events/(?:0|[1-9][0-9]*)/problem|/events/(?:0|[1-9][0-9]*)/proof|/events/(?:0|[1-9][0-9]*)/reason|/events/(?:0|[1-9][0-9]*)/ref|/events/(?:0|[1-9][0-9]*)/severity|/events/(?:0|[1-9][0-9]*)/source|/events/(?:0|[1-9][0-9]*)/source/kind|/events/(?:0|[1-9][0-9]*)/source/name|/events/(?:0|[1-9][0-9]*)/stage|/events/(?:0|[1-9][0-9]*)/target|/events/(?:0|[1-9][0-9]*)/target/address|/events/(?:0|[1-9][0-9]*)/target/address/path|/events/(?:0|[1-9][0-9]*)/target/address/system|/events/(?:0|[1-9][0-9]*)/target/collection|/events/(?:0|[1-9][0-9]*)/version)$"
       }
     }
   },
@@ -48,10 +48,11 @@
       "pattern": "^[A-Za-z0-9._-]{1,64}$"
     },
     "event": {
-      "description": "One event. A raise has ref and the members of a finding from target to proof, and no id. Each other kind has id, and none of those members. Each kind except raise and repeat has a reason.",
+      "description": "One event. Each event has by. A raise has ref and the members of a finding from target to proof, and no id. Each other kind has id, and none of those members. Each kind except raise and repeat has a reason.",
       "type": "object",
       "required": [
-        "kind"
+        "kind",
+        "by"
       ],
       "allOf": [
         {
@@ -135,6 +136,12 @@
             "close_fixed",
             "close_dismissed"
           ]
+        },
+        "by": {
+          "description": "Who writes the event: the role of the session whose report the event comes from, such as code-reviewer or implement-changes, or the name of the check, such as suite or hook-1. For a finding that a criterion raises or closes, by is locked-checks, and for a scenario it is demo-evidence. Qory Apiary copies by to the name of the actor of the event that it writes. 1 to 200 characters on one line, by the rule of a prose line (description.schema.json, $defs.line).",
+          "type": "string",
+          "maxLength": 200,
+          "$ref": "https://qory.dev/contracts/integration/v1/description.schema.json#/$defs/line"
         },
         "ref": {
           "$ref": "#/$defs/ref"

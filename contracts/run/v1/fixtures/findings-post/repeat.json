@@ -2,6 +2,7 @@
   "events": [
     {
       "kind": "repeat",
+      "by": "code-reviewer",
       "id": "f1",
       "version": "89abcdef0123456789abcdef0123456789abcdef"
     }

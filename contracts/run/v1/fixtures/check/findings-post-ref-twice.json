@@ -14,6 +14,7 @@
   "events": [
     {
       "kind": "raise",
+      "by": "code-reviewer",
       "ref": "r1",
       "target": {
         "collection": "R_1001",
@@ -41,20 +42,24 @@
     },
     {
       "kind": "repeat",
+      "by": "suite",
       "id": "f2"
     },
     {
       "kind": "reply_fixed",
+      "by": "implement-changes",
       "id": "f3",
       "reason": "Wrote shipping with two p."
     },
     {
       "kind": "close_fixed",
+      "by": "hook-1",
       "id": "f7",
       "reason": "The hook reports no warning."
     },
     {
       "kind": "raise",
+      "by": "code-reviewer",
       "ref": "r1",
       "target": {
         "collection": "R_1001",

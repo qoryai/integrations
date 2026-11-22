@@ -111,10 +111,12 @@ their ids. qory reads them with `GET /v1/runs/<id>/findings` and writes them wit
 - qory writes `raised`, `repeated`, `replied_fixed`, `replied_disputed`, `closed_fixed`,
   `closed_dismissed` and `repeated_after_person_close`, and, when a reviewer repeats a
   finding that a run closed, `reopened`. A person writes `dismissed_by_person`, `accepted`,
-  `sent_back` and `reopened`. The run API does not write a person's events. The actor of
-  an event of qory has the `name` of the role of the session whose report the event came
-  from, such as `code-reviewer`, or of the check, such as `suite`. The actor of a person
-  has no `name`.
+  `sent_back` and `reopened`. The run API does not write a person's events. Each event of
+  a POST has `by`: the role of the session whose report the event comes from, such as
+  `code-reviewer`, or the name of the check, such as `suite`. For a criterion, `by` is
+  `locked-checks`, and for a scenario it is `demo-evidence`. Qory Apiary copies `by` to
+  the `name` of the actor of the event that it writes. The actor of a person has no
+  `name`.
 - A finding that a person closed with `dismissed_by_person` or `accepted` cannot be
   reopened through the run API. A run that repeats it adds `repeated_after_person_close`,
   and the finding stays closed. `sent_back` keeps a finding open.

@@ -2,6 +2,7 @@
   "events": [
     {
       "kind": "close_dismissed",
+      "by": "code-reviewer",
       "id": "f1",
       "reason": "The dispute is accepted: the shop's rule charges the tax on the full price."
     }

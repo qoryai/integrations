@@ -24,6 +24,7 @@
   "events": [
     {
       "kind": "raise",
+      "by": "code-reviewer",
       "ref": "r1",
       "target": {
         "collection": "R_1001",
@@ -51,6 +52,7 @@
     },
     {
       "kind": "raise",
+      "by": "copy-reviewer",
       "ref": "r2",
       "target": {
         "collection": "R_1002",

@@ -427,8 +427,9 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `stage_round` of the work item, and the `stage`. A run that repeats a finding that a
   person closed adds `repeated_after_person_close`, and the finding stays closed. The post
   body is a batch of events (`raise`, `repeat`, `reply_fixed`, `reply_disputed`,
-  `close_fixed` and `close_dismissed`) and `bases`, which Qory Apiary stores once for each
-  take in (one start of the work item in Qory Apiary) and each target. The answer has the
+  `close_fixed` and `close_dismissed`), each with `by`, the role or check that writes it,
+  and `bases`, which Qory Apiary stores once for each take in (one start of the work item
+  in Qory Apiary) and each target. The answer has the
   id of each raise and the open blocking count of each stage. Qory Apiary refuses a verdict
   `passed` with `open_blocking_findings` (409, with `stage` and up to 50 `findings`) while
   the stage owns an open blocking finding. In Go: `Findings`, `Finding`, `FindingEvent`,

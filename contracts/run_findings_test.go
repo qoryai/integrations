@@ -158,10 +158,16 @@ func TestAnInvalidFindingsFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"findings-post-answer-id-upper-case.json":         func(t *testing.T, m map[string]any) { object(t, m, "created", 0)["id"] = "f5" },
 		"findings-post-answer-without-open-blocking.json": func(t *testing.T, m map[string]any) { m["open_blocking"] = []any{} },
 
-		"findings-post-base-space.json": func(t *testing.T, m map[string]any) { object(t, m, "bases", 0)["base"] = version },
-		"findings-post-events-101.json": func(t *testing.T, m map[string]any) { m["events"] = m["events"].([]any)[:100] },
+		"findings-post-raise-without-by.json":           func(t *testing.T, m map[string]any) { object(t, m, "events", 0)["by"] = "code-reviewer" },
+		"findings-post-repeat-without-by.json":          func(t *testing.T, m map[string]any) { object(t, m, "events", 0)["by"] = "code-reviewer" },
+		"findings-post-reply-fixed-without-by.json":     func(t *testing.T, m map[string]any) { object(t, m, "events", 0)["by"] = "implement-changes" },
+		"findings-post-reply-disputed-without-by.json":  func(t *testing.T, m map[string]any) { object(t, m, "events", 0)["by"] = "implement-changes" },
+		"findings-post-close-fixed-without-by.json":     func(t *testing.T, m map[string]any) { object(t, m, "events", 0)["by"] = "suite" },
+		"findings-post-close-dismissed-without-by.json": func(t *testing.T, m map[string]any) { object(t, m, "events", 0)["by"] = "code-reviewer" },
+		"findings-post-base-space.json":                 func(t *testing.T, m map[string]any) { object(t, m, "bases", 0)["base"] = version },
+		"findings-post-events-101.json":                 func(t *testing.T, m map[string]any) { m["events"] = m["events"].([]any)[:100] },
 		"findings-post-events-empty.json": func(t *testing.T, m map[string]any) {
-			m["events"] = []any{map[string]any{"kind": "repeat", "id": "f1"}}
+			m["events"] = []any{map[string]any{"kind": "repeat", "by": "code-reviewer", "id": "f1"}}
 		},
 		"findings-post-kind-accepted.json":       func(t *testing.T, m map[string]any) { object(t, m, "events", 0)["kind"] = "repeat" },
 		"findings-post-raise-with-id.json":       func(t *testing.T, m map[string]any) { delete(object(t, m, "events", 0), "id") },
@@ -460,7 +466,7 @@ func TestTheFindingsLimitsAreExact(t *testing.T) {
 	}
 	events := make([]any, 100)
 	for i := range events {
-		events[i] = map[string]any{"kind": "repeat", "id": "f1"}
+		events[i] = map[string]any{"kind": "repeat", "by": "code-reviewer", "id": "f1"}
 	}
 	if err := post.Validate(map[string]any{"events": events}); err != nil {
 		t.Errorf("100 events are refused: %v", err)
@@ -483,8 +489,8 @@ func TestTheFindingsTypesMarshalToTheirSchemas(t *testing.T) {
 			MustUnderstand: []string{"/findings"}}},
 		{"findings", contracts.Findings{Bases: []contracts.FindingBase{}, Findings: []contracts.Finding{}}},
 		{"findings-post", contracts.FindingsPost{Events: []contracts.FindingsPostEvent{
-			{Kind: "raise", Ref: "r1", Target: &target, Stage: "build", Source: &source, Severity: "blocking", Place: &place, Point: "p", Problem: "a", Fix: "b", Proof: "c"},
-			{Kind: "close_fixed", ID: "f1", Reason: "The suite passes."}}}},
+			{Kind: "raise", By: "code-reviewer", Ref: "r1", Target: &target, Stage: "build", Source: &source, Severity: "blocking", Place: &place, Point: "p", Problem: "a", Fix: "b", Proof: "c"},
+			{Kind: "close_fixed", By: "suite", ID: "f1", Reason: "The suite passes."}}}},
 		{"findings-post-answer", contracts.FindingsPostAnswer{Created: []contracts.FindingCreated{{Ref: "r1", ID: "f2"}}, OpenBlocking: []contracts.FindingsOpenBlocking{{Stage: "build", Count: 0}}}},
 		{"findings-post-answer", contracts.FindingsPostAnswer{Created: []contracts.FindingCreated{}, OpenBlocking: []contracts.FindingsOpenBlocking{}}},
 		{"findings-refusal", contracts.FindingsRefusal{Error: "open_blocking_findings", From: "apiary", Stage: "build", Findings: []string{"f1"}}},

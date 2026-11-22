@@ -2,6 +2,7 @@
   "events": [
     {
       "kind": "accepted",
+      "by": "code-reviewer",
       "id": "f1"
     }
   ]

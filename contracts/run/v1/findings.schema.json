@@ -162,7 +162,7 @@
       "pattern": "^(?:[^\\p{Cc}\\p{Cf}\u2028\u2029]|[\u200c\u200d])+$"
     },
     "actor": {
-      "description": "Who wrote an event: kind qory, a report or a check that qory read, or person, a member of the workspace. For qory, name is the role of the session whose report the event came from, such as code-reviewer or implement-changes, or the name of the check, such as suite, matrix or hook-1. For a person, name is absent: the run API does not show the user id.",
+      "description": "Who wrote an event: kind qory, a report or a check that qory read, or person, a member of the workspace. For qory, name is the role of the session whose report the event came from, such as code-reviewer or implement-changes, or the name of the check, such as suite, locked-checks, demo-evidence or hook-1. For a person, name is absent: the run API does not show the user id.",
       "type": "object",
       "required": [
         "kind"

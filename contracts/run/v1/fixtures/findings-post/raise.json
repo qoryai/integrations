@@ -14,6 +14,7 @@
   "events": [
     {
       "kind": "raise",
+      "by": "code-reviewer",
       "ref": "r1",
       "target": {
         "collection": "R_1001",
