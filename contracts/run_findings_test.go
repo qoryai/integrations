@@ -258,6 +258,7 @@ func TestCheckRefusesWhatTheFindingsSchemasCannotSay(t *testing.T) {
 	want := map[string]string{
 		"findings-id-twice.json":                `List each finding once: "f1" appears twice.`,
 		"findings-base-target-twice.json":       `List the base of each target once: {"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop"}} appears twice.`,
+		"findings-post-bases-target-twice.json": `List the base of each target once: {"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop"}} appears twice.`,
 		"findings-post-ref-twice.json":          `Give each raise a different ref: "r1" appears twice.`,
 		"findings-post-answer-ref-twice.json":   `List each ref of created once: "r1" appears twice.`,
 		"findings-post-answer-stage-twice.json": `List each stage of open_blocking once: "build" appears twice.`,

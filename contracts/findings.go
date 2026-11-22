@@ -141,10 +141,13 @@ type FindingsPostEvent struct {
 }
 
 // Check reports the first rule of findings-post.schema.json that the batch breaks and that
-// the schema does not express: no two events have the same Ref. Each message starts with
-// the fix. A writer calls it before it sends the batch, and Qory Apiary applies the same
-// rule.
+// the schema does not express: no two entries of Bases have the same target, and no two
+// events have the same Ref. Each message starts with the fix. A writer calls it before it
+// sends the batch, and Qory Apiary applies the same rules.
 func (p FindingsPost) Check() error {
+	if err := checkBases(p.Bases); err != nil {
+		return err
+	}
 	refs := make(map[string]bool, len(p.Events))
 	for _, e := range p.Events {
 		if e.Ref == "" {
@@ -154,6 +157,22 @@ func (p FindingsPost) Check() error {
 			return fmt.Errorf("Give each raise a different ref: %q appears twice.", e.Ref)
 		}
 		refs[e.Ref] = true
+	}
+	return nil
+}
+
+// checkBases reports the first target that two entries of bases have.
+func checkBases(bases []FindingBase) error {
+	targets := make(map[string]bool, len(bases))
+	for _, b := range bases {
+		key, err := json.Marshal(b.Target)
+		if err != nil {
+			return err
+		}
+		if targets[string(key)] {
+			return fmt.Errorf("List the base of each target once: %s appears twice.", key)
+		}
+		targets[string(key)] = true
 	}
 	return nil
 }
@@ -207,18 +226,7 @@ func (f Findings) Check() error {
 		}
 		ids[e.ID] = true
 	}
-	targets := make(map[string]bool, len(f.Bases))
-	for _, b := range f.Bases {
-		key, err := json.Marshal(b.Target)
-		if err != nil {
-			return err
-		}
-		if targets[string(key)] {
-			return fmt.Errorf("List the base of each target once: %s appears twice.", key)
-		}
-		targets[string(key)] = true
-	}
-	return nil
+	return checkBases(f.Bases)
 }
 
 // Check reports the first rule of findings-post-answer.schema.json that the answer breaks
