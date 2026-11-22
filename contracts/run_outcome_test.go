@@ -35,6 +35,7 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodeHistoryRewritten:        "HEAD of the run's working folder does not descend",
 	contracts.EndCodeRunAPIFailed:            "to the run API failed",
 	contracts.EndCodePrebuildFailed:          "the pull of its base image",
+	contracts.EndCodeNextSessionFailed:       "Qory Apiary refused it or did not answer",
 }
 
 // schemaEndCodes reads $defs end_codes of outcome.schema.json: the definition, and the
@@ -354,6 +355,8 @@ func TestAnInvalidOutcomeFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		"outcome-run-api-failed-cancelled.json":            failed,
 		"outcome-prebuild-failed-succeeded.json":           failed,
 		"outcome-prebuild-failed-cancelled.json":           failed,
+		"outcome-next-session-failed-succeeded.json":       failed,
+		"outcome-next-session-failed-cancelled.json":       failed,
 		"outcome-reason-empty.json":                        func(m map[string]any) { delete(m, "reason") },
 		"outcome-reason-upper-case.json":                   func(m map[string]any) { m["reason"] = "push_exploded" },
 		"outcome-without-state.json":                       failed,

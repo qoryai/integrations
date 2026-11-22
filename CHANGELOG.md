@@ -602,8 +602,10 @@ change what an existing reader or program relies on, and notes it under Upgradin
   `forge_unreachable` (qory could not reach the forge), `history_rewritten` (the HEAD of
   the run's working folder does not descend from the commit that the run started from,
   so a push would not be a fast-forward), `run_api_failed` (a call from qory to the run
-  API failed) and `prebuild_failed` (a prebuild failed: its build, the pull of its base
-  image, or the push or verification of the image it built). A `reason` that is not in
+  API failed), `prebuild_failed` (a prebuild failed: its build, the pull of its base
+  image, or the push or verification of the image it built) and `next_session_failed`
+  (the next-session request after a session failed: Qory Apiary refused it or did not
+  answer). A `reason` that is not in
   the list passes the schema, as a newer qory may send a code that an older reader does
   not know. One of the end codes with a `state` other than `failed` fails, and so does a
   member the schema does not define, such as `message` or `action`. None of them is one
