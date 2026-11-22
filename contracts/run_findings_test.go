@@ -188,7 +188,10 @@ func TestAnInvalidFindingsFixtureIsRefusedForOneDefectAlone(t *testing.T) {
 		},
 		"findings-refusal-unknown-code.json":     func(t *testing.T, m map[string]any) { m["error"] = "not_found" },
 		"findings-refusal-without-findings.json": func(t *testing.T, m map[string]any) { m["findings"] = []any{"f1"} },
-		"findings-refusal-without-stage.json":    func(t *testing.T, m map[string]any) { m["stage"] = "build" },
+		"findings-refusal-without-message.json": func(t *testing.T, m map[string]any) {
+			m["message"] = "Send changes-requested in place of passed: build has 2 open blocking findings.\n  The open blocking findings are f1, f2."
+		},
+		"findings-refusal-without-stage.json": func(t *testing.T, m map[string]any) { m["stage"] = "build" },
 	}
 	n := 0
 	for _, f := range runFiles(t, "fixtures/invalid") {
@@ -493,7 +496,7 @@ func TestTheFindingsTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: "close_fixed", By: "suite", ID: "f1", Reason: "The suite passes."}}}},
 		{"findings-post-answer", contracts.FindingsPostAnswer{Created: []contracts.FindingCreated{{Ref: "r1", ID: "f2"}}, OpenBlocking: []contracts.FindingsOpenBlocking{{Stage: "build", Count: 0}}}},
 		{"findings-post-answer", contracts.FindingsPostAnswer{Created: []contracts.FindingCreated{}, OpenBlocking: []contracts.FindingsOpenBlocking{}}},
-		{"findings-refusal", contracts.FindingsRefusal{Error: "open_blocking_findings", From: "apiary", Stage: "build", Findings: []string{"f1"}}},
+		{"findings-refusal", contracts.FindingsRefusal{Error: "open_blocking_findings", Message: "Send changes-requested in place of passed: build has 1 open blocking findings.\n  The open blocking findings are f1.", From: "apiary", Stage: "build", Findings: []string{"f1"}}},
 		{"findings-refusal", contracts.FindingsRefusal{Error: "invalid_request", Names: []string{"events"}, From: "apiary"}},
 	} {
 		b, err := json.Marshal(c.v)

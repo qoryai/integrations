@@ -431,7 +431,7 @@ change what an existing reader or program relies on, and notes it under Upgradin
   and `bases`, which Qory Apiary stores once for each take in (one start of the work item
   in Qory Apiary) and each target. The answer has the
   id of each raise and the open blocking count of each stage. Qory Apiary refuses a verdict
-  `passed` with `open_blocking_findings` (409, with `stage` and up to 50 `findings`) while
+  `passed` with `open_blocking_findings` (409, with `stage`, up to 50 `findings` and `message`) while
   the stage owns an open blocking finding. In Go: `Findings`, `Finding`, `FindingEvent`,
   `FindingsPost`, `FindingsPostAnswer` and `FindingsRefusal`, with `Check` methods.
   `findings`, `findings-post` and `findings-post-answer` have a closed copy.

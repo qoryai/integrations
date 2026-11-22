@@ -335,6 +335,7 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"findings-refusal-stage-with-other-code.json":                        {"findings-refusal", "/ "},
 		"findings-refusal-unknown-code.json":                                 {"findings-refusal", "/error enum"},
 		"findings-refusal-without-findings.json":                             {"findings-refusal", "/ required findings"},
+		"findings-refusal-without-message.json":                              {"findings-refusal", "/ required message"},
 		"findings-refusal-without-stage.json":                                {"findings-refusal", "/ required stage"},
 		"findings-severity-high.json":                                        {"findings", "/findings/0/severity enum"},
 		"findings-stage-upper-case.json":                                     {"findings", "/findings/0/stage pattern"},

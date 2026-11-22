@@ -213,7 +213,8 @@ type FindingsOpenBlocking struct {
 // refusal, with From "apiary". Error is "invalid_request" (400, with Names),
 // "not_found" (404), "base_changed" (409) or "open_blocking_findings" (409). The code
 // open_blocking_findings answers a verdict "passed" of a stage while the stage owns an open
-// blocking finding: Stage is the stage and Findings are the ids of up to 50 such findings.
+// blocking finding: Stage is the stage, Findings are the ids of up to 50 such findings, and
+// Message is set.
 type FindingsRefusal struct {
 	Error    string   `json:"error,case:strict"`
 	Names    []string `json:"names,omitempty,case:strict"`
