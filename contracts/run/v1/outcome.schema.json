@@ -127,6 +127,10 @@
         {
           "const": "prebuild_failed",
           "description": "A prebuild failed: its build, the pull of its base image, or the push or verification of the image it built."
+        },
+        {
+          "const": "next_session_failed",
+          "description": "The next-session request after a session failed: Qory Apiary refused it or did not answer."
         }
       ]
     }

@@ -851,6 +851,9 @@ const (
 	// EndCodePrebuildFailed: a prebuild failed: its build, the pull of its base image, or
 	// the push or verification of the image it built.
 	EndCodePrebuildFailed EndCode = "prebuild_failed"
+	// EndCodeNextSessionFailed: the next-session request after a session failed: Qory
+	// Apiary refused it or did not answer.
+	EndCodeNextSessionFailed EndCode = "next_session_failed"
 )
 
 // ProviderModel is one model of the run's provider, an entry of
