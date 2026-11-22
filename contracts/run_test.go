@@ -1832,6 +1832,28 @@ func TestAWorkflowReviewGroupAndLockedChecksFollowQorysHarnessFile(t *testing.T)
 	}
 }
 
+// TestAWorkflowWithNoReviewGroupAndNoLockedChecksIsWrittenEmpty pins that Go leaves out
+// an empty ReviewGroup and a false RunsLockedChecks, and writes both when set.
+func TestAWorkflowWithNoReviewGroupAndNoLockedChecksIsWrittenEmpty(t *testing.T) {
+	for _, c := range []struct {
+		v    contracts.HarnessWorkflow
+		want string
+	}{
+		{contracts.HarnessWorkflow{}, `{}`},
+		{contracts.HarnessWorkflow{RunsLockedChecks: false, ReviewGroup: ""}, `{}`},
+		{contracts.HarnessWorkflow{ReviewGroup: "reviewers"}, `{"review_group":"reviewers"}`},
+		{contracts.HarnessWorkflow{RunsLockedChecks: true}, `{"runs_locked_checks":true}`},
+	} {
+		b, err := json.Marshal(c.v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(b) != c.want {
+			t.Errorf("%+v is written as %s, want %s", c.v, b, c.want)
+		}
+	}
+}
+
 // TestAHarnessSelectionWithOnlyAnUndefinedMemberIsWrittenBackEmpty pins that a selection
 // whose only member is undefined reads as empty, and that Go writes it back as {}, which
 // the schema refuses because its minProperties is 1.

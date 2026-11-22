@@ -423,8 +423,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   of the workflow needs: one path segment with no slash, backslash, `@` or space, and no
   leading dot. `runs_locked_checks` is a boolean: `true` marks a Verify workflow, whose
   locked checks qory runs before the agent of a session starts, and `false` or left out
-  means qory runs none. Without the two members, the settings that Qory Apiary writes
-  into the `harness` of a run's documents lost both keys of a workflow. In Go,
+  means qory runs none. Without the two members, a run that Qory Apiary starts loses
+  both keys of a workflow, because the schema and the Go type define neither. In Go,
   `HarnessWorkflow` has `ReviewGroup` and `RunsLockedChecks`. A false `RunsLockedChecks`
   is left out of the document.
 - `description.schema.json` has `links`, optional: 1 to 16 entries `{system, template}`, one for
