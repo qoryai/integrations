@@ -1193,13 +1193,16 @@ change what an existing reader or program relies on, and notes it under Upgradin
   defined, and `ChangeWatch` stays. An adapter that reads a `watch` entry checks it
   against `$defs/watch` and applies the `must_understand` rules, as for any entry of a
   defined kind. No member changed.
-- The next-session text covers session numbers. A workflow session starts only after a
-  next-session answer. qory can run an agent hook as a session between two workflow
-  sessions. The hook session takes the next session number, and qory sends no request
-  for it, so the numbers of the workflow sessions that the control plane sees can have
-  gaps. The text is in the run contract README, the `session` descriptions of
-  `next-session-request.schema.json` and `next-session-answer.schema.json`, and the
-  comments of `NextSessionRequest` and `NextSessionAnswer`. No schema keyword changed.
+- The run contract describes the numbers of workflow sessions. A workflow session after
+  session 1 starts only after a next-session answer. qory can run an agent hook as a
+  session between two workflow sessions. The hook session takes the next Forager session
+  number, and qory sends no next-session request for it, so the `session` numbers in the
+  requests can have gaps. The `session` numbers in the answers stay the control plane's
+  sequence numbers, with no gaps. The text is in the run contract README, `session` of
+  `next-session-request.schema.json` and `next-session-answer.schema.json`, the request
+  and `shared_run` descriptions of the run contract schemas, and the comments of
+  `NextSessionRequest`, `NextSessionAnswer` and `Documents.SharedRun`. A request follows
+  each workflow session that did not pause, not each session. No schema keyword changed.
 
 ### Removed
 

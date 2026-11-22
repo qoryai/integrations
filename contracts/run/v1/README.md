@@ -22,11 +22,11 @@ the software factory requires `full_suite` in it.
 
 ## Session numbers
 
-Each workflow session after session 1 starts only after a next-session answer with
-`next` `session`. qory can run an agent hook as a session between two workflow
-sessions. The hook session takes the next session number, and qory sends no next-session
-request for it. The numbers of the workflow sessions that the control plane sees can
-therefore have gaps.
+A workflow session after session 1 starts only after a next-session answer with `next`
+set to `session`. qory can run an agent hook as a session between two workflow sessions.
+The hook session takes the next Forager session number, and qory sends no next-session
+request for it, so the `session` numbers in the requests can have gaps. The `session`
+numbers in the answers are the control plane's sequence numbers and have none.
 
 ## Members a reader does not define
 

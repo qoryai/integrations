@@ -529,7 +529,7 @@
       "maximum": 1440
     },
     "shared_run": {
-      "description": "Whether qory sends the next-session request after each session, https://qory.dev/contracts/run/v1/next-session-request.schema.json, and runs the session that the answer sets. Absent and false mean the same: qory sends no request, and the run has session 1 only.",
+      "description": "Whether qory sends the next-session request after each workflow session that did not pause, https://qory.dev/contracts/run/v1/next-session-request.schema.json, and runs the session that the answer sets. Absent and false mean the same: qory sends no request, and the run has session 1 only.",
       "type": "boolean"
     },
     "type_settings": {
