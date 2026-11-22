@@ -76,7 +76,8 @@ type FindingPlace struct {
 // "replied_fixed", "replied_disputed", "closed_fixed", "closed_dismissed" and
 // "repeated_after_person_close", whose Actor is qory; "dismissed_by_person", "accepted" and
 // "sent_back", whose Actor is a person; or "reopened", whose Actor is qory when a reviewer
-// repeats a finding that a run closed, and a person when a person reopens it. A person
+// repeats a finding that a run closed or a check fails again after "closed_fixed", and a
+// person when a person reopens it. A person
 // closes a finding with "dismissed_by_person" or "accepted". A run cannot reopen a finding
 // that a person closed: a run that repeats it adds "repeated_after_person_close", and the
 // finding stays closed.

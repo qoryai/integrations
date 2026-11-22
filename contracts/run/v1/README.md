@@ -109,8 +109,8 @@ their ids. qory reads them with `GET /v1/runs/<id>/findings` and writes them wit
   an event is the `stage_round` of the work item when the event was written, and the
   `stage` is the stage that counts the round.
 - qory writes `raised`, `repeated`, `replied_fixed`, `replied_disputed`, `closed_fixed`,
-  `closed_dismissed` and `repeated_after_person_close`, and, when a reviewer repeats a
-  finding that a run closed, `reopened`. A person writes `dismissed_by_person`, `accepted`,
+  `closed_dismissed` and `repeated_after_person_close`, and `reopened` when a reviewer
+  repeats a finding that a run closed or a check fails again after `closed_fixed`. A person writes `dismissed_by_person`, `accepted`,
   `sent_back` and `reopened`. The run API does not write a person's events. Each event of
   a POST has `by`: the role of the session whose report the event comes from, such as
   `code-reviewer`, or the name of the check, such as `suite`. For a criterion, `by` is
