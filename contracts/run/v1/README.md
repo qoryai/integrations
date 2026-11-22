@@ -124,7 +124,8 @@ their ids. qory reads them with `GET /v1/runs/<id>/findings` and writes them wit
   starts a new take in, and `findings` and `bases` are those of the current one.
 - The base of a target is the version that the first run of the take in on the target
   started from. Qory Apiary stores it once for each take in and each target, from the
-  first POST that has it, and refuses a different base later with `base_changed`.
+  first POST that has it, and refuses a different base later with `base_changed`. A target
+  with no earlier version has no entry in `bases`.
 
 `POST` answers with `findings-post-answer.schema.json`. A stage with no open
 blocking finding has the count 0 in `open_blocking`, or is not listed. qory sends a
@@ -138,7 +139,8 @@ members are as in Forager's link refusal. Qory Apiary answers a verdict `passed`
 with `open_blocking_findings` while the stage owns an open blocking finding, at
 `POST /v1/runs/<id>/verdict`. `stage` is the stage, and `findings` has the ids of up to 50
 of the findings, and `message` is required. A verdict `changes-requested` or `escalate`
-is not refused for this cause. The `message` has two lines:
+is not refused for this cause. The `message` has two lines, and
+for one id the first line ends with `has 1 open blocking finding.`:
 
 ```
 Send changes-requested in place of passed: build has 2 open blocking findings.

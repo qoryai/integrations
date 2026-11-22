@@ -103,9 +103,9 @@
         "line": 17
       },
       "point": "TestCartTotal fails",
-      "problem": "TestCartTotal gets 110.00 where it wants 108.00.",
+      "problem": "TestCartTotal returns 110.00; the criterion is 108.00.",
       "fix": "Subtract the discount before the tax in total.",
-      "proof": "Run go test ./... and read the failure: TestCartTotal got 110.00, want 108.00.",
+      "proof": "Run go test ./... and read the failure: TestCartTotal returns 110.00, and the criterion is 108.00.",
       "state": "open",
       "disputed": false,
       "events": [
@@ -172,9 +172,9 @@
         "quote": "Free shiping on orders over 50"
       },
       "point": "The listing text has a typo",
-      "problem": "The listing writes shipping with one p.",
+      "problem": "The listing has shipping with one p.",
       "fix": "Write shipping with two p.",
-      "proof": "The listing text reads Free shiping on orders over 50.",
+      "proof": "The listing text is Free shiping on orders over 50.",
       "state": "dismissed",
       "disputed": false,
       "events": [

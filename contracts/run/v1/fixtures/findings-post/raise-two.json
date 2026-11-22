@@ -71,9 +71,9 @@
         "quote": "Free shiping on orders over 50"
       },
       "point": "The listing text has a typo",
-      "problem": "The listing writes shipping with one p.",
+      "problem": "The listing has shipping with one p.",
       "fix": "Write shipping with two p.",
-      "proof": "The listing text reads Free shiping on orders over 50."
+      "proof": "The listing text is Free shiping on orders over 50."
     }
   ]
 }

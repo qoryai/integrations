@@ -126,7 +126,7 @@
       ],
       "properties": {
         "kind": {
-          "description": "raise, a new finding; repeat, a reviewer or check that sees the finding again; reply_fixed, the builder's report that it fixed the finding; reply_disputed, the builder's report that it disputes the finding; close_fixed, a reviewer or check that saw the fix; or close_dismissed, a reviewer that accepts a dispute.",
+          "description": "raise, a new finding; repeat, a reviewer or check that raises the finding again; reply_fixed, the builder's report that it fixed the finding; reply_disputed, the builder's report that disputes the finding; close_fixed, a reviewer or check whose re-check passes; or close_dismissed, a reviewer's report that drops the finding after a dispute.",
           "type": "string",
           "enum": [
             "raise",

@@ -96,10 +96,10 @@
         "file": "src/checkout.go",
         "line": 88
       },
-      "point": "The error names a field that the form lacks",
-      "problem": "The error for a bad code names the field coupon, and the checkout form has no such field.",
+      "point": "The error shows a field that the form lacks",
+      "problem": "The error for a bad code shows the field coupon, and the checkout form has no such field.",
       "fix": "Name the field promo_code in the message.",
-      "proof": "Submit the checkout form with a bad code: the message says coupon.",
+      "proof": "Submit the checkout form with a bad code: the message shows coupon.",
       "state": "dismissed",
       "disputed": false,
       "events": [
@@ -120,7 +120,7 @@
             "kind": "qory",
             "name": "implement-changes"
           },
-          "reason": "The admin view calls the field coupon."
+          "reason": "The admin view labels the field coupon."
         },
         {
           "kind": "closed_dismissed",

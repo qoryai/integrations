@@ -71,8 +71,8 @@ func object(t *testing.T, m map[string]any, keys ...any) map[string]any {
 }
 
 // TestEachFindingsRefusalCodeHasAFixture pins that the documents under
-// fixtures/findings-refusal/ cover each code of error in findings-refusal.schema.json once,
-// and no other code, and that the code open_blocking_findings is a 409.
+// fixtures/findings-refusal/ cover each code of error in findings-refusal.schema.json, and
+// no other code.
 func TestEachFindingsRefusalCodeHasAFixture(t *testing.T) {
 	doc, err := contracts.RunDocument("findings-refusal.schema.json")
 	if err != nil {
@@ -84,7 +84,10 @@ func TestEachFindingsRefusalCodeHasAFixture(t *testing.T) {
 	}
 	var got []string
 	for _, f := range runFiles(t, "fixtures/findings-refusal") {
-		got = append(got, fixture(t, strings.TrimPrefix(f, "fixtures/"))["error"].(string))
+		code := fixture(t, strings.TrimPrefix(f, "fixtures/"))["error"].(string)
+		if !slices.Contains(got, code) {
+			got = append(got, code)
+		}
 	}
 	slices.Sort(codes)
 	slices.Sort(got)
@@ -95,6 +98,7 @@ func TestEachFindingsRefusalCodeHasAFixture(t *testing.T) {
 	for _, sentence := range []string{
 		"400 invalid_request", "404 not_found", "409 base_changed", "409 open_blocking_findings",
 		`"Send changes-requested in place of passed: <stage> has <count> open blocking findings."`,
+		`"Send changes-requested in place of passed: <stage> has 1 open blocking finding."`,
 		`"  The open blocking findings are <ids>."`,
 	} {
 		if !strings.Contains(description, sentence) {
@@ -103,19 +107,31 @@ func TestEachFindingsRefusalCodeHasAFixture(t *testing.T) {
 	}
 }
 
-// TestTheOpenBlockingFindingsMessageHasTwoLines pins the message of the fixture of the code
+// TestTheOpenBlockingFindingsMessageHasTwoLines pins the message of each fixture of the code
 // open_blocking_findings: two lines, the second indented by two spaces, built from the
-// stage, the number of ids and the ids of the fixture.
+// stage, the number of ids and the ids of the fixture. The first line has "finding" for one
+// id and "findings" for more, and the fixtures have both counts.
 func TestTheOpenBlockingFindingsMessageHasTwoLines(t *testing.T) {
-	m := fixture(t, "findings-refusal/open-blocking-findings.json")
-	var ids []string
-	for _, id := range m["findings"].([]any) {
-		ids = append(ids, id.(string))
+	counts := map[int]bool{}
+	for _, name := range []string{"open-blocking-findings.json", "open-blocking-findings-one.json"} {
+		m := fixture(t, "findings-refusal/"+name)
+		var ids []string
+		for _, id := range m["findings"].([]any) {
+			ids = append(ids, id.(string))
+		}
+		counts[len(ids)] = true
+		noun := "findings"
+		if len(ids) == 1 {
+			noun = "finding"
+		}
+		want := fmt.Sprintf("Send changes-requested in place of passed: %s has %d open blocking %s.\n"+
+			"  The open blocking findings are %s.", m["stage"], len(ids), noun, strings.Join(ids, ", "))
+		if m["message"] != want {
+			t.Errorf("%s: the message is %q, want %q", name, m["message"], want)
+		}
 	}
-	want := fmt.Sprintf("Send changes-requested in place of passed: %s has %d open blocking findings.\n"+
-		"  The open blocking findings are %s.", m["stage"], len(ids), strings.Join(ids, ", "))
-	if m["message"] != want {
-		t.Errorf("the message is %q, want %q", m["message"], want)
+	if !counts[1] || len(counts) < 2 {
+		t.Errorf("the fixtures have the counts %v, want 1 and another", counts)
 	}
 }
 
@@ -528,7 +544,7 @@ func TestTheFindingsTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: "close_fixed", By: "suite", ID: "f1", Reason: "The suite passes."}}}},
 		{"findings-post-answer", contracts.FindingsPostAnswer{Created: []contracts.FindingCreated{{Ref: "r1", ID: "f2"}}, OpenBlocking: []contracts.FindingsOpenBlocking{{Stage: "build", Count: 0}}}},
 		{"findings-post-answer", contracts.FindingsPostAnswer{Created: []contracts.FindingCreated{}, OpenBlocking: []contracts.FindingsOpenBlocking{}}},
-		{"findings-refusal", contracts.FindingsRefusal{Error: "open_blocking_findings", Message: "Send changes-requested in place of passed: build has 1 open blocking findings.\n  The open blocking findings are f1.", From: "apiary", Stage: "build", Findings: []string{"f1"}}},
+		{"findings-refusal", contracts.FindingsRefusal{Error: "open_blocking_findings", Message: "Send changes-requested in place of passed: build has 1 open blocking finding.\n  The open blocking findings are f1.", From: "apiary", Stage: "build", Findings: []string{"f1"}}},
 		{"findings-refusal", contracts.FindingsRefusal{Error: "invalid_request", Names: []string{"events"}, From: "apiary"}},
 	} {
 		b, err := json.Marshal(c.v)
@@ -656,6 +672,34 @@ func TestTheFindingsListsAreBounded(t *testing.T) {
 		}
 		if err := refusal.Validate(doc); err == nil {
 			t.Errorf("a base_changed refusal with %s alone is accepted", member)
+		}
+	}
+}
+
+// TestNilRequiredListsAreWrittenAsEmptyLists pins that Findings and FindingsPostAnswer with
+// nil lists write them as [], which the schemas accept, and not as null.
+func TestNilRequiredListsAreWrittenAsEmptyLists(t *testing.T) {
+	for _, c := range []struct {
+		schema string
+		v      any
+		want   string
+	}{
+		{"findings", contracts.Findings{}, `{"bases":[],"findings":[]}`},
+		{"findings-post-answer", contracts.FindingsPostAnswer{}, `{"created":[],"open_blocking":[]}`},
+	} {
+		b, err := json.Marshal(c.v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(b) != c.want {
+			t.Errorf("%T is written as %s, want %s", c.v, b, c.want)
+		}
+		var doc any
+		if err := json.Unmarshal(b, &doc); err != nil {
+			t.Fatal(err)
+		}
+		if err := compileRun(t, runSchema(c.schema)).Validate(doc); err != nil {
+			t.Errorf("%s: %s is refused: %v", c.schema, b, err)
 		}
 	}
 }
