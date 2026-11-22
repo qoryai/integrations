@@ -58,6 +58,9 @@ var closedRunFixtures = map[string]closedFixture{
 	"outcome-end-code-member.json":                           {"outcome", "/ additionalProperties"},
 	"outcome-message.json":                                   {"outcome", "/ additionalProperties"},
 	"next-session-answer-undefined-member.json":              {"next-session-answer", "/ additionalProperties"},
+	"findings-undefined-member.json":                         {"findings", "/findings/0 additionalProperties"},
+	"findings-post-event-undefined-member.json":              {"findings-post", "/events/1 additionalProperties"},
+	"findings-post-answer-undefined-member.json":             {"findings-post-answer", "/ additionalProperties"},
 }
 
 // closedDescriptionFixtures are the fixtures of integration/v1/fixtures/closed, by file

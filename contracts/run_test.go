@@ -42,10 +42,12 @@ func runFiles(t *testing.T, dir string) []string {
 }
 
 // runSchemas are the schemas of the run contract: the files of run/v1.
-var runSchemas = []string{"documents", "next-session-answer", "next-session-refusal", "next-session-request", "outcome"}
+var runSchemas = []string{"documents", "findings", "findings-post", "findings-post-answer", "findings-refusal", "next-session-answer", "next-session-refusal", "next-session-request", "outcome"}
 
 // TestRunSchemaIsTheContract pins that run/v1 contains exactly README.md,
-// documents.schema.json, next-session-answer.schema.json, next-session-refusal.schema.json,
+// documents.schema.json, findings.schema.json, findings-post.schema.json,
+// findings-post-answer.schema.json, findings-refusal.schema.json,
+// next-session-answer.schema.json, next-session-refusal.schema.json,
 // next-session-request.schema.json and outcome.schema.json, each with the $id
 // RunBase/<file name>, and that each compiles.
 func TestRunSchemaIsTheContract(t *testing.T) {
@@ -59,7 +61,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 			got = append(got, e.Name())
 		}
 	}
-	want := "README.md,documents.schema.json,next-session-answer.schema.json,next-session-refusal.schema.json,next-session-request.schema.json,outcome.schema.json"
+	want := "README.md,documents.schema.json,findings-post-answer.schema.json,findings-post.schema.json,findings-refusal.schema.json,findings.schema.json,next-session-answer.schema.json,next-session-refusal.schema.json,next-session-request.schema.json,outcome.schema.json"
 	if strings.Join(got, ",") != want {
 		t.Errorf("run/v1 contains %v, want %s", got, want)
 	}
@@ -77,7 +79,7 @@ func TestRunSchemaIsTheContract(t *testing.T) {
 }
 
 // TestRunFixturesValidate pins that each document under fixtures/<name>/ of the run
-// contract is accepted by <name>.schema.json, for the five schemas of the contract,
+// contract is accepted by <name>.schema.json, for each schema of the contract that has fixtures,
 // and that fixtures/ contains no other folder of valid documents.
 func TestRunFixturesValidate(t *testing.T) {
 	for _, name := range runSchemas {
@@ -298,6 +300,62 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-trigger-upper-case.json":                                  {"documents", "/trigger pattern"},
 		"documents-trigger-65-characters.json":                               {"documents", "/trigger maxLength"},
 		"documents-work-item-member.json":                                    {"documents", "/ required subject"},
+		"findings-actor-person-with-name.json":                               {"findings", "/findings/0/events/2/actor "},
+		"findings-base-space.json":                                           {"findings", "/bases/0/base pattern"},
+		"findings-event-accepted-by-qory.json":                               {"findings", "/findings/3/events/1/actor/kind const"},
+		"findings-event-closed-fixed-by-person.json":                         {"findings", "/findings/1/events/2/actor/kind const"},
+		"findings-event-round-0.json":                                        {"findings", "/findings/0/events/0/round minimum"},
+		"findings-event-without-reason.json":                                 {"findings", "/findings/1/events/1 required reason"},
+		"findings-events-empty.json":                                         {"findings", "/findings/0/events minItems"},
+		"findings-id-upper-case.json":                                        {"findings", "/findings/0/id pattern"},
+		"findings-place-line-without-file.json":                              {"findings", "/findings/0/place dependentRequired/line"},
+		"findings-post-answer-count-negative.json":                           {"findings-post-answer", "/open_blocking/0/count minimum"},
+		"findings-post-answer-id-upper-case.json":                            {"findings-post-answer", "/created/0/id pattern"},
+		"findings-post-answer-without-open-blocking.json":                    {"findings-post-answer", "/ required open_blocking"},
+		"findings-post-base-space.json":                                      {"findings-post", "/bases/0/base pattern"},
+		"findings-post-raise-without-by.json":                                {"findings-post", "/events/0 required by"},
+		"findings-post-repeat-without-by.json":                               {"findings-post", "/events/0 required by"},
+		"findings-post-reply-fixed-without-by.json":                          {"findings-post", "/events/0 required by"},
+		"findings-post-reply-disputed-without-by.json":                       {"findings-post", "/events/0 required by"},
+		"findings-post-close-fixed-without-by.json":                          {"findings-post", "/events/0 required by"},
+		"findings-post-close-dismissed-without-by.json":                      {"findings-post", "/events/0 required by"},
+		"findings-post-events-101.json":                                      {"findings-post", "/events maxItems"},
+		"findings-post-events-empty.json":                                    {"findings-post", "/events minItems"},
+		"findings-post-kind-accepted.json":                                   {"findings-post", "/events/0/kind enum"},
+		"findings-post-raise-with-id.json":                                   {"findings-post", "/events/0/id "},
+		"findings-post-raise-without-proof.json":                             {"findings-post", "/events/0 required proof"},
+		"findings-post-raise-without-ref.json":                               {"findings-post", "/events/0 required ref"},
+		"findings-post-ref-space.json":                                       {"findings-post", "/events/0/ref pattern"},
+		"findings-post-repeat-with-ref.json":                                 {"findings-post", "/events/1/ref "},
+		"findings-post-repeat-with-target.json":                              {"findings-post", "/events/1/target "},
+		"findings-post-repeat-without-id.json":                               {"findings-post", "/events/1 required id"},
+		"findings-post-reply-without-reason.json":                            {"findings-post", "/events/2 required reason"},
+		"findings-refusal-51-findings.json":                                  {"findings-refusal", "/findings maxItems"},
+		"findings-refusal-from-gateway.json":                                 {"findings-refusal", "/from const"},
+		"findings-refusal-stage-with-other-code.json":                        {"findings-refusal", "/ "},
+		"findings-refusal-unknown-code.json":                                 {"findings-refusal", "/error enum"},
+		"findings-refusal-without-findings.json":                             {"findings-refusal", "/ required findings"},
+		"findings-refusal-without-message.json":                              {"findings-refusal", "/ required message"},
+		"findings-refusal-without-stage.json":                                {"findings-refusal", "/ required stage"},
+		"findings-severity-high.json":                                        {"findings", "/findings/0/severity enum"},
+		"findings-stage-upper-case.json":                                     {"findings", "/findings/0/stage pattern"},
+		"findings-state-closed.json":                                         {"findings", "/findings/0/state enum"},
+		"findings-without-bases.json":                                        {"findings", "/ required bases"},
+		"findings-base-entry-without-base.json":                              {"findings", "/bases/0 required base"},
+		"findings-event-without-actor.json":                                  {"findings", "/findings/0/events/0 required actor"},
+		"findings-event-without-round.json":                                  {"findings", "/findings/0/events/0 required round"},
+		"findings-event-without-stage.json":                                  {"findings", "/findings/0/events/0 required stage"},
+		"findings-finding-without-disputed.json":                             {"findings", "/findings/0 required disputed"},
+		"findings-finding-without-place.json":                                {"findings", "/findings/0 required place"},
+		"findings-finding-without-proof.json":                                {"findings", "/findings/0 required proof"},
+		"findings-finding-without-source.json":                               {"findings", "/findings/0 required source"},
+		"findings-place-without-quote.json":                                  {"findings", "/findings/0/place required quote"},
+		"findings-source-without-name.json":                                  {"findings", "/findings/0/source required name"},
+		"findings-post-answer-created-without-id.json":                       {"findings-post-answer", "/created/0 required id"},
+		"findings-post-answer-created-without-ref.json":                      {"findings-post-answer", "/created/0 required ref"},
+		"findings-post-close-dismissed-without-reason.json":                  {"findings-post", "/events/0 required reason"},
+		"findings-post-close-fixed-without-reason.json":                      {"findings-post", "/events/0 required reason"},
+		"findings-post-reply-disputed-without-reason.json":                   {"findings-post", "/events/0 required reason"},
 	}
 	got := runFiles(t, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -550,7 +608,7 @@ func TestADeliverHasAtMostSixteenEntries(t *testing.T) {
 }
 
 // TestCheckRefusesWhatTheSchemaCannotSay pins that each document under fixtures/check
-// is accepted by documents.schema.json and breaks a rule that Documents.Check reports, and
+// whose name starts with documents- is accepted by documents.schema.json and breaks a rule that Documents.Check reports, and
 // that each valid fixture of run documents passes Documents.Check.
 func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 	schema := compileRun(t, runSchema("documents"))
@@ -561,7 +619,12 @@ func TestCheckRefusesWhatTheSchemaCannotSay(t *testing.T) {
 		"documents-destination-id-twice.json":               `List each destination once: "tg_0123456789abcdef" appears twice.`,
 		"documents-destination-id-twice-after-another.json": `List each destination once: "tg_0123456789abcdef" appears twice.`,
 	}
-	got := runFiles(t, "fixtures/check")
+	var got []string
+	for _, f := range runFiles(t, "fixtures/check") {
+		if strings.HasPrefix(path.Base(f), "documents-") {
+			got = append(got, f)
+		}
+	}
 	if len(got) != len(want) {
 		t.Errorf("fixtures/check holds %d documents, and the test expects %d", len(got), len(want))
 	}

@@ -23,8 +23,10 @@ func CompileClosed(name string) (*jsonschema.Schema, error) {
 
 // CompileRunClosed compiles the closed copy of a schema of the run contract, as
 // [CompileClosed] does for the integration contract. These schemas have a closed copy:
-// documents.schema.json, next-session-answer.schema.json, next-session-request.schema.json
-// and outcome.schema.json. It returns an error for any other name.
+// documents.schema.json, findings.schema.json, findings-post.schema.json,
+// findings-post-answer.schema.json, next-session-answer.schema.json,
+// next-session-request.schema.json and outcome.schema.json. It returns an error for any
+// other name.
 func CompileRunClosed(name string) (*jsonschema.Schema, error) {
 	return compileClosed(RunBase, RunFS, name)
 }
@@ -168,6 +170,9 @@ var closable = map[string]bool{
 	RunBase + "/next-session-answer.schema.json":    true,
 	RunBase + "/next-session-request.schema.json":   true,
 	RunBase + "/outcome.schema.json":                true,
+	RunBase + "/findings.schema.json":               true,
+	RunBase + "/findings-post.schema.json":          true,
+	RunBase + "/findings-post-answer.schema.json":   true,
 
 	ProvisionerBase + "/claim.schema.json":        true,
 	ProvisionerBase + "/claim-answer.schema.json": true,

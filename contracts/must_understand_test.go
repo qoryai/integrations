@@ -87,6 +87,38 @@ func understoodSchemas() []understood {
 			invalid: func(m map[string]any) { m["session"] = json.Number("0") },
 		},
 		{
+			name:    "findings.schema.json",
+			open:    func() (*jsonschema.Schema, error) { return contracts.CompileRun("findings.schema.json") },
+			closed:  func() (*jsonschema.Schema, error) { return contracts.CompileRunClosed("findings.schema.json") },
+			read:    contracts.RunDocument,
+			list:    runList("fixtures/findings"),
+			valid:   "fixtures/findings/three-targets.json",
+			known:   "/findings",
+			invalid: func(m map[string]any) { m["findings"] = "none" },
+		},
+		{
+			name:    "findings-post.schema.json",
+			open:    func() (*jsonschema.Schema, error) { return contracts.CompileRun("findings-post.schema.json") },
+			closed:  func() (*jsonschema.Schema, error) { return contracts.CompileRunClosed("findings-post.schema.json") },
+			read:    contracts.RunDocument,
+			list:    runList("fixtures/findings-post"),
+			valid:   "fixtures/findings-post/batch.json",
+			known:   "/events",
+			invalid: func(m map[string]any) { m["events"] = []any{} },
+		},
+		{
+			name: "findings-post-answer.schema.json",
+			open: func() (*jsonschema.Schema, error) { return contracts.CompileRun("findings-post-answer.schema.json") },
+			closed: func() (*jsonschema.Schema, error) {
+				return contracts.CompileRunClosed("findings-post-answer.schema.json")
+			},
+			read:    contracts.RunDocument,
+			list:    runList("fixtures/findings-post-answer"),
+			valid:   "fixtures/findings-post-answer/created.json",
+			known:   "/created",
+			invalid: func(m map[string]any) { m["open_blocking"] = "none" },
+		},
+		{
 			name:    "outcome.schema.json",
 			open:    func() (*jsonschema.Schema, error) { return contracts.CompileRun("outcome.schema.json") },
 			closed:  func() (*jsonschema.Schema, error) { return contracts.CompileRunClosed("outcome.schema.json") },
@@ -365,6 +397,9 @@ var closedSites = map[string][]string{
 	},
 	"run/next-session-answer.schema.json":  {"/oneOf/0", "/oneOf/1"},
 	"run/next-session-request.schema.json": {""},
+	"run/findings.schema.json":             {"", "/$defs/actor", "/$defs/base_entry", "/$defs/event", "/$defs/finding", "/$defs/place", "/$defs/source"},
+	"run/findings-post.schema.json":        {"", "/$defs/event"},
+	"run/findings-post-answer.schema.json": {"", "/properties/created/items", "/properties/open_blocking/items"},
 	"run/outcome.schema.json":              {""},
 	"provisioner/claim.schema.json":        {""},
 	"provisioner/claim-answer.schema.json": {""},
@@ -480,7 +515,7 @@ func TestAClosedCopyClosesTheSitesOfItsSchema(t *testing.T) {
 	for _, name := range []string{"check", "check-answer", "delete", "delete-answer", "error", "list", "list-answer", "log", "log-answer", "make", "make-answer"} {
 		reachableFiles(t, contracts.MachinesBase+"/"+name+".schema.json", reached)
 	}
-	for _, name := range []string{"documents", "next-session-answer", "next-session-request", "outcome"} {
+	for _, name := range []string{"documents", "findings", "findings-post", "findings-post-answer", "next-session-answer", "next-session-request", "outcome"} {
 		reachableFiles(t, contracts.RunBase+"/"+name+".schema.json", reached)
 	}
 	var names []string
@@ -637,6 +672,9 @@ func TestMustUnderstandListsThePointersOfItsSchema(t *testing.T) {
 		{"next-session-answer.schema.json", contracts.RunBase, contracts.RunDocument, []string{"/inputs", "/type_settings"}, contracts.NextSessionAnswer{}},
 		{"description.schema.json", contracts.Base, contracts.Document, []string{"/settings"}, nil},
 		{"next-session-request.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.NextSessionRequest{}},
+		{"findings.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.Findings{}},
+		{"findings-post.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.FindingsPost{}},
+		{"findings-post-answer.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.FindingsPostAnswer{}},
 		{"outcome.schema.json", contracts.RunBase, contracts.RunDocument, nil, contracts.RunOutcome{}},
 		{"claim.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.Claim{}},
 		{"claim-answer.schema.json", contracts.ProvisionerBase, contracts.ProvisionerDocument, nil, contracts.ClaimAnswer{}},
@@ -1024,10 +1062,11 @@ func TestOnlyTheClosableSchemasHaveAClosedCopy(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"documents.schema.json", "next-session-answer.schema.json",
-		"next-session-request.schema.json", "outcome.schema.json",
-		"next-session-refusal.schema.json", "documents.schema.json#/$defs/subject"} {
+		"next-session-request.schema.json", "outcome.schema.json", "findings.schema.json", "findings-post.schema.json",
+		"findings-post-answer.schema.json", "next-session-refusal.schema.json", "findings-refusal.schema.json",
+		"documents.schema.json#/$defs/subject"} {
 		_, err := contracts.CompileRunClosed(name)
-		want := name != "next-session-refusal.schema.json" && !strings.Contains(name, "#")
+		want := name != "next-session-refusal.schema.json" && name != "findings-refusal.schema.json" && !strings.Contains(name, "#")
 		if (err == nil) != want {
 			t.Errorf("CompileRunClosed(%q): %v", name, err)
 		}
@@ -1049,6 +1088,12 @@ func TestAReaderDecodesEveryClosedFixture(t *testing.T) {
 			v = &contracts.Documents{}
 		case strings.HasPrefix(name, "next-session-request-"):
 			v = &contracts.NextSessionRequest{}
+		case strings.HasPrefix(name, "findings-post-answer-"):
+			v = &contracts.FindingsPostAnswer{}
+		case strings.HasPrefix(name, "findings-post-"):
+			v = &contracts.FindingsPost{}
+		case strings.HasPrefix(name, "findings-"):
+			v = &contracts.Findings{}
 		case strings.HasPrefix(name, "outcome-"):
 			v = &contracts.RunOutcome{}
 		}

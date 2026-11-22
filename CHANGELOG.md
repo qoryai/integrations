@@ -417,6 +417,24 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- Read and write the findings of a work item with `findings.schema.json`,
+  `findings-post.schema.json`, `findings-post-answer.schema.json` and
+  `findings-refusal.schema.json` of the run contract. A finding is one problem that a
+  reviewer, a check, a criterion, a scenario or a hook raised about a target. Qory Apiary
+  mints its id, `f` and a number. A finding has a target, an owning stage, a source, a
+  severity, a place, a point, a problem, a fix, a proof, a state (`open`, `fixed`,
+  `dismissed` or `accepted`), `disputed` and its events. An event has the `round`, the
+  `stage_round` of the work item, and the `stage`. A run that repeats a finding that a
+  person closed adds `repeated_after_person_close`, and the finding stays closed. The post
+  body is a batch of events (`raise`, `repeat`, `reply_fixed`, `reply_disputed`,
+  `close_fixed` and `close_dismissed`), each with `by`, the role or check that writes it,
+  and `bases`, which Qory Apiary stores once for each take in (one start of the work item
+  in Qory Apiary) and each target. The answer has the
+  id of each raise and the open blocking count of each stage. Qory Apiary refuses a verdict
+  `passed` with `open_blocking_findings` (409, with `stage`, up to 50 `findings` and `message`) while
+  the stage owns an open blocking finding. In Go: `Findings`, `Finding`, `FindingEvent`,
+  `FindingsPost`, `FindingsPostAnswer` and `FindingsRefusal`, with `Check` methods.
+  `findings`, `findings-post` and `findings-post-answer` have a closed copy.
 - `$defs/harness_workflow` of `documents.schema.json` has `review_group` and
   `runs_locked_checks`, both optional, as a workflow has them in `qory-stack.yaml`.
   `review_group` is the name of the group role whose members' reports a review session
@@ -437,10 +455,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
 - `contracts.CompileClosed`, `contracts.CompileRunClosed`,
   `contracts.CompileProvisionerClosed`, `contracts.CompileMachinesClosed` and
   `contracts.CompileExploreClosed` compile the closed copy of a schema, and return an
-  error for a schema without one. Fifty schemas have a closed copy:
+  error for a schema without one. Fifty-three schemas have a closed copy:
   - 27 of the integration contract, all but `definitions.schema.json`;
-  - four of the run contract: `documents`, `next-session-answer`, `next-session-request`
-    and `outcome`;
+  - seven of the run contract: `documents`, `findings`, `findings-post`,
+    `findings-post-answer`, `next-session-answer`, `next-session-request` and
+    `outcome`;
   - the seven of the provisioner contract and the eleven of the machines contract;
   - `inputs` of the explore contract.
 

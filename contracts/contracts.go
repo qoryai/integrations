@@ -156,6 +156,9 @@
 // hook as a session between two workflow sessions. The hook session takes the next
 // Forager session number, and qory sends no next-session request for it, so the `session`
 // numbers in the requests can have gaps.
+// It also contains the findings of a run's work item: findings.schema.json, whose Go type
+// is [Findings], findings-post.schema.json, [FindingsPost], findings-post-answer.schema.json,
+// [FindingsPostAnswer], and findings-refusal.schema.json, [FindingsRefusal].
 // It also contains a run's end, outcome.schema.json, whose Go type is [RunOutcome]: how
 // the run ended, with the end codes, [EndCode], that qory sets in its reason for a failed
 // run. The schema lists each end code with its cause.
