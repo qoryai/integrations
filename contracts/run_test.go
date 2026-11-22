@@ -199,6 +199,8 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"outcome-prebuild-failed-cancelled.json":                             {"outcome", "/state const"},
 		"outcome-next-session-failed-succeeded.json":                         {"outcome", "/state const"},
 		"outcome-next-session-failed-cancelled.json":                         {"outcome", "/state const"},
+		"outcome-outputs-invalid-succeeded.json":                             {"outcome", "/state const"},
+		"outcome-outputs-invalid-cancelled.json":                             {"outcome", "/state const"},
 		"outcome-end-code-cancelled.json":                                    {"outcome", "/state const"},
 		"outcome-reason-empty.json":                                          {"outcome", "/reason pattern"},
 		"outcome-reason-upper-case.json":                                     {"outcome", "/reason pattern"},
