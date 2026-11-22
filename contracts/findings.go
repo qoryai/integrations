@@ -87,8 +87,9 @@ type FindingEvent struct {
 	// Version is the version of the target that the event concerns, as
 	// [Documents.TargetVersion].
 	Version string `json:"version,omitempty,case:strict"`
-	// Reason is 1 to 2000 characters. It is set for each kind except "raised",
-	// "repeated" and "accepted".
+	// Reason is 1 to 2000 characters. It is set for "replied_fixed", "replied_disputed",
+	// "closed_fixed", "closed_dismissed" and "dismissed_by_person", and optional for every
+	// other kind.
 	Reason string `json:"reason,omitempty,case:strict"`
 }
 

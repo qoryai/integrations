@@ -76,8 +76,7 @@
           "stage": "build",
           "actor": {
             "kind": "person"
-          },
-          "reason": "The rule does not say that. Fix it."
+          }
         }
       ]
     },
@@ -202,8 +201,7 @@
           "actor": {
             "kind": "qory",
             "name": "copy-reviewer"
-          },
-          "reason": "The spelling is still wrong."
+          }
         }
       ]
     },

@@ -202,7 +202,7 @@
       }
     },
     "event": {
-      "description": "One event of a finding. A reply or close has a reason; raised, repeated and accepted may have none. The events of kinds raised, repeated, replied_fixed, replied_disputed, closed_fixed, closed_dismissed and repeated_after_person_close have the actor kind qory. The events of kinds dismissed_by_person, accepted and sent_back are the actions of a person, which the run API does not write, and have the actor kind person: dismissed_by_person and accepted close the finding, and sent_back keeps it open. The event reopened sets the state of a closed finding to open, and has the actor kind qory when a reviewer repeats a finding that a run closed, and person when a person reopens the finding. A run that repeats a finding that a person closed adds repeated_after_person_close, and the finding stays closed.",
+      "description": "One event of a finding. The events replied_fixed, replied_disputed, closed_fixed, closed_dismissed and dismissed_by_person have a reason; every other kind may have one. The events of kinds raised, repeated, replied_fixed, replied_disputed, closed_fixed, closed_dismissed and repeated_after_person_close have the actor kind qory. The events of kinds dismissed_by_person, accepted and sent_back are the actions of a person, which the run API does not write, and have the actor kind person: dismissed_by_person and accepted close the finding, and sent_back keeps it open. The event reopened sets the state of a closed finding to open, and has the actor kind qory when a reviewer repeats a finding that a run closed, and person when a person reopens the finding. A run that repeats a finding that a person closed adds repeated_after_person_close, and the finding stays closed.",
       "type": "object",
       "required": [
         "kind",
@@ -278,10 +278,7 @@
                   "replied_disputed",
                   "closed_fixed",
                   "closed_dismissed",
-                  "repeated_after_person_close",
-                  "dismissed_by_person",
-                  "sent_back",
-                  "reopened"
+                  "dismissed_by_person"
                 ]
               }
             },
@@ -331,7 +328,7 @@
           "$ref": "https://qory.dev/contracts/run/v1/documents.schema.json#/$defs/target_version"
         },
         "reason": {
-          "description": "Why, for a reply or a close: 1 to 2000 characters. Required for each kind except raised, repeated and accepted.",
+          "description": "Why, 1 to 2000 characters. Required for replied_fixed, replied_disputed, closed_fixed, closed_dismissed and dismissed_by_person, and optional for every other kind.",
           "$ref": "#/$defs/reason"
         }
       }

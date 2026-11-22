@@ -382,11 +382,11 @@ func TestAnEventHasTheActorAndTheReasonOfItsKind(t *testing.T) {
 		{"replied_disputed", true, false, true},
 		{"closed_fixed", true, false, true},
 		{"closed_dismissed", true, false, true},
-		{"repeated_after_person_close", true, false, true},
+		{"repeated_after_person_close", true, false, false},
 		{"dismissed_by_person", false, true, true},
 		{"accepted", false, true, false},
-		{"sent_back", false, true, true},
-		{"reopened", true, true, true},
+		{"sent_back", false, true, false},
+		{"reopened", true, true, false},
 	} {
 		for actor, ok := range map[string]bool{"qory": c.qory, "person": c.person} {
 			m := fixture(t, "findings/three-targets.json")

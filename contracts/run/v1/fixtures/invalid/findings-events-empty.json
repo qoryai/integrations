@@ -172,8 +172,7 @@
           "actor": {
             "kind": "qory",
             "name": "copy-reviewer"
-          },
-          "reason": "The spelling is still wrong."
+          }
         }
       ]
     },

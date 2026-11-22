@@ -62,8 +62,7 @@
           "stage": "build",
           "actor": {
             "kind": "person"
-          },
-          "reason": "It happens on the staging site."
+          }
         }
       ]
     }
