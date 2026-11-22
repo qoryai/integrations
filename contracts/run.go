@@ -420,6 +420,13 @@ type HarnessWorkflow struct {
 	// workflow, "light", "balanced" or "thinking", and empty for none. The control plane
 	// resolves the model and effort from the tier.
 	Tier string `json:"tier,omitempty,case:strict"`
+	// ReviewGroup is the name of the group role whose members' reports a review session
+	// of the workflow needs, such as "reviewers", and empty for none.
+	ReviewGroup string `json:"review_group,omitempty,case:strict"`
+	// RunsLockedChecks is true for a Verify workflow: before the agent of a session of
+	// the workflow starts, qory runs the locked checks that a module declares. It is
+	// false when left out, and a false value is left out of the document.
+	RunsLockedChecks bool `json:"runs_locked_checks,omitempty,case:strict"`
 }
 
 // HarnessBase is a remote source of a stack, the extends of a [HarnessSection]: Git and

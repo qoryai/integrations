@@ -245,6 +245,8 @@ func TestInvalidRunFixturesAreRefused(t *testing.T) {
 		"documents-harness-extends-and-workflows.json":                       {"documents", "/harness/harness/workflows "},
 		"documents-harness-workflow-access-admin.json":                       {"documents", "/harness/harness/workflows/hello/access enum"},
 		"documents-harness-workflow-tier-unknown.json":                       {"documents", "/harness/harness/workflows/hello/tier enum"},
+		"documents-harness-workflow-review-group-slash.json":                 {"documents", "/harness/harness/workflows/verify-a-ticket/review_group pattern"},
+		"documents-harness-workflow-runs-locked-checks-string.json":          {"documents", "/harness/harness/workflows/verify-a-ticket/runs_locked_checks type"},
 		"documents-harness-workflow-plan-without-write.json":                 {"documents", "/harness/harness/workflows/hello/access const"},
 		"documents-harness-workflow-plan-without-access.json":                {"documents", "/harness/harness/workflows/hello required access"},
 		"documents-harness-workflow-name-56-characters.json":                 {"documents", "/ pattern"},
@@ -1049,6 +1051,7 @@ func TestRunTypesMarshalToTheirSchemas(t *testing.T) {
 		Workflows: map[string]contracts.HarnessWorkflow{
 			"hello":  {Access: "write", Plan: "build-plan", Tier: "thinking"},
 			"review": {},
+			"verify": {Access: "write-no-push", Tier: "thinking", ReviewGroup: "verify-reviewers", RunsLockedChecks: true},
 		},
 	}}
 	definedBare := &contracts.HarnessDocument{Harness: contracts.HarnessSection{
@@ -1782,6 +1785,46 @@ func TestAWorkflowPlanAndTierFollowQorysHarnessFile(t *testing.T) {
 		"plan with no access":            {"plan": "build-plan"},
 		"tier fast":                      {"tier": "fast"},
 		"tier Thinking":                  {"tier": "Thinking"},
+	} {
+		if workflow.Validate(doc) == nil {
+			t.Errorf("%s is accepted", name)
+		}
+	}
+}
+
+// TestAWorkflowReviewGroupAndLockedChecksFollowQorysHarnessFile pins review_group and
+// runs_locked_checks of a workflow in harness, with the grammar of qory's harness file:
+// review_group is one path segment with no slash, backslash, @ or space and no leading
+// dot, and runs_locked_checks is a boolean.
+func TestAWorkflowReviewGroupAndLockedChecksFollowQorysHarnessFile(t *testing.T) {
+	workflow := compileRun(t, runSchema("documents/harness_workflow"))
+	for name, doc := range map[string]map[string]any{
+		"group reviewers":             {"review_group": "reviewers"},
+		"group with a hyphen":         {"review_group": "verify-reviewers"},
+		"group with a dot inside":     {"review_group": "team.reviewers"},
+		"group of one character":      {"review_group": "r"},
+		"locked checks true":          {"runs_locked_checks": true},
+		"locked checks false":         {"runs_locked_checks": false},
+		"group and locked checks":     {"access": "write-no-push", "tier": "thinking", "review_group": "verify-reviewers", "runs_locked_checks": true},
+		"group with a leading hyphen": {"review_group": "-reviewers"},
+		"group with a plus":           {"review_group": "reviewers+"},
+	} {
+		if err := workflow.Validate(doc); err != nil {
+			t.Errorf("%s is refused: %v", name, err)
+		}
+	}
+	for name, doc := range map[string]map[string]any{
+		"group empty":              {"review_group": ""},
+		"group with a slash":       {"review_group": "a/b"},
+		"group with a backslash":   {"review_group": `a\b`},
+		"group with an at sign":    {"review_group": "a@b"},
+		"group with a space":       {"review_group": "a b"},
+		"group with a leading dot": {"review_group": ".reviewers"},
+		"group a number":           {"review_group": json.Number("1")},
+		"group a list":             {"review_group": []any{"reviewers"}},
+		"locked checks a string":   {"runs_locked_checks": "true"},
+		"locked checks a number":   {"runs_locked_checks": json.Number("1")},
+		"locked checks null":       {"runs_locked_checks": nil},
 	} {
 		if workflow.Validate(doc) == nil {
 			t.Errorf("%s is accepted", name)
