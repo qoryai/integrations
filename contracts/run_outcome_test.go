@@ -78,6 +78,9 @@ func withReason(state string, reason any) map[string]any {
 func TestTheEndCodesAreTheSchemasList(t *testing.T) {
 	_, entries := schemaEndCodes(t)
 	pattern := regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+	// namedChecks are the two checks that a cause may name, as whole words: "checks" and
+	// "checking" stay banned.
+	namedChecks := regexp.MustCompile(`\b(output|module's) check\b`)
 	for code, text := range entries {
 		if _, ok := endCodes[contracts.EndCode(code)]; !ok {
 			t.Errorf("the schema lists %q, and no Go constant has it", code)
@@ -92,8 +95,7 @@ func TestTheEndCodesAreTheSchemasList(t *testing.T) {
 			t.Errorf("the end code %q has no cause", code)
 		}
 		// The output check and the module's check are checks, not instructions: they may stay.
-		lower := strings.ReplaceAll(strings.ToLower(text), "output check", "")
-		lower = strings.ReplaceAll(lower, "module's check", "")
+		lower := namedChecks.ReplaceAllString(strings.ToLower(text), "")
 		for _, banned := range []string{"contact", "support", "ask ", "check", "should", "please", "try ", "make ", "raise ", "retry", "again"} {
 			if strings.Contains(lower, banned) {
 				t.Errorf("the cause of %q contains %q: %s", code, banned, text)
