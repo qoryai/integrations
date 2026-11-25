@@ -69,14 +69,14 @@ func entryNames(t *testing.T, fsys fs.FS, dir string, folders bool) []string {
 
 // TestExploreSchemasAreTheContract pins that explore/v1 contains exactly the files of
 // exploreSchemas, each with the $id ExploreBase/<file>, and that fixtures/ contains a
-// folder for each schema, the folder invalid, and no other folder.
+// folder for each schema, the folders closed and invalid, and no other folder.
 func TestExploreSchemasAreTheContract(t *testing.T) {
 	schemas := slices.Clone(exploreSchemas)
 	slices.Sort(schemas)
 	if files := entryNames(t, contracts.ExploreFS, ".", false); !slices.Equal(files, schemas) {
 		t.Errorf("explore/v1 contains %v, want %v", files, schemas)
 	}
-	want := []string{"invalid"}
+	want := []string{"closed", "invalid"}
 	for _, name := range exploreSchemas {
 		doc, err := contracts.ExploreDocument(name)
 		if err != nil {
@@ -130,11 +130,9 @@ var invalidExploreFixtures = map[string]struct{ schema, reason string }{
 	"inputs-run-array.json":                         {"inputs", "/run type"},
 	"inputs-attempt-0.json":                         {"inputs", "/run/attempt minimum"},
 	"inputs-attempt-string.json":                    {"inputs", "/run/attempt type"},
-	"inputs-run-of.json":                            {"inputs", "/run additionalProperties of"},
 	"inputs-ticket-array.json":                      {"inputs", "/ticket type"},
 	"inputs-filer-kind-bot.json":                    {"inputs", "/ticket/filed_by/kind enum"},
-	"inputs-collection-ref.json":                    {"inputs", "/ticket additionalProperties collection_ref"},
-	"inputs-ticket-ref.json":                        {"inputs", "/ticket required external_ref; /ticket additionalProperties ref"},
+	"inputs-ticket-ref.json":                        {"inputs", "/ticket required external_ref"},
 	"inputs-time-not-utc.json":                      {"inputs", "/ticket/filed_at pattern"},
 	"inputs-instruction-array.json":                 {"inputs", "/instruction type"},
 	"inputs-instruction-number.json":                {"inputs", "/instruction/text type"},
@@ -148,7 +146,7 @@ var invalidExploreFixtures = map[string]struct{ schema, reason string }{
 	"inputs-member-name-line-feed.json":             {"inputs", "/instruction/by/name pattern"},
 	"inputs-member-name-tab.json":                   {"inputs", "/instruction/by/name pattern"},
 	"inputs-member-name-bidi-override.json":         {"inputs", "/instruction/by/name pattern"},
-	"inputs-member-name-empty.json":                 {"inputs", "/instruction/by/name minLength"},
+	"inputs-member-name-empty.json":                 {"inputs", "/instruction/by/name minLength; /instruction/by/name pattern"},
 	"inputs-member-name-161-characters.json":        {"inputs", "/instruction/by/name maxLength"},
 	"inputs-comments-object.json":                   {"inputs", "/comments type"},
 	"inputs-comment-array.json":                     {"inputs", "/comments/1 type"},
@@ -158,10 +156,14 @@ var invalidExploreFixtures = map[string]struct{ schema, reason string }{
 	"inputs-without-domain.json":                    {"inputs", "/ required domain"},
 	"inputs-without-ticket-with-comments.json":      {"inputs", "/comments maxItems"},
 	"inputs-without-ticket-comments-omitted-1.json": {"inputs", "/comments_omitted const"},
-	"inputs-answers.json":                           {"inputs", "/ additionalProperties answers"},
-	"inputs-changes.json":                           {"inputs", "/ additionalProperties changes"},
-	"inputs-facts.json":                             {"inputs", "/ additionalProperties facts"},
-	"inputs-proposal.json":                          {"inputs", "/ additionalProperties proposal"},
+	"inputs-without-destinations.json":              {"inputs", "/ required destinations"},
+	"inputs-destinations-empty.json":                {"inputs", "/destinations minItems"},
+	"inputs-destinations-251-entries.json":          {"inputs", "/destinations maxItems"},
+	"inputs-destinations-twice.json":                {"inputs", "/destinations uniqueItems"},
+	"inputs-destination-without-id.json":            {"inputs", "/destinations/0 required id"},
+	"inputs-destination-without-target.json":        {"inputs", "/destinations/0 required target"},
+	"inputs-destination-id-upper-case.json":         {"inputs", "/destinations/0/id pattern"},
+	"inputs-destination-id-other-prefix.json":       {"inputs", "/destinations/0/id pattern"},
 }
 
 // TestInvalidExploreFixturesAreRefused pins that each document under fixtures/invalid
@@ -190,6 +192,92 @@ func TestInvalidExploreFixturesAreRefused(t *testing.T) {
 		}
 		if r := strings.Join(memberLeaves(v), "; "); r != w.reason {
 			t.Errorf("%s is refused for %q, want %q", f, r, w.reason)
+		}
+	}
+}
+
+// TestExploreInputsWithThreeDestinationsAreAccepted pins that the fixture of inputs with
+// three destinations has three different ids and three different targets, and that the
+// schema accepts it.
+func TestExploreInputsWithThreeDestinationsAreAccepted(t *testing.T) {
+	doc, err := contracts.ExploreDocument("fixtures/inputs/destinations-three.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := doc.(map[string]any)["destinations"].([]any)
+	if len(list) != 3 {
+		t.Fatalf("fixtures/inputs/destinations-three.json has %d destinations, want 3", len(list))
+	}
+	ids, targets := map[string]bool{}, map[string]bool{}
+	for _, e := range list {
+		entry := e.(map[string]any)
+		b, err := json.Marshal(entry["target"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[entry["id"].(string)], targets[string(b)] = true, true
+	}
+	if len(ids) != 3 || len(targets) != 3 {
+		t.Errorf("the destinations have %d ids and %d targets, want 3 and 3", len(ids), len(targets))
+	}
+	if err := compileExplore(t, "inputs.schema.json").Validate(doc); err != nil {
+		t.Errorf("three destinations are refused: %v", err)
+	}
+}
+
+// TestExploreDestinationsHaveOneTo250Entries pins the bounds of destinations: the fixture
+// with 250 entries is accepted, and the document with 251 entries is accepted again with
+// one entry fewer, and the document with no entry with one entry more. It also pins the
+// sentence of the description about the read access of the run.
+func TestExploreDestinationsHaveOneTo250Entries(t *testing.T) {
+	schema := compileExplore(t, "inputs.schema.json")
+	entries := func(file string) (map[string]any, []any) {
+		doc, err := contracts.ExploreDocument(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		inputs := doc.(map[string]any)
+		return inputs, inputs["destinations"].([]any)
+	}
+	inputs, list := entries("fixtures/inputs/destinations-250.json")
+	if len(list) != 250 {
+		t.Errorf("fixtures/inputs/destinations-250.json has %d destinations, want 250", len(list))
+	}
+	if err := schema.Validate(inputs); err != nil {
+		t.Errorf("250 destinations are refused: %v", err)
+	}
+	inputs, list = entries("fixtures/invalid/inputs-destinations-251-entries.json")
+	if len(list) != 251 {
+		t.Errorf("fixtures/invalid/inputs-destinations-251-entries.json has %d destinations, want 251", len(list))
+	}
+	if v, ok := schema.Validate(inputs).(*jsonschema.ValidationError); !ok || strings.Join(leaves(v), "; ") != "/destinations maxItems" {
+		t.Errorf("251 destinations are refused for %v, want /destinations maxItems", v)
+	}
+	inputs["destinations"] = list[:250]
+	if err := schema.Validate(inputs); err != nil {
+		t.Errorf("251 destinations with one fewer are refused: %v", err)
+	}
+	inputs, list = entries("fixtures/invalid/inputs-destinations-empty.json")
+	if len(list) != 0 {
+		t.Errorf("fixtures/invalid/inputs-destinations-empty.json has %d destinations, want 0", len(list))
+	}
+	_, one := entries("fixtures/inputs/first-attempt.json")
+	inputs["destinations"] = one
+	if err := schema.Validate(inputs); err != nil {
+		t.Errorf("no destination with one more is refused: %v", err)
+	}
+	doc, err := contracts.ExploreDocument("inputs.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	property := doc.(map[string]any)["properties"].(map[string]any)["destinations"].(map[string]any)
+	text, _ := property["description"].(string)
+	for _, want := range []string{
+		"1 to 250 of them",
+		"The read access of the run covers every destination of the workspace from the start and does not grow during the session.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the description of destinations does not contain %q", want)
 		}
 	}
 }
@@ -250,14 +338,15 @@ func TestExploreLengthFixturesAreOneCharacterPastTheBound(t *testing.T) {
 	}
 }
 
-// TestExploreMembersAreRequiredAndClosed pins two rules that inputs.schema.json states
-// for every object at every level: every member is required, except target and
-// ticket, and a member the schema does not define is refused. It first checks that
-// each object of fixtures/inputs/first-attempt.json has every member that the schema
-// defines at that location. It then removes each member in turn, then adds the member
-// undefined to each object in turn, and checks the refusal of each document. Without
-// ticket, the schema requires comments to be empty and comments_omitted to be 0, so
-// the document without ticket also has those values.
+// TestExploreMembersAreRequiredAndClosed pins two rules that inputs.schema.json sets
+// for every object at every level: every member is required, except target, ticket and
+// the address of a target, and a member the schema does not define is accepted, which
+// the closed copy refuses. It
+// first checks that each object of fixtures/inputs/first-attempt.json has every member
+// that the schema defines at that location. It then removes each member in turn, then
+// adds the member undefined to each object in turn, and checks the refusal of each
+// document. Without ticket, the schema requires comments to be empty and
+// comments_omitted to be 0, so the document without ticket also has those values.
 func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 	const fixture = "fixtures/inputs/first-attempt.json"
 	schema := compileExplore(t, "inputs.schema.json")
@@ -291,6 +380,17 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 		}
 		return strings.Join(memberLeaves(v), "; ")
 	}
+	closedSchema, err := contracts.CompileExploreClosed("inputs.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	closedRefusal := func(doc any) string {
+		v, ok := closedSchema.Validate(doc).(*jsonschema.ValidationError)
+		if !ok {
+			return "accepted"
+		}
+		return strings.Join(memberLeaves(v), "; ")
+	}
 	members := 0
 	for _, where := range objects {
 		location := "/" + strings.Join(where, "/")
@@ -310,14 +410,21 @@ func TestExploreMembersAreRequiredAndClosed(t *testing.T) {
 					objectAt(doc, where)["comments_omitted"] = json.Number("0")
 				}
 			}
+			if strings.HasSuffix(location, "/target") && member == "address" {
+				want = "accepted"
+			}
 			if got := refusal(doc); got != want {
 				t.Errorf("%s without %s in %s: %s, want %s", fixture, member, location, got, want)
 			}
 		}
 		doc := read()
 		objectAt(doc, where)["undefined"] = "x"
-		if got, want := refusal(doc), location+" additionalProperties undefined"; got != want {
-			t.Errorf("%s with undefined in %s: %s, want %s", fixture, location, got, want)
+		if got := refusal(doc); got != "accepted" {
+			t.Errorf("%s with undefined in %s: %s, want accepted", fixture, location, got)
+		}
+		wantClosed := location + " additionalProperties undefined"
+		if got := closedRefusal(doc); got != wantClosed {
+			t.Errorf("%s with undefined in %s: the closed copy refuses it for %s, want %s", fixture, location, got, wantClosed)
 		}
 	}
 	if len(objects) < 2 || members == 0 {
@@ -353,11 +460,11 @@ func definedAt(schema *jsonschema.Schema, where []string) []string {
 }
 
 // TestTheRunDocumentsExploreInputsValidate pins that the inputs of each run documents
-// fixture of the run contract whose step is explore are accepted by explore/v1
-// inputs.schema.json, the shape that run/v1 documents.schema.json refers to for the
-// inputs of that step. It checks every valid fixture, and every invalid fixture that
-// has inputs and whose refusal by documents.schema.json has no reason at /inputs or
-// below it.
+// fixture of the run contract whose step is workflow and whose subject is a work item are
+// accepted by explore/v1 inputs.schema.json, the shape that run/v1 documents.schema.json
+// refers to for the inputs of an Explore run. It checks every valid fixture, and every
+// invalid fixture that has inputs and whose refusal by documents.schema.json has no reason
+// at /inputs or below it.
 func TestTheRunDocumentsExploreInputsValidate(t *testing.T) {
 	schema := compileExplore(t, "inputs.schema.json")
 	documents := compileRun(t, runSchema("documents"))
@@ -369,7 +476,7 @@ func TestTheRunDocumentsExploreInputsValidate(t *testing.T) {
 				t.Fatal(err)
 			}
 			run, ok := doc.(map[string]any)
-			if !ok || run["step"] != "explore" {
+			if !ok || !isWorkItemWorkflow(run) {
 				continue
 			}
 			if dir == "fixtures/invalid" && (run["inputs"] == nil || refusedAtInputs(documents.Validate(doc))) {
@@ -381,9 +488,16 @@ func TestTheRunDocumentsExploreInputsValidate(t *testing.T) {
 			}
 		}
 		if checked == 0 {
-			t.Errorf("%s has no documents for the step explore whose inputs the test checks", dir)
+			t.Errorf("%s has no documents for the step workflow with a work item whose inputs the test checks", dir)
 		}
 	}
+}
+
+// isWorkItemWorkflow reports whether run is run documents of the step workflow whose
+// subject has the kind work_item: the run documents whose inputs are explore inputs.
+func isWorkItemWorkflow(run map[string]any) bool {
+	subject, _ := run["subject"].(map[string]any)
+	return run["step"] == "workflow" && subject["kind"] == "work_item"
 }
 
 // refusedAtInputs reports whether err, a refusal by run/v1 documents.schema.json, has
@@ -401,11 +515,12 @@ func refusedAtInputs(err error) bool {
 	return false
 }
 
-// TestTheRunTargetDomainAndWorkItemAreItsExploreInputs pins that each valid run
-// documents fixture of the run contract whose step is explore has the same
-// target in target and in inputs.target, or neither, the same domain in domain and in
-// inputs.domain, and the same work item id in work_item.id and in inputs.work_item.id,
-// as explore/v1 inputs.schema.json describes how the control plane writes them.
+// TestTheRunTargetDomainAndWorkItemAreItsExploreInputs pins that each valid run documents
+// fixture of the run contract whose step is workflow and whose subject has the kind
+// work_item has the same target in target and in inputs.target, or neither, the same
+// domain in domain and in inputs.domain, and the same work item id in subject.id and in
+// inputs.work_item.id, as explore/v1 inputs.schema.json describes how the control plane
+// writes them.
 func TestTheRunTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
 	explore := 0
 	for _, f := range runFiles(t, "fixtures/documents") {
@@ -414,7 +529,7 @@ func TestTheRunTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
 			t.Fatal(err)
 		}
 		run, ok := doc.(map[string]any)
-		if !ok || run["step"] != "explore" {
+		if !ok || !isWorkItemWorkflow(run) {
 			continue
 		}
 		explore++
@@ -425,13 +540,13 @@ func TestTheRunTargetDomainAndWorkItemAreItsExploreInputs(t *testing.T) {
 		if run["domain"] == nil || run["domain"] != inputs["domain"] {
 			t.Errorf("%s: domain is %v, and inputs.domain is %v", f, run["domain"], inputs["domain"])
 		}
-		item, _ := run["work_item"].(map[string]any)
+		item, _ := run["subject"].(map[string]any)
 		inputsItem, _ := inputs["work_item"].(map[string]any)
 		if item["id"] == nil || item["id"] != inputsItem["id"] {
-			t.Errorf("%s: work_item.id is %v, and inputs.work_item.id is %v", f, item["id"], inputsItem["id"])
+			t.Errorf("%s: subject.id is %v, and inputs.work_item.id is %v", f, item["id"], inputsItem["id"])
 		}
 	}
 	if explore == 0 {
-		t.Error("fixtures/documents has no documents for the step explore")
+		t.Error("fixtures/documents has no documents for the step workflow with a work item")
 	}
 }

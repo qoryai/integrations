@@ -1,17 +1,26 @@
 {
-  "step": "explore",
+  "step": "workflow",
   "domain": "software",
   "access": "read",
   "target": {
-    "system": "code.example.com",
-    "path": "acme/shop"
+    "collection": "R_1001",
+    "address": {
+      "system": "code.example.com",
+      "path": "acme/shop"
+    }
   },
   "target_version": "release 1",
-  "work_item": {
+  "subject": {
+    "kind": "work_item",
     "id": "wi_8Kx2mQ4vT9",
     "url": "https://control.example.com/work-items/wi_8Kx2mQ4vT9",
     "title": "Checkout fails on an empty cart"
   },
+  "run_settings": {
+    "runtime": "claude"
+  },
+  "workflow": "hello",
+  "harness_hidden": true,
   "inputs": {
     "version": 1,
     "work_item": {
@@ -60,9 +69,24 @@
       }
     ],
     "comments_omitted": 0,
+    "destinations": [
+      {
+        "id": "tg_0123456789abcdef",
+        "target": {
+          "collection": "R_1001",
+          "address": {
+            "system": "code.example.com",
+            "path": "acme/shop"
+          }
+        }
+      }
+    ],
     "target": {
-      "system": "code.example.com",
-      "path": "acme/shop"
+      "collection": "R_1001",
+      "address": {
+        "system": "code.example.com",
+        "path": "acme/shop"
+      }
     },
     "domain": "software"
   }

@@ -2,12 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qory.dev/contracts/machines/v1/make.schema.json",
   "title": "Make",
-  "description": "The request of the command make. A machine adapter is a program that makes and deletes machines at one vendor, such as a cloud. The provisioner, the starter of the provisioner contract, https://qory.dev/contracts/provisioner/v1/, runs the adapter to make a machine for each dispatch, and to delete the machine once it stops. With make, the adapter makes one machine at the vendor for the dispatch in key, in the node pool in pool, that fits machine_spec, and passes start_data to the machine. One key makes at most one machine. A second make with the same key makes no machine, and its answer is the id of the machine that the first make with that key made. start_data contains a run code, so it travels only in this request on standard input, never in an argument, and the adapter never writes it to a log. The command line is `<adapter> make --settings FILE`, where FILE is the path of the adapter's settings, whose content each adapter defines. The adapter reads this request as one JSON document on standard input. On success it writes one JSON answer on standard output, make-answer.schema.json, and exits with status 0. On failure it writes error.schema.json on standard output and exits with status 1. The adapter refuses a request with another version, or with a member this schema does not define, as a failure of kind defect.",
+  "description": "The request of the command make. A machine adapter is a program that makes and deletes machines at one vendor, such as a cloud. The provisioner, the starter of the provisioner contract, https://qory.dev/contracts/provisioner/v1/, runs the adapter to make a machine for each dispatch, and to delete the machine once it stops. With make, the adapter makes one machine at the vendor for the dispatch in dispatch_id, in the node pool in pool, that fits machine_spec, and passes start_data to the machine. One dispatch_id makes at most one machine. A second make with the same dispatch_id makes no machine, and its answer is the id of the machine that the first make with that dispatch_id made. start_data contains a run code, so it travels only in this request on standard input, never in an argument, and the adapter never writes it to a log. The command line is `<adapter> make --settings FILE`, where FILE is the path of the adapter's settings, whose content each adapter defines. The adapter reads this request as one JSON document on standard input. On success it writes one JSON answer on standard output, make-answer.schema.json, and exits with status 0. On failure it writes error.schema.json on standard output and exits with status 1. The adapter refuses a request with another version as a failure of kind defect. It ignores a member that this schema does not define, unless the must_understand of the request lists it.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "version",
-    "key",
+    "dispatch_id",
     "pool",
     "machine_spec",
     "start_data"
@@ -17,8 +16,8 @@
       "description": "The request format: 1. The adapter refuses another version, as a failure of kind defect.",
       "const": 1
     },
-    "key": {
-      "description": "The dispatch the machine is for, the provisioner contract's dispatch_id. One key makes at most one machine.",
+    "dispatch_id": {
+      "description": "The dispatch the machine is for, the provisioner contract's dispatch_id. One dispatch_id makes at most one machine.",
       "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/dispatch_id"
     },
     "pool": {
@@ -26,7 +25,7 @@
       "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/pool_id"
     },
     "machine_spec": {
-      "description": "The spec of the machine to make: the machine_spec of the claim answer for the dispatch in key, https://qory.dev/contracts/provisioner/v1/claim-answer.schema.json. The adapter makes the smallest machine in its settings that fits machine_spec, by vCPUs and then by memory, a tie going to the order of the settings, and gives the machine a disk of at least machine_spec's disk_gib. When the vendor has no capacity for that machine, the adapter tries the next machine that fits, in the same order. When no machine in its settings fits, make fails with kind defect, because a retry fails the same way. When every machine that fits fails for lack of capacity, make fails with the kind of the last failure.",
+      "description": "The spec of the machine to make: the machine_spec of the claim answer for the dispatch in dispatch_id, https://qory.dev/contracts/provisioner/v1/claim-answer.schema.json. The adapter makes the smallest machine in its settings that fits machine_spec, by vCPUs and then by memory, a tie going to the order of the settings, and gives the machine a disk of at least machine_spec's disk_gib. When the vendor has no capacity for that machine, the adapter tries the next machine that fits, in the same order. When no machine in its settings fits, make fails with kind defect, because a retry fails the same way. When every machine that fits fails for lack of capacity, make fails with the kind of the last failure.",
       "$ref": "https://qory.dev/contracts/provisioner/v1/definitions.schema.json#/$defs/machine_spec"
     },
     "start_data": {
@@ -39,6 +38,18 @@
       },
       "then": {
         "pattern": "==$"
+      }
+    },
+    "must_understand": {
+      "description": "The members of the document that the reader must understand, each as a JSON Pointer (RFC 6901) counted from the document, such as /dispatch_id. List each once, at most 32. A pointer has no line feed, and writes ~ only as ~0 or ~1. Each pointer is to a member that this schema defines. The adapter ignores a member that this schema does not define, unless must_understand lists it. It refuses a request whose must_understand lists a pointer that it does not define, as a failure of kind defect.",
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 256,
+        "not": {"pattern": "\\n"},
+        "pattern": "^(?:/dispatch_id|/machine_spec|/machine_spec/arch|/machine_spec/disk_gib|/machine_spec/memory_mib|/machine_spec/vcpus|/machine_spec/virtualization|/pool|/start_data|/version)$"
       }
     }
   }

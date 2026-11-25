@@ -56,6 +56,17 @@ func TestEveryRefusedFixtureDoesNot(t *testing.T) {
 	}
 }
 
+// TestEveryClosedFixtureFailsConformance pins that Description, which validates against the
+// closed copy of the schema, fails each description that the open schema accepts and the
+// closed copy refuses, since the description has a member that the schema does not define.
+func TestEveryClosedFixtureFailsConformance(t *testing.T) {
+	for name, b := range fixtures(t, "fixtures/closed") {
+		if err := conformance.Description(b); err == nil {
+			t.Errorf("%s conforms", name)
+		}
+	}
+}
+
 const tracker = `{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
  "settings": %s,
  "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}},
@@ -89,6 +100,34 @@ func TestADescriptionIsOneDocumentWithItsSecretsOnTop(t *testing.T) {
 	if err := conformance.Description(ok); err != nil {
 		t.Errorf("a secret with its file: %v", err)
 	}
+}
+
+// TestAMisspelledMemberFailsConformance pins that Description refuses a member that
+// description.schema.json does not define, at the root and in the source role, which a
+// reader of the schema ignores, so that a misspelled member fails an integration's test.
+func TestAMisspelledMemberFailsConformance(t *testing.T) {
+	b := []byte(`{"version": 1, "name": "acme-tracker", "title": "Acme tracker", "program_version": "0.1.0",
+ "settings": {"type": "object"}, "titel": "Acme", "must_understand": ["/name"],
+ "roles": {"credential": {"argument": "[A-Z]+", "hosts": ["tracker.acme.example"]}},
+ "egress_hosts": ["tracker.acme.example"]}`)
+	if err := conformance.Description(b); err == nil || !strings.Contains(err.Error(), "titel") {
+		t.Errorf("a description with titel: %v, want a refusal that names titel", err)
+	}
+	ok := strings.Replace(string(b), `"titel": "Acme", `, "", 1)
+	if err := conformance.Description([]byte(ok)); err != nil {
+		t.Errorf("a description with must_understand and no misspelled member: %v", err)
+	}
+	for name, fixture := range fixtures(t, "fixtures") {
+		if !strings.Contains(string(fixture), `"source"`) {
+			continue
+		}
+		source := strings.Replace(string(fixture), `"source": {`, `"source": {"butn": "Connect", `, 1)
+		if err := conformance.Description([]byte(source)); err == nil || !strings.Contains(err.Error(), "butn") {
+			t.Errorf("%s with butn in the source role: %v, want a refusal that names butn", name, err)
+		}
+		return
+	}
+	t.Error("no fixture has a source role")
 }
 
 // TestADescriptionKeepsTheRulesOnItsRawBytes pins what Description refuses on the raw
@@ -306,6 +345,22 @@ func TestADataDescriptionIsTheDataForm(t *testing.T) {
  "roles": {"model_provider": {"apis": [{"format": "anthropic-messages", "endpoint": "https://api.acme.example:0", "auth": {"scheme": "bearer"}}], "models": []}},
  "egress_hosts": ["api.acme.example"]}`),
 			`data description: the endpoint "https://api.acme.example:0" of model_provider apis[0] has no host a gateway can read: the port "0" is not a number from 1 to 65535`},
+		{"an oauth_refresh url with an upper-case host", []byte(`{"version": 1, "name": "acme-models", "title": "Acme models", "settings": {"type": "object"},
+ "roles": {"model_provider": {"apis": [{"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": {"scheme": "bearer", "oauth": true}, "oauth_refresh": {"url": "https://AUTH.acme.example/token", "client_id": "acme-cli"}}], "models": []}},
+ "egress_hosts": ["api.acme.example"]}`),
+			`data description: change the oauth_refresh url "https://AUTH.acme.example/token" of model_provider apis[0]: the control plane cannot read its host or port: the host "AUTH.acme.example" is not labels joined by dots, each 1 to 63 lower-case letters, digits and hyphens that starts and ends with a letter or a digit`},
+		{"a path with a dot-dot segment", []byte(`{"version": 1, "name": "acme-models", "title": "Acme models", "settings": {"type": "object"},
+ "roles": {"model_provider": {"apis": [{"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": {"scheme": "bearer"}, "paths": ["/v1/../models"]}], "models": []}},
+ "egress_hosts": ["api.acme.example"]}`),
+			`data description: change the path "/v1/../models" of model_provider apis[0] paths[0]: it has an empty, "." or ".." segment, a backslash, an encoded slash, backslash, dot or percent sign, or a control character, which the gateway denies in a request path, so the path matches no request`},
+		{"a path with an encoded slash", []byte(`{"version": 1, "name": "acme-models", "title": "Acme models", "settings": {"type": "object"},
+ "roles": {"model_provider": {"apis": [{"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": {"scheme": "bearer"}, "paths": ["/v1/a%2Fb"]}], "models": []}},
+ "egress_hosts": ["api.acme.example"]}`),
+			`data description: change the path "/v1/a%2Fb" of model_provider apis[0] paths[0]: it has an empty, "." or ".." segment, a backslash, an encoded slash, backslash, dot or percent sign, or a control character, which the gateway denies in a request path, so the path matches no request`},
+		{"a path with a no-break space", []byte(`{"version": 1, "name": "acme-models", "title": "Acme models", "settings": {"type": "object"},
+ "roles": {"model_provider": {"apis": [{"format": "anthropic-messages", "endpoint": "https://api.acme.example", "auth": {"scheme": "bearer"}, "paths": ["/v1/a\u00a0b"]}], "models": []}},
+ "egress_hosts": ["api.acme.example"]}`),
+			`data description: change the path "/v1/a\u00a0b" of model_provider apis[0] paths[0]: a path has no *, ? or # except a final *, no space character, and a { or } only in a segment written exactly {}, as the gateway reads it`},
 		{"an endpoint whose host has no equal entry", []byte(`{"version": 1, "name": "acme-models", "title": "Acme models", "settings": {"type": "object"},
  "roles": {"model_provider": {"apis": [{"format": "anthropic-messages", "endpoint": "https://evil.example", "auth": {"scheme": "bearer"}}], "models": []}},
  "egress_hosts": ["api.acme.example"]}`),
@@ -337,6 +392,30 @@ func TestADescriptionKeepsTheModelProviderRules(t *testing.T) {
 	} {
 		if err := conformance.Description(tc.b); err == nil || err.Error() != tc.want {
 			t.Errorf("%s: %v, want %q", tc.name, err, tc.want)
+		}
+	}
+}
+
+// TestAnUnusableOAuthDeviceIsRefusedWithTheFix pins that Description and DataDescription
+// refuse an oauth_device without oauth_refresh, and an oauth_device URL that is not an https address, with
+// the fix as the first words after the form, and not with the schema's refusal, which
+// they would otherwise report first.
+func TestAnUnusableOAuthDeviceIsRefusedWithTheFix(t *testing.T) {
+	for name, want := range map[string]string{
+		"fixtures/invalid/description-model-provider-oauth-device-without-oauth-refresh.json": "Add oauth_refresh to model_provider apis[0]: oauth_device takes its client_id and url from it.",
+		"fixtures/invalid/description-model-provider-oauth-device-poll-url-http.json":         `Change the oauth_device poll_url "http://auth.acme-cloud.example/device/token" of model_provider apis[0] to an https URL.`,
+		"ftp": `Change the oauth_device poll_url "ftp://auth.acme-cloud.example/device/token" of model_provider apis[0] to an https URL.`,
+	} {
+		b := fixtures(t, "fixtures/invalid")[name]
+		if name == "ftp" {
+			b = bytes.Replace(fixtures(t, "fixtures/invalid")["fixtures/invalid/description-model-provider-oauth-device-poll-url-http.json"], []byte(`"http://auth.acme-cloud.example/device/token"`), []byte(`"ftp://auth.acme-cloud.example/device/token"`), 1)
+		}
+		if err := conformance.Description(b); err == nil || err.Error() != "describe: "+want {
+			t.Errorf("%s: Description returns %v, want %q", name, err, "describe: "+want)
+		}
+		data := bytes.Replace(b, []byte(`"program_version": "0.1.0",`), nil, 1)
+		if err := conformance.DataDescription(data); err == nil || err.Error() != "data description: "+want {
+			t.Errorf("%s: DataDescription returns %v, want %q", name, err, "data description: "+want)
 		}
 	}
 }
@@ -436,5 +515,42 @@ func TestBothFormsKeepTheEgressHostsRules(t *testing.T) {
 	wildcard := bytes.ReplaceAll(credential, []byte(`["tracker.acme.example"]`), []byte(`["*.acme.example"]`))
 	if err := conformance.Description(wildcard); err == nil || !strings.HasPrefix(err.Error(), "describe: "+refused) {
 		t.Errorf("Description, a *. credential host and the same *. entry: %v, want it to start with %q", err, "describe: "+refused)
+	}
+}
+
+// TestBothFormsKeepTheLinksRules pins that Description and DataDescription refuse the two
+// rules of links that the schema cannot express, with the message that states the fix:
+// two entries with the same system, and a template whose host is not the system of its
+// entry. They accept the same description with each system once and the host of each
+// template equal to its system.
+func TestBothFormsKeepTheLinksRules(t *testing.T) {
+	links := func(system, second, secondHost string) string {
+		return `, "links": [{"system": "` + system + `", "template": "https://` + system + `/{path}"}, {"system": "` + second + `", "template": "https://` + secondHost + `/{path}"}]}`
+	}
+	program := func(links string) []byte {
+		return bytes.Replace(describe(`{"type": "object"}`), []byte("}\n"), []byte(links+"\n"), 1)
+	}
+	data := func(links string) []byte {
+		return bytes.Replace(gateway(`{"type": "object", "properties": {"url": {"type": "string"}}}`, `[]`), []byte("}\n"), []byte(links+"\n"), 1)
+	}
+	for _, tc := range []struct{ name, links, want string }{
+		{"a system twice", links("code.example.com", "code.example.com", "code.example.com"),
+			`List each system of links once: the entries 0 and 1 both have the system "code.example.com".`},
+		{"another host", links("code.example.com", "desk.example.com", "evil.example.com"),
+			`Use the system "desk.example.com" as the host of the template of link 1, not "evil.example.com".`},
+	} {
+		if err := conformance.Description(program(tc.links)); err == nil || err.Error() != "describe: "+tc.want {
+			t.Errorf("Description, %s: %v, want %q", tc.name, err, "describe: "+tc.want)
+		}
+		if err := conformance.DataDescription(data(tc.links)); err == nil || err.Error() != "data description: "+tc.want {
+			t.Errorf("DataDescription, %s: %v, want %q", tc.name, err, "data description: "+tc.want)
+		}
+	}
+	ok := links("code.example.com", "desk.example.com", "desk.example.com")
+	if err := conformance.Description(program(ok)); err != nil {
+		t.Errorf("Description, each system once: %v", err)
+	}
+	if err := conformance.DataDescription(data(ok)); err != nil {
+		t.Errorf("DataDescription, each system once: %v", err)
 	}
 }

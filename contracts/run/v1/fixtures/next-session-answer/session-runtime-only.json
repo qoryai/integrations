@@ -1,0 +1,15 @@
+{
+  "next": "session",
+  "session": 3,
+  "workflow": "review-changes",
+  "model_choice": {
+    "runtime": "codex"
+  },
+  "time_limit_minutes": 30,
+  "type_settings": {
+    "full_suite": false
+  },
+  "inputs": {
+    "version": 1
+  }
+}

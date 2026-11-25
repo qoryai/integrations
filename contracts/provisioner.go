@@ -1,12 +1,12 @@
 package contracts
 
-// ProvisionerRevision is the provisioner contract's revision, which
-// X-Qory-Contract-Version carries on its requests as a decimal integer, and which
-// [ClaimAnswer] names in Revision. It counts additions alone: each addition to
+// ProvisionerRevision is the provisioner contract's revision: X-Qory-Contract-Version
+// contains it on the contract's requests as a decimal integer, and [ClaimAnswer]
+// contains it in Revision. It counts additions alone: each addition to
 // provisioner/v1 raises it. Additions made before revision 1 is released are part of
 // revision 1. A change that breaks a reader is a new contract, provisioner/v2, not a
 // new revision. The control plane serves this revision alone and refuses a request
-// that names another, 400 unsupported_contract_version. The claim answer's run code
+// that contains another, 400 unsupported_contract_version. The claim answer's run code
 // and gateway URL are part of it.
 const ProvisionerRevision = 1
 
@@ -17,11 +17,11 @@ const ProvisionerRevision = 1
 // when the machine can run virtual machines inside it; on Linux, such a machine has
 // /dev/kvm.
 type MachineSpec struct {
-	VCPUs          int    `json:"vcpus"`
-	MemoryMiB      int    `json:"memory_mib"`
-	DiskGiB        int    `json:"disk_gib"`
-	Arch           string `json:"arch"`
-	Virtualization bool   `json:"virtualization"`
+	VCPUs          int    `json:"vcpus,case:strict"`
+	MemoryMiB      int    `json:"memory_mib,case:strict"`
+	DiskGiB        int    `json:"disk_gib,case:strict"`
+	Arch           string `json:"arch,case:strict"`
+	Virtualization bool   `json:"virtualization,case:strict"`
 }
 
 // Fits reports whether the machine m fits spec: m's VCPUs, MemoryMiB and DiskGiB are
@@ -47,11 +47,14 @@ func (m MachineSpec) Fits(spec MachineSpec) bool {
 // check of the adapter, and sends the offers of the adapter's last successful check,
 // [MachinesCheckAnswer], so each of its claims has offers.
 type Claim struct {
-	Version     int           `json:"version"`
-	Time        string        `json:"time"`
-	PoolID      string        `json:"pool_id,omitempty"`
-	WaitSeconds int           `json:"wait_seconds"`
-	Offers      []MachineSpec `json:"offers,omitempty"`
+	Version     int           `json:"version,case:strict"`
+	Time        string        `json:"time,case:strict"`
+	PoolID      string        `json:"pool_id,omitempty,case:strict"`
+	WaitSeconds int           `json:"wait_seconds,case:strict"`
+	Offers      []MachineSpec `json:"offers,omitempty,case:strict"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // ClaimAnswer is the body of the 200 answer to a claim, claim-answer.schema.json: a
@@ -102,21 +105,24 @@ type Claim struct {
 // answer. Once the code is redeemed, a release is refused 409 machine_exists, even
 // before dispatched, because a machine exists.
 type ClaimAnswer struct {
-	Version     int          `json:"version"`
-	Revision    int          `json:"revision"`
-	DispatchID  string       `json:"dispatch_id"`
-	PoolID      string       `json:"pool_id"`
-	LeaseUntil  string       `json:"lease_until"`
-	Machine     string       `json:"machine,omitempty"`
-	MachineSpec *MachineSpec `json:"machine_spec,omitempty"`
-	RunCode     string       `json:"run_code"`
-	GatewayURL  string       `json:"gateway_url"`
+	Version     int          `json:"version,case:strict"`
+	Revision    int          `json:"revision,case:strict"`
+	DispatchID  string       `json:"dispatch_id,case:strict"`
+	PoolID      string       `json:"pool_id,case:strict"`
+	LeaseUntil  string       `json:"lease_until,case:strict"`
+	Machine     string       `json:"machine,omitempty,case:strict"`
+	MachineSpec *MachineSpec `json:"machine_spec,omitempty,case:strict"`
+	RunCode     string       `json:"run_code,case:strict"`
+	GatewayURL  string       `json:"gateway_url,case:strict"`
 	// MaxLifetimeMinutes is the minutes after which the machine powers itself off,
 	// counted from when it starts, whatever it runs: from 15 to 1470. The starter passes
 	// it to the machine with the run code, and deletes a machine of its node pool that
 	// has run longer than MaxLifetimeMinutes plus 15 minutes, counted from the
 	// vendor's launch time.
-	MaxLifetimeMinutes int `json:"max_lifetime_minutes"`
+	MaxLifetimeMinutes int `json:"max_lifetime_minutes,case:strict"`
+	// MustUnderstand lists the members of the answer that the starter must understand, as
+	// JSON Pointers counted from the answer: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // Dispatched is the body of POST /v1/dispatches/<dispatch_id>/dispatched,
@@ -152,17 +158,20 @@ type ClaimAnswer struct {
 // MachineType is the vendor's type of the machine the starter created for the job, such
 // as example-type, and is empty when the starter has no type for the machine.
 type Dispatched struct {
-	Version     int       `json:"version"`
-	Time        string    `json:"time"`
-	External    *External `json:"external,omitempty"`
-	MachineType string    `json:"machine_type,omitempty"`
+	Version     int       `json:"version,case:strict"`
+	Time        string    `json:"time,case:strict"`
+	External    *External `json:"external,omitempty,case:strict"`
+	MachineType string    `json:"machine_type,omitempty,case:strict"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // External is a job at the vendor that runs it.
 type External struct {
-	Type string `json:"type"`
-	Ref  string `json:"ref"`
-	URL  string `json:"url"`
+	Type string `json:"type,case:strict"`
+	Ref  string `json:"ref,case:strict"`
+	URL  string `json:"url,case:strict"`
 }
 
 // Release is the body of POST /v1/dispatches/<dispatch_id>/release,
@@ -183,9 +192,12 @@ type External struct {
 // release that takes effect first makes the run code unusable. After a redemption that
 // takes effect first, the release is refused 409 machine_exists.
 type Release struct {
-	Version int    `json:"version"`
-	Time    string `json:"time"`
-	Reason  string `json:"reason"`
+	Version int    `json:"version,case:strict"`
+	Time    string `json:"time,case:strict"`
+	Reason  string `json:"reason,case:strict"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // MachineLog is the body of POST /v1/dispatches/<dispatch_id>/machine-log,
@@ -200,10 +212,13 @@ type Release struct {
 // a signed 204 with no body. A dispatch that is unknown, or of another node pool, is
 // refused 403 forbidden, and a second upload 409 machine_log_exists.
 type MachineLog struct {
-	Version   int    `json:"version"`
-	Time      string `json:"time"`
-	Log       string `json:"log"`
-	Truncated bool   `json:"truncated,omitempty"`
+	Version   int    `json:"version,case:strict"`
+	Time      string `json:"time,case:strict"`
+	Log       string `json:"log,case:strict"`
+	Truncated bool   `json:"truncated,omitempty,case:strict"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }
 
 // The states of a [MachineEnd], machine-end.schema.json. MachineEndDeleting: the
@@ -291,7 +306,10 @@ const (
 // send [MachineEndDeleting] or [MachineEndDeleteFailed], the starter may send that state
 // again for a limited time, and then drops it.
 type MachineEnd struct {
-	Version int    `json:"version"`
-	Time    string `json:"time"`
-	State   string `json:"state"`
+	Version int    `json:"version,case:strict"`
+	Time    string `json:"time,case:strict"`
+	State   string `json:"state,case:strict"`
+	// MustUnderstand lists the members of the body that the control plane must understand, as
+	// JSON Pointers counted from the body: see [CheckMustUnderstand].
+	MustUnderstand []string `json:"must_understand,omitempty,case:strict"`
 }

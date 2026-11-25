@@ -42,7 +42,7 @@ func compileMachines(t *testing.T, name string) *jsonschema.Schema {
 	return s
 }
 
-// TestMachinesSchemasAreTheContract pins that machines/v1 holds exactly the eleven
+// TestMachinesSchemasAreTheContract pins that machines/v1 contains exactly the eleven
 // schemas, that each has the $id MachinesBase/<file>, and that each compiles.
 func TestMachinesSchemasAreTheContract(t *testing.T) {
 	entries, err := fs.ReadDir(contracts.MachinesFS, ".")
@@ -96,7 +96,7 @@ func TestMachinesFixturesValidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, d := range dirs {
-		if d.IsDir() && d.Name() != "invalid" && !seen[d.Name()] {
+		if d.IsDir() && d.Name() != "invalid" && d.Name() != "closed" && !seen[d.Name()] {
 			t.Errorf("fixtures/%s is the fixture folder of no schema", d.Name())
 		}
 	}
@@ -109,76 +109,57 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
 		"check-version-2.json":                          {"check", "/version const"},
 		"check-without-version.json":                    {"check", "/ required version"},
-		"check-undefined-member.json":                   {"check", "/ additionalProperties"},
-		"check-answer-version.json":                     {"check-answer", "/ additionalProperties"},
-		"check-answer-undefined-member.json":            {"check-answer", "/ additionalProperties"},
 		"check-answer-without-offers.json":              {"check-answer", "/ required offers"},
 		"check-answer-offers-empty.json":                {"check-answer", "/offers minItems"},
 		"check-answer-offers-65.json":                   {"check-answer", "/offers maxItems"},
 		"check-answer-offers-arch-riscv64.json":         {"check-answer", "/offers/0/arch enum"},
 		"make-version-2.json":                           {"make", "/version const"},
-		"make-key-no-prefix.json":                       {"make", "/key pattern"},
-		"make-key-upper-case.json":                      {"make", "/key pattern"},
+		"make-dispatch-id-no-prefix.json":               {"make", "/dispatch_id pattern"},
+		"make-dispatch-id-upper-case.json":              {"make", "/dispatch_id pattern"},
 		"make-pool-dispatch.json":                       {"make", "/pool pattern"},
 		"make-without-machine-spec.json":                {"make", "/ required machine_spec"},
-		"make-with-size.json":                           {"make", "/ additionalProperties"},
 		"make-machine-spec-memory-mib-511.json":         {"make", "/machine_spec/memory_mib minimum"},
 		"make-machine-spec-without-virtualization.json": {"make", "/machine_spec required virtualization"},
 		"make-start-data-url-safe.json":                 {"make", "/start_data pattern"},
 		"make-start-data-no-padding.json":               {"make", "/start_data pattern"},
 		"make-start-data-space.json":                    {"make", "/start_data pattern"},
 		"make-without-start-data.json":                  {"make", "/ required start_data"},
-		"make-without-key.json":                         {"make", "/ required key"},
-		"make-undefined-member.json":                    {"make", "/ additionalProperties"},
+		"make-without-dispatch-id.json":                 {"make", "/ required dispatch_id"},
 		"make-answer-id-dash.json":                      {"make-answer", "/id "},
 		"make-answer-id-empty.json":                     {"make-answer", "/id pattern"},
 		"make-answer-id-129.json":                       {"make-answer", "/id pattern"},
 		"make-answer-id-space.json":                     {"make-answer", "/id pattern"},
 		"make-answer-id-non-ascii.json":                 {"make-answer", "/id pattern"},
-		"make-answer-version.json":                      {"make-answer", "/ additionalProperties"},
-		"make-answer-undefined-member.json":             {"make-answer", "/ additionalProperties"},
 		"make-answer-machine-type-empty.json":           {"make-answer", "/machine_type pattern"},
 		"make-answer-machine-type-65.json":              {"make-answer", "/machine_type pattern"},
 		"make-answer-machine-type-space.json":           {"make-answer", "/machine_type pattern"},
 		"list-version-2.json":                           {"list", "/version const"},
 		"list-pool-no-prefix.json":                      {"list", "/pool pattern"},
 		"list-without-pool.json":                        {"list", "/ required pool"},
-		"list-undefined-member.json":                    {"list", "/ additionalProperties"},
 		"list-answer-without-machines.json":             {"list-answer", "/ required machines"},
-		"list-answer-version.json":                      {"list-answer", "/ additionalProperties"},
-		"list-answer-undefined-member.json":             {"list-answer", "/ additionalProperties"},
 		"list-answer-id-dash.json":                      {"list-answer", "/machines/0/id "},
-		"list-answer-key-no-prefix.json":                {"list-answer", "/machines/0/key pattern"},
+		"list-answer-dispatch-id-no-prefix.json":        {"list-answer", "/machines/0/dispatch_id pattern"},
 		"list-answer-state-gone.json":                   {"list-answer", "/machines/0/state enum"},
 		"list-answer-started-offset.json":               {"list-answer", "/machines/0/started pattern"},
 		"list-answer-started-fraction.json":             {"list-answer", "/machines/0/started pattern"},
 		"list-answer-machine-without-started.json":      {"list-answer", "/machines/0 required started"},
-		"list-answer-machine-undefined-member.json":     {"list-answer", "/machines/0 additionalProperties"},
+		"list-answer-machine-without-dispatch-id.json":  {"list-answer", "/machines/0 required dispatch_id"},
 		"log-version-2.json":                            {"log", "/version const"},
 		"log-id-dash.json":                              {"log", "/id "},
 		"log-id-space.json":                             {"log", "/id pattern"},
 		"log-without-id.json":                           {"log", "/ required id"},
-		"log-undefined-member.json":                     {"log", "/ additionalProperties"},
 		"log-answer-nul.json":                           {"log-answer", "/log pattern"},
-		"log-answer-version.json":                       {"log-answer", "/ additionalProperties"},
-		"log-answer-undefined-member.json":              {"log-answer", "/ additionalProperties"},
 		"delete-version-2.json":                         {"delete", "/version const"},
 		"delete-id-dash.json":                           {"delete", "/id "},
 		"delete-id-129.json":                            {"delete", "/id pattern"},
 		"delete-without-id.json":                        {"delete", "/ required id"},
-		"delete-undefined-member.json":                  {"delete", "/ additionalProperties"},
 		"delete-answer-state-running.json":              {"delete-answer", "/state enum"},
-		"delete-answer-version.json":                    {"delete-answer", "/ additionalProperties"},
-		"delete-answer-undefined-member.json":           {"delete-answer", "/ additionalProperties"},
 		"error-kind-fatal.json":                         {"error", "/error/kind enum"},
 		"error-without-kind.json":                       {"error", "/error required kind"},
 		"error-without-message.json":                    {"error", "/error required message"},
 		"error-message-empty.json":                      {"error", "/error/message minLength"},
 		"error-message-201.json":                        {"error", "/error/message maxLength"},
 		"error-message-nul.json":                        {"error", "/error/message pattern"},
-		"error-version.json":                            {"error", "/ additionalProperties"},
-		"error-undefined-member.json":                   {"error", "/ additionalProperties"},
-		"error-failure-undefined-member.json":           {"error", "/error additionalProperties"},
 	}
 	got := treeFiles(t, contracts.MachinesFS, "fixtures/invalid")
 	if len(got) != len(want) {
@@ -206,7 +187,7 @@ func TestInvalidMachinesFixturesAreRefused(t *testing.T) {
 }
 
 // TestAnIDOfADashIsRefusedForTheDashAlone pins that the invalid fixtures whose id is
-// exactly -, whose refusal names no keyword, are refused by the not of the id alone.
+// exactly -, whose refusal contains no keyword, are refused by the not of the id alone.
 func TestAnIDOfADashIsRefusedForTheDashAlone(t *testing.T) {
 	for _, c := range []struct{ fixture, schema string }{
 		{"make-answer-id-dash.json", "make-answer"},
@@ -291,7 +272,7 @@ func TestAStartDataHasAtMost16384Bytes(t *testing.T) {
 		if strings.HasSuffix(data, "=") != c.padding {
 			t.Fatalf("%d bytes encode to base64 that ends in %q", c.bytes, data[len(data)-2:])
 		}
-		doc := map[string]any{"version": json.Number("1"), "key": "dp_8w3k0q9t2v7m4r6x",
+		doc := map[string]any{"version": json.Number("1"), "dispatch_id": "dp_8w3k0q9t2v7m4r6x",
 			"pool": "np_f1xt0re000000000", "machine_spec": map[string]any{"vcpus": json.Number("4"),
 				"memory_mib": json.Number("16384"), "disk_gib": json.Number("100"), "arch": "amd64", "virtualization": false},
 			"start_data": data}
@@ -399,9 +380,9 @@ func TestMachinesTypesMarshalToTheirSchemas(t *testing.T) {
 		{"check", contracts.MachinesCheck{Version: contracts.Version}, `{"version":1}`},
 		{"check-answer", contracts.MachinesCheckAnswer{Offers: []contracts.MachineSpec{standard}},
 			`{"offers":[{"vcpus":4,"memory_mib":16384,"disk_gib":100,"arch":"amd64","virtualization":false}]}`},
-		{"make", contracts.MachinesMake{Version: contracts.Version, Key: "dp_8w3k0q9t2v7m4r6x", Pool: "np_f1xt0re000000000",
+		{"make", contracts.MachinesMake{Version: contracts.Version, DispatchID: "dp_8w3k0q9t2v7m4r6x", Pool: "np_f1xt0re000000000",
 			MachineSpec: standard, StartData: base64.StdEncoding.EncodeToString([]byte("start"))},
-			`{"version":1,"key":"dp_8w3k0q9t2v7m4r6x","pool":"np_f1xt0re000000000",` +
+			`{"version":1,"dispatch_id":"dp_8w3k0q9t2v7m4r6x","pool":"np_f1xt0re000000000",` +
 				`"machine_spec":{"vcpus":4,"memory_mib":16384,"disk_gib":100,"arch":"amd64","virtualization":false},` +
 				`"start_data":"c3RhcnQ="}`},
 		{"make-answer", contracts.MachinesMakeAnswer{ID: "machine-1"}, `{"id":"machine-1"}`},
@@ -409,9 +390,9 @@ func TestMachinesTypesMarshalToTheirSchemas(t *testing.T) {
 			`{"id":"machine-1","machine_type":"example-type"}`},
 		{"list", contracts.MachinesList{Version: contracts.Version, Pool: "np_f1xt0re000000000"}, `{"version":1,"pool":"np_f1xt0re000000000"}`},
 		{"list-answer", contracts.MachinesListAnswer{}, `{"machines":[]}`},
-		{"list-answer", contracts.MachinesListAnswer{Machines: []contracts.Machine{{ID: "machine-1", Key: "dp_8w3k0q9t2v7m4r6x",
+		{"list-answer", contracts.MachinesListAnswer{Machines: []contracts.Machine{{ID: "machine-1", DispatchID: "dp_8w3k0q9t2v7m4r6x",
 			State: contracts.MachineStopped, Started: "2026-10-15T12:01:05Z"}}},
-			`{"machines":[{"id":"machine-1","key":"dp_8w3k0q9t2v7m4r6x","state":"stopped","started":"2026-10-15T12:01:05Z"}]}`},
+			`{"machines":[{"id":"machine-1","dispatch_id":"dp_8w3k0q9t2v7m4r6x","state":"stopped","started":"2026-10-15T12:01:05Z"}]}`},
 		{"log", contracts.MachinesLog{Version: contracts.Version, ID: "machine-1"}, `{"version":1,"id":"machine-1"}`},
 		{"log-answer", contracts.MachinesLogAnswer{}, `{"log":""}`},
 		{"delete", contracts.MachinesDelete{Version: contracts.Version, ID: "machine-1"}, `{"version":1,"id":"machine-1"}`},
@@ -434,7 +415,7 @@ func TestMachinesTypesMarshalToTheirSchemas(t *testing.T) {
 		}
 	}
 	for _, s := range []string{contracts.MachineStarting, contracts.MachineRunning, contracts.MachineStopped, contracts.MachineDeleting} {
-		b := fmt.Appendf(nil, `{"machines":[{"id":"machine-1","key":"dp_8w3k0q9t2v7m4r6x","state":%q,"started":"2026-10-15T12:01:05Z"}]}`, s)
+		b := fmt.Appendf(nil, `{"machines":[{"id":"machine-1","dispatch_id":"dp_8w3k0q9t2v7m4r6x","state":%q,"started":"2026-10-15T12:01:05Z"}]}`, s)
 		if err := validate(compileMachines(t, "list-answer.schema.json"), b); err != nil {
 			t.Errorf("the state %s is refused: %v", s, err)
 		}

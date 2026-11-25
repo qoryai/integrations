@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/fs"
+	"os"
 	"path"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -35,6 +38,7 @@ var adapterSchemas = []string{
 	"connections-disconnect.schema.json",
 	"changes.schema.json",
 	"changes-failed.schema.json",
+	"changes-submitted.schema.json",
 	"connect-pass.schema.json",
 	"connect-return.schema.json",
 	"setup-pass.schema.json",
@@ -58,6 +62,16 @@ var adapterSchemas = []string{
 func compile(t *testing.T, name string) *jsonschema.Schema {
 	t.Helper()
 	s, err := contracts.Compile(name)
+	if err != nil {
+		t.Fatalf("%s: %v", name, err)
+	}
+	return s
+}
+
+// compileClosed compiles the closed copy of a schema of the contract, or fails the test.
+func compileClosed(t *testing.T, name string) *jsonschema.Schema {
+	t.Helper()
+	s, err := contracts.CompileClosed(name)
 	if err != nil {
 		t.Fatalf("%s: %v", name, err)
 	}
@@ -95,7 +109,7 @@ func TestAdapterFixturesValidate(t *testing.T) {
 	}
 	seen := 0
 	for _, d := range dirs {
-		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "signed" || d.Name() == "refused-by-control-plane" {
+		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "closed" || d.Name() == "signed" || d.Name() == "refused-by-control-plane" {
 			continue
 		}
 		schema := compile(t, d.Name()+".schema.json")
@@ -120,156 +134,211 @@ func TestAdapterFixturesValidate(t *testing.T) {
 // other: where, the keyword, and the property a required one misses.
 func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
-		"adapter-sync-without-sends-changes.json":              {"adapter", "/sync required sends_changes"},
-		"adapter-without-description.json":                     {"adapter", "/ required description"},
-		"adapter-description-version-2.json":                   {"adapter", "/description/version const"},
-		"adapter-description-item-noun-upper-case.json":        {"adapter", "/description/roles/source/item_noun/one pattern"},
-		"adapter-description-string.json":                      {"adapter", "/description type"},
-		"adapter-description-without-roles.json":               {"adapter", "/description required roles"},
-		"changes-sync-interval-30.json":                        {"changes", "/changes/0/interval minimum"},
-		"changes-unknown-kind.json":                            {"changes", "/changes/0/kind enum"},
-		"changes-work-item-status-linked.json":                 {"changes", "/changes/0/status enum"},
-		"changes-work-item-url-http.json":                      {"changes", "/changes/0/url pattern"},
-		"changes-without-revision.json":                        {"changes", "/ required revision"},
-		"changes-comment-id-wrong-prefix.json":                 {"changes", "/changes/0/comment_id pattern"},
-		"changes-comment-body-empty.json":                      {"changes", "/changes/0/body minLength"},
-		"changes-comment-body-65001.json":                      {"changes", "/changes/0/body maxLength"},
-		"changes-comment-author-name-101.json":                 {"changes", "/changes/0/author_name maxLength"},
-		"changes-comment-author-name-line-feed.json":           {"changes", "/changes/0/author_name pattern"},
-		"changes-comment-author-name-next-line.json":           {"changes", "/changes/0/author_name pattern"},
-		"changes-comment-author-name-bidi-override.json":       {"changes", "/changes/0/author_name pattern"},
-		"changes-comment-author-name-spaces.json":              {"changes", "/changes/0/author_name pattern"},
-		"changes-comment-author-name-unicode-spaces.json":      {"changes", "/changes/0/author_name pattern"},
-		"changes-failed-unknown-reason.json":                   {"changes-failed", "/reason enum"},
-		"changes-failed-without-comment-id.json":               {"changes-failed", "/ required comment_id"},
-		"source-item-comments-comment-id-upper-case.json":      {"source-item-comments", "/comments/0/comment_id pattern"},
-		"source-collections-no-listing.json":                   {"source-collections", "/ required listing"},
-		"source-item-comments-person-kind-app.json":            {"source-item-comments", "/comments/0/author/kind enum"},
-		"source-items-101-items.json":                          {"source-items", "/items maxItems"},
-		"source-items-body-too-long.json":                      {"source-items", "/items/0/body maxLength"},
-		"source-items-empty-label.json":                        {"source-items", "/items/0/labels/1 minLength"},
-		"source-items-state-reason-too-long.json":              {"source-items", "/items/0/state_reason maxLength"},
-		"source-items-time-fraction.json":                      {"source-items", "/time pattern"},
-		"source-items-time-offset.json":                        {"source-items", "/time pattern"},
-		"source-items-undefined-member.json":                   {"source-items", "/ additionalProperties"},
-		"refusal-supported-member.json":                        {"refusal", "/ additionalProperties"},
-		"source-items-url-http.json":                           {"source-items", "/items/0/url pattern"},
-		"source-items-key-too-long.json":                       {"source-items", "/items/0/key maxLength"},
-		"source-items-event-empty.json":                        {"source-items", "/items minItems"},
-		"source-item-comments-empty-without-complete.json":     {"source-item-comments", "/comments minItems"},
-		"source-items-truncated-labels-twice.json":             {"source-items", "/items/0/truncated uniqueItems"},
-		"source-items-truncated-state-reason.json":             {"source-items", "/items/0/truncated/0 enum"},
-		"source-items-truncated-unknown-field.json":            {"source-items", "/items/0/truncated/0 enum"},
-		"sources-disconnect-with-reason.json":                  {"sources-disconnect", "/ additionalProperties"},
-		"sources-disconnect-without-connection-id.json":        {"sources-disconnect", "/ required connection_id"},
-		"connect-return-refused-without-reason.json":           {"connect-return", "/ required reason"},
-		"connect-return-linked-with-reason.json":               {"connect-return", "/reason "},
-		"connect-return-unknown-outcome.json":                  {"connect-return", "/outcome enum"},
-		"connect-return-undefined-member.json":                 {"connect-return", "/ additionalProperties"},
-		"connect-pass-without-connection-id.json":              {"connect-pass", "/ required connection_id"},
-		"connections-disconnect-undefined-member.json":         {"connections-disconnect", "/ additionalProperties"},
-		"connections-disconnect-connection-id-adapter-id.json": {"connections-disconnect", "/connection_id pattern"},
-		"source-collections-part-10001.json":                   {"source-collections", "/listing/part maximum"},
-		"source-collections-environment-ref-empty.json":        {"source-collections", "/collections/0/environment_ref minLength"},
-		"source-collections-environment-ref-201.json":          {"source-collections", "/collections/0/environment_ref maxLength"},
-		"source-collections-environment-ref-nul.json":          {"source-collections", "/collections/0/environment_ref pattern"},
-		"source-collections-items-true.json":                   {"source-collections", "/collections/1/items const"},
-		"source-collections-items-string.json":                 {"source-collections", "/collections/1/items const"},
-		"source-collections-items-null.json":                   {"source-collections", "/collections/1/items const"},
-		"source-items-comment-count-above-maximum.json":        {"source-items", "/items/0/comment_count maximum"},
-		"source-items-title-nul.json":                          {"source-items", "/items/0/title pattern"},
-		"source-items-created-at-leap-second.json":             {"source-items", "/items/0/created_at pattern"},
-		"source-items-created-at-hour-24.json":                 {"source-items", "/items/0/created_at format"},
-		"source-items-created-at-minute-60.json":               {"source-items", "/items/0/created_at format"},
-		"source-items-url-user-information.json":               {"source-items", "/items/0/url pattern"},
-		"source-items-url-bad-percent-escape.json":             {"source-items", "/items/0/url format"},
-		"source-items-url-port-0.json":                         {"source-items", "/items/0/url pattern"},
-		"source-items-url-port-65536.json":                     {"source-items", "/items/0/url pattern"},
-		"setup-pass-without-nonce.json":                        {"setup-pass", "/ required nonce"},
-		"setup-pass-undefined-member.json":                     {"setup-pass", "/ additionalProperties"},
-		"setup-pass-version-2.json":                            {"setup-pass", "/version const"},
-		"setup-pass-adapter-id-connection-id.json":             {"setup-pass", "/adapter_id pattern"},
-		"setup-pass-organisation-slug-upper-case.json":         {"setup-pass", "/organisation_slug pattern"},
-		"setup-pass-organisation-slug-underscore.json":         {"setup-pass", "/organisation_slug pattern"},
-		"setup-pass-organisation-slug-leading-hyphen.json":     {"setup-pass", "/organisation_slug pattern"},
-		"setup-pass-organisation-slug-trailing-hyphen.json":    {"setup-pass", "/organisation_slug pattern"},
-		"setup-pass-organisation-slug-41-characters.json":      {"setup-pass", "/organisation_slug maxLength"},
-		"setup-pass-organisation-slug-empty.json":              {"setup-pass", "/organisation_slug pattern"},
-		"adapter-setup-url-fragment.json":                      {"adapter", "/setup_url "},
-		"adapter-setup-url-state.json":                         {"adapter", "/setup_url "},
-		"adapter-setup-url-and-state.json":                     {"adapter", "/setup_url "},
-		"adapter-setup-url-http.json":                          {"adapter", "/setup_url pattern"},
-		"adapter-setup-url-bare-state.json":                    {"adapter", "/setup_url "},
-		"adapter-setup-url-state-first.json":                   {"adapter", "/setup_url "},
-		"adapter-setup-url-state-percent-encoded.json":         {"adapter", "/setup_url "},
-		"adapter-call-url-http.json":                           {"adapter", "/call_url pattern"},
-		"adapter-call-url-query.json":                          {"adapter", "/call_url pattern"},
-		"adapter-call-url-without-final-slash.json":            {"adapter", "/call_url pattern"},
-		"adapter-description-secrets-twice.json":               {"adapter", "/description/roles/source/secrets uniqueItems"},
-		"grant-without-pass-nonce.json":                        {"grant", "/ required pass_nonce"},
-		"grant-without-account.json":                           {"grant", "/ required account"},
-		"grant-end-without-grant-ref.json":                     {"grant-end", "/ required grant_ref"},
-		"grant-end-with-pass-nonce.json":                       {"grant-end", "/ additionalProperties"},
-		"grant-account-without-ref.json":                       {"grant", "/account required ref"},
-		"grant-account-title-line-feed.json":                   {"grant", "/account/title pattern"},
-		"source-collections-without-grant-ref.json":            {"source-collections", "/collections/0 required grant_ref"},
-		"grant-pass-nonce-21-characters.json":                  {"grant", "/pass_nonce pattern"},
-		"grants-without-revision.json":                         {"grants", "/ required revision"},
-		"changes-grant-status-taken-in.json":                   {"changes", "/changes/0/status enum"},
-		"changes-grant-without-connection-id.json":             {"changes", "/changes/0 required connection_id"},
-		"adapter-secrets-value-in-clear.json":                  {"adapter-secrets", "/sealed additionalProperties"},
-		"adapter-secrets-without-server-key.json":              {"adapter-secrets", "/sealed required server_key"},
-		"adapter-secrets-answer-suite-chacha20.json":           {"adapter-secrets-answer", "/sealed/suite const"},
-		"adapter-secrets-answer-enc-31-bytes.json":             {"adapter-secrets-answer", "/sealed/enc pattern"},
-		"adapter-secrets-plaintext-17-secrets.json":            {"adapter-secrets-plaintext", "/secrets maxItems"},
-		"adapter-secrets-plaintext-name-upper-case.json":       {"adapter-secrets-plaintext", "/secrets/0/name pattern"},
-		"adapter-secrets-plaintext-empty-value.json":           {"adapter-secrets-plaintext", "/secrets/0/value minLength"},
-		"resolve-65-addresses.json":                            {"resolve", "/addresses maxItems"},
-		"resolve-without-addresses.json":                       {"resolve", "/addresses minItems"},
-		"resolve-address-space.json":                           {"resolve", "/addresses/0 pattern"},
-		"resolve-address-twice.json":                           {"resolve", "/addresses uniqueItems"},
-		"resolve-answer-covered-true.json":                     {"resolve-answer", "/results/1/covered const"},
-		"resolve-answer-not-covered-with-grant-ref.json":       {"resolve-answer", "/results/1/grant_ref "},
-		"resolve-answer-without-resource-ref.json":             {"resolve-answer", "/results/0 required resource_ref"},
-		"resolve-answer-without-revision.json":                 {"resolve-answer", "/ required revision"},
-		"resolve-answer-public-false.json":                     {"resolve-answer", "/results/0/public const"},
-		"resolve-answer-public-without-resource-ref.json":      {"resolve-answer", "/results/0 required resource_ref"},
-		"resolve-answer-not-covered-public.json":               {"resolve-answer", "/results/0/public "},
-		"resolve-answer-public-without-public-ref.json":        {"resolve-answer", "/results/0 required public_ref"},
-		"resolve-answer-public-ref-without-public.json":        {"resolve-answer", "/results/0/public_ref "},
-		"read-public-with-grant-ref.json":                      {"read-public", "/ additionalProperties"},
-		"read-public-without-path.json":                        {"read-public", "/ required path"},
-		"read-path-leading-slash.json":                         {"read", "/path pattern"},
-		"read-path-dot-dot.json":                               {"read", "/path pattern"},
-		"read-path-empty-part.json":                            {"read", "/path pattern"},
-		"read-at-space.json":                                   {"read", "/at pattern"},
-		"read-without-at.json":                                 {"read", "/ required at"},
-		"read-answer-content-nul.json":                         {"read-answer", "/content pattern"},
-		"read-answer-without-resolved-at.json":                 {"read-answer", "/ required resolved_at"},
-		"read-answer-content-and-not-found.json":               {"read-answer", "/content "},
-		"read-answer-without-content-or-found.json":            {"read-answer", "/ required content"},
-		"run-credential-access-admin.json":                     {"run-credential", "/access enum"},
-		"run-credential-purpose-other.json":                    {"run-credential", "/purpose enum"},
-		"run-credential-without-resources.json":                {"run-credential", "/resources minItems; /resources minItems"},
-		"run-credential-work-two-resources.json":               {"run-credential", "/resources maxItems"},
-		"run-credential-without-purpose.json":                  {"run-credential", "/ required purpose"},
-		"run-credential-work-with-grant-ref.json":              {"run-credential", "/ "},
-		"run-credential-harness-without-grant-ref.json":        {"run-credential", "/ required grant_ref"},
-		"run-credential-work-without-connection-id.json":       {"run-credential", "/ required connection_id"},
-		"run-credential-harness-with-connection-id.json":       {"run-credential", "/ "},
-		"run-credential-harness-write.json":                    {"run-credential", "/access const"},
-		"run-credential-answer-without-token.json":             {"run-credential-answer", "/credential required token"},
-		"run-credential-answer-without-nested-version.json":    {"run-credential-answer", "/credential required version"},
-		"run-credential-answer-apply-token.json":               {"run-credential-answer", "/credential/apply/0/token "},
-		"run-credential-answer-host-star-dot.json":             {"run-credential-answer", "/credential/apply/0/hosts/0 "},
-		"run-credential-answer-placeholders.json":              {"run-credential-answer", "/credential/placeholders "},
-		"run-credential-answer-token-line-feed.json":           {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-carriage-return.json":     {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-nul.json":                 {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-leading-space.json":       {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-trailing-tab.json":        {"run-credential-answer", "/credential/token pattern"},
-		"run-credential-answer-token-16385.json":               {"run-credential-answer", "/credential/token maxLength"},
-		"run-credential-answer-expires-at-without-zone.json":   {"run-credential-answer", "/credential/expires_at format"},
+		"adapter-sync-without-sends-changes.json":                               {"adapter", "/sync required sends_changes"},
+		"adapter-without-description.json":                                      {"adapter", "/ required description"},
+		"adapter-description-version-2.json":                                    {"adapter", "/description/version const"},
+		"adapter-description-item-noun-upper-case.json":                         {"adapter", "/description/roles/source/item_noun/one pattern"},
+		"adapter-description-string.json":                                       {"adapter", "/description type"},
+		"adapter-description-without-roles.json":                                {"adapter", "/description required roles"},
+		"changes-sync-interval-30.json":                                         {"changes", "/changes/0/interval minimum"},
+		"changes-work-item-status-linked.json":                                  {"changes", "/changes/0/status enum"},
+		"changes-work-item-url-http.json":                                       {"changes", "/changes/0/url pattern"},
+		"changes-watch-url-http.json":                                           {"changes", "/changes/0/url pattern"},
+		"changes-watch-without-url.json":                                        {"changes", "/changes/0 required url"},
+		"changes-watch-work-item-id-wrong-prefix.json":                          {"changes", "/changes/0/work_item_id pattern"},
+		"changes-without-revision.json":                                         {"changes", "/ required revision"},
+		"changes-comment-id-wrong-prefix.json":                                  {"changes", "/changes/0/comment_id pattern"},
+		"changes-comment-body-empty.json":                                       {"changes", "/changes/0/body minLength"},
+		"changes-comment-body-65001.json":                                       {"changes", "/changes/0/body maxLength"},
+		"changes-comment-author-name-101.json":                                  {"changes", "/changes/0/author_name maxLength"},
+		"changes-comment-author-name-line-feed.json":                            {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-next-line.json":                            {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-bidi-override.json":                        {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-spaces.json":                               {"changes", "/changes/0/author_name pattern"},
+		"changes-comment-author-name-unicode-spaces.json":                       {"changes", "/changes/0/author_name pattern"},
+		"changes-failed-unknown-reason.json":                                    {"changes-failed", "/reason enum"},
+		"changes-failed-without-comment-id.json":                                {"changes-failed", "/ required comment_id"},
+		"changes-change-request-change-kind-65-characters.json":                 {"changes", "/changes/0/change_kind maxLength"},
+		"changes-change-request-change-kind-double-hyphen.json":                 {"changes", "/changes/0/change_kind pattern"},
+		"changes-change-request-change-kind-not-a-string.json":                  {"changes", "/changes/0/change_kind type"},
+		"changes-change-request-change-kind-trailing-hyphen.json":               {"changes", "/changes/0/change_kind pattern"},
+		"changes-change-request-change-kind-underscore.json":                    {"changes", "/changes/0/change_kind pattern"},
+		"changes-change-request-change-kind-upper-case.json":                    {"changes", "/changes/0/change_kind pattern"},
+		"changes-change-request-data-array.json":                                {"changes", "/changes/0/data type"},
+		"changes-change-request-data-nul-character.json":                        {"changes", "/changes/0/data/note pattern"},
+		"changes-change-request-data-null.json":                                 {"changes", "/changes/0/data type"},
+		"changes-change-request-data-string.json":                               {"changes", "/changes/0/data type"},
+		"changes-change-request-id-wrong-prefix.json":                           {"changes", "/changes/0/change_request_id pattern"},
+		"changes-change-request-previous-address-without-url.json":              {"changes", "/changes/0/previous/address required url"},
+		"changes-change-request-previous-empty.json":                            {"changes", "/changes/0/previous minProperties"},
+		"changes-change-request-previous-title-empty.json":                      {"changes", "/changes/0/previous/title minLength; /changes/0/previous/title pattern; /changes/0/previous/title pattern"},
+		"changes-change-request-previous-title-null.json":                       {"changes", "/changes/0/previous/title type"},
+		"changes-change-request-target-address-system-upper-case.json":          {"changes", "/changes/0/target/address/system pattern"},
+		"changes-change-request-target-address-path-braces.json":                {"changes", "/changes/0/target/address/path pattern"},
+		"changes-change-request-target-system-and-path-without-collection.json": {"changes", "/changes/0/target required collection"},
+		"changes-change-request-target-without-collection.json":                 {"changes", "/changes/0/target required collection"},
+		"changes-change-request-text-20001.json":                                {"changes", "/changes/0/text maxLength"},
+		"changes-change-request-title-257-characters.json":                      {"changes", "/changes/0/title maxLength"},
+		"changes-change-request-title-empty.json":                               {"changes", "/changes/0/title minLength; /changes/0/title pattern; /changes/0/title pattern"},
+		"changes-change-request-title-line-feed.json":                           {"changes", "/changes/0/title pattern"},
+		"changes-change-request-without-change-kind.json":                       {"changes", "/changes/0 required change_kind"},
+		"changes-change-request-without-data.json":                              {"changes", "/changes/0 required data"},
+		"changes-change-request-without-target.json":                            {"changes", "/changes/0 required target"},
+		"changes-change-request-without-text.json":                              {"changes", "/changes/0 required text"},
+		"changes-change-request-without-title.json":                             {"changes", "/changes/0 required title"},
+		"changes-failed-change-request-and-comment-id.json":                     {"changes-failed", "/ "},
+		"changes-failed-change-request-branch-gone.json":                        {"changes-failed", "/reason enum"},
+		"changes-failed-change-request-detail-1001.json":                        {"changes-failed", "/detail maxLength"},
+		"changes-failed-change-request-detail-empty.json":                       {"changes-failed", "/detail minLength; /detail pattern"},
+		"changes-failed-change-request-detail-line-break.json":                  {"changes-failed", "/detail pattern"},
+		"changes-failed-change-request-forge-refused.json":                      {"changes-failed", "/reason enum"},
+		"changes-failed-change-request-id-wrong-prefix.json":                    {"changes-failed", "/change_request_id pattern"},
+		"changes-failed-change-request-item-gone.json":                          {"changes-failed", "/reason enum"},
+		"changes-failed-change-request-target-without-collection.json":          {"changes-failed", "/target required collection"},
+		"changes-failed-change-request-unknown-reason.json":                     {"changes-failed", "/reason enum"},
+		"changes-failed-change-request-without-target.json":                     {"changes-failed", "/ required target"},
+		"changes-failed-comment-refused.json":                                   {"changes-failed", "/reason enum"},
+		"changes-failed-comment-target-gone.json":                               {"changes-failed", "/reason enum"},
+		"changes-failed-comment-with-target.json":                               {"changes-failed", "/target "},
+		"changes-submitted-action-closed.json":                                  {"changes-submitted", "/action enum"},
+		"changes-submitted-action-without-address.json":                         {"changes-submitted", "/ dependentRequired/action"},
+		"changes-submitted-address-url-http.json":                               {"changes-submitted", "/address/url pattern"},
+		"changes-submitted-address-without-action.json":                         {"changes-submitted", "/ dependentRequired/address"},
+		"changes-submitted-address-without-url.json":                            {"changes-submitted", "/address required url"},
+		"changes-submitted-data-array.json":                                     {"changes-submitted", "/data type"},
+		"changes-submitted-data-nul-character.json":                             {"changes-submitted", "/data/note pattern"},
+		"changes-submitted-target-without-collection.json":                      {"changes-submitted", "/target required collection"},
+		"changes-submitted-without-change-request-id.json":                      {"changes-submitted", "/ required change_request_id"},
+		"changes-submitted-without-target.json":                                 {"changes-submitted", "/ required target"},
+		"changes-failed-comment-detail.json":                                    {"changes-failed", "/detail "},
+		"source-item-comments-comment-id-upper-case.json":                       {"source-item-comments", "/comments/0/comment_id pattern"},
+		"source-collections-no-listing.json":                                    {"source-collections", "/ required listing"},
+		"source-item-comments-person-kind-app.json":                             {"source-item-comments", "/comments/0/author/kind enum"},
+		"source-items-101-items.json":                                           {"source-items", "/items maxItems"},
+		"source-items-body-too-long.json":                                       {"source-items", "/items/0/body maxLength"},
+		"source-items-empty-label.json":                                         {"source-items", "/items/0/labels/1 minLength"},
+		"source-items-state-reason-too-long.json":                               {"source-items", "/items/0/state_reason maxLength"},
+		"source-items-time-fraction.json":                                       {"source-items", "/time pattern"},
+		"source-items-time-offset.json":                                         {"source-items", "/time pattern"},
+		"source-items-url-http.json":                                            {"source-items", "/items/0/url pattern"},
+		"source-items-key-too-long.json":                                        {"source-items", "/items/0/key maxLength"},
+		"source-items-event-empty.json":                                         {"source-items", "/items minItems"},
+		"source-item-comments-empty-without-complete.json":                      {"source-item-comments", "/comments minItems"},
+		"source-items-truncated-labels-twice.json":                              {"source-items", "/items/0/truncated uniqueItems"},
+		"source-items-truncated-state-reason.json":                              {"source-items", "/items/0/truncated/0 enum"},
+		"source-items-truncated-unknown-field.json":                             {"source-items", "/items/0/truncated/0 enum"},
+		"sources-disconnect-without-connection-id.json":                         {"sources-disconnect", "/ required connection_id"},
+		"connect-return-refused-without-reason.json":                            {"connect-return", "/ required reason"},
+		"connect-return-linked-with-reason.json":                                {"connect-return", "/reason "},
+		"connect-return-unknown-outcome.json":                                   {"connect-return", "/outcome enum"},
+		"connect-pass-without-connection-id.json":                               {"connect-pass", "/ required connection_id"},
+		"connections-disconnect-connection-id-adapter-id.json":                  {"connections-disconnect", "/connection_id pattern"},
+		"source-collections-part-10001.json":                                    {"source-collections", "/listing/part maximum"},
+		"source-collections-environment-ref-empty.json":                         {"source-collections", "/collections/0/environment_ref minLength"},
+		"source-collections-environment-ref-201.json":                           {"source-collections", "/collections/0/environment_ref maxLength"},
+		"source-collections-environment-ref-nul.json":                           {"source-collections", "/collections/0/environment_ref pattern"},
+		"source-collections-items-true.json":                                    {"source-collections", "/collections/1/items const"},
+		"source-collections-items-string.json":                                  {"source-collections", "/collections/1/items const"},
+		"source-collections-items-null.json":                                    {"source-collections", "/collections/1/items const"},
+		"source-items-comment-count-above-maximum.json":                         {"source-items", "/items/0/comment_count maximum"},
+		"source-items-title-nul.json":                                           {"source-items", "/items/0/title pattern"},
+		"source-items-created-at-leap-second.json":                              {"source-items", "/items/0/created_at pattern"},
+		"source-items-created-at-hour-24.json":                                  {"source-items", "/items/0/created_at format"},
+		"source-items-created-at-minute-60.json":                                {"source-items", "/items/0/created_at format"},
+		"source-items-url-user-information.json":                                {"source-items", "/items/0/url pattern"},
+		"source-items-url-host-percent-41.json":                                 {"source-items", "/items/0/url format"},
+		"source-items-url-host-percent-7f.json":                                 {"source-items", "/items/0/url format"},
+		"source-items-url-after-bracket-letters.json":                           {"source-items", "/items/0/url format"},
+		"source-items-url-after-bracket-dot-digit.json":                         {"source-items", "/items/0/url format"},
+		"source-items-url-bad-percent-escape.json":                              {"source-items", "/items/0/url format"},
+		"source-items-url-port-0.json":                                          {"source-items", "/items/0/url pattern"},
+		"source-items-url-port-65536.json":                                      {"source-items", "/items/0/url pattern"},
+		"setup-pass-without-nonce.json":                                         {"setup-pass", "/ required nonce"},
+		"setup-pass-version-2.json":                                             {"setup-pass", "/version const"},
+		"setup-pass-adapter-id-connection-id.json":                              {"setup-pass", "/adapter_id pattern"},
+		"setup-pass-organisation-slug-upper-case.json":                          {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-underscore.json":                          {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-leading-hyphen.json":                      {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-trailing-hyphen.json":                     {"setup-pass", "/organisation_slug pattern"},
+		"setup-pass-organisation-slug-41-characters.json":                       {"setup-pass", "/organisation_slug maxLength"},
+		"setup-pass-organisation-slug-empty.json":                               {"setup-pass", "/organisation_slug pattern"},
+		"adapter-setup-url-fragment.json":                                       {"adapter", "/setup_url "},
+		"adapter-setup-url-state.json":                                          {"adapter", "/setup_url "},
+		"adapter-setup-url-and-state.json":                                      {"adapter", "/setup_url "},
+		"adapter-setup-url-http.json":                                           {"adapter", "/setup_url pattern"},
+		"adapter-setup-url-bare-state.json":                                     {"adapter", "/setup_url "},
+		"adapter-setup-url-state-first.json":                                    {"adapter", "/setup_url "},
+		"adapter-setup-url-state-percent-encoded.json":                          {"adapter", "/setup_url "},
+		"adapter-call-url-http.json":                                            {"adapter", "/call_url pattern"},
+		"adapter-call-url-query.json":                                           {"adapter", "/call_url pattern"},
+		"adapter-call-url-without-final-slash.json":                             {"adapter", "/call_url pattern"},
+		"adapter-description-secrets-twice.json":                                {"adapter", "/description/roles/source/secrets uniqueItems"},
+		"grant-without-pass-nonce.json":                                         {"grant", "/ required pass_nonce"},
+		"grant-without-account.json":                                            {"grant", "/ required account"},
+		"grant-end-without-grant-ref.json":                                      {"grant-end", "/ required grant_ref"},
+		"grant-account-without-ref.json":                                        {"grant", "/account required ref"},
+		"grant-account-title-line-feed.json":                                    {"grant", "/account/title pattern"},
+		"source-collections-without-grant-ref.json":                             {"source-collections", "/collections/0 required grant_ref"},
+		"grant-pass-nonce-21-characters.json":                                   {"grant", "/pass_nonce pattern"},
+		"grants-without-revision.json":                                          {"grants", "/ required revision"},
+		"changes-grant-status-taken-in.json":                                    {"changes", "/changes/0/status enum"},
+		"changes-grant-without-connection-id.json":                              {"changes", "/changes/0 required connection_id"},
+		"adapter-secrets-value-in-clear.json":                                   {"adapter-secrets", "/sealed/values "},
+		"adapter-secrets-answer-value-in-clear.json":                            {"adapter-secrets-answer", "/sealed/values "},
+		"adapter-secrets-without-server-key.json":                               {"adapter-secrets", "/sealed required server_key"},
+		"adapter-secrets-answer-suite-chacha20.json":                            {"adapter-secrets-answer", "/sealed/suite const"},
+		"adapter-secrets-answer-enc-31-bytes.json":                              {"adapter-secrets-answer", "/sealed/enc pattern"},
+		"adapter-secrets-plaintext-17-secrets.json":                             {"adapter-secrets-plaintext", "/secrets maxItems"},
+		"adapter-secrets-plaintext-name-upper-case.json":                        {"adapter-secrets-plaintext", "/secrets/0/name pattern"},
+		"adapter-secrets-plaintext-empty-value.json":                            {"adapter-secrets-plaintext", "/secrets/0/value minLength"},
+		"resolve-65-addresses.json":                                             {"resolve", "/addresses maxItems"},
+		"resolve-without-addresses.json":                                        {"resolve", "/addresses minItems"},
+		"resolve-address-space.json":                                            {"resolve", "/addresses/0 pattern"},
+		"resolve-address-twice.json":                                            {"resolve", "/addresses uniqueItems"},
+		"resolve-answer-covered-true.json":                                      {"resolve-answer", "/results/1/covered const"},
+		"resolve-answer-not-covered-with-grant-ref.json":                        {"resolve-answer", "/results/1/grant_ref "},
+		"resolve-answer-without-resource-ref.json":                              {"resolve-answer", "/results/0 required resource_ref"},
+		"resolve-answer-without-revision.json":                                  {"resolve-answer", "/ required revision"},
+		"resolve-answer-public-false.json":                                      {"resolve-answer", "/results/0/public const"},
+		"resolve-answer-public-without-resource-ref.json":                       {"resolve-answer", "/results/0 required resource_ref"},
+		"resolve-answer-not-covered-public.json":                                {"resolve-answer", "/results/0/public "},
+		"resolve-answer-public-without-public-ref.json":                         {"resolve-answer", "/results/0 required public_ref"},
+		"resolve-answer-public-ref-without-public.json":                         {"resolve-answer", "/results/0/public_ref "},
+		"read-public-without-path.json":                                         {"read-public", "/ required path"},
+		"read-path-leading-slash.json":                                          {"read", "/path pattern"},
+		"read-path-dot-dot.json":                                                {"read", "/path pattern"},
+		"read-path-empty-part.json":                                             {"read", "/path pattern"},
+		"read-at-space.json":                                                    {"read", "/at pattern"},
+		"read-without-at.json":                                                  {"read", "/ required at"},
+		"read-answer-content-nul.json":                                          {"read-answer", "/content pattern"},
+		"read-answer-without-resolved-at.json":                                  {"read-answer", "/ required resolved_at"},
+		"read-answer-content-and-not-found.json":                                {"read-answer", "/content "},
+		"read-answer-without-content-or-found.json":                             {"read-answer", "/ required content"},
+		"run-credential-access-admin.json":                                      {"run-credential", "/access enum"},
+		"run-credential-access-write-no-push.json":                              {"run-credential", "/access enum"},
+		"run-credential-purpose-other.json":                                     {"run-credential", "/purpose enum"},
+		"run-credential-without-resources.json":                                 {"run-credential", "/resources minItems"},
+		"run-credential-work-write-two-resources.json":                          {"run-credential", "/resources maxItems"},
+		"run-credential-work-read-251-resources.json":                           {"run-credential", "/resources maxItems"},
+		"run-credential-harness-65-resources.json":                              {"run-credential", "/resources maxItems"},
+		"run-credential-without-purpose.json":                                   {"run-credential", "/ required purpose"},
+		"run-credential-work-with-grant-ref.json":                               {"run-credential", "/ "},
+		"run-credential-harness-without-grant-ref.json":                         {"run-credential", "/ required grant_ref"},
+		"run-credential-work-without-connection-id.json":                        {"run-credential", "/ required connection_id"},
+		"run-credential-harness-with-connection-id.json":                        {"run-credential", "/ "},
+		"run-credential-harness-write.json":                                     {"run-credential", "/access const"},
+		"run-credential-answer-without-token.json":                              {"run-credential-answer", "/credential required token"},
+		"run-credential-answer-without-nested-version.json":                     {"run-credential-answer", "/credential required version"},
+		"run-credential-answer-apply-token.json":                                {"run-credential-answer", "/credential/apply/0/token "},
+		"run-credential-answer-host-star-dot.json":                              {"run-credential-answer", "/credential/apply/0/hosts/0 "},
+		"run-credential-answer-placeholders.json":                               {"run-credential-answer", "/credential/placeholders "},
+		"run-credential-answer-token-line-feed.json":                            {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-carriage-return.json":                      {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-nul.json":                                  {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-leading-space.json":                        {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-trailing-tab.json":                         {"run-credential-answer", "/credential/token pattern"},
+		"run-credential-answer-token-16385.json":                                {"run-credential-answer", "/credential/token maxLength"},
+		"run-credential-answer-expires-at-without-zone.json":                    {"run-credential-answer", "/credential/expires_at format"},
 	}
 	got := files(t, "fixtures/adapter/invalid")
 	if len(got) != len(want) {
@@ -325,9 +394,13 @@ func node(t *testing.T, name, pointer string) map[string]any {
 // reason, so without this test a pattern could stop refusing these values unnoticed.
 func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
 	for name, c := range map[string]struct{ member, bad, good string }{
-		"source-items-created-at-hour-24.json":     {"created_at", "2026-10-01T24:00:00Z", "2026-10-01T23:00:00Z"},
-		"source-items-created-at-minute-60.json":   {"created_at", "2026-10-01T09:60:00Z", "2026-10-01T09:59:00Z"},
-		"source-items-url-bad-percent-escape.json": {"url", "https://tracker.acme.example/TRK/TRK%2G1", "https://tracker.acme.example/TRK/TRK%2D1"},
+		"source-items-created-at-hour-24.json":          {"created_at", "2026-10-01T24:00:00Z", "2026-10-01T23:00:00Z"},
+		"source-items-created-at-minute-60.json":        {"created_at", "2026-10-01T09:60:00Z", "2026-10-01T09:59:00Z"},
+		"source-items-url-bad-percent-escape.json":      {"url", "https://tracker.acme.example/TRK/TRK%2G1", "https://tracker.acme.example/TRK/TRK%2D1"},
+		"source-items-url-host-percent-41.json":         {"url", "https://tracker.ex%41mple.example/TRK/TRK-1", "https://tracker.ex%C3%A9mple.example/TRK/TRK-1"},
+		"source-items-url-host-percent-7f.json":         {"url", "https://tracker.ex%7Fmple.example/TRK/TRK-1", "https://tracker.ex%FFmple.example/TRK/TRK-1"},
+		"source-items-url-after-bracket-letters.json":   {"url", "https://[2001:db8::1]ab/TRK/TRK-1", "https://[2001:db8::1]:8443/TRK/TRK-1"},
+		"source-items-url-after-bracket-dot-digit.json": {"url", "https://[2001:db8::1].5/TRK/TRK-1", "https://[2001:db8::1]/TRK/TRK-1"},
 	} {
 		if b := read(t, "fixtures/adapter/invalid/"+name); !bytes.Contains(b, []byte(`"`+c.member+`": "`+c.bad+`"`)) {
 			t.Errorf("%s contains no %s %q", name, c.member, c.bad)
@@ -355,6 +428,463 @@ func TestTheItemPatternsRefuseTheFormatFixtures(t *testing.T) {
 	}
 }
 
+// TestATargetIsACollectionWithAnOptionalAddress pins definitions.schema.json,
+// $defs.target: a collection ref is required, the address is optional and has a system
+// and a path, and a target with a system and a path and no collection is refused. It
+// also pins that each schema that refers to a target refuses that shape.
+func TestATargetIsACollectionWithAnOptionalAddress(t *testing.T) {
+	const address = `{"system":"code.example.com","path":"acme/shop"}`
+	schema := compile(t, "definitions.schema.json#/$defs/target")
+	for _, c := range []struct {
+		name, doc string
+		ok        bool
+	}{
+		{"a collection and no address", `{"collection":"AP_1234"}`, true},
+		{"a collection and an address", `{"collection":"R_1001","address":` + address + `}`, true},
+		{"a collection of 200 characters", `{"collection":"` + strings.Repeat("a", 200) + `"}`, true},
+		{"no collection", `{"address":` + address + `}`, false},
+		{"an empty object", `{}`, false},
+		{"system and path with no collection", address, false},
+		{"system and path beside the collection, which a reader ignores", `{"collection":"R_1001","system":"code.example.com","path":"acme/shop"}`, true},
+		{"an empty collection", `{"collection":""}`, false},
+		{"a collection of 201 characters", `{"collection":"` + strings.Repeat("a", 201) + `"}`, false},
+		{"a collection that is a number", `{"collection":1001}`, false},
+		{"an address that is null", `{"collection":"R_1001","address":null}`, false},
+		{"an address with no path", `{"collection":"R_1001","address":{"system":"code.example.com"}}`, false},
+		{"an address with no system", `{"collection":"R_1001","address":{"path":"acme/shop"}}`, false},
+		{"an address with an empty path", `{"collection":"R_1001","address":{"system":"code.example.com","path":""}}`, false},
+		{"an address with a path of 200 characters", `{"collection":"R_1001","address":{"system":"code.example.com","path":"` + strings.Repeat("a", 200) + `"}}`, true},
+		{"an address with a path of 201 characters", `{"collection":"R_1001","address":{"system":"code.example.com","path":"` + strings.Repeat("a", 201) + `"}}`, false},
+		{"an address with a path with a line feed", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\nshop"}}`, false},
+		{"an address with a path with a tab", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\tshop"}}`, false},
+		{"an address with a path with U+007F", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/\u007fshop"}}`, false},
+		{"an address with a system in upper case", `{"collection":"R_1001","address":{"system":"Code.example.com","path":"acme/shop"}}`, false},
+		{"an address with a system and a port", `{"collection":"R_1001","address":{"system":"code.example.com:8443","path":"acme/shop"}}`, false},
+		{"an address with another member, which a reader ignores", `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop","port":1}}`, true},
+	} {
+		if err := validate(schema, []byte(c.doc)); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	// Each schema that refers to a target refuses, in place of the target, a system and
+	// a path with no collection, and an address path with a control character.
+	withPath := func(p string) map[string]any {
+		return map[string]any{"collection": "R_1001", "address": map[string]any{"system": "code.example.com", "path": p}}
+	}
+	refused := []struct {
+		name   string
+		target map[string]any
+	}{
+		{"a system and a path and no collection", map[string]any{"system": "code.example.com", "path": "acme/shop"}},
+		{"an address path with a line feed", withPath("acme/\nshop")},
+		{"an address path with a tab", withPath("acme/\tshop")},
+		{"an address path with U+007F", withPath("acme/\x7fshop")},
+		{"an address path with U+0000", withPath("acme/\x00shop")},
+	}
+	for _, f := range []struct {
+		file   string
+		schema *jsonschema.Schema
+		where  func(doc map[string]any) map[string]any
+	}{
+		{"fixtures/adapter/source-collections/code-host.json", compile(t, "source-collections.schema.json"),
+			func(d map[string]any) map[string]any { return d["collections"].([]any)[0].(map[string]any) }},
+		{"fixtures/adapter/source-items/code-host-event.json", compile(t, "source-items.schema.json"),
+			func(d map[string]any) map[string]any { return d["items"].([]any)[0].(map[string]any) }},
+		{"fixtures/adapter/changes/change-request-pull-request.json", compile(t, "changes.schema.json"),
+			func(d map[string]any) map[string]any { return d["changes"].([]any)[0].(map[string]any) }},
+		{"fixtures/adapter/changes-submitted/pull-request-created.json", compile(t, "changes-submitted.schema.json"),
+			func(d map[string]any) map[string]any { return d }},
+		{"fixtures/adapter/changes-failed/change-request-target-gone.json", compile(t, "changes-failed.schema.json"),
+			func(d map[string]any) map[string]any { return d }},
+	} {
+		var doc map[string]any
+		if err := json.Unmarshal(read(t, f.file), &doc); err != nil {
+			t.Fatal(err)
+		}
+		holder := f.where(doc)
+		if _, ok := holder["target"].(map[string]any)["collection"]; !ok {
+			t.Errorf("%s: the target has no collection", f.file)
+		}
+		for _, r := range refused {
+			holder["target"] = r.target
+			b, _ := json.Marshal(doc)
+			if err := validate(f.schema, b); err == nil {
+				t.Errorf("%s: the target with %s is accepted", f.file, r.name)
+			}
+		}
+	}
+	for _, f := range []struct {
+		fsys   fs.FS
+		file   string
+		schema *jsonschema.Schema
+	}{
+		{contracts.RunFS, "fixtures/documents/explore.json", func() *jsonschema.Schema {
+			s, err := contracts.CompileRun("documents.schema.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			return s
+		}()},
+		{contracts.ExploreFS, "fixtures/inputs/first-attempt.json", func() *jsonschema.Schema {
+			s, err := contracts.CompileExplore("inputs.schema.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			return s
+		}()},
+	} {
+		raw, err := fs.ReadFile(f.fsys, f.file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(f.schema, raw); err != nil {
+			t.Errorf("%s: %v", f.file, err)
+		}
+		for _, r := range refused {
+			doc["target"] = r.target
+			b, _ := json.Marshal(doc)
+			if err := validate(f.schema, b); err == nil {
+				t.Errorf("%s: the target with %s is accepted", f.file, r.name)
+			}
+		}
+	}
+}
+
+// TestARunCredentialHasTheResourcesOfItsPurposeAndAccess pins how many resources a run
+// credential call has: 1 to 64 for the purpose harness, 1 to 250 for the purpose work with
+// the access read, and exactly 1 for the purpose work with the access write. A count past
+// a bound is refused for maxItems alone, and none is refused for minItems alone.
+func TestARunCredentialHasTheResourcesOfItsPurposeAndAccess(t *testing.T) {
+	schema := compile(t, "run-credential.schema.json")
+	call := func(purpose, access string, n int) map[string]any {
+		doc := map[string]any{"version": json.Number("1"), "time": "2026-10-15T12:00:00Z", "access": access, "purpose": purpose}
+		if purpose == "work" {
+			doc["connection_id"] = "ac_0123456789abcdef"
+		} else {
+			doc["grant_ref"] = "G_1"
+		}
+		resources := []any{}
+		for i := 1; i <= n; i++ {
+			resources = append(resources, fmt.Sprintf("C_%d", 2000+i))
+		}
+		doc["resources"] = resources
+		return doc
+	}
+	for _, c := range []struct {
+		purpose, access string
+		n               int
+		want            string
+	}{
+		{"harness", "read", 0, "/resources minItems"},
+		{"harness", "read", 1, ""},
+		{"harness", "read", 64, ""},
+		{"harness", "read", 65, "/resources maxItems"},
+		{"work", "read", 0, "/resources minItems"},
+		{"work", "read", 1, ""},
+		{"work", "read", 2, ""},
+		{"work", "read", 250, ""},
+		{"work", "read", 251, "/resources maxItems"},
+		{"work", "write", 0, "/resources minItems"},
+		{"work", "write", 1, ""},
+		{"work", "write", 2, "/resources maxItems"},
+		{"work", "write", 250, "/resources maxItems"},
+	} {
+		got := ""
+		if v, ok := schema.Validate(call(c.purpose, c.access, c.n)).(*jsonschema.ValidationError); ok {
+			got = strings.Join(leaves(v), "; ")
+		}
+		if got != c.want {
+			t.Errorf("a %s call with the access %s and %d resources is refused for %q, want %q", c.purpose, c.access, c.n, got, c.want)
+		}
+	}
+}
+
+// TestConnectionHeldIsListedBesideGrantTaken pins that connection_held is a reason of the
+// connect return, after grant_taken. It pins that the adapter treats it as final, as
+// grant_taken, and that the control plane checks it after grant_taken. It pins that the
+// descriptions of the grant report, of its refusals and of the connect return mention it,
+// with the fix for the person. A reason that the connect return does not list is refused.
+func TestConnectionHeldIsListedBesideGrantTaken(t *testing.T) {
+	const fix = "Disconnect the account that is connected first, then connect again. A connection has one account."
+	connectReturn := node(t, "connect-return.schema.json", "/properties/reason")
+	var reasons []string
+	for _, r := range connectReturn["enum"].([]any) {
+		reasons = append(reasons, r.(string))
+	}
+	i := slices.Index(reasons, "grant_taken")
+	if i < 0 || i+1 >= len(reasons) || reasons[i+1] != "connection_held" {
+		t.Errorf("the reasons of the connect return are %v, want connection_held right after grant_taken", reasons)
+	}
+	description := func(schema string) string {
+		doc, err := contracts.Document(schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		d, _ := doc.(map[string]any)["description"].(string)
+		return d
+	}
+	for _, c := range []struct{ name, text string }{
+		{"the reason of connect-return.schema.json", connectReturn["description"].(string)},
+		{"grant.schema.json", description("grant.schema.json")},
+	} {
+		if !strings.Contains(c.text, "connection_held") || !strings.Contains(c.text, fix) {
+			t.Errorf("%s: the description does not mention connection_held with %q", c.name, fix)
+		}
+	}
+	for _, c := range []struct{ schema, want string }{
+		{"grant.schema.json", "409 connection_held"},
+		{"grant.schema.json", "On 409 grant_taken or 409 connection_held, to the first report or to one sent again, the adapter stops sending that report at once, drops the grant from its state"},
+		{"grant.schema.json", "then 409 grant_taken, then 409 connection_held, for grant_ref"},
+		{"refusal.schema.json", "pass_unknown, then grant_taken, and then connection_held"},
+		{"refusal.schema.json", "409 connection_held, a grant report whose grant_ref differs"},
+	} {
+		if !strings.Contains(description(c.schema), c.want) {
+			t.Errorf("%s: the description does not contain %q", c.schema, c.want)
+		}
+	}
+	schema := compile(t, "connect-return.schema.json")
+	var doc map[string]any
+	if err := json.Unmarshal(read(t, "fixtures/adapter/connect-return/refused-connection-held.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["reason"] != "connection_held" {
+		t.Errorf("refused-connection-held.json has the reason %v", doc["reason"])
+	}
+	doc["reason"] = "connection_holding"
+	b, _ := json.Marshal(doc)
+	if err := validate(schema, b); err == nil {
+		t.Error("a connect return with an unlisted reason is accepted")
+	}
+}
+
+// TestTheAnswerPathLimitIsStatedAndMatchesForager pins that the Forager contract limits
+// the apply of a sealed value, and an entry of the run configuration, to 16 items, and the
+// paths of an item to 32, which makes 512 paths. It pins that run-credential.schema.json
+// and run-credential-answer.schema.json state that limit and the refusal
+// resource_not_covered, and that the refusal codes list the case.
+func TestTheAnswerPathLimitIsStatedAndMatchesForager(t *testing.T) {
+	read := func(name string) map[string]any {
+		doc, err := foragercontracts.Document(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return doc.(map[string]any)
+	}
+	at := func(doc map[string]any, keys ...string) map[string]any {
+		for _, k := range keys {
+			doc = doc[k].(map[string]any)
+		}
+		return doc
+	}
+	configuration := read("run-configuration.schema.json")
+	sealed := read("sealed-plaintext.schema.json")
+	for _, c := range []struct {
+		where string
+		got   any
+		want  string
+	}{
+		{"the apply of an entry of the run configuration", at(configuration, "$defs", "host_credential", "properties", "apply")["maxItems"], "16"},
+		{"the apply of a sealed value", at(sealed, "properties", "values", "items", "properties", "apply")["maxItems"], "16"},
+		{"the paths of an apply item", at(configuration, "$defs", "credential_paths")["maxItems"], "32"},
+	} {
+		if fmt.Sprint(c.got) != c.want {
+			t.Errorf("Forager limits %s to %v, and the contract states %s", c.where, c.got, c.want)
+		}
+	}
+	if ref := at(configuration, "$defs", "apply", "properties", "paths")["$ref"]; ref != "#/$defs/credential_paths" {
+		t.Errorf("the paths of an apply item are %v, want #/$defs/credential_paths", ref)
+	}
+	const limit = "An adapter covers N resources only when N × p + c ≤ 512. Here p is the number of path entries that one resource adds across all apply items. c is the number of paths that belong to no single resource, such as a template without {target.path}. It covers fewer when paths of different items cannot share one list of 32. It refuses a call over its limit with 403 resource_not_covered."
+	for _, c := range []struct{ schema, want string }{
+		{"run-credential.schema.json", "The answer has at most 512 paths (run-credential-answer.schema.json). " + limit},
+		{"run-credential.schema.json", overlapRefusal + ";"},
+		{"run-credential-answer.schema.json", "The answer has at most 16 apply items of 1 to 32 paths each, 512 paths together."},
+		{"run-credential-answer.schema.json", limit},
+		{"run-credential-answer.schema.json", "In the Forager contract, several host credentials may claim one host (run-configuration.schema.json, $defs.apply). They may do so when each item on the host has paths and no path of one overlaps a path of another. The Forager gateway checks each apply item of an entry that way."},
+		{"refusal.schema.json", overlapRefusal + ";"},
+	} {
+		d, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if text, _ := d.(map[string]any)["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s: the description does not contain %q", c.schema, c.want)
+		}
+	}
+	// The CHANGELOG and the Go comment wrap the sentences, and the CHANGELOG sets code in
+	// backticks, so the needle is compared with the words of each file alone.
+	words := func(s string) string {
+		s = strings.NewReplacer("`", "", "\n// ", " ", "\n//\n", " ").Replace(s)
+		return strings.Join(strings.Fields(s), " ")
+	}
+	for _, file := range []string{"../CHANGELOG.md", "adapter.go"} {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(words(string(b)), limit) {
+			t.Errorf("%s does not contain the limit %q", file, limit)
+		}
+	}
+	const resources = "The paths of the answer limit how many resources one call covers (run-credential-answer.schema.json)."
+	if text, _ := node(t, "run-credential.schema.json", "/properties/resources")["description"].(string); !strings.Contains(text, resources) {
+		t.Errorf("run-credential.schema.json: the description of resources does not contain %q", resources)
+	}
+}
+
+// The sentences of the source apply of description.schema.json about how the control
+// plane fills the templates for a run with no target. The source apply has the first
+// and the last, and $defs.apply has all of them, with the sentences about a covered and
+// an overlapping path between them.
+const (
+	exploreFill       = "For a run with no target, such as Explore, the control plane fills the templates of an item one after another, each for every resource in the order of the call's resources."
+	exploreSplit      = "It puts the filled paths into items of at most 32 paths, in that order."
+	exploreSplitBy    = "The control plane puts the filled paths into items of at most 32 paths, in the order in which it filled them."
+	exploreFillItems  = "Each item has the hosts, scheme, username and header of the description item it came from. Each such item is a valid Forager apply item."
+	exploreDropGroup  = "Before the control plane splits the filled paths into items, it drops a covered path only among paths that share host, scheme, username and header."
+	exploreEveryHost  = "A path of an item is dropped only when, on every host of the item, a path of the group of that host covers it."
+	exploreSomeHosts  = "If it is covered on some hosts of the item and not on others, the adapter refuses the call with 403 resource_not_covered."
+	exploreKeepFirst  = "Of two equal paths, the control plane keeps the first: the one of the earlier item in the description, then the earlier path in one item."
+	exploreExample    = "For example, an item on host a with the path /x, then an item on hosts a and b with the path /x: the adapter refuses the call, because the second item's path is covered on a and not on b."
+	exploreSameAccess = "Inside such a group the entry then grants the same access."
+	exploreBetween    = "An equal or covered path between groups that differ in scheme, username or header on one host is refused: the adapter refuses it with 403 resource_not_covered."
+	exploreNeither    = "The adapter also refuses with 403 resource_not_covered a call whose filled paths still overlap on one host after that step, where neither path covers the other."
+	exploreChunk      = "A chunked item never has an empty path list."
+	exploreCovers     = "A path covers another when every request path that matches the other also matches it. Forager's CoversPath (policy/policy.go) returns this, and /group/* covers /group/sub/repo/*."
+	exploreOverlaps   = "Two paths overlap when one request path can match both. Forager's OverlapPaths (policy/policy.go) returns this, and it counts a pair it cannot decide as overlapping."
+	// overlapRefusal is the clause of the refusal list of 403 resource_not_covered.
+	overlapRefusal = "or the paths of the resources do not fit in the answer (run-credential-answer.schema.json), or the filled paths overlap on one host (description.schema.json, $defs.apply)"
+)
+
+// TestAConnectionHasAtMostOneGrantThatHasNotEnded pins the texts of one account for each
+// connection: the description of the grant report and of its grant_ref, the description
+// of the definitions, and the path that fills {target.path} for a run with no target.
+func TestAConnectionHasAtMostOneGrantThatHasNotEnded(t *testing.T) {
+	const one = "A connection has at most one grant that has not ended, for one external account at the source."
+	for _, c := range []struct{ schema, pointer, want string }{
+		{"grant.schema.json", "", one + " grant_ref is the adapter's ref to that grant, stable for that account."},
+		{"grant.schema.json", "/properties/grant_ref", "While the connection has a grant that has not ended, a report with another grant_ref is refused with 409 connection_held."},
+		{"definitions.schema.json", "", one + " The adapter reports that grant with POST /v1/grants"},
+		{"description.schema.json", "/properties/roles/properties/source/properties/apply", exploreFill + " " + exploreSplit + " " + exploreFillItems},
+	} {
+		doc, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		holder := doc.(map[string]any)
+		if c.pointer != "" {
+			holder = node(t, c.schema, c.pointer)
+		}
+		if text, _ := holder["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s%s: the description does not contain %q", c.schema, c.pointer, c.want)
+		}
+	}
+}
+
+// TestOneAccountConnectsAndExploreFillsTemplatesForEachResource pins the texts of the
+// connect pass and the connection id about one external account that connects to a
+// connection, and the texts of the source apply about how the control plane fills the
+// templates for a run with no target.
+func TestOneAccountConnectsAndExploreFillsTemplatesForEachResource(t *testing.T) {
+	const apply = "/properties/roles/properties/source/properties/apply"
+	for _, c := range []struct{ schema, pointer, want string }{
+		{"description.schema.json", apply, exploreFill + " " + exploreSplit + " " + exploreFillItems},
+		{"description.schema.json", "/$defs/apply", "so each item that the control plane fills from this item is a valid Forager apply item. " + exploreFill + " " + exploreDropGroup + " " + exploreEveryHost + " " + exploreSameAccess + " " + exploreSomeHosts + " " + exploreKeepFirst + " " + exploreExample + " " + exploreBetween + " " + exploreNeither + " " + exploreSplitBy + " " + exploreChunk + " " + exploreCovers + " " + exploreOverlaps + " " + exploreFillItems},
+		{"description.schema.json", "/$defs/apply/properties/paths", "For a run with no target, a template with {target.path} gives one path per resource. A template without it gives one path."},
+		{"description.schema.json", "/$defs/apply/properties/paths", "A template has no space character and no { or } other than in the placeholder {target.path}, which it contains at most once. A space character is"},
+		{"description.schema.json", "/$defs/apply/properties/paths", "Before it fills any template, the control plane refuses a target path with a space character, {, }, .., //, *, ? or #. The control plane also refuses a target path with a segment ., a backslash, a %, a first / or a final /. It refuses a target path with a segment that starts with ; or .; too. Forager's UnclearPath (policy/policy.go) refuses a filled path with a . segment, a backslash, //, or %2f, %5c, %2e or %25 in any case. UnclearPath also refuses a segment that is not empty when its part before the first ; or %3b, in any case, is empty. It refuses the segment too when that part is a single dot or two dots. The refusals of .. and % in the control plane cover ..;x and %3b. So each filled path is in the grammar of credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths). That grammar allows { and } only as the whole segment {}, which a target path cannot contain."},
+		{"definitions.schema.json", "/$defs/address_path", "The path of a place in the address of a target, 1 to 200 characters. The path has no control character, U+0000 to U+001F or U+007F, and no { or }. A { or } is refused because the control plane fills a path template with this path. credential_paths in Forager's run-configuration.schema.json ($defs.credential_paths) allows { and } only as the whole segment {}."},
+		{"connect-pass.schema.json", "", "or of a live connection that the person connects one external account to. While the connection has a grant that has not ended, only the same external account connects again, and its grant is replaced. Another account ends in 409 connection_held."},
+		{"connect-pass.schema.json", "/properties/connection_id", "the live connection that the person connects one external account to, as the control plane issued it."},
+		{"definitions.schema.json", "/$defs/connection_id", "connects one external account to it, or replaces the grant of the account that is connected (grant.schema.json)."},
+	} {
+		doc, err := contracts.Document(c.schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		holder := doc.(map[string]any)
+		if c.pointer != "" {
+			holder = node(t, c.schema, c.pointer)
+		}
+		if text, _ := holder["description"].(string); !strings.Contains(text, c.want) {
+			t.Errorf("%s%s: the description does not contain %q", c.schema, c.pointer, c.want)
+		}
+	}
+	changelog, err := os.ReadFile("../CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"connection, which connects one external account to a connection, or replaces the grant\n  of that account.",
+		"A connect pass may be for a live connection, which connects\n  one external account to a connection, or replaces the grant of that account.",
+	} {
+		if !strings.Contains(string(changelog), want) {
+			t.Errorf("CHANGELOG.md does not contain %q", want)
+		}
+	}
+	flat := strings.Join(strings.Fields(strings.ReplaceAll(string(changelog), "`", "")), " ")
+	for _, want := range []string{
+		"Fill the source apply templates of a run with no target, such as Explore, for each resource of the run-credential call. The control plane fills the templates of an item one after another, each for every resource.",
+		"It splits the filled paths into items of at most 32 paths. Before that, it drops a covered path among paths that share host, scheme, username and header.",
+		"A path of an item is dropped only when, on every host of the item, a path of the group of that host covers it. If it is covered on some hosts of the item and not on others, the adapter refuses the call with 403 resource_not_covered. Of two equal paths, the control plane keeps the first: the one of the earlier item in the description, then the earlier path in one item.",
+		"The control plane refuses a target path with a segment ., a backslash or a % before it fills a template. It refuses a first /, a final / and a segment that starts with ; or .; too. Before this release it refused only .., //, *, ?, # and a space character. Forager's UnclearPath refuses a filled path with a . segment, a backslash, //, or %2f, %5c, %2e or %25 in any case. It also refuses a segment that is not empty when its part before the first ; or %3b, in any case, is empty. It refuses the segment too when that part is a single dot or two dots. The refusals of .. and % cover ..;x and %3b.",
+		"Two items on one host that differ in scheme, username or header may not have equal, covered or overlapping paths. The adapter refuses such a call with 403 resource_not_covered.",
+		"The read access of the run covers every destination of the workspace from the start and does not grow during the session.",
+		"The address_path definition of definitions.schema.json refuses { and } in the address.path of every target, and in run.target of diagnostics.schema.json. Before this release it accepted them.",
+	} {
+		if !strings.Contains(flat, want) {
+			t.Errorf("CHANGELOG.md does not contain %q", want)
+		}
+	}
+}
+
+// TestADestinationIsAnIdAndATarget pins definitions.schema.json, $defs.destination: id and
+// target are required, id is tg_ and 16 characters of Crockford base32 in lower case, and
+// target is a $defs.target. It also pins that [contracts.Destination] decodes a destination.
+func TestADestinationIsAnIdAndATarget(t *testing.T) {
+	schema := compile(t, "definitions.schema.json#/$defs/destination")
+	const target = `{"collection":"R_1001","address":{"system":"code.example.com","path":"acme/shop"}}`
+	for _, c := range []struct {
+		name, doc string
+		ok        bool
+	}{
+		{"an id and a target", `{"id":"tg_0123456789abcdef","target":` + target + `}`, true},
+		{"an id and a target with no address", `{"id":"tg_0123456789abcdef","target":{"collection":"R_1001"}}`, true},
+		{"an id with every letter that the alphabet has", `{"id":"tg_abcdefghjkmnpqrs","target":{"collection":"R_1001"}}`, true},
+		{"an id with the letters t to z", `{"id":"tg_tvwxyz0123456789","target":{"collection":"R_1001"}}`, true},
+		{"no id", `{"target":` + target + `}`, false},
+		{"no target", `{"id":"tg_0123456789abcdef"}`, false},
+		{"an id with 15 characters", `{"id":"tg_0123456789abcde","target":` + target + `}`, false},
+		{"an id with 17 characters", `{"id":"tg_0123456789abcdefg","target":` + target + `}`, false},
+		{"an id with an upper-case letter", `{"id":"tg_0123456789ABCDEF","target":` + target + `}`, false},
+		{"an id with the letter i", `{"id":"tg_0123456789abcdei","target":` + target + `}`, false},
+		{"an id with the letter l", `{"id":"tg_0123456789abcdel","target":` + target + `}`, false},
+		{"an id with the letter o", `{"id":"tg_0123456789abcdeo","target":` + target + `}`, false},
+		{"an id with the letter u", `{"id":"tg_0123456789abcdeu","target":` + target + `}`, false},
+		{"an id with another prefix", `{"id":"ac_0123456789abcdef","target":` + target + `}`, false},
+		{"an id that is a number", `{"id":1,"target":` + target + `}`, false},
+		{"a target with no collection", `{"id":"tg_0123456789abcdef","target":{"address":{"system":"code.example.com","path":"acme/shop"}}}`, false},
+		{"a collection beside the id, which a reader ignores", `{"id":"tg_0123456789abcdef","collection":"R_1001","target":` + target + `}`, true},
+	} {
+		if err := validate(schema, []byte(c.doc)); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	var d contracts.Destination
+	if err := json.Unmarshal([]byte(`{"id":"tg_0123456789abcdef","target":`+target+`}`), &d); err != nil {
+		t.Fatal(err)
+	}
+	want := contracts.Destination{ID: "tg_0123456789abcdef", Target: contracts.Target{Collection: "R_1001",
+		Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}}
+	if !reflect.DeepEqual(d, want) {
+		t.Errorf("the destination decodes to %+v, want %+v", d, want)
+	}
+}
+
 // TestTypesMarshalToTheirSchemas marshals one value of each request and answer type,
 // with its optional members left out where it has them, and validates it against its
 // schema, so the types and the schemas cannot drift apart.
@@ -364,8 +894,11 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 	reason := "Fixed"
 	listing := contracts.Listing{ID: "items-1", Part: 1, StartedAt: now, Complete: true}
 	person := contracts.Person{Name: "Ada Example", Kind: "person"}
-	target := &contracts.Target{System: "code.example.com", Path: "acme/shop"}
+	target := &contracts.Target{Collection: "SHOP", Address: &contracts.TargetAddress{System: "code.example.com", Path: "acme/shop"}}
 	noItems := false
+	const request = "av_7k2m9q4v1x8z3c5d"
+	commitB := strings.Repeat("b", 40)
+	place := contracts.Target{Collection: "SUPPORT"}
 	values := []struct {
 		schema string
 		v      any
@@ -417,8 +950,32 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			{Kind: contracts.ChangeSync},
 			{Kind: contracts.ChangeSync, Interval: &interval},
 			{Kind: contracts.ChangeComment, CommentID: "sc_7k2m9q4v1x8z3c5d", Ref: "TRK-1", AuthorName: "Dana Example", Body: "Seen too."},
+			{Kind: contracts.ChangeWatch, WorkItemID: "wi_1", URL: "https://control.example.com/work-items/wi_1"},
+			{Kind: contracts.ChangeRequest, ChangeRequestID: request, ChangeKind: "pull-request", Target: target,
+				Title: "Show delivery dates", Data: json.RawMessage(`{"branch":"qory/wi_1","head":{"collection":"R_1001","address":{"system":"code.example.com","path":"` + commitB + `"}}}`)},
+			{Kind: contracts.ChangeRequest, ChangeRequestID: request, ChangeKind: "pull-request", Target: target, Ref: "TRK-1",
+				Title: "Show delivery dates", Text: "The page lists dates.",
+				Previous: &contracts.ChangePrevious{Title: "Show dates",
+					Address: &contracts.ChangeAddress{URL: "https://code.example.com/acme/shop/pull/34", Ref: "34"}},
+				Data: json.RawMessage(`{"draft":true}`)},
+			{Kind: contracts.ChangeRequest, ChangeRequestID: request, ChangeKind: "reply", Target: &place,
+				Title: "Thanks for the report", Data: json.RawMessage(`{"bids":[{"bid":1.25}]}`)},
 		}}},
 		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, CommentID: "sc_7k2m9q4v1x8z3c5d", Reason: "too_long"}},
+		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: target, Reason: "target_gone"}},
+		{"changes-failed", contracts.ChangesFailed{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: &place, Reason: "refused",
+			Detail: "Shorten the title, then try again. The target returned 422: title is too long."}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: *target, Data: json.RawMessage(`{"commits":[{"commit":"` + commitB + `"}]}`)}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: *target, Action: contracts.ChangeCreated,
+			Address: &contracts.ChangeAddress{URL: "https://code.example.com/acme/shop/pull/34", Ref: "34"},
+			Data:    json.RawMessage(`{"draft":{"number":34,"state":"draft"}}`)}},
+		{"changes-submitted", contracts.ChangesSubmitted{Version: contracts.Version, Time: now, ChangeRequestID: request,
+			Target: place, Action: contracts.ChangeKept,
+			Address: &contracts.ChangeAddress{URL: "https://support.example.org/cases/CASE-1042"}}},
 		{"connect-pass", contracts.ConnectPass{Version: contracts.Version, AdapterID: "na_0123456789abcdef",
 			ConnectionID: "ac_0123456789abcdef", Nonce: "AAECAwQFBgcICQoLDA0ODw", ExpiresAt: now}},
 		{"connect-return", contracts.ConnectReturn{Version: contracts.Version, ConnectionID: "ac_0123456789abcdef",
@@ -437,6 +994,7 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 			Description: read(t, "fixtures/example-tracker.json")}},
 		{"refusal", contracts.Refusal{Error: "collection_not_linked"}},
 		{"refusal", contracts.Refusal{Error: "grant_taken"}},
+		{"refusal", contracts.Refusal{Error: "connection_held"}},
 		{"refusal", contracts.Refusal{Error: "pass_unknown"}},
 		{"adapter-secrets", contracts.AdapterSecrets{Version: contracts.Version, Time: now, Sealed: contracts.SealedToServer{
 			Suite: contracts.SealSuite, ServerKey: "rcFAEfgtHFbZVqpPnXPYhYNhpgYEhSXg0Ixjjcdd2Mc", Enc: strings.Repeat("A", 43), CT: strings.Repeat("A", 22)}}},
@@ -503,8 +1061,8 @@ func TestTypesMarshalToTheirSchemas(t *testing.T) {
 
 // TestCollectionItemsRoundTrips decodes a listing whose second collection has items:
 // false into SourceCollections, and pins that Items is nil where the listing leaves
-// items out, points to false where it says false, and marshals back to a document that
-// source-collections.schema.json accepts.
+// items out, points to false where the listing has false, and marshals back to a
+// document that source-collections.schema.json accepts.
 func TestCollectionItemsRoundTrips(t *testing.T) {
 	var s contracts.SourceCollections
 	if err := json.Unmarshal(read(t, "fixtures/adapter/source-collections/code-host-items-false.json"), &s); err != nil {
@@ -572,7 +1130,7 @@ func TestAdapterDescriptionRoundTrips(t *testing.T) {
 }
 
 // TestAdapterSetupURLRoundTrips decodes the start-up fixture with a setup_url into
-// Adapter, and pins that SetupURL holds it and that it marshals back to a document
+// Adapter, and pins that SetupURL is set to it and that it marshals back to a document
 // adapter.schema.json accepts, with the same setup_url; and that an Adapter without a
 // SetupURL marshals no setup_url member.
 func TestAdapterSetupURLRoundTrips(t *testing.T) {
@@ -617,9 +1175,9 @@ func TestAdapterSetupURLRoundTrips(t *testing.T) {
 
 // TestASetupURLIsRefusedForItsFragmentOrState pins the reason of each invalid start-up
 // fixture whose setup_url breaks a "not" of adapter.schema.json, which the refusal
-// itself does not name: the same document is accepted once the fragment is taken out, or
-// the query parameter state, written plainly or percent-encoded, bare or with a value, is
-// named otherwise.
+// itself does not contain: the same document is accepted once the fragment is taken
+// out, or the query parameter state, written plainly or percent-encoded, bare or with a
+// value, is named otherwise.
 func TestASetupURLIsRefusedForItsFragmentOrState(t *testing.T) {
 	schema := compile(t, "adapter.schema.json")
 	for name, fix := range map[string][2]string{
@@ -716,8 +1274,8 @@ func TestSetupPassRoundTrips(t *testing.T) {
 }
 
 // TestASetupPassAcceptsTheOrganisationSlugAlone pins that setup-pass.schema.json accepts
-// a payload with organisation_slug, and still refuses one with organisation_slug and a
-// member the schema does not define, as it refuses one without organisation_slug.
+// a payload with organisation_slug, and accepts one with organisation_slug and a member
+// the schema does not define, which the closed copy refuses.
 func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
 	schema := compile(t, "setup-pass.schema.json")
 	b := read(t, "fixtures/adapter/setup-pass/with-organisation-slug.json")
@@ -728,20 +1286,23 @@ func TestASetupPassAcceptsTheOrganisationSlugAlone(t *testing.T) {
 	if bytes.Equal(extra, b) {
 		t.Fatal("with-organisation-slug.json contains no organisation_slug member")
 	}
-	err := validate(schema, extra)
+	if err := validate(schema, extra); err != nil {
+		t.Errorf("a setup pass payload with organisation_slug and organisation_name is refused: %v", err)
+	}
+	err := validate(compileClosed(t, "setup-pass.schema.json"), extra)
 	v, ok := err.(*jsonschema.ValidationError)
 	if !ok || strings.Join(leaves(v), "; ") != "/ additionalProperties" || !strings.Contains(err.Error(), "'organisation_name'") {
-		t.Errorf("a setup pass payload with organisation_slug and organisation_name is not refused for organisation_name alone: %v", err)
+		t.Errorf("the closed copy refuses a setup pass payload with organisation_slug and organisation_name for %v, want organisation_name alone", err)
 	}
 }
 
 // TestADescriptionsNumbersFollowTheDescriptionContract pins that the numbers of an
 // adapter start-up's description member follow description.schema.json, not the integer
 // rule: fixtures/adapter/adapter/settings-numbers.json, whose description's settings
-// schema holds 1e3 and 0.5, is accepted by adapter.schema.json and by the strict check,
-// its description member is accepted by CheckDescription, and the integer rule over the
-// whole body refuses it. It also pins that every start-up fixture's description member
-// is accepted by CheckDescription.
+// schema contains 1e3 and 0.5, is accepted by adapter.schema.json and by the strict
+// check, its description member is accepted by CheckDescription, and the integer rule
+// over the whole body refuses it. It also pins that every start-up fixture's
+// description member is accepted by CheckDescription.
 func TestADescriptionsNumbersFollowTheDescriptionContract(t *testing.T) {
 	const name = "fixtures/adapter/adapter/settings-numbers.json"
 	b := read(t, name)
@@ -771,8 +1332,8 @@ var externalWords = []string{"github", "issue", "pull", "repositor", "installati
 
 // TestTheAdapterSchemasNameNoExternalSystem walks every schema of the adapter, those of
 // the provisioner and explore contracts and description.schema.json among them, and fails on a member name, a required name, a
-// const or an enum value that holds an external system's word, or is app. The fixtures'
-// data are not checked.
+// const or an enum value that contains an external system's word, or is app. The
+// fixtures' data are not checked.
 func TestTheAdapterSchemasNameNoExternalSystem(t *testing.T) {
 	check := func(name, where, word string) {
 		w := strings.ToLower(word)
@@ -1328,12 +1889,14 @@ func TestEmptyListsMarshalAsEmptyLists(t *testing.T) {
 // strictJSON reports the first member an object repeats, at any depth, and the first
 // number written with a fraction or an exponent: the two rules of definitions.schema.json
 // that the control plane checks on a request's raw bytes, and that no schema can express,
-// since a parsed document holds 900.0 as the integer 900 and keeps one member of a name.
+// since a parsed document has 900.0 as the integer 900 and keeps one member of a name.
 // Every number of a request of the schema is an integer, except inside the description
-// member of an adapter start-up, whose numbers follow description.schema.json: for the
-// schema adapter, the integer rule is checked on the body without that member.
+// member of an adapter start-up, and inside the data member of a change_request entry
+// and of a changes-submitted reply, whose numbers follow another schema: for these, the
+// integer rule is checked on the body without that member, and the repeated-member rule
+// on the whole body.
 func strictJSON(schema string, b []byte) error {
-	if schema != "adapter" {
+	if schema != "adapter" && schema != "changes" && schema != "changes-submitted" {
 		return rawjson.Check(b, rawjson.Rules{Integers: true})
 	}
 	if err := rawjson.Check(b, rawjson.Rules{}); err != nil {
@@ -1343,7 +1906,24 @@ func strictJSON(schema string, b []byte) error {
 	if err := json.Unmarshal(b, &body); err != nil {
 		return err
 	}
-	delete(body, "description")
+	switch schema {
+	case "adapter":
+		delete(body, "description")
+	case "changes-submitted":
+		delete(body, "data")
+	case "changes":
+		var entries []map[string]json.RawMessage
+		if err := json.Unmarshal(body["changes"], &entries); err != nil {
+			return err
+		}
+		for _, e := range entries {
+			delete(e, "data")
+		}
+		var err error
+		if body["changes"], err = json.Marshal(entries); err != nil {
+			return err
+		}
+	}
 	rest, err := json.Marshal(body)
 	if err != nil {
 		return err
@@ -1351,16 +1931,137 @@ func strictJSON(schema string, b []byte) error {
 	return rawjson.Check(rest, rawjson.Rules{Integers: true})
 }
 
-// TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rule that an integer has no
-// fraction or exponent and that no object repeats a member: each document under
-// fixtures/adapter/refused-by-control-plane is accepted by its schema, since the rule is
-// not expressible in one, and breaks the rule on its raw bytes, so the control plane
-// refuses it, 400 invalid_request; and every accepted request fixture keeps the rule,
-// the integer rule outside an adapter start-up's description member.
+// submittedAddressFault returns the first address of a changes-submitted reply that
+// breaks the address rule of the contract, or nil. The rule is the one of a result line
+// of a submit program, so the check is [contracts.ParseSubmitLines]: the address is
+// recorded only when it is on the system of its target, with no user information, port,
+// query or fragment, and with a path. A target without an address has no system, and
+// only the rules that need no system apply. The schema checks the form of an address and
+// not that rule, so the control plane refuses such a reply, 400 invalid_request. Only
+// address.url is checked: the addresses inside data are the part's.
+func submittedAddressFault(b []byte) error {
+	var reply struct {
+		Target struct {
+			Address *struct {
+				System string `json:"system"`
+			} `json:"address"`
+		} `json:"target"`
+		Address *struct {
+			URL string `json:"url"`
+		} `json:"address"`
+	}
+	if err := json.Unmarshal(b, &reply); err != nil {
+		return err
+	}
+	if reply.Address == nil {
+		return nil
+	}
+	system := ""
+	if reply.Target.Address != nil {
+		system = reply.Target.Address.System
+	}
+	r := contracts.ParseSubmitLines("commit_url "+commitMade+" "+reply.Address.URL+"\n", system, contracts.DraftOpen, given)
+	if len(r.CommitURLs) != 1 {
+		return fmt.Errorf("/address/url is %q, which breaks the address rule for the system %q: %+v", reply.Address.URL, system, r.Invalid)
+	}
+	return nil
+}
+
+// TestAnAddressOfAReplyHasTheRuleOfASubmitProgram pins, at the value on each side, that
+// the control plane applies the address rule of a submit program to the address of a
+// changes-submitted reply: the schema accepts every address here, and the rule accepts
+// only one on the system of the target, compared in lower case, with a path and no
+// port, query or fragment. Where the target has no address, there is no system and
+// another host passes; the addresses inside data are not checked.
+func TestAnAddressOfAReplyHasTheRuleOfASubmitProgram(t *testing.T) {
+	const reply = "fixtures/adapter/changes-submitted/pull-request-created.json"
+	schema := compile(t, "changes-submitted.schema.json")
+	for _, c := range []struct {
+		name, address string
+		ok            bool
+	}{
+		{"the system", "https://code.example.com/acme/shop/pull/34", true},
+		{"the system in upper case", "https://Code.EXAMPLE.com/acme/shop/pull/34", true},
+		{"another host", "https://code.example.org/acme/shop/pull/34", false},
+		{"a subdomain of the system", "https://www.code.example.com/acme/shop/pull/34", false},
+		{"a parent of the system", "https://example.com/acme/shop/pull/34", false},
+		{"the system as a suffix", "https://evilcode.example.com/acme/shop/pull/34", false},
+		{"the system with a trailing dot", "https://code.example.com./acme/shop/pull/34", false},
+		{"a host with a percent-encoded character", "https://cod%C3%A9.example.com/acme/shop/pull/34", false},
+		{"a host in brackets", "https://[::1]/acme/shop/pull/34", false},
+		{"a port other than 443", "https://code.example.com:8443/acme/shop/pull/34", false},
+		{"port 443", "https://code.example.com:443/acme/shop/pull/34", false},
+		{"an empty port", "https://code.example.com:/acme/shop/pull/34", false},
+		{"a query", "https://code.example.com/acme/shop/pull/34?tab=files", false},
+		{"a fragment", "https://code.example.com/acme/shop/pull/34#files", false},
+		{"no path", "https://code.example.com", false},
+		{"the root path", "https://code.example.com/", false},
+		{"a query and no path", "https://code.example.com?a=b", false},
+	} {
+		var doc map[string]any
+		if err := json.Unmarshal(read(t, reply), &doc); err != nil {
+			t.Fatal(err)
+		}
+		doc["address"].(map[string]any)["url"] = c.address
+		b, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := validate(schema, b); err != nil {
+			t.Errorf("%s: the schema refuses the address: %v", c.name, err)
+		}
+		if err := submittedAddressFault(b); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	// Without an address in the target, the host is not compared; the other rules stay.
+	for _, c := range []struct {
+		name, address string
+		ok            bool
+	}{
+		{"another host", "https://support.example.org/cases/CASE-1042", true},
+		{"a port", "https://support.example.org:8443/cases/CASE-1042", false},
+		{"a fragment", "https://support.example.org/cases/CASE-1042#reply-3", false},
+		{"no path", "https://support.example.org", false},
+	} {
+		doc := map[string]any{"version": 1, "time": "2026-11-18T12:00:00Z", "change_request_id": "av_7k2m9q4v1x8z3c5d",
+			"target": map[string]any{"collection": "SUPPORT"}, "action": "created", "address": map[string]any{"url": c.address}}
+		b, _ := json.Marshal(doc)
+		if err := validate(schema, b); err != nil {
+			t.Errorf("a target without an address, %s: the schema refuses the address: %v", c.name, err)
+		}
+		if err := submittedAddressFault(b); (err == nil) != c.ok {
+			t.Errorf("a target without an address, %s: %v, want accepted %v", c.name, err, c.ok)
+		}
+	}
+	// The addresses inside data belong to the part: this contract does not check them.
+	var doc map[string]any
+	if err := json.Unmarshal(read(t, reply), &doc); err != nil {
+		t.Fatal(err)
+	}
+	doc["data"].(map[string]any)["base"].(map[string]any)["commit_url"] = "https://code.example.org/acme/shop/commit/abc"
+	b, _ := json.Marshal(doc)
+	if err := submittedAddressFault(b); err != nil {
+		t.Errorf("an address inside data is checked: %v", err)
+	}
+}
+
+// TestTheControlPlaneRefusesWhatTheSchemaCannotSee pins the rules that an integer has no
+// fraction or exponent, that no object repeats a member, and that the address of a
+// changes-submitted reply is on the system of its target. For the feed entry, the
+// integer rule binds the control plane as its writer. Inside the data of a change_request
+// entry and of a reply, the integer rule does not apply, and the repeated-member rule
+// does. Each document under fixtures/adapter/refused-by-control-plane is accepted by its
+// schema, since the rule is not expressible in one, and breaks the rule on its raw bytes,
+// so the control plane refuses it, 400 invalid_request; and every accepted request
+// fixture keeps the rules, the address rule in every changes-submitted fixture.
 func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 	refused := map[string]string{
-		"adapter-integer-with-fraction.json": "adapter",
-		"adapter-repeated-member.json":       "adapter",
+		"adapter-integer-with-fraction.json":               "adapter",
+		"adapter-repeated-member.json":                     "adapter",
+		"changes-change-request-data-repeated-member.json": "changes",
+		"changes-submitted-data-repeated-member.json":      "changes-submitted",
+		"changes-submitted-address-other-host.json":        "changes-submitted",
 	}
 	got := files(t, "fixtures/adapter/refused-by-control-plane")
 	if len(got) != len(refused) {
@@ -1376,23 +2077,66 @@ func TestTheControlPlaneRefusesWhatTheSchemaCannotSee(t *testing.T) {
 		if err := validate(compile(t, schema+".schema.json"), b); err != nil {
 			t.Errorf("%s is refused by %s.schema.json, and the rule is the control plane's alone: %v", f, schema, err)
 		}
-		if strictJSON(schema, b) == nil {
+		switch name := path.Base(f); {
+		case strings.HasSuffix(name, "-other-host.json"):
+			if submittedAddressFault(b) == nil {
+				t.Errorf("%s keeps the address rule", f)
+			}
+			if err := strictJSON(schema, b); err != nil {
+				t.Errorf("%s breaks a raw rule beside the address rule: %v", f, err)
+			}
+		case strings.HasSuffix(name, "-repeated-member.json") && schema != "adapter":
+			if err := strictJSON(schema, b); err == nil || !strings.Contains(err.Error(), "repeat") {
+				t.Errorf("%s: the raw rules refuse it for %v, want a repeated member", f, err)
+			}
+		case strictJSON(schema, b) == nil:
 			t.Errorf("%s keeps the rule on its raw bytes", f)
 		}
 	}
-	for _, d := range []string{"adapter", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
-		"connections-disconnect", "changes-failed", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
+	for _, d := range []string{"adapter", "changes", "source-collections", "source-items", "source-item-comments", "sources-disconnect",
+		"connections-disconnect", "changes-failed", "changes-submitted", "connect-pass", "connect-return", "setup-pass", "adapter-secrets", "grant", "resolve",
 		"resolve-answer", "read", "read-public", "read-answer", "run-credential", "run-credential-answer"} {
 		for _, f := range files(t, path.Join("fixtures/adapter", d)) {
 			if err := strictJSON(d, read(t, f)); err != nil {
 				t.Errorf("%s: %v", f, err)
 			}
+			if d == "changes-submitted" {
+				if err := submittedAddressFault(read(t, f)); err != nil {
+					t.Errorf("%s: %v", f, err)
+				}
+			}
+		}
+	}
+}
+
+// TestThePartOfAChangeMayHaveFractions pins that a number inside the data of a
+// change_request entry and of a changes-submitted reply may have a fraction, as a bid of
+// 1.25 does, while a fraction anywhere else in the same document is refused: the
+// integer rule of definitions.schema.json does not reach a part, and reaches the rest.
+func TestThePartOfAChangeMayHaveFractions(t *testing.T) {
+	for _, c := range []struct{ schema, file, integer string }{
+		{"changes", "fixtures/adapter/changes/change-request-bid-changes.json", `"revision": 1`},
+		{"changes-submitted", "fixtures/adapter/changes-submitted/bid-changes.json", `"version": 1`},
+	} {
+		b := read(t, c.file)
+		if !bytes.Contains(b, []byte("1.25")) {
+			t.Fatalf("%s has no number with a fraction", c.file)
+		}
+		if err := strictJSON(c.schema, b); err != nil {
+			t.Errorf("%s: a fraction inside data is refused: %v", c.file, err)
+		}
+		if !bytes.Contains(b, []byte(c.integer)) {
+			t.Fatalf("%s has no %s", c.file, c.integer)
+		}
+		fraction := bytes.Replace(b, []byte(c.integer), []byte(c.integer+".5"), 1)
+		if err := strictJSON(c.schema, fraction); err == nil {
+			t.Errorf("%s: a fraction outside data is accepted", c.file)
 		}
 	}
 }
 
 // TestACallURLIsRefusedForItsOneFault pins the reason of each invalid start-up fixture
-// whose call_url breaks one of its two patterns, which the refusal does not tell apart:
+// whose call_url breaks one of its two patterns, with the same refusal for both:
 // the same document is accepted once the one fault is fixed. It also pins that the
 // start-up fixture with a call_url decodes into Adapter with CallURL set, and that an
 // Adapter without a CallURL marshals no call_url member.
@@ -2087,7 +2831,7 @@ func TestARunCredentialAnswerHoldsTheRulesTheSchemaCannotSee(t *testing.T) {
 // connect-return/linked-live-connection.json, with the same connection_id and nonce.
 // Whether the connection is pending or live, and whether the grant is already linked to
 // another live connection, are the control plane's and the adapter's checks, which
-// connect-return.schema.json states and no schema expresses.
+// connect-return.schema.json describes and no schema expresses.
 func TestAConnectFlowOnALiveConnectionHasTheSameShape(t *testing.T) {
 	var p contracts.ConnectPass
 	var r contracts.ConnectReturn

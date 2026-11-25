@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"maps"
 	"math"
 	"path"
 	"slices"
@@ -69,7 +70,7 @@ func TestInvalidDiagnosticsFixturesAreRefused(t *testing.T) {
 		"run-id-prefix.json":                                  {"diagnostics", "/run/id pattern"},
 		"workflow-56-characters.json":                         {"diagnostics", "/run/workflow pattern"},
 		"run-machine-empty.json":                              {"diagnostics", "/run/machine minProperties"},
-		"run-machine-key-upper-case.json":                     {"diagnostics", "/run/machine/key pattern"},
+		"run-machine-type-upper-case.json":                    {"diagnostics", "/run/machine/type pattern"},
 		"run-machine-name-empty.json":                         {"diagnostics", "/run/machine/name pattern"},
 		"run-machine-name-101-characters.json":                {"diagnostics", "/run/machine/name pattern"},
 		"run-machine-name-line-feed.json":                     {"diagnostics", "/run/machine/name pattern"},
@@ -438,5 +439,68 @@ func TestRunListEdgesAreAccepted(t *testing.T) {
 	}
 	if err := validate(compileDiagnostics(t, "runs-refusal.schema.json"), b); err != nil {
 		t.Errorf("a parameter of 64 characters fails runs-refusal.schema.json: %v", err)
+	}
+}
+
+// TestTheMachineOfARunIsItsTypeAndName pins the members that run.machine of the
+// diagnostics defines: type, the machine type, and name, its display name. A document
+// with another member, such as key, still passes, as for every object of this contract.
+func TestTheMachineOfARunIsItsTypeAndName(t *testing.T) {
+	doc, err := contracts.DiagnosticsDocument("diagnostics.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := doc.(map[string]any)["properties"].(map[string]any)["run"].(map[string]any)
+	machine := run["properties"].(map[string]any)["machine"].(map[string]any)
+	got := slices.Sorted(maps.Keys(machine["properties"].(map[string]any)))
+	if !slices.Equal(got, []string{"name", "type"}) {
+		t.Errorf("run.machine defines %v, want [name type]", got)
+	}
+}
+
+// TestARunTargetIsACollectionWithAnOptionalAddress pins run.target of the diagnostics, the
+// same target as definitions.schema.json, $defs.target: a collection ref is required, the
+// address is optional and has a system and a path, and a target with a system and a path
+// and no collection is refused. As for every object of this contract, a member the schema
+// does not define is accepted.
+func TestARunTargetIsACollectionWithAnOptionalAddress(t *testing.T) {
+	schema := compileDiagnostics(t, "diagnostics.schema.json")
+	address := func() map[string]any { return map[string]any{"system": "forge.example.com", "path": "acme/example"} }
+	for _, c := range []struct {
+		name   string
+		target map[string]any
+		ok     bool
+	}{
+		{"a collection and no address", map[string]any{"collection": "AP_1234"}, true},
+		{"a collection and an address", map[string]any{"collection": "R_1001", "address": address()}, true},
+		{"a member the schema does not define", map[string]any{"collection": "R_1001", "extra": "x"}, true},
+		{"a collection of 200 characters", map[string]any{"collection": strings.Repeat("a", 200)}, true},
+		{"a path of 200 characters", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": strings.Repeat("a", 200)}}, true},
+		{"a member of the address the schema does not define", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/example", "extra": "x"}}, true},
+		{"a path of 201 characters", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": strings.Repeat("a", 201)}}, false},
+		{"a collection with U+0000", map[string]any{"collection": "R_\x00"}, false},
+		{"a path with a line feed", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\nexample"}}, false},
+		{"a path with a tab", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\texample"}}, false},
+		{"a path with U+007F", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\x7fexample"}}, false},
+		{"a path with U+0000", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/\x00"}}, false},
+		{"a path with a segment {}", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/{}/example"}}, false},
+		{"a path with a }", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": "acme/example}"}}, false},
+		{"no collection", map[string]any{"address": address()}, false},
+		{"an empty collection", map[string]any{"collection": ""}, false},
+		{"a collection of 201 characters", map[string]any{"collection": strings.Repeat("a", 201)}, false},
+		{"a system and a path and no collection", address(), false},
+		{"an address with no path", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com"}}, false},
+		{"an address with no system", map[string]any{"collection": "R_1001", "address": map[string]any{"path": "acme/example"}}, false},
+		{"an address with an empty path", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "forge.example.com", "path": ""}}, false},
+		{"an address with a system in upper case", map[string]any{"collection": "R_1001", "address": map[string]any{"system": "Forge.example.com", "path": "acme/example"}}, false},
+	} {
+		doc, err := contracts.DiagnosticsDocument("fixtures/diagnostics/completed.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc.(map[string]any)["run"].(map[string]any)["target"] = c.target
+		if err := schema.Validate(doc); (err == nil) != c.ok {
+			t.Errorf("%s: %v, want accepted %v", c.name, err, c.ok)
+		}
 	}
 }

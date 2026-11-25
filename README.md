@@ -3,13 +3,14 @@
 This repository is part of [Qory](https://github.com/qoryai/qory). The Qory README lists every part and how to install Qory.
 
 An integration is a program that connects Qory to an outside system, for example GitHub.
-Each integration is kept in a separate repository. This repository holds what they share:
-the contract they implement, a Go module for testing against it, and reusable CI and
-release workflows.
+Each integration is kept in a separate repository. This repository contains what they
+share: the contract they implement, a Go module for testing against it, and reusable CI
+and release workflows.
 
 | Path | What it is |
 |---|---|
 | [`contracts/integration/v1/`](contracts/integration/v1/README.md) | The integration contract: the `describe` command, how settings and secrets are passed, exit status |
+| [`contracts/run/v1/`](contracts/run/v1/README.md) | The run contract: the run documents, the next-session exchange, the run's end; the rule for a member a reader does not define |
 | `contracts/` | Go package: embeds the contract and compiles its schema |
 | `conformance/` | Go package: checks a program's output against the contracts, for use in tests |
 | [`.github/workflows/go.yml`](.github/workflows/go.yml) | Reusable CI: gofmt, vet, test, build, doc comments |
@@ -64,14 +65,14 @@ The only role is `credential`. For it:
 
 In the agent's container:
 
-- The variables the integration lists hold a placeholder,
+- The variables the integration lists are set to a placeholder,
   `qory-sets-the-credential-outside-the-enclosure`. Tools that read them start and send
   the placeholder.
 - The gateway's proxy replaces it with the access token on each request to the
   integration's hosts and paths.
 - Under `enforce`, a request to another path on those hosts fails.
 
-This holds when the agent runs in a container, behind Forager's wall. Without one, a
+This applies when the agent runs in a container, behind Forager's wall. Without one, a
 program that ignores the proxy is bound by nothing.
 
 ## Write an integration
@@ -111,7 +112,7 @@ conformance.Credential(stdout)             // output of `<program> credential ..
 conformance.Failure(code, stdout, stderr)  // a command that failed
 ```
 
-Each returns an error that says which rule the output breaks.
+Each returns an error that shows which rule the output breaks.
 
 ## Release rule
 
@@ -164,7 +165,7 @@ module the integration's `go.mod` requires.
 ## Development
 
 ```sh
-mise install        # Go 1.27.3
+mise install        # Go 1.27.4
 go test ./...
 ```
 

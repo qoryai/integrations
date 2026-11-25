@@ -27,7 +27,7 @@ var provisionerSchemas = []string{
 }
 
 // provisionerSchema is the path of the schema that the fixtures under fixtures/<name>,
-// and the invalid fixtures whose expected reason names name, validate against:
+// and the invalid fixtures whose expected reason contains name, validate against:
 // <name>.schema.json.
 func provisionerSchema(name string) string {
 	return name + ".schema.json"
@@ -69,8 +69,8 @@ func treeFiles(t *testing.T, fsys fs.FS, dir string) []string {
 }
 
 // TestProvisionerFixturesValidate pins that each document under fixtures/<name>/ of the
-// provisioner contract is accepted by the schema [provisionerSchema] gives for name, and
-// that every schema of the contract compiles.
+// provisioner contract is accepted by the schema that [provisionerSchema] returns for
+// name, and that every schema of the contract compiles.
 func TestProvisionerFixturesValidate(t *testing.T) {
 	for _, name := range provisionerSchemas {
 		compileProvisioner(t, name)
@@ -81,7 +81,7 @@ func TestProvisionerFixturesValidate(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, d := range dirs {
-		if !d.IsDir() || d.Name() == "invalid" {
+		if !d.IsDir() || d.Name() == "invalid" || d.Name() == "closed" {
 			continue
 		}
 		schema := compileProvisioner(t, provisionerSchema(d.Name()))
@@ -110,12 +110,10 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 	want := map[string]struct{ schema, reason string }{
 		"claim-wait-seconds-26.json":                           {"claim", "/wait_seconds maximum"},
 		"claim-pool-id-node.json":                              {"claim", "/pool_id pattern"},
-		"claim-undefined-member.json":                          {"claim", "/ additionalProperties"},
 		"claim-answer-dispatch-id-no-prefix.json":              {"claim-answer", "/dispatch_id pattern"},
 		"claim-answer-dispatch-id-upper-case.json":             {"claim-answer", "/dispatch_id pattern"},
 		"dispatched-external-type-upper-case.json":             {"dispatched", "/external/type pattern"},
 		"dispatched-external-ref-nul.json":                     {"dispatched", "/external/ref pattern"},
-		"release-with-retry.json":                              {"release", "/ additionalProperties"},
 		"release-reason-nul.json":                              {"release", "/reason pattern"},
 		"claim-answer-revision-2.json":                         {"claim-answer", "/revision const"},
 		"claim-answer-run-code-qecn-prefix.json":               {"claim-answer", "/run_code pattern"},
@@ -123,7 +121,6 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"claim-answer-gateway-url-http.json":                   {"claim-answer", "/gateway_url pattern"},
 		"claim-answer-without-gateway-url.json":                {"claim-answer", "/ required gateway_url"},
 		"claim-answer-without-run-code.json":                   {"claim-answer", "/ required run_code"},
-		"claim-answer-run-id.json":                             {"claim-answer", "/ additionalProperties"},
 		"claim-answer-max-lifetime-minutes-14.json":            {"claim-answer", "/max_lifetime_minutes minimum"},
 		"claim-answer-max-lifetime-minutes-1471.json":          {"claim-answer", "/max_lifetime_minutes maximum"},
 		"claim-answer-without-max-lifetime-minutes.json":       {"claim-answer", "/ required max_lifetime_minutes"},
@@ -139,7 +136,6 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"claim-offers-disk-gib-65537.json":                     {"claim", "/offers/0/disk_gib maximum"},
 		"claim-offers-arch-riscv64.json":                       {"claim", "/offers/0/arch enum"},
 		"claim-offers-without-arch.json":                       {"claim", "/offers/0 required arch"},
-		"claim-offers-undefined-member.json":                   {"claim", "/offers/0 additionalProperties"},
 		"claim-offers-empty.json":                              {"claim", "/offers minItems"},
 		"claim-offers-65.json":                                 {"claim", "/offers maxItems"},
 		"dispatched-machine-type-empty.json":                   {"dispatched", "/machine_type pattern"},
@@ -148,12 +144,10 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"dispatched-machine-type-non-ascii.json":               {"dispatched", "/machine_type pattern"},
 		"dispatched-machine-type-del.json":                     {"dispatched", "/machine_type pattern"},
 		"machine-log-without-log.json":                         {"machine-log", "/ required log"},
-		"machine-log-undefined-member.json":                    {"machine-log", "/ additionalProperties"},
 		"machine-log-log-nul.json":                             {"machine-log", "/log pattern"},
 		"machine-log-version-2.json":                           {"machine-log", "/version const"},
 		"machine-end-without-state.json":                       {"machine-end", "/ required state"},
 		"machine-end-unknown-state.json":                       {"machine-end", "/state enum"},
-		"machine-end-undefined-member.json":                    {"machine-end", "/ additionalProperties"},
 		"machine-end-version-2.json":                           {"machine-end", "/version const"},
 	}
 	got := provisionerFiles(t, "fixtures/invalid")
@@ -230,10 +224,10 @@ func TestProvisionerTypesMarshalToTheirSchemas(t *testing.T) {
 // defines for machine_spec.
 var standard = contracts.MachineSpec{VCPUs: 4, MemoryMiB: 16384, DiskGiB: 100, Arch: "amd64"}
 
-// runCode is a run code in the form claim-answer.schema.json gives.
+// runCode is a run code in the form that claim-answer.schema.json defines.
 const runCode = "qecr_01JB8Z3K5Q7R9T2V4W6X8Y0A1C.uoES-kuj1vk0sq0qoGlmAg"
 
-// gatewayURL is a gateway URL in the form claim-answer.schema.json gives.
+// gatewayURL is a gateway URL in the form that claim-answer.schema.json defines.
 const gatewayURL = "https://gateway.example:8443"
 
 // TestAGatewayURLIsHostAndPort pins the gateway_url of claim-answer.schema.json:

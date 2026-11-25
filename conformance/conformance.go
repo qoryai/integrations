@@ -33,7 +33,7 @@ import (
 
 var (
 	descriptionSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
-		return contracts.Compile("description.schema.json")
+		return contracts.CompileClosed("description.schema.json")
 	})
 	credentialSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 		return forager.Compile("credential.schema.json")
@@ -93,15 +93,18 @@ func (r refusals) Unwrap() []error { return r.errs }
 // checks them: at most 262144 bytes, UTF-8, no \u escape of a lone surrogate, no
 // object that repeats a member, no string or member name over 16384 bytes of UTF-8, at
 // most 4096 JSON values and at most 64 levels of nesting; which the contract's
-// description.schema.json accepts; and whose every secret, a property marked writeOnly,
-// is a property of the settings themselves with a setting <name>_file beside it
+// description.schema.json accepts, and has no member that the schema does not define: a
+// reader ignores such a member, and the closed copy of the schema refuses it, so a
+// misspelled member fails; and whose every secret, a property marked writeOnly, is a
+// property of the settings themselves with a setting <name>_file beside it
 // (contracts/integration/v1 §Describe); and whose model_provider role, when it has one,
 // keeps the rules of the role that the schema does not check, as
 // [contracts.CheckModelProvider] checks them, and whose APIs' auth, when it is of the
 // scheme header, sets no header that conformance reserves, as [Credential] refuses
 // them; and whose egress_hosts keeps the rules the schema does not check, as
-// [contracts.CheckEgressHosts] checks them. It accepts both forms of a description,
-// the program form and the data form. It reports the first rule the output breaks.
+// [contracts.CheckEgressHosts] checks them; and whose links, when it has any, list each
+// system once, as [contracts.CheckLinks] checks it. It accepts both forms of a
+// description, the program form and the data form. It reports the first rule the output breaks.
 func Description(stdout []byte) error {
 	raw, err := one(stdout, "standard output")
 	if err != nil {
@@ -130,6 +133,9 @@ func Description(stdout []byte) error {
 	if err := contracts.CheckEgressHosts(doc); err != nil {
 		return fmt.Errorf("describe: %w", err)
 	}
+	if err := contracts.CheckLinks(doc); err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
 	if err := providerHeader(doc); err != nil {
 		return fmt.Errorf("describe: %w", err)
 	}
@@ -141,15 +147,17 @@ func Description(stdout []byte) error {
 // description.schema.json that no schema can express, as [contracts.CheckDescription]
 // checks them, the same checks as [Description]; which has no program_version, so it is
 // in the data form and not the program form; which the contract's
-// description.schema.json accepts, so its one role is model_provider; and whose
-// model_provider role keeps the rules of the role that the schema does not check, as
-// [contracts.CheckModelProvider] checks them; whose APIs' auth, when it is of the
-// scheme header, sets no header that conformance reserves, as [Credential] refuses
-// them; and whose egress_hosts keeps the rules the schema does not check, as
-// [contracts.CheckEgressHosts] checks them, the same checks as [Description]. The
-// schema refuses a member writeOnly anywhere in a data description's settings, so the
-// secret rule of [Description], which is about a program's command line, has nothing to
-// check. It reports the first rule the file breaks.
+// description.schema.json accepts, with no member that the schema does not define, so its
+// one role is model_provider; and whose model_provider role keeps the rules of the role
+// that the schema does not check, as [contracts.CheckModelProvider] checks them; whose
+// APIs' auth, when it is of the scheme header, sets no header that conformance
+// reserves, as [Credential] refuses them; and whose egress_hosts keeps the rules the
+// schema does not check, as [contracts.CheckEgressHosts] checks them, and whose links
+// list each system once, as [contracts.CheckLinks] checks it, the same checks as
+// [Description]. The schema refuses a member writeOnly anywhere in a data
+// description's settings, so the secret rule of [Description], which is about a
+// program's command line, has nothing to check. It reports the first rule the file
+// breaks.
 func DataDescription(b []byte) error {
 	raw, err := one(b, "the file")
 	if err != nil {
@@ -178,6 +186,9 @@ func DataDescription(b []byte) error {
 		return fmt.Errorf("data description: %w", err)
 	}
 	if err := contracts.CheckEgressHosts(doc); err != nil {
+		return fmt.Errorf("data description: %w", err)
+	}
+	if err := contracts.CheckLinks(doc); err != nil {
 		return fmt.Errorf("data description: %w", err)
 	}
 	if err := providerHeader(doc); err != nil {

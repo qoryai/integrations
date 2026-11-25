@@ -1,25 +1,28 @@
 package contracts
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 
+	"github.com/qoryai/forager/policy"
 	"github.com/qoryai/integrations/internal/rawjson"
 )
 
-// The limits of a description that description.schema.json states in words, since a
+// The limits of a description that description.schema.json has only in words, since a
 // schema cannot express them.
 const (
 	// DescriptionMaxBytes is the most bytes a description's raw document takes, 256 KiB.
 	DescriptionMaxBytes = 262144
-	// DescriptionMaxStringBytes is the most bytes of UTF-8 a string of a description,
-	// a member name included, holds.
+	// DescriptionMaxStringBytes is the most bytes of UTF-8 in a string of a
+	// description, a member name included.
 	DescriptionMaxStringBytes = 16384
-	// DescriptionMaxValues is the most JSON values a description holds in all: the
+	// DescriptionMaxValues is the most JSON values a description contains in all: the
 	// document itself, each array entry and each member's value count one each, and
 	// member names none.
 	DescriptionMaxValues = 4096
@@ -36,8 +39,8 @@ const (
 // after that first step, then After. The adapter's steps describe only the adapter's
 // system.
 type Guide struct {
-	Setup   *GuidePart `json:"setup,omitempty"`
-	Connect *GuidePart `json:"connect,omitempty"`
+	Setup   *GuidePart `json:"setup,omitempty,case:strict"`
+	Connect *GuidePart `json:"connect,omitempty,case:strict"`
 }
 
 // GuidePart is the help for one step of a [Guide]: Before, a line shown above the
@@ -45,19 +48,22 @@ type Guide struct {
 // lines in the order a person takes them. Each value is a prose line of
 // description.schema.json, $defs.line: 1 to 300 characters on one line.
 type GuidePart struct {
-	Before string   `json:"before,omitempty"`
-	Steps  []string `json:"steps"`
-	After  string   `json:"after,omitempty"`
+	Before string   `json:"before,omitempty,case:strict"`
+	Steps  []string `json:"steps,case:strict"`
+	After  string   `json:"after,omitempty,case:strict"`
 }
 
 // CheckDescription reports the first rule of description.schema.json that a
 // description's raw bytes break and that no schema can express: the bytes are at most
-// [DescriptionMaxBytes] and are UTF-8; no string holds a \u escape of a lone surrogate;
-// no object repeats a member, at any depth; no string, a member name included, holds
-// more than [DescriptionMaxStringBytes] bytes of UTF-8; the document holds at most
-// [DescriptionMaxValues] JSON values; and it nests arrays and objects at most
-// [DescriptionMaxDepth] levels deep. It checks b before any decoder reads it leniently,
-// and leaves the schema's rules to the schema.
+// [DescriptionMaxBytes] and are UTF-8; no string contains a \u escape of a lone
+// surrogate; no object repeats a member, at any depth; no string, a member name
+// included, has more than [DescriptionMaxStringBytes] bytes of UTF-8; the document
+// contains at most [DescriptionMaxValues] JSON values; and it nests arrays and objects
+// at most [DescriptionMaxDepth] levels deep. It checks b before any decoder reads it
+// leniently, and leaves the schema's rules to the schema, with one exception: it also
+// refuses an oauth_device that the schema refuses too, one without oauth_refresh and
+// one with a URL that does not start with https://, so that the message starts with the
+// fix and not with a schema path ([checkOAuthDevice]).
 func CheckDescription(b []byte) error {
 	if len(b) > DescriptionMaxBytes {
 		return fmt.Errorf("the document is %d bytes, more than %d (256 KiB)", len(b), DescriptionMaxBytes)
@@ -65,21 +71,68 @@ func CheckDescription(b []byte) error {
 	if err := rawjson.Text(b); err != nil {
 		return err
 	}
-	return rawjson.Check(b, rawjson.Rules{
+	if err := rawjson.Check(b, rawjson.Rules{
 		MaxStringBytes: DescriptionMaxStringBytes,
 		MaxValues:      DescriptionMaxValues,
 		MaxDepth:       DescriptionMaxDepth,
-	})
+	}); err != nil {
+		return err
+	}
+	var doc any
+	if json.Unmarshal(b, &doc) != nil {
+		return nil
+	}
+	return checkOAuthDevice(doc)
+}
+
+// oauthDeviceURLs are the four URL members of oauth_device, in the order that
+// checkOAuthDevice reads them.
+var oauthDeviceURLs = []string{"usercode_url", "poll_url", "verification_url", "redirect_uri"}
+
+// checkOAuthDevice refuses, in the first API that breaks either rule, an oauth_device
+// without an oauth_refresh, and an oauth_device URL string that does not start with
+// https://, in lower case as the schema's pattern has it: http://, HTTPS://, ftp://,
+// //host/path, a bare host, a relative path and "". The schema refuses both too
+// ("dependentRequired" and "pattern"), but its message contains a schema keyword; this
+// one starts with the fix. A member that is missing
+// or not a string, and any other rule of the URL, is left to the schema and to
+// CheckModelProvider. doc is any decoded description: a value of another shape is left
+// to the schema.
+func checkOAuthDevice(doc any) error {
+	d, _ := doc.(map[string]any)
+	roles, _ := d["roles"].(map[string]any)
+	role, _ := roles["model_provider"].(map[string]any)
+	apis, _ := role["apis"].([]any)
+	for i, a := range apis {
+		api, _ := a.(map[string]any)
+		device, ok := api["oauth_device"].(map[string]any)
+		if !ok {
+			continue
+		}
+		if _, ok := api["oauth_refresh"]; !ok {
+			return fmt.Errorf("Add oauth_refresh to model_provider apis[%d]: oauth_device takes its client_id and url from it.", i)
+		}
+		for _, member := range oauthDeviceURLs {
+			if u, ok := device[member].(string); ok && !strings.HasPrefix(u, "https://") {
+				return fmt.Errorf("Change the oauth_device %s %q of model_provider apis[%d] to an https URL.", member, u, i)
+			}
+		}
+	}
+	return nil
 }
 
 // CheckModelProvider reports the first rule of the model_provider role of
 // description.schema.json that a description breaks and that the schema does not
-// express: no two entries of apis have the same format; an API endpoint that is a URL
-// has a host and port as [endpointHost] reads them; an API endpoint that is a setting
-// is the name of a property of settings whose type is string and that is not marked
-// writeOnly; and no two entries of models have the same id. doc is the
-// description as a schema validates it, after the schema accepts it. A description
-// with no model_provider role keeps every rule.
+// express: no two entries of apis have the same format; an API endpoint that is a URL,
+// the url of each oauth_refresh, and each of the four urls of each oauth_device, each
+// have a host and port as [urlHost] reads them;
+// each entry of an API's paths is a path that Forager's policy.ValidPath accepts and
+// that policy.UnclearPath does not report, since the gateway denies a request path
+// with such a part before it reads any credential's paths, so the entry would match
+// nothing; an API endpoint that is a setting is the name of a property of settings
+// whose type is string and that is not marked writeOnly; and no two entries of models
+// have the same id. doc is the description as a schema validates it, after the schema
+// accepts it. A description with no model_provider role keeps every rule.
 func CheckModelProvider(doc any) error {
 	d, _ := doc.(map[string]any)
 	roles, _ := d["roles"].(map[string]any)
@@ -102,6 +155,30 @@ func CheckModelProvider(doc any) error {
 		if endpoint, ok := api["endpoint"].(string); ok {
 			if _, err := endpointHost(endpoint, i); err != nil {
 				return err
+			}
+		}
+		refresh, _ := api["oauth_refresh"].(map[string]any)
+		if u, ok := refresh["url"].(string); ok {
+			if _, err := urlHost(u); err != nil {
+				return fmt.Errorf("change the oauth_refresh url %q of model_provider apis[%d]: the control plane cannot read its host or port: %w", u, i, err)
+			}
+		}
+		device, _ := api["oauth_device"].(map[string]any)
+		for _, member := range oauthDeviceURLs {
+			if u, ok := device[member].(string); ok {
+				if _, err := urlHost(u); err != nil {
+					return fmt.Errorf("change the oauth_device %s %q of model_provider apis[%d]: the control plane cannot read its host or port: %w", member, u, i, err)
+				}
+			}
+		}
+		paths, _ := api["paths"].([]any)
+		for j, p := range paths {
+			path, _ := p.(string)
+			if !policy.ValidPath(path) {
+				return fmt.Errorf("change the path %q of model_provider apis[%d] paths[%d]: a path has no *, ? or # except a final *, no space character, and a { or } only in a segment written exactly {}, as the gateway reads it", path, i, j)
+			}
+			if policy.UnclearPath(path) {
+				return fmt.Errorf("change the path %q of model_provider apis[%d] paths[%d]: it has an empty, \".\" or \"..\" segment, a backslash, an encoded slash, backslash, dot or percent sign, or a control character, which the gateway denies in a request path, so the path matches no request", path, i, j)
 			}
 		}
 	}
@@ -225,31 +302,38 @@ var exactHost = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z
 var numberLabel = regexp.MustCompile(`(^|\.)([0-9]+|0x[0-9a-f]*)$`)
 
 // endpointHost returns the host of endpoint, the URL endpoint of model_provider
-// apis[i], or an error that says why it has none. The host is in exactHost's form, and
-// a host whose last label is a number is a canonical IPv4 address, four decimal parts
-// from 0 to 255 with no leading zero; a port, when one is written, is from 1 to 65535.
-// These hosts are a subset of the hosts Forager's policy.EndpointHost reads, so a
-// gateway reads the host of every endpoint this accepts.
+// apis[i], as [urlHost] reads it, or an error that shows why. These hosts are a
+// subset of the hosts Forager's policy.EndpointHost reads, so a gateway reads the host
+// of every endpoint this accepts.
 func endpointHost(endpoint string, i int) (string, error) {
-	fail := func(why string) error {
-		return fmt.Errorf("the endpoint %q of model_provider apis[%d] has no host a gateway can read: %s", endpoint, i, why)
-	}
-	u, err := url.Parse(endpoint)
+	host, err := urlHost(endpoint)
 	if err != nil {
-		return "", fail(err.Error())
+		return "", fmt.Errorf("the endpoint %q of model_provider apis[%d] has no host a gateway can read: %w", endpoint, i, err)
+	}
+	return host, nil
+}
+
+// urlHost returns the host of raw, a URL as $defs/endpoint of description.schema.json
+// defines it, or an error that shows why. The host is in exactHost's form, and a host
+// whose last label is a number is a canonical IPv4 address, four decimal parts from 0
+// to 255 with no leading zero; a port, when one is written, is from 1 to 65535.
+func urlHost(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", err
 	}
 	host := u.Hostname()
 	if !exactHost.MatchString(host) {
-		return "", fail(fmt.Sprintf("the host %q is not labels joined by dots, each 1 to 63 lower-case letters, digits and hyphens that starts and ends with a letter or a digit", host))
+		return "", fmt.Errorf("the host %q is not labels joined by dots, each 1 to 63 lower-case letters, digits and hyphens that starts and ends with a letter or a digit", host)
 	}
 	if numberLabel.MatchString(host) {
 		if a, err := netip.ParseAddr(host); err != nil || !a.Is4() {
-			return "", fail(fmt.Sprintf("the host %q ends in a number and is not an IPv4 address of four decimal parts from 0 to 255, each with no leading zero", host))
+			return "", fmt.Errorf("the host %q ends in a number and is not an IPv4 address of four decimal parts from 0 to 255, each with no leading zero", host)
 		}
 	}
 	if port := u.Port(); port != "" {
 		if n, err := strconv.Atoi(port); err != nil || n < 1 || n > 65535 {
-			return "", fail(fmt.Sprintf("the port %q is not a number from 1 to 65535", port))
+			return "", fmt.Errorf("the port %q is not a number from 1 to 65535", port)
 		}
 	}
 	return host, nil
