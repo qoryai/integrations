@@ -635,8 +635,8 @@ change what an existing reader or program relies on, and notes it under Upgradin
   API failed), `prebuild_failed` (a prebuild failed: its build, the pull of its base
   image, or the push or verification of the image it built), `next_session_failed`
   (the next-session request after a session failed: Qory Apiary refused it or did not
-  answer) and `outputs_invalid` (qory's output check stopped the run before the push: a
-  declared output is missing or does not match its output type). A `reason` that is not in
+  answer) and `outputs_invalid` (qory's output check stopped the run before the push: an
+  output does not match its output type). A `reason` that is not in
   the list passes the schema, as a newer qory may send a code that an older reader does
   not know. One of the end codes with a `state` other than `failed` fails, and so does a
   member the schema does not define, such as `message` or `action`. None of them is one

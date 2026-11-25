@@ -862,8 +862,8 @@ const (
 	// EndCodeNextSessionFailed: the next-session request after a session failed: Qory
 	// Apiary refused it or did not answer.
 	EndCodeNextSessionFailed EndCode = "next_session_failed"
-	// EndCodeOutputsInvalid: qory's output check stopped the run before the push: a
-	// declared output is missing or does not match its output type.
+	// EndCodeOutputsInvalid: qory's output check stopped the run before the push: an
+	// output does not match its output type.
 	EndCodeOutputsInvalid EndCode = "outputs_invalid"
 )
 
