@@ -36,7 +36,7 @@ var endCodes = map[contracts.EndCode]string{
 	contracts.EndCodeRunAPIFailed:            "to the run API failed",
 	contracts.EndCodePrebuildFailed:          "the pull of its base image",
 	contracts.EndCodeNextSessionFailed:       "Qory Apiary refused it or did not answer",
-	contracts.EndCodeOutputsInvalid:          "or does not match its output type",
+	contracts.EndCodeOutputsInvalid:          "an output does not match its output type",
 }
 
 // schemaEndCodes reads $defs end_codes of outcome.schema.json: the definition, and the

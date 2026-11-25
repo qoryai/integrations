@@ -134,7 +134,7 @@
         },
         {
           "const": "outputs_invalid",
-          "description": "qory's output check stopped the run before the push: a declared output is missing or does not match its output type."
+          "description": "qory's output check stopped the run before the push: an output does not match its output type."
         }
       ]
     }
