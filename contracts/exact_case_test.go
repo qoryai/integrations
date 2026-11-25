@@ -87,8 +87,8 @@ func TestStrictJSONTag(t *testing.T) {
 }
 
 // TestCaseStrictIsHonoured probes the option on the toolchain that builds the tests, with
-// a struct of its own. A build with GOEXPERIMENT=nojsonv2 has a decoder of encoding/json
-// that ignores the option, and fails here.
+// a struct that only this test uses. A build with GOEXPERIMENT=nojsonv2 has a decoder of
+// encoding/json that ignores the option, and fails here.
 func TestCaseStrictIsHonoured(t *testing.T) {
 	type probe struct {
 		State string `json:"state,case:strict"`

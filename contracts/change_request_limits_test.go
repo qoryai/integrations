@@ -196,9 +196,9 @@ func TestAReplyTextMayHaveAMarkerLine(t *testing.T) {
 	}
 }
 
-// TestAChangeRequestOfEachKindIsAccepted pins the card's fixtures: an entry of the kinds
-// pull-request, reply and bid-changes is accepted, each with the members of its kind in
-// data, and an entry without a target or without a title is refused.
+// TestAChangeRequestOfEachKindIsAccepted pins the change request fixtures: an entry of
+// the kinds pull-request, reply and bid-changes is accepted, each with the members of its
+// kind in data, and an entry without a target or without a title is refused.
 func TestAChangeRequestOfEachKindIsAccepted(t *testing.T) {
 	feed := compile(t, "changes.schema.json")
 	for kind, file := range map[string]string{
