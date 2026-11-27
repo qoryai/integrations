@@ -115,7 +115,7 @@ type ClaimAnswer struct {
 	RunCode     string       `json:"run_code,case:strict"`
 	GatewayURL  string       `json:"gateway_url,case:strict"`
 	// MaxLifetimeMinutes is the minutes after which the machine powers itself off,
-	// counted from when it starts, whatever it runs: from 15 to 1470. The starter passes
+	// counted from when it starts, whatever it runs: from 15 to 10080. The starter passes
 	// it to the machine with the run code, and deletes a machine of its node pool that
 	// has run longer than MaxLifetimeMinutes plus 15 minutes, counted from the
 	// vendor's launch time.
