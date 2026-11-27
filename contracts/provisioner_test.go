@@ -122,7 +122,7 @@ func TestInvalidProvisionerFixturesAreRefused(t *testing.T) {
 		"claim-answer-without-gateway-url.json":                {"claim-answer", "/ required gateway_url"},
 		"claim-answer-without-run-code.json":                   {"claim-answer", "/ required run_code"},
 		"claim-answer-max-lifetime-minutes-14.json":            {"claim-answer", "/max_lifetime_minutes minimum"},
-		"claim-answer-max-lifetime-minutes-1471.json":          {"claim-answer", "/max_lifetime_minutes maximum"},
+		"claim-answer-max-lifetime-minutes-10081.json":         {"claim-answer", "/max_lifetime_minutes maximum"},
 		"claim-answer-without-max-lifetime-minutes.json":       {"claim-answer", "/ required max_lifetime_minutes"},
 		"claim-answer-machine-upper-case.json":                 {"claim-answer", "/machine pattern"},
 		"claim-answer-machine-without-machine-spec.json":       {"claim-answer", "/ dependentRequired/machine"},

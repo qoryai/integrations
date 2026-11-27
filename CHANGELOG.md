@@ -1236,6 +1236,11 @@ change what an existing reader or program relies on, and notes it under Upgradin
   and `shared_run` descriptions of the run contract schemas, and the comments of
   `NextSessionRequest`, `NextSessionAnswer` and `Documents.SharedRun`. A request follows
   each workflow session that did not pause, not each session. No schema keyword changed.
+- `max_lifetime_minutes` of the claim answer is an integer from 15 to 10080 (7 days), up
+  from 1470. The schema accepts 10080 and refuses 10081. The contract stays at revision 1.
+  The fixture `claim-answer/max-lifetime-minutes-10080.json` is valid, and
+  `invalid/claim-answer-max-lifetime-minutes-1471.json` is now
+  `invalid/claim-answer-max-lifetime-minutes-10081.json`.
 
 ### Removed
 
