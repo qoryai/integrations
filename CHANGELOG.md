@@ -417,6 +417,14 @@ change what an existing reader or program relies on, and notes it under Upgradin
 
 ### Added
 
+- A `resolve` result may contain `path`, the path of the resource at the address on its
+  system, as the adapter writes it, such as `owner/name` for a repository on a forge, current
+  at the moment of the call. The control plane stores it and fills the path templates of
+  the credential items of the source with it. `path` is optional: an adapter that has no
+  path for the resource leaves it out. It has the rule of `$defs/address_path` in
+  `definitions.schema.json`, 1 to 200 characters with no control character, `{` or `}`, and
+  is refused in a result with `covered: false`. The contract revision stays 1. In Go,
+  `Resolved.Path` is added.
 - Read and write the findings of a work item with `findings.schema.json`,
   `findings-post.schema.json`, `findings-post-answer.schema.json` and
   `findings-refusal.schema.json` of the run contract. A finding is one problem that a

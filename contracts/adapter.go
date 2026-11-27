@@ -1063,7 +1063,11 @@ type Resolved struct {
 	GrantRef    string `json:"grant_ref,omitempty,case:strict"`
 	ResourceRef string `json:"resource_ref,omitempty,case:strict"`
 	Covered     *bool  `json:"covered,omitempty,case:strict"`
-	Public      bool   `json:"public,omitempty,case:strict"`
+	// Path is the path of the resource at the address on its system, such as owner/name for
+	// a repository on a forge, current at the moment of the call. The control plane fills
+	// the path templates of the source's credential items with it. Empty when Covered is false.
+	Path   string `json:"path,omitempty,case:strict"`
+	Public bool   `json:"public,omitempty,case:strict"`
 	// PublicRef is the ref of the resource that a request without a credential, under no
 	// grant, can use: the ResourceRef the control plane sends in a [ReadPublic]. It is
 	// set exactly when Public is true, and may equal ResourceRef when GrantRef is empty.
