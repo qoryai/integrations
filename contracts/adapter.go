@@ -1052,8 +1052,9 @@ type ResolveAnswer struct {
 // PublicRef, or Public false with no PublicRef; Public true, ResourceRef and PublicRef,
 // with no GrantRef and Covered nil, when no grant the adapter holds covers the address
 // and the source shows the resource without a credential; or Covered pointing to false,
-// with no ref and Public false, when the adapter cannot read the address, or no grant
-// it holds covers it and it does not set Public. Public is optional: an adapter sets it
+// with no ref, no Path and Public false, when the adapter cannot read the address, or no
+// grant it holds covers it and it does not set Public. Path is optional in the other two
+// forms. Public is optional: an adapter sets it
 // only if it serves a [ReadPublic], and only for a resource that the source shows
 // without a credential, decided from the visibility of the resource as a request
 // without a credential sees it, never from a grant it holds; a resource that the source

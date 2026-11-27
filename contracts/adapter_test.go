@@ -307,6 +307,7 @@ func TestInvalidAdapterFixturesAreRefused(t *testing.T) {
 		"resolve-answer-not-covered-path.json":                                  {"resolve-answer", "/results/0/path "},
 		"resolve-answer-path-empty.json":                                        {"resolve-answer", "/results/0/path minLength; /results/0/path pattern"},
 		"resolve-answer-path-brace.json":                                        {"resolve-answer", "/results/0/path pattern"},
+		"resolve-answer-path-201.json":                                          {"resolve-answer", "/results/0/path maxLength"},
 		"read-public-without-path.json":                                         {"read-public", "/ required path"},
 		"read-path-leading-slash.json":                                          {"read", "/path pattern"},
 		"read-path-dot-dot.json":                                                {"read", "/path pattern"},
